@@ -155,12 +155,18 @@ export class PermissionEngine {
   static can(capability) {
     const user = authService.getCurrentUser();
     if (!user || !user.role) return false;
+    if (user.isSuperAdmin || (user.email && user.email.toLowerCase() === TMS_CONFIG.superAdminEmail.toLowerCase())) {
+      return true; // Super Admin has unrestricted access to all capabilities
+    }
     const allowed = ROLE_CAPABILITY_MATRIX[user.role] || [];
     return allowed.includes(capability);
   }
 
   static getScope() {
     const user = authService.getCurrentUser();
+    if (user?.isSuperAdmin || (user?.email && user.email.toLowerCase() === TMS_CONFIG.superAdminEmail.toLowerCase())) {
+      return TMS_CONFIG.scopes.SCHOOL_WIDE;
+    }
     return user?.scope || TMS_CONFIG.scopes.OWN_RECORDS;
   }
 
@@ -171,6 +177,9 @@ export class PermissionEngine {
   static canAccessModule(moduleId) {
     const user = authService.getCurrentUser();
     if (!user) return false;
+    if (user.isSuperAdmin || (user.email && user.email.toLowerCase() === TMS_CONFIG.superAdminEmail.toLowerCase())) {
+      return true; // Super Admin has access to all modules
+    }
     const role = user.role;
 
     if (role === TMS_CONFIG.roles.ADMIN || role === TMS_CONFIG.roles.PRINCIPAL) {
