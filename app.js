@@ -1,6 +1,7 @@
 /**
  * THAIBA MODEL SCHOOL — Main ERP Controller & Router
  * Hash Router: #/module/tab
+ * Strict Authentication Mode & Official TMS Branding
  */
 
 import { TMS_CONFIG } from './config.js';
@@ -8,6 +9,7 @@ import { authService } from './auth-service.js';
 import { PermissionEngine } from './permission-engine.js';
 import { UIComponents } from './ui-components.js';
 import { dbService } from './supabase-client.js';
+import { TMS_LOGO } from './logo.js';
 
 // Import Functional Modules
 import { AdminModule } from './admin-module.js';
@@ -32,6 +34,7 @@ class AppController {
   async init() {
     UIComponents.initTheme();
 
+    // Strict Authentication Guard
     if (!authService.isAuthenticated()) {
       window.location.href = 'login.html';
       return;
@@ -59,27 +62,24 @@ class AppController {
         <!-- Sidebar Navigation -->
         <aside class="app-sidebar" id="app-sidebar">
           <div class="sidebar-header">
-            <div class="brand-badge">${TMS_CONFIG.institution.logoBadge}</div>
+            ${TMS_LOGO.emblemSvg(42)}
             <div class="brand-info">
               <h2>${TMS_CONFIG.institution.name}</h2>
-              <p>${TMS_CONFIG.institution.affiliation}</p>
+              <p>Thaiba Heritage, Kolkata</p>
             </div>
           </div>
 
           <nav class="sidebar-nav" id="sidebar-nav-items">
-            <!-- Dynamically populated based on Role-Based Access Control -->
+            <!-- Dynamically populated based on RBAC -->
           </nav>
 
           <div class="sidebar-footer">
             <div class="user-mini-card">
               <img src="${user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}" alt="Avatar">
               <div class="user-details-mini">
-                <div class="name">${user.name || 'Thaiba User'}</div>
-                <div class="role">${user.title || user.role}</div>
+                <div class="name">${user.name || 'TMS Authorized'}</div>
+                <div class="role">${user.isSuperAdmin ? 'Super Admin' : (user.title || user.role)}</div>
               </div>
-              <button class="icon-btn" id="btn-quick-role-switch" title="Switch Demo Role" style="width: 32px; height: 32px; color: #fff;">
-                <i data-lucide="refresh-cw"></i>
-              </button>
             </div>
           </div>
         </aside>
@@ -101,9 +101,9 @@ class AppController {
             </div>
 
             <div class="topbar-right">
-              <div class="ticker-badge" title="Live Campus Alert">
-                <i data-lucide="bell" style="width: 14px; height: 14px;"></i>
-                <span>Term 1 Examinations Commencing Oct 24</span>
+              <div class="ticker-badge" title="Campus Active">
+                <i data-lucide="calendar" style="width: 14px; height: 14px;"></i>
+                <span>Session ${TMS_CONFIG.academic.currentYear} Active</span>
               </div>
 
               <button class="icon-btn" id="theme-toggle-btn" title="Toggle Light/Dark Mode">
@@ -134,7 +134,7 @@ class AppController {
 
     const navItems = [
       { id: 'dashboard', label: 'Overview Dashboard', icon: 'layout-dashboard', module: 'dashboard' },
-      { id: 'my-work', label: 'My Work (ThaibaHive)', icon: 'briefcase', module: 'my-work' },
+      { id: 'my-work', label: 'Staff Workspace', icon: 'briefcase', module: 'my-work' },
       { id: 'students', label: 'Student Directory', icon: 'graduation-cap', module: 'students' },
       { id: 'attendance', label: 'Attendance & Radar', icon: 'user-check', module: 'attendance' },
       { id: 'academics', label: 'Academic & Timetable', icon: 'book-open', module: 'academics' },
@@ -145,7 +145,7 @@ class AppController {
       { id: 'communication', label: 'Notice & Bulletins', icon: 'message-square', module: 'communication' },
       { id: 'reports', label: 'School Analytics', icon: 'bar-chart-3', module: 'reports' },
       { id: 'institution', label: 'Campus Facilities', icon: 'building', module: 'institution' },
-      { id: 'administration', label: 'Administration', icon: 'settings', module: 'administration' }
+      { id: 'administration', label: 'School Administration', icon: 'settings', module: 'administration' }
     ];
 
     const authorizedItems = navItems.filter(item => PermissionEngine.canAccessModule(item.module));
@@ -160,6 +160,10 @@ class AppController {
       `).join('')}
       
       <div class="sidebar-group-title" style="margin-top: 14px;">Dedicated Portals</div>
+      <a class="nav-item" href="student-admission-portal.html" target="_blank">
+        <i data-lucide="file-text" style="color: #16a34a;"></i>
+        <span>Admission Form (A4)</span>
+      </a>
       <a class="nav-item" href="teacher-portal.html" target="_blank">
         <i data-lucide="external-link"></i>
         <span>Faculty Portal</span>
@@ -172,17 +176,12 @@ class AppController {
         <i data-lucide="external-link"></i>
         <span>Parent Portal</span>
       </a>
-      <a class="nav-item" href="student-admission-portal.html" target="_blank">
-        <i data-lucide="external-link"></i>
-        <span>Public Admission</span>
-      </a>
     `;
 
     UIComponents.refreshIcons();
   }
 
   bindGlobalEvents() {
-    // Mobile sidebar toggle
     const toggleBtn = document.getElementById('btn-toggle-sidebar');
     const sidebar = document.getElementById('app-sidebar');
     const backdrop = document.getElementById('sidebar-backdrop');
@@ -198,61 +197,17 @@ class AppController {
       });
     }
 
-    // Theme toggle
     const themeBtn = document.getElementById('theme-toggle-btn');
     if (themeBtn) {
       themeBtn.addEventListener('click', () => UIComponents.toggleTheme());
     }
 
-    // Logout
     const logoutBtn = document.getElementById('btn-logout');
     if (logoutBtn) {
       logoutBtn.addEventListener('click', () => {
         if (confirm('Sign out from THAIBA MODEL SCHOOL ERP?')) {
           authService.logout();
         }
-      });
-    }
-
-    // Quick demo role switcher
-    const roleSwitchBtn = document.getElementById('btn-quick-role-switch');
-    if (roleSwitchBtn) {
-      roleSwitchBtn.addEventListener('click', () => {
-        UIComponents.openModal({
-          title: 'Switch Active Portal Role (Instant Evaluation)',
-          bodyHtml: `
-            <div style="font-size: 0.88rem; line-height: 1.5; margin-bottom: 16px;">
-              Select an authorized role persona to verify permissions and scoped data views:
-            </div>
-            <div style="display: grid; gap: 10px;">
-              <button class="btn btn-secondary role-pick-btn" data-role="admin" style="justify-content: flex-start;">
-                <i data-lucide="shield"></i> <strong>School Administrator</strong> (Full Access)
-              </button>
-              <button class="btn btn-secondary role-pick-btn" data-role="principal" style="justify-content: flex-start;">
-                <i data-lucide="award"></i> <strong>Principal & Academic Director</strong> (Dr. Zubair)
-              </button>
-              <button class="btn btn-secondary role-pick-btn" data-role="teacher" style="justify-content: flex-start;">
-                <i data-lucide="book-open"></i> <strong>Senior Teacher</strong> (Prof. Rashid Rahman - Grade 9A)
-              </button>
-              <button class="btn btn-secondary role-pick-btn" data-role="finance" style="justify-content: flex-start;">
-                <i data-lucide="wallet"></i> <strong>Finance Manager</strong> (Mr. Sameer Babu)
-              </button>
-              <button class="btn btn-secondary role-pick-btn" data-role="student" style="justify-content: flex-start;">
-                <i data-lucide="graduation-cap"></i> <strong>Student</strong> (Mohammed Rayan K)
-              </button>
-              <button class="btn btn-secondary role-pick-btn" data-role="parent" style="justify-content: flex-start;">
-                <i data-lucide="heart"></i> <strong>Parent / Guardian</strong> (Abdul Kareem)
-              </button>
-            </div>
-          `
-        });
-
-        document.querySelectorAll('.role-pick-btn').forEach(btn => {
-          btn.addEventListener('click', (e) => {
-            const role = e.currentTarget.dataset.role;
-            authService.switchRole(role);
-          });
-        });
       });
     }
 
@@ -285,19 +240,19 @@ class AppController {
         const staff = await dbService.select('staff');
         const invoices = await dbService.select('invoices');
 
-        const matchedStudents = students.filter(s => s.fullName.toLowerCase().includes(q) || s.admissionNo.toLowerCase().includes(q));
-        const matchedStaff = staff.filter(s => s.name.toLowerCase().includes(q) || s.empId.toLowerCase().includes(q));
-        const matchedInvoices = invoices.filter(i => i.invoiceNo.toLowerCase().includes(q) || i.studentName.toLowerCase().includes(q));
+        const matchedStudents = students.filter(s => (s.fullName || s.full_name || '').toLowerCase().includes(q) || (s.admissionNo || s.admission_no || '').toLowerCase().includes(q));
+        const matchedStaff = staff.filter(st => (st.name || '').toLowerCase().includes(q) || (st.empId || st.emp_id || '').toLowerCase().includes(q));
+        const matchedInvoices = invoices.filter(i => (i.invoiceNo || i.invoice_no || '').toLowerCase().includes(q) || (i.studentName || i.student_name || '').toLowerCase().includes(q));
 
         let html = '';
         if (matchedStudents.length) {
-          html += `<div style="font-weight: 700; color: #3b82f6; margin: 8px 0 4px;">Students:</div>`;
+          html += `<div style="font-weight: 700; color: #16a34a; margin: 8px 0 4px;">Students:</div>`;
           matchedStudents.forEach(s => {
-            html += `<div style="padding: 6px; border-bottom: 1px solid var(--border-color);">${s.fullName} (${s.admissionNo}) — ${s.grade}</div>`;
+            html += `<div style="padding: 6px; border-bottom: 1px solid var(--border-color);">${s.fullName || s.full_name} (${s.admissionNo || s.admission_no}) — ${s.grade}</div>`;
           });
         }
         if (matchedStaff.length) {
-          html += `<div style="font-weight: 700; color: #10b981; margin: 8px 0 4px;">Faculty & Staff:</div>`;
+          html += `<div style="font-weight: 700; color: #3b82f6; margin: 8px 0 4px;">Faculty & Staff:</div>`;
           matchedStaff.forEach(st => {
             html += `<div style="padding: 6px; border-bottom: 1px solid var(--border-color);">${st.name} (${st.designation})</div>`;
           });
@@ -305,7 +260,7 @@ class AppController {
         if (matchedInvoices.length) {
           html += `<div style="font-weight: 700; color: #f59e0b; margin: 8px 0 4px;">Invoices:</div>`;
           matchedInvoices.forEach(inv => {
-            html += `<div style="padding: 6px; border-bottom: 1px solid var(--border-color);">${inv.invoiceNo} — ${inv.studentName} (₹ ${inv.amount})</div>`;
+            html += `<div style="padding: 6px; border-bottom: 1px solid var(--border-color);">${inv.invoiceNo || inv.invoice_no} — ${inv.studentName || inv.student_name} (₹ ${inv.amount})</div>`;
           });
         }
 
@@ -336,11 +291,10 @@ class AppController {
 
   async handleRoute() {
     const hash = window.location.hash.slice(2) || 'dashboard';
-    const [moduleName, tabName] = hash.split('/');
+    const [moduleName] = hash.split('/');
     const viewport = document.getElementById('app-viewport');
     if (!viewport) return;
 
-    // Update active nav link
     document.querySelectorAll('.nav-item').forEach(item => {
       if (item.dataset.module === moduleName) {
         item.classList.add('active');
@@ -417,7 +371,7 @@ class AppController {
     const invoices = await dbService.select('invoices');
     const user = authService.getCurrentUser() || {};
 
-    const totalCollected = invoices.reduce((acc, i) => acc + (i.paid || 0), 0);
+    const totalCollected = invoices.reduce((acc, i) => acc + (parseFloat(i.paid) || 0), 0);
 
     container.innerHTML = `
       <div style="margin-bottom: 24px;">
@@ -425,38 +379,40 @@ class AppController {
           <div>
             <h1 style="font-size: 1.85rem;">THAIBA MODEL SCHOOL — Enterprise Overview</h1>
             <p style="color: var(--text-muted); font-size: 0.9rem;">
-              Unified Campus Intelligence • Logged in as <strong>${user.name}</strong> (${user.title || user.role})
+              Unified Campus Management • Welcome, <strong>${user.name}</strong> (${user.isSuperAdmin ? 'Super Administrator' : user.title})
             </p>
           </div>
           <div style="display: flex; gap: 10px;">
-            <a href="#/attendance" class="btn btn-secondary"><i data-lucide="user-check"></i> Live Register</a>
-            <a href="#/my-work" class="btn btn-primary"><i data-lucide="briefcase"></i> My Workspace</a>
+            <a href="student-admission-portal.html" target="_blank" class="btn btn-primary"><i data-lucide="file-plus"></i> Admission Portal (A4)</a>
+            <a href="#/administration" class="btn btn-secondary"><i data-lucide="settings"></i> School Admin</a>
           </div>
         </div>
       </div>
 
       <!-- Top KPI Row -->
       <div class="kpi-grid">
-        ${UIComponents.renderKpiCard({ title: 'Total Enrolled Students', value: `${students.length}`, icon: 'users', color: 'blue', subtitle: 'Academic Session 2024-25' })}
-        ${UIComponents.renderKpiCard({ title: 'Faculty & Staff', value: `${staff.length}`, icon: 'briefcase', color: 'emerald', subtitle: '96% Biometric Checked-in' })}
-        ${UIComponents.renderKpiCard({ title: 'Total Fee Realization', value: `₹ ${totalCollected.toLocaleString()}`, icon: 'credit-card', color: 'amber', subtitle: 'Term 1 Reconciled' })}
-        ${UIComponents.renderKpiCard({ title: 'Campus Geofence Telemetry', value: 'Active', icon: 'map-pin', color: 'rose', subtitle: '5-Min Interval Polling' })}
+        ${UIComponents.renderKpiCard({ title: 'Enrolled Students', value: `${students.length}`, icon: 'users', color: 'emerald', subtitle: 'Academic Session ' + TMS_CONFIG.academic.currentYear })}
+        ${UIComponents.renderKpiCard({ title: 'Faculty & Employees', value: `${staff.length}`, icon: 'briefcase', color: 'blue', subtitle: 'Active Campus Staff' })}
+        ${UIComponents.renderKpiCard({ title: 'Fee Realization', value: `₹ ${totalCollected.toLocaleString()}`, icon: 'credit-card', color: 'amber', subtitle: 'Collections to Date' })}
+        ${UIComponents.renderKpiCard({ title: 'Campus Geofence', value: 'Active', icon: 'map-pin', color: 'rose', subtitle: 'Tapan Campus 300m Zone' })}
       </div>
 
-      <!-- Main Operational Widgets -->
+      <!-- Quick Action Hub -->
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 24px; margin-bottom: 24px;">
-        <!-- Quick Action Hub -->
         <div class="card">
           <div class="card-header">
             <h3 class="card-title">Authorized Quick Actions</h3>
-            <span class="badge badge-info">Role-Optimized</span>
+            <span class="badge badge-success">Direct Access</span>
           </div>
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+            <a href="student-admission-portal.html" target="_blank" class="btn btn-secondary" style="justify-content: flex-start; padding: 14px;">
+              <i data-lucide="file-text" style="color: #16a34a;"></i> Admission Form (A4)
+            </a>
             <a href="#/students" class="btn btn-secondary" style="justify-content: flex-start; padding: 14px;">
-              <i data-lucide="user-plus"></i> Enroll Student
+              <i data-lucide="user-plus"></i> Student Directory
             </a>
             <a href="#/attendance" class="btn btn-secondary" style="justify-content: flex-start; padding: 14px;">
-              <i data-lucide="qr-code"></i> QR Punch Terminal
+              <i data-lucide="qr-code"></i> Attendance Radar
             </a>
             <a href="#/finance" class="btn btn-secondary" style="justify-content: flex-start; padding: 14px;">
               <i data-lucide="receipt"></i> Fee Cash Counter
@@ -464,30 +420,26 @@ class AppController {
             <a href="#/examinations" class="btn btn-secondary" style="justify-content: flex-start; padding: 14px;">
               <i data-lucide="file-check"></i> Report Cards
             </a>
-            <a href="#/communication" class="btn btn-secondary" style="justify-content: flex-start; padding: 14px;">
-              <i data-lucide="send"></i> Post Circular
-            </a>
-            <a href="#/reports" class="btn btn-secondary" style="justify-content: flex-start; padding: 14px;">
-              <i data-lucide="bar-chart-2"></i> Export Analytics
+            <a href="#/administration" class="btn btn-secondary" style="justify-content: flex-start; padding: 14px;">
+              <i data-lucide="sliders"></i> Fee & Form Builder
             </a>
           </div>
         </div>
 
-        <!-- Campus Vital Notice -->
         <div class="card">
           <div class="card-header">
-            <h3 class="card-title">Campus Vital Announcements</h3>
-            <span class="badge badge-warning">High Priority</span>
+            <h3 class="card-title">Institution Profile & Information</h3>
+            <span class="badge badge-info">Dakshin Dinajpur</span>
           </div>
           <div style="font-size: 0.88rem; line-height: 1.6;">
-            <div style="padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--border-color);">
-              <strong style="color: #ef4444;">1. Term 1 Examination Commences Oct 24:</strong> All subject teachers must finalize internal assessments and upload marks by Friday.
+            <div style="padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px solid var(--border-color);">
+              <strong>Affiliation / Registration:</strong> Regd. No. IV 01894/2011 • Run by Thaiba Heritage, Kolkata
             </div>
-            <div style="padding-bottom: 12px; margin-bottom: 12px; border-bottom: 1px solid var(--border-color);">
-              <strong>2. Parent-Teacher Assembly:</strong> PTA general body meet scheduled for Saturday morning in the Al-Ghazali Auditorium.
+            <div style="padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px solid var(--border-color);">
+              <strong>Campus Location:</strong> Baghait, Tapan, Dakshin Dinajpur, West Bengal
             </div>
             <div>
-              <strong>3. Geofence Attendance Enforcement:</strong> Staff GPS polling active with 3-minute exit grace window.
+              <strong>Super Administrator:</strong> C. M. Basith (cmbasith786@gmail.com)
             </div>
           </div>
         </div>
@@ -496,7 +448,6 @@ class AppController {
   }
 }
 
-// Instantiate on DOM Ready
 document.addEventListener('DOMContentLoaded', () => {
   window.tmsApp = new AppController();
 });
