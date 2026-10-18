@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ThaibaHive Faculty Portal — THAIBA MODEL SCHOOL</title>
+  <title>Faculty Portal — THAIBA MODEL SCHOOL</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>👨‍🏫</text></svg>">
   <link rel="stylesheet" href="app.css">
   <script src="https://unpkg.com/lucide@latest"></script>
@@ -19,7 +19,7 @@
     <!-- Faculty Topbar -->
     <header class="app-topbar">
       <div class="topbar-left">
-        <a href="index.html#/my-work" class="brand-badge" style="padding: 6px 12px; font-size: 0.95rem;">THAIBAHIVE</a>
+        <a href="index.html#/my-work" class="brand-badge" style="padding: 6px 12px; font-size: 0.95rem;">TMS FACULTY</a>
         <div style="font-family: var(--font-display); font-weight: 700; font-size: 1.1rem;">
           Faculty & Staff Workspace
         </div>
@@ -41,12 +41,16 @@
     import { authService } from './auth-service.js';
     import { UIComponents } from './ui-components.js';
 
-    UIComponents.initTheme();
-    const themeBtn = document.getElementById('theme-toggle-btn');
-    if (themeBtn) themeBtn.addEventListener('click', () => UIComponents.toggleTheme());
+    if (!authService.isAuthenticated()) {
+      window.location.href = 'login.html';
+    } else {
+      UIComponents.initTheme();
+      const themeBtn = document.getElementById('theme-toggle-btn');
+      if (themeBtn) themeBtn.addEventListener('click', () => UIComponents.toggleTheme());
 
-    const viewport = document.getElementById('teacher-portal-viewport');
-    MyWorkModule.render(viewport);
+      const viewport = document.getElementById('teacher-portal-viewport');
+      MyWorkModule.render(viewport);
+    }
   </script>
 </body>
 </html>
