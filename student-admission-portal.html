@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Online Admission Portal — THAIBA MODEL SCHOOL</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📝</text></svg>">
+  <link rel="stylesheet" href="app.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body style="min-height: 100vh; padding: 24px 16px;">
+  <div class="ambient-mesh">
+    <div class="mesh-glow-1"></div>
+    <div class="mesh-glow-2"></div>
+  </div>
+
+  <div style="max-width: 800px; margin: 0 auto; position: relative; z-index: 10;">
+    <!-- School Header -->
+    <div style="text-align: center; margin-bottom: 30px;">
+      <div class="brand-badge" style="display: inline-block; font-size: 1.6rem; padding: 12px 24px; margin-bottom: 12px;">
+        TMS
+      </div>
+      <h1 style="font-size: 1.8rem; margin-bottom: 4px;">THAIBA MODEL SCHOOL</h1>
+      <p style="color: var(--text-muted); font-size: 0.95rem;">
+        Public Student Admissions & Enrollment Gateway • Academic Session 2024-2025
+      </p>
+    </div>
+
+    <div class="card" style="padding: 32px; box-shadow: var(--shadow-lg);">
+      <div class="card-header" style="margin-bottom: 24px;">
+        <div>
+          <h2 class="card-title">New Student Admission Application</h2>
+          <p class="card-desc">Please provide accurate candidate and guardian information for academic evaluation.</p>
+        </div>
+        <span class="badge badge-success">Admissions Open</span>
+      </div>
+
+      <form id="public-admission-form">
+        <h4 style="font-size: 1rem; margin-bottom: 14px; color: #3b82f6;">1. Candidate Information</h4>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+          <div class="form-group">
+            <label class="form-label">Full Name of Student *</label>
+            <input class="form-input" id="pub-name" required placeholder="e.g. Rayyan Khalid">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Date of Birth *</label>
+            <input type="date" class="form-input" id="pub-dob" required value="2012-05-10">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Gender *</label>
+            <select class="form-select" id="pub-gender">
+              <option>Male</option>
+              <option>Female</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Grade / Class Applying For *</label>
+            <select class="form-select" id="pub-grade">
+              <option>Grade 1</option><option>Grade 2</option><option>Grade 3</option>
+              <option>Grade 4</option><option>Grade 5</option><option>Grade 6</option>
+              <option>Grade 7</option><option>Grade 8</option><option selected>Grade 9</option>
+              <option>Grade 10</option><option>Grade 11 (Science)</option><option>Grade 11 (Commerce)</option>
+            </select>
+          </div>
+        </div>
+
+        <h4 style="font-size: 1rem; margin-bottom: 14px; color: #3b82f6;">2. Parent / Guardian Details</h4>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+          <div class="form-group">
+            <label class="form-label">Father / Guardian Full Name *</label>
+            <input class="form-input" id="pub-father" required placeholder="Full name">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Primary Contact Mobile *</label>
+            <input class="form-input" id="pub-phone" required placeholder="+91 98470 00000">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Guardian Email Address *</label>
+            <input type="email" class="form-input" id="pub-email" required placeholder="parent@gmail.com">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Previous School Attended</label>
+            <input class="form-input" id="pub-prev-school" placeholder="School name & city">
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 24px;">
+          <label class="form-label">Residential Address in Full *</label>
+          <textarea class="form-textarea" id="pub-address" rows="3" required placeholder="House name, street, locality, pincode"></textarea>
+        </div>
+
+        <div style="background: rgba(59,130,246,0.06); padding: 16px; border-radius: var(--radius-md); border: 1px dashed #3b82f6; margin-bottom: 24px;">
+          <div style="display: flex; gap: 12px; align-items: center;">
+            <i data-lucide="file-up" style="color: #3b82f6; width: 24px; height: 24px;"></i>
+            <div>
+              <strong style="font-size: 0.88rem;">Document Verification Notice</strong>
+              <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">
+                Birth certificate, transfer certificate (TC), and previous report card will be collected during the physical interview at the campus.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 14px; font-size: 1rem;" id="btn-submit-application">
+          <i data-lucide="send"></i> Submit Admission Application
+        </button>
+      </form>
+
+      <div style="margin-top: 20px; text-align: center;">
+        <a href="login.html" style="font-size: 0.85rem; color: var(--text-muted);">
+          ← Authorized Staff & Student Login
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { dbService } from './supabase-client.js';
+    import { auditService } from './audit-service.js';
+    import { UIComponents } from './ui-components.js';
+
+    UIComponents.initTheme();
+    UIComponents.refreshIcons();
+
+    document.getElementById('public-admission-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('pub-name').value;
+      const dob = document.getElementById('pub-dob').value;
+      const gender = document.getElementById('pub-gender').value;
+      const grade = document.getElementById('pub-grade').value;
+      const father = document.getElementById('pub-father').value;
+      const phone = document.getElementById('pub-phone').value;
+      const email = document.getElementById('pub-email').value;
+      const address = document.getElementById('pub-address').value;
+
+      const appId = 'TMS-APP-' + Math.floor(100000 + Math.random() * 900000);
+
+      const record = await dbService.insert('admissions_applications', {
+        appId,
+        studentName: name,
+        dob,
+        gender,
+        grade,
+        guardianName: father,
+        phone,
+        email,
+        address,
+        status: 'Submitted'
+      });
+
+      await auditService.log('PUBLIC_ADMISSION_SUBMITTED', 'ADMISSIONS', { appId, name, grade, phone }, appId);
+
+      UIComponents.openModal({
+        title: 'Application Successfully Registered!',
+        bodyHtml: `
+          <div style="text-align: center; padding: 20px;">
+            <div style="width: 60px; height: 60px; background: rgba(16,185,129,0.15); color: #10b981; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+              <i data-lucide="check" style="width: 32px; height: 32px;"></i>
+            </div>
+            <h3>Application Token: <span style="color: #3b82f6;">${appId}</span></h3>
+            <p style="color: var(--text-muted); font-size: 0.88rem; margin: 12px 0 20px;">
+              Thank you, <strong>${name}</strong>. Your application for <strong>${grade}</strong> at Thaiba Model School has been logged. An SMS acknowledgment has been dispatched to <strong>${phone}</strong>.
+            </p>
+            <div style="background: rgba(0,0,0,0.02); padding: 12px; border-radius: 8px; font-size: 0.8rem; text-align: left;">
+              Our admissions coordinator will contact you regarding document verification and interview slot.
+            </div>
+          </div>
+        `,
+        footerHtml: `
+          <button class="btn btn-primary" onclick="window.location.reload()">Done</button>
+        `
+      });
+    });
+  </script>
+</body>
+</html>
