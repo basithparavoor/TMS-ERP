@@ -12,7 +12,7 @@
 
 - **Scope:** Single-institution ERP exclusively for THAIBA MODEL SCHOOL. No multi-institution switching or cross-campus data leakage.
 - **Frontend Stack:** HTML5, Vanilla ES6+ Modular JavaScript, Native Web Components.
-- **Design Engine:** ThaibaHive Design Engine (`app.css`) with HSL design tokens, high-contrast dark mode (`.dark`), ambient canvas mesh, and glassmorphism.
+- **Design Engine:** THAIBA MODEL SCHOOL Enterprise Design Engine (`app.css`) with HSL design tokens, high-contrast dark mode (`.dark`), ambient canvas mesh, and glassmorphism.
 - **Icons & Typography:** Lucide Icons, Outfit (headings), Plus Jakarta Sans (body), JetBrains Mono (data/codes).
 - **Backend & Cloud:** Supabase Database (PostgreSQL), Supabase Auth, Row-Level Security (RLS) policies.
 - **Telemetry & Geofencing:** GPS geofencing with 5-minute automated polling and 3-minute exit grace window, QR code terminal scanning, NFC integration support, and AI facial matching.
@@ -25,12 +25,12 @@
 THAIBA MODEL SCHOOL ERP/
 ├── 🌐 Entry Point Portals
 │   ├── index.html                  # Main ERP Workspace & Hash Router (#/module/tab)
-│   ├── login.html                  # Universal Authentication Gateway & Demo Personas
+│   ├── login.html                  # Universal Authentication Gateway
 │   ├── admin.html                  # School Administration & Leadership Suite
-│   ├── teacher-portal.html         # ThaibaHive Faculty Portal
+│   ├── teacher-portal.html         # Faculty Portal
 │   ├── student-portal.html         # Student Learner & Timetable Portal
 │   ├── parent-portal.html          # Parent/Guardian Fee & Progress Portal
-│   └── student-admission-portal.html # Public Online Admission Gateway
+│   └── student-admission-portal.html # Public Online Admission & A4 Printout Gateway
 │
 ├── ⚙️ Core Configuration & Services
 │   ├── config.js                   # Master School Configuration & Supabase Keys
@@ -39,7 +39,8 @@ THAIBA MODEL SCHOOL ERP/
 │   ├── permission-engine.js        # Data Access Scopes & Capability Matrix
 │   ├── audit-service.js            # Immutable Append-Only Audit Trail
 │   ├── ui-components.js            # Modals, Toasts, Tables & Theme Engine
-│   └── app.css                     # ThaibaHive Tokens & Styling
+│   ├── logo.js                     # Official Thaiba Model School SVG Logo Engine
+│   └── app.css                     # Premium Styling Tokens & A4 Print Engine
 │
 ├── 🚀 Application Controller
 │   └── app.js                      # SPA Router, Shell, & Global Search (Ctrl + K)
