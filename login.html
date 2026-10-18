@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — THAIBA MODEL SCHOOL ERP Gateway</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔐</text></svg>">
+  <link rel="stylesheet" href="app.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body style="min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px;">
+  <div class="ambient-mesh">
+    <div class="mesh-glow-1"></div>
+    <div class="mesh-glow-2"></div>
+  </div>
+
+  <div style="max-width: 460px; width: 100%; position: relative; z-index: 10;">
+    <div class="card" style="box-shadow: var(--shadow-lg); border-radius: var(--radius-lg); padding: 36px 32px;">
+      <!-- Branding -->
+      <div style="text-align: center; margin-bottom: 28px;">
+        <div class="brand-badge" style="display: inline-block; font-size: 1.5rem; padding: 12px 20px; margin-bottom: 12px;">
+          TMS
+        </div>
+        <h1 style="font-size: 1.5rem; letter-spacing: -0.01em;">THAIBA MODEL SCHOOL</h1>
+        <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 4px;">Universal Authentication Gateway & Role Access</p>
+      </div>
+
+      <!-- Login Form -->
+      <form id="tms-login-form">
+        <div class="form-group">
+          <label class="form-label">Authorized Email Address</label>
+          <input type="email" class="form-input" id="login-email" required placeholder="user@thaibaschool.edu.in" value="admin@thaibaschool.edu.in">
+        </div>
+
+        <div class="form-group" style="margin-bottom: 24px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <label class="form-label" style="margin-bottom: 0;">Password</label>
+            <a href="javascript:void(0)" onclick="alert('Password reset instructions will be sent to your verified email.')" style="font-size: 0.78rem; color: #3b82f6;">Forgot Password?</a>
+          </div>
+          <input type="password" class="form-input" id="login-password" required placeholder="••••••••••••" value="Thaiba@2024">
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 0.95rem; margin-bottom: 20px;" id="btn-login-submit">
+          <i data-lucide="lock"></i> Authenticate & Enter Campus ERP
+        </button>
+      </form>
+
+      <!-- Instant Role Personas -->
+      <div style="border-top: 1px solid var(--border-color); padding-top: 20px; text-align: center;">
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px; font-weight: 600;">
+          ONE-CLICK EVALUATION PERSONAS
+        </p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <button class="btn btn-secondary btn-sm quick-role" data-role="admin">
+            <i data-lucide="shield"></i> Administrator
+          </button>
+          <button class="btn btn-secondary btn-sm quick-role" data-role="principal">
+            <i data-lucide="award"></i> Principal
+          </button>
+          <button class="btn btn-secondary btn-sm quick-role" data-role="teacher">
+            <i data-lucide="book-open"></i> Faculty / 9A
+          </button>
+          <button class="btn btn-secondary btn-sm quick-role" data-role="finance">
+            <i data-lucide="wallet"></i> Bursar / Finance
+          </button>
+          <button class="btn btn-secondary btn-sm quick-role" data-role="student">
+            <i data-lucide="graduation-cap"></i> Student
+          </button>
+          <button class="btn btn-secondary btn-sm quick-role" data-role="parent">
+            <i data-lucide="heart"></i> Parent / Guardian
+          </button>
+        </div>
+      </div>
+
+      <!-- Public Portals -->
+      <div style="margin-top: 20px; text-align: center; font-size: 0.8rem;">
+        <a href="student-admission-portal.html" style="color: #3b82f6; font-weight: 600;">
+          <i data-lucide="file-plus" style="width: 14px; height: 14px; vertical-align: middle;"></i> Public Online Admission Portal →
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { authService } from './auth-service.js';
+    import { UIComponents } from './ui-components.js';
+
+    UIComponents.initTheme();
+    UIComponents.refreshIcons();
+
+    document.getElementById('tms-login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('login-email').value;
+      const pass = document.getElementById('login-password').value;
+      const res = await authService.loginWithEmailPassword(email, pass);
+      if (res && res.success) {
+        UIComponents.showToast('Authentication Verified. Welcome to Thaiba Model School!', 'success');
+        setTimeout(() => window.location.href = 'index.html#/dashboard', 500);
+      }
+    });
+
+    document.querySelectorAll('.quick-role').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const role = e.currentTarget.dataset.role;
+        authService.switchRole(role);
+        window.location.href = 'index.html#/dashboard';
+      });
+    });
+  </script>
+</body>
+</html>
