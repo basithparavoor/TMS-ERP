@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Learning Portal — THAIBA MODEL SCHOOL</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>">
+  <link rel="stylesheet" href="app.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="ambient-mesh">
+    <div class="mesh-glow-1"></div>
+    <div class="mesh-glow-2"></div>
+  </div>
+
+  <div style="min-height: 100vh; display: flex; flex-direction: column;">
+    <header class="app-topbar">
+      <div class="topbar-left">
+        <a href="index.html#/dashboard" class="brand-badge" style="padding: 6px 12px; font-size: 0.95rem;">TMS</a>
+        <div style="font-family: var(--font-display); font-weight: 700; font-size: 1.1rem;">
+          Student Learner Portal
+        </div>
+      </div>
+      <div class="topbar-right">
+        <span class="badge badge-info">Grade 9 - Section A (Roll #01)</span>
+        <button class="icon-btn" id="theme-toggle-btn"><i data-lucide="moon"></i></button>
+      </div>
+    </header>
+
+    <div class="app-viewport">
+      <div style="max-width: 1100px; margin: 0 auto;">
+        <!-- Welcome Card -->
+        <div class="card" style="margin-bottom: 24px;">
+          <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+            <img src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150" alt="Student" style="width: 72px; height: 72px; border-radius: 50%; border: 3px solid #3b82f6; object-fit: cover;">
+            <div>
+              <h2 style="font-size: 1.4rem;">Mohammed Rayan K</h2>
+              <p style="color: var(--text-muted); font-size: 0.88rem;">
+                Admission No: <span class="font-mono" style="font-weight: 600;">TMS/2024/001</span> • Class: <strong>Grade 9A</strong> • House: <strong>Ibn Battuta Blue House</strong>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-icon kpi-emerald"><i data-lucide="check-circle-2"></i></div>
+            <div class="kpi-meta"><h3>96.4%</h3><p>Attendance Record</p></div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon kpi-blue"><i data-lucide="award"></i></div>
+            <div class="kpi-meta"><h3>A+</h3><p>Term 1 Aggregate</p></div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon kpi-amber"><i data-lucide="book-open"></i></div>
+            <div class="kpi-meta"><h3>2 Books</h3><p>Library Borrowed</p></div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon kpi-rose"><i data-lucide="receipt"></i></div>
+            <div class="kpi-meta"><h3>₹ 0 Due</h3><p>Fee Status Cleared</p></div>
+          </div>
+        </div>
+
+        <!-- Student Tabs Grid -->
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+          <div>
+            <div class="card" style="margin-bottom: 24px;">
+              <div class="card-header">
+                <h3 class="card-title">My Academic Timetable</h3>
+                <span class="badge badge-info">Today: Wednesday</span>
+              </div>
+              <table class="tms-table font-mono" style="font-size: 0.85rem;">
+                <thead>
+                  <tr><th>Period</th><th>Subject</th><th>Teacher</th><th>Room</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>08:30 - 09:15</td><td>Mathematics</td><td>Prof. Rashid Rahman</td><td>Room 9-A</td></tr>
+                  <tr><td>09:15 - 10:00</td><td>Physics</td><td>Dr. A. K. Basheer</td><td>Room 9-A</td></tr>
+                  <tr><td>10:15 - 11:00</td><td>Math Lab Practical</td><td>Prof. Rashid Rahman</td><td>Math Lab</td></tr>
+                  <tr><td>11:45 - 12:30</td><td>English Literature</td><td>Mrs. Fathima Zahra</td><td>Room 9-A</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <h3 class="card-title">Term 1 Assessment Report</h3>
+                <span class="badge badge-success">Promoted with Distinction</span>
+              </div>
+              <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 12px;">Official verified grades released by Examination Office.</p>
+              <div style="background: rgba(16,185,129,0.08); border-left: 4px solid #10b981; padding: 14px; border-radius: var(--radius-md);">
+                <strong>Overall Percentage: 91.6% (Rank 1 in 9A)</strong><br>
+                Mathematics: 95/100 (A+) • Physics: 92/100 (A+) • English: 88/100 (A)
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="card" style="margin-bottom: 24px;">
+              <h3 class="card-title" style="margin-bottom: 14px;">Digital ID & QR</h3>
+              <div style="text-align: center;">
+                <div style="width: 120px; height: 120px; background: #000; color: #fff; margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; font-size: 0.72rem; border-radius: 8px;">
+                  [QR SECURE<br>TMS/2024/001]
+                </div>
+                <div style="font-size: 0.78rem; color: var(--text-muted);">Scan at Campus Gate & Library Terminal</div>
+              </div>
+            </div>
+
+            <div class="card">
+              <h3 class="card-title" style="margin-bottom: 12px;">Pending Homework</h3>
+              <div style="font-size: 0.85rem; line-height: 1.5;">
+                <div style="padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid var(--border-color);">
+                  <strong>Math:</strong> Complete Exercise 4.2 (Q 1 to 5)
+                </div>
+                <div>
+                  <strong>Physics:</strong> Lab manual write-up on Ohm's Law
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { UIComponents } from './ui-components.js';
+    UIComponents.initTheme();
+    UIComponents.refreshIcons();
+    const themeBtn = document.getElementById('theme-toggle-btn');
+    if (themeBtn) themeBtn.addEventListener('click', () => UIComponents.toggleTheme());
+  </script>
+</body>
+</html>
