@@ -21,7 +21,7 @@ export class StudentModule {
             </p>
           </div>
           <div style="display: flex; gap: 10px;">
-            <button class="btn btn-secondary" id="btn-batch-id-cards"><i data-lucide="credit-card"></i> Batch ID Cards</button>
+            <a href="student-admission-portal.html" target="_blank" class="btn btn-secondary"><i data-lucide="file-text"></i> Admission Form (A4)</a>
             <button class="btn btn-primary" id="btn-new-admission"><i data-lucide="user-plus"></i> New Enrollment</button>
           </div>
         </div>
