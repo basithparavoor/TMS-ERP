@@ -1,5 +1,5 @@
 /**
- * THAIBA MODEL SCHOOL — ThaibaHive Faculty & Staff Workspace (My Work)
+ * THAIBA MODEL SCHOOL — THAIBA MODEL SCHOOL Faculty & Staff Workspace (My Work)
  */
 
 import { TMS_CONFIG } from './config.js';
@@ -18,7 +18,7 @@ export class MyWorkModule {
       <div style="margin-bottom: 24px;">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
           <div>
-            <h1 style="font-size: 1.8rem;">ThaibaHive — Staff Workspace</h1>
+            <h1 style="font-size: 1.8rem;">Staff Workspace — THAIBA MODEL SCHOOL</h1>
             <p style="color: var(--text-muted); font-size: 0.9rem;">
               Welcome back, <strong>${user.name || 'Faculty Member'}</strong> (${user.department || 'Academics'})
             </p>
@@ -626,7 +626,7 @@ export class MyWorkModule {
           distanceMeters: 18.5,
           method: 'GPS_GEOFENCE'
         }, user.id);
-        UIComponents.showToast('Biometric GPS Punch Verified & Synchronized with Thaiba Cloud!', 'success');
+        UIComponents.showToast('Biometric GPS Punch Verified & Synchronized with TMS Cloud!', 'success');
       });
     }
   }
