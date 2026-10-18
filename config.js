@@ -6,34 +6,37 @@
 export const TMS_CONFIG = {
   institution: {
     name: "THAIBA MODEL SCHOOL",
-    tagline: "Center of Excellence & Moral Grooming",
-    code: "TMS-KNR",
-    affiliation: "CBSE / State Affiliated (Reg: TMS-884920)",
-    founded: "2008",
+    tagline: "Run by : Thaiba Heritage, Kolkata",
+    code: "TMS-TAPAN",
+    trust: "Thaiba Heritage, Kolkata",
+    regNo: "IV 01894/2011",
+    founded: "2011",
     logoText: "THAIBA",
     logoBadge: "TMS",
     address: {
-      campus: "Thaiba Knowledge City, Green Valley Road",
-      city: "Kozhikode",
-      state: "Kerala",
-      pincode: "673001",
-      country: "India"
+      campus: "Baghait, Tapan",
+      district: "Dakshin Dinajpur",
+      state: "West Bengal",
+      country: "India",
+      locality: "Thaiba Garden, Tapan"
     },
     contact: {
-      phone: "+91 495 288 3400",
-      mobile: "+91 984 700 1234",
-      email: "info@thaibaschool.edu.in",
-      admissionsEmail: "admissions@thaibaschool.edu.in",
-      website: "https://thaibaschool.edu.in"
+      phone1: "+91 8653382851",
+      phone2: "+91 8167782851",
+      email: "tms@thaibagarden.com",
+      website: "https://www.thaibagarden.com"
     },
     gpsGeofence: {
-      latitude: 11.2588,
-      longitude: 75.7804,
-      radiusMeters: 250, // 250m school boundary
-      pollIntervalMs: 5 * 60 * 1000, // 5 minutes
-      exitGracePeriodMs: 3 * 60 * 1000 // 3 minutes
+      latitude: 25.2891,
+      longitude: 88.5832,
+      radiusMeters: 300,
+      pollIntervalMs: 5 * 60 * 1000,
+      exitGracePeriodMs: 3 * 60 * 1000
     }
   },
+
+  // Highest-level Super Administrator Email
+  superAdminEmail: "cmbasith786@gmail.com",
 
   supabase: {
     url: "https://rzcihdpzqrnzcaupjfla.supabase.co",
@@ -47,6 +50,7 @@ export const TMS_CONFIG = {
   },
 
   roles: {
+    SUPER_ADMIN: "super_admin",
     ADMIN: "admin",
     PRINCIPAL: "principal",
     COORDINATOR: "coordinator",
@@ -71,13 +75,13 @@ export const TMS_CONFIG = {
   },
 
   academic: {
-    currentYear: "2024-2025",
-    activeTerms: ["Term 1", "Midterm", "Term 2", "Annual Examination"],
+    currentYear: "2025-2026",
     classes: [
+      "Nursery", "LKG", "UKG",
       "Grade 1", "Grade 2", "Grade 3", "Grade 4", "Grade 5",
       "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10",
-      "Grade 11 (Science)", "Grade 11 (Commerce)", "Grade 11 (Humanities)",
-      "Grade 12 (Science)", "Grade 12 (Commerce)", "Grade 12 (Humanities)"
+      "Grade 11 (Science)", "Grade 11 (Commerce)", "Grade 11 (Arts)",
+      "Grade 12 (Science)", "Grade 12 (Commerce)", "Grade 12 (Arts)"
     ],
     sections: ["A", "B", "C"],
     gradingTiers: [
@@ -92,13 +96,42 @@ export const TMS_CONFIG = {
     ]
   },
 
+  // Default Editable Admission Form & Fee Configuration
+  admissionFormDefaults: {
+    session: "2025 - 2026",
+    formFee: 300,
+    testCentre: "Campus Main Auditorium, Baghait, Tapan",
+    instructions: [
+      "Fill the form in capital letters using a black or blue ballpoint pen.",
+      "Attach two passport-size color photographs and photocopy of Aadhaar card.",
+      "Submit photocopy of Birth Certificate and Previous School Marksheet / Transfer Certificate.",
+      "Retain the lower Admit Card slip for entrance screening and admission interview.",
+      "Admission confirmation is subject to seat vacancy and document verification."
+    ],
+    feeStructure: [
+      { id: "fee_adm", name: "One-Time Admission & Registration Fee", amount: 4500, type: "One-Time", mandatory: true },
+      { id: "fee_tui", name: "Quarterly Tuition & Academic Instruction", amount: 3600, type: "Quarterly", mandatory: true },
+      { id: "fee_dev", name: "Campus Infrastructure & Development Fund", amount: 2000, type: "Annual", mandatory: true },
+      { id: "fee_lab", name: "Computer, Science Lab & Smart Classroom", amount: 1500, type: "Annual", mandatory: true },
+      { id: "fee_kit", name: "Student Diary, ID Card & Educational Kit", amount: 800, type: "Annual", mandatory: true }
+    ],
+    customFields: [
+      { key: "aadhaar", label: "Aadhaar Card Number", enabled: true, required: true },
+      { key: "religion", label: "Religion", enabled: true, required: false },
+      { key: "monthlyIncome", label: "Guardian Monthly Income", enabled: true, required: false },
+      { key: "identificationMarks", label: "Identification Marks", enabled: true, required: false },
+      { key: "previousSchool", label: "Previous School & Last Class", enabled: true, required: true },
+      { key: "references", label: "Admission Reference Source", enabled: true, required: false }
+    ]
+  },
+
   finance: {
     currencySymbol: "₹",
     currencyCode: "INR",
     paymentModes: ["Cash Counter", "UPI QR", "Net Banking / NEFT", "Credit / Debit Card", "Cheque / DD"]
   },
 
-  version: "3.2.0-Production",
+  version: "4.0.0-Strict",
   systemStatus: "Operational"
 };
 
