@@ -126,11 +126,17 @@
   </div>
 
   <script type="module">
+    import { authService } from './auth-service.js';
     import { UIComponents } from './ui-components.js';
-    UIComponents.initTheme();
-    UIComponents.refreshIcons();
-    const themeBtn = document.getElementById('theme-toggle-btn');
-    if (themeBtn) themeBtn.addEventListener('click', () => UIComponents.toggleTheme());
+
+    if (!authService.isAuthenticated()) {
+      window.location.href = 'login.html';
+    } else {
+      UIComponents.initTheme();
+      UIComponents.refreshIcons();
+      const themeBtn = document.getElementById('theme-toggle-btn');
+      if (themeBtn) themeBtn.addEventListener('click', () => UIComponents.toggleTheme());
+    }
   </script>
 </body>
 </html>
