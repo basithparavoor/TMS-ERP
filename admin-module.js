@@ -179,6 +179,7 @@ export class AdminModule {
             <p class="card-desc">Select rows for bulk approve / reject / delete, or open an application to review, print the form and record payments.</p>
           </div>
           <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button class="btn btn-secondary btn-sm" id="btn-view-merit-list"><i data-lucide="award"></i> Merit List</button>
             <button class="btn btn-secondary btn-sm" id="btn-export-csv"><i data-lucide="file-spreadsheet"></i> Export CSV</button>
             <button class="btn btn-secondary btn-sm" id="btn-export-pdf"><i data-lucide="file-text"></i> Export PDF</button>
             <button class="btn btn-secondary btn-sm" id="btn-delete-pending" style="color:#ef4444;"><i data-lucide="trash-2"></i> Delete Pending</button>
@@ -194,6 +195,7 @@ export class AdminModule {
             <option value="Under Verification">Under Verification</option>
             <option value="Approved">Approved</option>
             <option value="Rejected">Rejected</option>
+            <option value="Enrolled">Enrolled</option>
           </select>
           <button class="btn btn-secondary" id="btn-select-visible"><i data-lucide="check-square"></i> Select All Shown</button>
           <button class="btn btn-secondary" id="btn-clear-selection">Clear</button>
@@ -235,6 +237,7 @@ export class AdminModule {
 
     document.getElementById('app-search').addEventListener('input', () => this.renderApplicationRows(tabContent));
     document.getElementById('app-status-filter').addEventListener('change', () => this.renderApplicationRows(tabContent));
+    document.getElementById('btn-view-merit-list').addEventListener('click', () => this.openMeritListModal());
     document.getElementById('btn-export-csv').addEventListener('click', () => this.exportApplicationsCsv());
     document.getElementById('btn-export-pdf').addEventListener('click', () => this.exportApplicationsPdf());
     document.getElementById('btn-delete-pending').addEventListener('click', () => this.deletePendingApplications());
@@ -432,8 +435,15 @@ export class AdminModule {
         const raw = (app.payload || {})[f.fieldKey];
         let cell;
         if (isFile) {
+          const ver = (app.docVerifications || {})[f.fieldKey];
+          const verBadge = ver
+            ? `<span class="badge badge-success" style="font-size:0.68rem; margin-left:6px;"><i data-lucide="shield-check"></i> Verified</span>`
+            : '';
+          const stampBtn = (raw && !ver)
+            ? `<button type="button" class="btn btn-secondary btn-sm btn-verify-doc" data-key="${esc(f.fieldKey)}" style="padding:1px 6px; font-size:0.68rem; margin-left:8px; color:#15803d;"><i data-lucide="check"></i> Verify &amp; Stamp</button>`
+            : '';
           cell = raw
-            ? `<a href="#" class="doc-link" data-path="${esc(raw)}">${esc(String(raw).split('/').pop())}</a>`
+            ? `<div style="display:flex; align-items:center; flex-wrap:wrap; gap:4px;"><a href="#" class="doc-link" data-path="${esc(raw)}">${esc(String(raw).split('/').pop())}</a> ${verBadge} ${stampBtn}</div>`
             : '<span style="color:var(--text-muted);">Not attached</span>';
         } else {
           cell = esc(raw || '—');
@@ -460,9 +470,13 @@ export class AdminModule {
         </tr>`).join('')
       : '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);">No payments recorded.</td></tr>';
 
+    const exam = app.entranceExam || {};
+    const isEnrolled = app.status === 'Enrolled';
+
     const bodyHtml = `
       <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px; align-items:center;">
         ${statusBadge(app.status)} ${payBadge(app.paymentStatus)}
+        ${isEnrolled ? `<span class="badge badge-success" style="font-weight:700;"><i data-lucide="graduation-cap"></i> Enrolled: ${esc(app.enrolledAdmissionNo || 'Student')}</span>` : ''}
         <span class="badge badge-info">Fees: ${fmtMoney(app.feeTotal)}</span>
         <span class="badge badge-info">Entered by: ${esc(app.submittedByName || 'Self / Public')}</span>
       </div>
@@ -502,6 +516,32 @@ export class AdminModule {
               <button class="btn btn-primary btn-sm" id="btn-record-payment"><i data-lucide="plus"></i> Add</button>
             </div>
           </div>
+
+          <!-- Entrance Exam Marks Card -->
+          <div style="background: var(--bg-subtle); padding:12px; border-radius:8px; margin-top:14px; border:1px solid var(--border-color);">
+            <h4 style="font-size:0.9rem; margin-bottom:8px; color:#2563eb; display:flex; align-items:center; gap:6px;">
+              <i data-lucide="award" style="width:16px; height:16px;"></i> Entrance Exam &amp; Interview Marks
+            </h4>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+              <div style="width:95px;">
+                <label style="font-size:0.72rem; color:var(--text-muted); display:block;">Written (50)</label>
+                <input type="number" class="form-input font-mono" id="exam-written" value="${esc(exam.writtenScore ?? '')}" placeholder="0" min="0" max="50">
+              </div>
+              <div style="width:95px;">
+                <label style="font-size:0.72rem; color:var(--text-muted); display:block;">Interview (50)</label>
+                <input type="number" class="form-input font-mono" id="exam-interview" value="${esc(exam.interviewScore ?? '')}" placeholder="0" min="0" max="50">
+              </div>
+              <div style="width:95px;">
+                <label style="font-size:0.72rem; color:var(--text-muted); display:block;">Total (100)</label>
+                <input type="text" class="form-input font-mono" id="exam-total" value="${exam.totalScore != null ? exam.totalScore : ''}" readonly style="background:#f1f5f9; font-weight:700;">
+              </div>
+              <div style="flex:1; min-width:140px;">
+                <label style="font-size:0.72rem; color:var(--text-muted); display:block;">Examiner Remarks</label>
+                <input class="form-input" id="exam-remarks" value="${esc(exam.examinerRemarks || '')}" placeholder="e.g. Recommended">
+              </div>
+              <button class="btn btn-secondary btn-sm" id="btn-save-entrance-score"><i data-lucide="save"></i> Save Marks</button>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -536,15 +576,67 @@ export class AdminModule {
       <button class="btn btn-secondary" id="btn-app-verifying"><i data-lucide="clock"></i> Mark Under Verification</button>
       <button class="btn btn-secondary" id="btn-app-reject" style="color:#ef4444;"><i data-lucide="x-circle"></i> Reject</button>
       <button class="btn btn-primary" id="btn-app-approve"><i data-lucide="check-circle"></i> Approve</button>
+      ${isEnrolled
+        ? `<button class="btn btn-secondary" id="btn-view-enrolled" style="color:#16a34a; font-weight:700;"><i data-lucide="graduation-cap"></i> Enrolled: ${esc(app.enrolledAdmissionNo || 'Student')}</button>`
+        : `<button class="btn btn-success" id="btn-app-enroll" style="background:#16a34a; color:#fff;"><i data-lucide="graduation-cap"></i> Enroll as Official Student</button>`
+      }
       <button class="btn btn-secondary" id="btn-app-delete-modal" style="color:#ef4444; margin-left:auto;"><i data-lucide="trash-2"></i> Delete</button>
     `;
 
-    UIComponents.openModal({ title: `Application ${app.appId || app.id}`, bodyHtml, footerHtml });
+    UIComponents.openModal({ title: `Application ${app.appId || app.id}`, bodyHtml, footerHtml, maxWidth: '820px' });
 
     document.getElementById('btn-app-close').addEventListener('click', () => UIComponents.closeModal());
     document.getElementById('btn-app-approve').addEventListener('click', () => this.setApplicationStatus(app, 'Approved'));
     document.getElementById('btn-app-reject').addEventListener('click', () => this.setApplicationStatus(app, 'Rejected'));
     document.getElementById('btn-app-verifying').addEventListener('click', () => this.setApplicationStatus(app, 'Under Verification'));
+
+    const enrollBtn = document.getElementById('btn-app-enroll');
+    if (enrollBtn) {
+      enrollBtn.addEventListener('click', () => this.openEnrollmentModal(app));
+    }
+    const viewEnrolledBtn = document.getElementById('btn-view-enrolled');
+    if (viewEnrolledBtn) {
+      viewEnrolledBtn.addEventListener('click', () => {
+        UIComponents.closeModal();
+        window.location.hash = '#/students';
+      });
+    }
+
+    // Save entrance exam scores
+    const saveScoreBtn = document.getElementById('btn-save-entrance-score');
+    if (saveScoreBtn) {
+      saveScoreBtn.addEventListener('click', async () => {
+        const writtenScore = parseFloat(document.getElementById('exam-written').value) || 0;
+        const interviewScore = parseFloat(document.getElementById('exam-interview').value) || 0;
+        const examinerRemarks = document.getElementById('exam-remarks').value.trim();
+        await admissionService.recordEntranceScore(app.id, { writtenScore, interviewScore, examinerRemarks });
+        document.getElementById('exam-total').value = writtenScore + interviewScore;
+        UIComponents.showToast('Entrance exam marks recorded successfully!', 'success');
+      });
+    }
+
+    // Auto-sum exam marks
+    const calcExamTotal = () => {
+      const w = parseFloat(document.getElementById('exam-written')?.value) || 0;
+      const i = parseFloat(document.getElementById('exam-interview')?.value) || 0;
+      const tot = document.getElementById('exam-total');
+      if (tot) tot.value = w + i;
+    };
+    document.getElementById('exam-written')?.addEventListener('input', calcExamTotal);
+    document.getElementById('exam-interview')?.addEventListener('input', calcExamTotal);
+
+    // Document stamp listeners
+    document.querySelectorAll('.btn-verify-doc').forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        const key = e.currentTarget.dataset.key;
+        await admissionService.verifyDocument(app.id, key);
+        UIComponents.showToast('Document verified and officially stamped!', 'success');
+        UIComponents.closeModal();
+        const tabContent = document.getElementById('admin-tab-content');
+        await this.refreshApplications(tabContent);
+        this.openApplicationModal(app.id);
+      });
+    });
     const delModalBtn = document.getElementById('btn-app-delete-modal');
     if (delModalBtn) {
       delModalBtn.addEventListener('click', async () => {
@@ -713,6 +805,273 @@ export class AdminModule {
       <div class="doc-sub">Admission Application — ${esc(app.appId || app.id)}</div>
       ${kvTable(this.applicationPairs(app, fields))}`;
     exportPdf(`Admission-${app.appId || app.id}`, body);
+  }
+
+  static async openEnrollmentModal(app) {
+    const payload = app.payload || {};
+    const name = app.studentName || payload.candidateName || payload.studentName || 'Student';
+    const grade = app.grade || payload.applyingClass || 'Grade 1';
+    const existingStudents = await dbService.select('students');
+    const year = new Date().getFullYear();
+    const currentYearStudents = existingStudents.filter((s) => String(s.admissionNo || '').includes(String(year)));
+    const maxSeq = currentYearStudents.reduce((max, s) => {
+      const match = String(s.admissionNo || '').match(/(\d+)\s*$/);
+      return match ? Math.max(max, parseInt(match[1], 10)) : max;
+    }, 0);
+    const nextSeq = maxSeq + 1;
+    const suggestedAdmissionNo = `TMS/${year}/${nextSeq.toString().padStart(3, '0')}`;
+    const sameGradeStudents = existingStudents.filter((s) => s.grade === grade);
+    const suggestedRoll = (sameGradeStudents.length + 1).toString().padStart(2, '0');
+
+    const bodyHtml = `
+      <div style="margin-bottom:14px; padding:12px; border-radius:8px; background:rgba(22,163,74,0.08); border:1px solid #16a34a;">
+        <div style="font-size:0.95rem; font-weight:700; color:#15803d; margin-bottom:4px;">
+          <i data-lucide="user-check"></i> Convert Application to Enrolled Student
+        </div>
+        <p style="font-size:0.8rem; color:var(--text-main); margin:0;">
+          This will register <strong>${esc(name)}</strong> into the official Student Directory, allocate their permanent Admission No &amp; Roll No, and mark the admission application as <strong>Enrolled</strong>.
+        </p>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+        <div class="form-group">
+          <label class="form-label">Student Name</label>
+          <input class="form-input" id="enr-name" value="${esc(name)}" readonly style="background:#f8fafc; font-weight:700;">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Admission Number *</label>
+          <input class="form-input font-mono" id="enr-admission-no" value="${esc(suggestedAdmissionNo)}" style="font-weight:700;">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Class / Grade</label>
+          <select class="form-select" id="enr-grade">
+            ${TMS_CONFIG.academic.classes.map(c => `<option value="${esc(c)}" ${c === grade ? 'selected' : ''}>${esc(c)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Section</label>
+          <select class="form-select" id="enr-section">
+            <option value="A" selected>Section A</option>
+            <option value="B">Section B</option>
+            <option value="C">Section C</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Roll Number</label>
+          <input class="form-input font-mono" id="enr-roll-no" value="${esc(suggestedRoll)}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Guardian Contact</label>
+          <input class="form-input font-mono" id="enr-phone" value="${esc(app.phone || payload.phone || '')}" readonly style="background:#f8fafc;">
+        </div>
+      </div>
+    `;
+
+    const footerHtml = `
+      <button class="btn btn-secondary" id="btn-enr-cancel">Cancel</button>
+      <button class="btn btn-primary" id="btn-enr-confirm" style="background:#16a34a; border-color:#16a34a;">
+        <i data-lucide="check-circle-2"></i> Confirm Enrollment
+      </button>
+    `;
+
+    UIComponents.openModal({
+      title: `Student Enrollment — ${name}`,
+      bodyHtml,
+      footerHtml,
+      maxWidth: '560px'
+    });
+
+    document.getElementById('btn-enr-cancel').addEventListener('click', () => UIComponents.closeModal());
+    document.getElementById('btn-enr-confirm').addEventListener('click', async () => {
+      const section = document.getElementById('enr-section').value;
+      const rollNo = document.getElementById('enr-roll-no').value.trim();
+      const res = await admissionService.enrollApplicantAsStudent(app.id, { section, rollNo });
+
+      if (res.error) {
+        UIComponents.showToast(`Enrollment failed: ${res.error}`, 'danger');
+        return;
+      }
+
+      await auditService.log('STUDENT_ENROLLED_FROM_ADMISSION', 'ACADEMIC', {
+        admissionNo: res.admissionNo,
+        studentName: name,
+        grade
+      }, res.student.id);
+
+      UIComponents.closeModal();
+      UIComponents.showToast(`Student ${name} successfully enrolled with ID ${res.admissionNo}!`, 'success');
+
+      const tabContent = document.getElementById('admin-tab-content');
+      await this.refreshApplications(tabContent);
+
+      UIComponents.openModal({
+        title: 'Enrollment Confirmed',
+        bodyHtml: `
+          <div style="text-align:center; padding:10px 0 16px;">
+            <div style="width:54px; height:54px; border-radius:50%; background:rgba(22,163,74,0.14); color:#16a34a; display:inline-flex; align-items:center; justify-content:center; margin-bottom:12px;">
+              <i data-lucide="graduation-cap" style="width:32px; height:32px;"></i>
+            </div>
+            <h3 style="font-size:1.25rem; font-weight:800; color:var(--text-main); margin:0 0 6px;">${esc(name)} is Now Officially Enrolled!</h3>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin:0 0 14px;">The student record has been added to the master directory.</p>
+            <div style="background:var(--bg-subtle); border:1.5px dashed #16a34a; border-radius:10px; padding:12px; display:inline-block;">
+              <span style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase; font-weight:700; display:block;">Permanent Admission Number</span>
+              <span class="font-mono" style="font-size:1.35rem; font-weight:800; color:#15803d;">${esc(res.admissionNo)}</span>
+            </div>
+          </div>
+        `,
+        footerHtml: `
+          <button class="btn btn-secondary" onclick="document.getElementById('global-modal-close').click()">Close</button>
+          <button class="btn btn-primary" id="btn-goto-student-dir"><i data-lucide="users"></i> View in Student Directory</button>
+        `
+      });
+
+      document.getElementById('btn-goto-student-dir').addEventListener('click', () => {
+        UIComponents.closeModal();
+        window.location.hash = '#/students';
+      });
+
+      UIComponents.refreshIcons();
+    });
+
+    UIComponents.refreshIcons();
+  }
+
+  static async openMeritListModal() {
+    const list = await admissionService.getMeritList('all');
+    const classes = TMS_CONFIG.academic.classes;
+
+    const renderListRows = (items) => {
+      if (!items.length) {
+        return '<tr><td colspan="8" style="text-align:center; padding:24px; color:var(--text-muted);">No evaluated entrance exam records found. Enter exam marks in applicant review.</td></tr>';
+      }
+      return items.map((a, i) => {
+        const exam = a.entranceExam || {};
+        return `
+          <tr>
+            <td style="font-weight:800; color:#16a34a; text-align:center;">#${i + 1}</td>
+            <td class="font-mono">${esc(a.appId || a.id)}</td>
+            <td style="font-weight:700;">${esc(a.studentName || '—')}</td>
+            <td>${esc(a.grade || '—')}</td>
+            <td class="font-mono" style="text-align:center;">${exam.writtenScore ?? '—'}</td>
+            <td class="font-mono" style="text-align:center;">${exam.interviewScore ?? '—'}</td>
+            <td class="font-mono" style="text-align:center; font-weight:800; color:#15803d; font-size:1rem;">${exam.totalScore ?? '—'}</td>
+            <td><span class="badge ${a.status === 'Enrolled' ? 'badge-success' : 'badge-info'}">${esc(a.status || '—')}</span></td>
+          </tr>
+        `;
+      }).join('');
+    };
+
+    const bodyHtml = `
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:14px;">
+        <div>
+          <label style="font-size:0.8rem; font-weight:600; margin-right:6px;">Filter by Class:</label>
+          <select class="form-select" id="merit-class-filter" style="width:160px; display:inline-block; font-size:0.85rem;">
+            <option value="all">All Classes</option>
+            ${classes.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('')}
+          </select>
+        </div>
+        <div style="font-size:0.82rem; color:var(--text-muted);">
+          Ranked by Entrance Exam Total Score (Written 50 + Interview 50)
+        </div>
+      </div>
+      <div class="table-responsive" style="max-height:55vh; overflow-y:auto;">
+        <table class="tms-table" style="font-size:0.84rem;">
+          <thead>
+            <tr>
+              <th style="width:45px; text-align:center;">Rank</th>
+              <th>Form No</th>
+              <th>Candidate Name</th>
+              <th>Class</th>
+              <th style="text-align:center;">Written (50)</th>
+              <th style="text-align:center;">Interview (50)</th>
+              <th style="text-align:center;">Total (100)</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="merit-table-body">
+            ${renderListRows(list)}
+          </tbody>
+        </table>
+      </div>
+    `;
+
+    const footerHtml = `
+      <button class="btn btn-secondary" onclick="document.getElementById('global-modal-close').click()">Close</button>
+      <button class="btn btn-primary" id="btn-print-merit-pdf"><i data-lucide="printer"></i> Print Official Merit List</button>
+    `;
+
+    UIComponents.openModal({
+      title: 'Entrance Examination Merit List',
+      bodyHtml,
+      footerHtml,
+      maxWidth: '750px'
+    });
+
+    const filter = document.getElementById('merit-class-filter');
+    if (filter) {
+      filter.addEventListener('change', async (e) => {
+        const selected = e.target.value;
+        const filteredItems = await admissionService.getMeritList(selected);
+        document.getElementById('merit-table-body').innerHTML = renderListRows(filteredItems);
+      });
+    }
+
+    const printMeritBtn = document.getElementById('btn-print-merit-pdf');
+    if (printMeritBtn) {
+      printMeritBtn.addEventListener('click', async () => {
+        const selected = filter ? filter.value : 'all';
+        const items = await admissionService.getMeritList(selected);
+        const rowsHtml = items.map((a, i) => {
+          const exam = a.entranceExam || {};
+          return `
+            <tr>
+              <td style="border:1px solid #000; padding:4px; text-align:center; font-weight:700;">${i + 1}</td>
+              <td style="border:1px solid #000; padding:4px;">${esc(a.appId || a.id)}</td>
+              <td style="border:1px solid #000; padding:4px; font-weight:700;">${esc(a.studentName || '—')}</td>
+              <td style="border:1px solid #000; padding:4px;">${esc(a.grade || '—')}</td>
+              <td style="border:1px solid #000; padding:4px; text-align:center;">${exam.writtenScore ?? '—'}</td>
+              <td style="border:1px solid #000; padding:4px; text-align:center;">${exam.interviewScore ?? '—'}</td>
+              <td style="border:1px solid #000; padding:4px; text-align:center; font-weight:800;">${exam.totalScore ?? '—'}</td>
+              <td style="border:1px solid #000; padding:4px; text-align:center;">${esc(a.status || 'Selected')}</td>
+            </tr>
+          `;
+        }).join('');
+
+        const meritDocHtml = `
+          <div style="text-align:center; margin-bottom:14px; border-bottom:2px solid #000; padding-bottom:8px;">
+            <h2 style="font-size:18px; margin:0; text-transform:uppercase;">${esc(TMS_CONFIG.institution.name)}</h2>
+            <div style="font-size:11px; font-weight:600;">${esc(TMS_CONFIG.institution.tagline)}</div>
+            <h3 style="font-size:14px; margin:8px 0 2px; text-decoration:underline;">OFFICIAL ADMISSION ENTRANCE MERIT LIST</h3>
+            <div style="font-size:10.5px;">Academic Session: 2027 - 2028 &nbsp;•&nbsp; Class: ${esc(selected.toUpperCase())}</div>
+          </div>
+          <table style="width:100%; border-collapse:collapse; font-size:10px;">
+            <thead>
+              <tr style="background:#f1f5f9;">
+                <th style="border:1px solid #000; padding:5px;">Rank</th>
+                <th style="border:1px solid #000; padding:5px;">Form No</th>
+                <th style="border:1px solid #000; padding:5px;">Candidate Name</th>
+                <th style="border:1px solid #000; padding:5px;">Class</th>
+                <th style="border:1px solid #000; padding:5px;">Written (50)</th>
+                <th style="border:1px solid #000; padding:5px;">Interview (50)</th>
+                <th style="border:1px solid #000; padding:5px;">Total (100)</th>
+                <th style="border:1px solid #000; padding:5px;">Result Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml || '<tr><td colspan="8" style="text-align:center; padding:20px;">No ranked candidates.</td></tr>'}
+            </tbody>
+          </table>
+          <div style="margin-top:40px; display:flex; justify-content:space-between; font-size:10px;">
+            <div>_______________________<br><strong>Admission In-Charge</strong></div>
+            <div>_______________________<br><strong>Principal / Controller</strong></div>
+          </div>
+        `;
+
+        exportPdf(`Merit-List-${selected}`, meritDocHtml);
+      });
+    }
+
+    UIComponents.refreshIcons();
   }
 
   /** Build the application laid out exactly like the printed admission form. */
