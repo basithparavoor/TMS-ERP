@@ -82,31 +82,39 @@ export const TMS_LOGO = {
   `,
 
   // Print-Ready Monochrome / Crisp Header for A4 PDF Document
-  printHeaderSvg: () => `
+  printHeaderSvg: (opts = {}) => {
+    const instName = opts.title || 'THAIBA MODEL SCHOOL';
+    const subTitle = opts.subtitle || 'Run by : Thaiba Heritage, Kolkata';
+    const address = opts.address || 'Baghait, Tapan, Dakshin Dinajpur • Regd. No. : IV 01894/2011';
+    const website = opts.website || 'www.thaibagarden.com';
+    const email = opts.email || 'tms@thaibagarden.com';
+    const contact = opts.contact || '+91 8653382851, +91 8167782851';
+
+    return `
     <div style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 14px;">
       <div style="display: flex; gap: 14px; align-items: center;">
         ${TMS_LOGO.emblemSvg(70)}
         <div style="font-family: 'Outfit', sans-serif;">
-          <div style="font-size: 10px; font-weight: 700; color: #15803d; letter-spacing: 0.05em;">THAIBA MODEL SCHOOL</div>
+          <div style="font-size: 10px; font-weight: 700; color: #15803d; letter-spacing: 0.05em;">${attrEsc(instName)}</div>
           <div style="font-size: 8px; color: #64748b;">Thaiba Garden, Tapan</div>
         </div>
       </div>
 
       <div style="text-align: center; flex: 1; padding: 0 10px;">
         <h1 style="font-family: 'Outfit', sans-serif; font-size: 22px; font-weight: 800; letter-spacing: 0.02em; color: #000; margin: 0; text-transform: uppercase;">
-          THAIBA MODEL SCHOOL
+          ${attrEsc(instName)}
         </h1>
         <div style="font-size: 11px; font-weight: 700; color: #111; margin-top: 2px;">
-          Run by : Thaiba Heritage, Kolkata
+          ${attrEsc(subTitle)}
         </div>
         <div style="font-size: 10.5px; color: #222; margin-top: 1px;">
-          Baghait, Tapan, Dakshin Dinajpur • Regd. No. : IV 01894/2011
+          ${attrEsc(address)}
         </div>
         <div style="font-size: 9.5px; color: #444; margin-top: 1px;">
-          Web: <strong>www.thaibagarden.com</strong> • Mail: <strong>tms@thaibagarden.com</strong>
+          Web: <strong>${attrEsc(website)}</strong> • Mail: <strong>${attrEsc(email)}</strong>
         </div>
         <div style="font-size: 9.5px; color: #444; margin-top: 1px;">
-          Contact: <strong>+91 8653382851</strong>, <strong>+91 8167782851</strong>
+          Contact: <strong>${attrEsc(contact)}</strong>
         </div>
       </div>
 
@@ -114,7 +122,8 @@ export const TMS_LOGO = {
         Passport Size Photo
       </div>
     </div>
-  `
+  `;
+  }
 };
 
 export default TMS_LOGO;
