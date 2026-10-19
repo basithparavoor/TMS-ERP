@@ -98,6 +98,25 @@ const server = http.createServer((req, res) => {
   });
 });
 
-server.listen(PORT, '127.0.0.1', () => {
-  console.log(`Server running at http://127.0.0.1:${PORT}/`);
+const os = require('os');
+
+function getNetworkIp() {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      if (iface.family === 'IPv4' && !iface.internal && !iface.address.startsWith('169.254.')) {
+        return iface.address;
+      }
+    }
+  }
+  return '127.0.0.1';
+}
+
+server.listen(PORT, '0.0.0.0', () => {
+  const ip = getNetworkIp();
+  console.log(`\n=============================================`);
+  console.log(`  THAIBA MODEL SCHOOL ERP — Server Online`);
+  console.log(`  Local URL:   http://localhost:${PORT}/`);
+  console.log(`  Wi-Fi URL:   http://${ip}:${PORT}/`);
+  console.log(`=============================================\n`);
 });
