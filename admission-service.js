@@ -90,6 +90,14 @@ export const DEFAULT_INSTRUCTIONS = [
   'Original documents must be brought to the school office on the date of verification / admission test.'
 ];
 
+export const DEFAULT_POPUP_INSTRUCTIONS = [
+  'Please note down or take a screenshot of your unique Application ID for future reference.',
+  'Print or save your Application Form & Admit Card using the button below.',
+  'Affix recent passport-size photographs on the printed Application Form and Admit Card.',
+  'Produce self-attested copies of birth certificate and previous marksheet on the verification date.',
+  'Original documents must be brought to the school office for physical verification.'
+];
+
 class AdmissionService {
   /* ---------------- Settings ---------------- */
 
@@ -98,7 +106,12 @@ class AdmissionService {
     const existing = rows.find((r) => r.id === 'default') || {};
     return {
       id: 'default',
-      session: existing.session || `${new Date().getFullYear()} - ${new Date().getFullYear() + 1}`,
+      session: existing.session || '2025 - 2026',
+      formTitle: existing.formTitle || 'Admission Application Form',
+      formSubtitle: existing.formSubtitle || 'Run by : Thaiba Heritage, Kolkata',
+      admitCardTitle: existing.admitCardTitle || 'ADMIT CARD',
+      admitCardSubtitle: existing.admitCardSubtitle || 'THAIBA MODEL SCHOOL',
+      admitCardAddress: existing.admitCardAddress || 'Baghait, Tapan, Dakshin Dinajpur • Contact : +91 8653382851, +91 8167782851',
       formFee: Number(existing.formFee || 0),
       showFeeStructure: existing.showFeeStructure === true,
       showGuidelines: existing.showGuidelines !== false, // default enabled
@@ -109,6 +122,9 @@ class AdmissionService {
       instructions: Array.isArray(existing.instructions) && existing.instructions.length
         ? existing.instructions
         : DEFAULT_INSTRUCTIONS,
+      popupInstructions: Array.isArray(existing.popupInstructions) && existing.popupInstructions.length
+        ? existing.popupInstructions
+        : DEFAULT_POPUP_INSTRUCTIONS,
       successMessage: existing.successMessage || '',
       testCentre: existing.testCentre || `${TMS_CONFIG.institution.name}, ${TMS_CONFIG.institution.address.campus}, ${TMS_CONFIG.institution.address.district}`
     };
@@ -430,6 +446,15 @@ class AdmissionService {
       studentId: null,
       status: 'Active'
     });
+
+    try {
+      await dbService.upsert('login_aliases', {
+        id: `alias-${credentials.username.toLowerCase()}`,
+        username: credentials.username.toLowerCase(),
+        email: credentials.email.toLowerCase(),
+        role: 'parent'
+      });
+    } catch (e) { /* ignore */ }
 
     return {
       application: saved,
