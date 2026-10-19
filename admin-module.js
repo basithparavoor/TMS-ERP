@@ -1310,7 +1310,7 @@ export class AdminModule {
 
           <div class="form-group" style="margin-bottom:12px;">
             <label class="form-label">Academic Session</label>
-            <input class="form-input" id="set-session" value="${esc(s.session || '2025 - 2026')}" placeholder="e.g. 2025 - 2026">
+            <input class="form-input" id="set-session" value="${esc(s.session || '2027 - 2028')}" placeholder="e.g. 2027 - 2028">
           </div>
 
           <div style="border-top:1px solid var(--border-color); padding-top:14px; margin-top:14px;">
@@ -1527,7 +1527,7 @@ export class AdminModule {
       const admitCardAddress = document.getElementById('set-admit-address').value.trim();
       const testCentre = document.getElementById('set-centre').value.trim();
 
-      await admissionService.saveSettings({
+      const saveRes = await admissionService.saveSettings({
         showFeeStructure,
         showGuidelines,
         formTitle,
@@ -1548,7 +1548,11 @@ export class AdminModule {
         session
       });
 
-      UIComponents.showToast('Admission settings, headings & guidelines saved successfully!', 'success');
+      if (saveRes && saveRes._syncError) {
+        UIComponents.showToast(`Warning: Database sync error: ${saveRes._syncError}`, 'warning');
+      } else {
+        UIComponents.showToast('Admission settings, headings & guidelines saved successfully!', 'success');
+      }
     });
 
     UIComponents.refreshIcons();
