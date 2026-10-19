@@ -295,6 +295,7 @@ export class AdminModule {
           <button class="btn btn-secondary btn-sm btn-view-app" data-id="${esc(a.id)}" title="Open"><i data-lucide="eye"></i></button>
           <button class="btn btn-secondary btn-sm btn-form-app" data-id="${esc(a.id)}" title="View as Form"><i data-lucide="file-text"></i></button>
           <button class="btn btn-secondary btn-sm btn-print-app" data-id="${esc(a.id)}" title="Print PDF"><i data-lucide="printer"></i></button>
+          <button class="btn btn-secondary btn-sm btn-del-single-app" data-id="${esc(a.id)}" title="Delete Application" style="color:var(--danger, #ef4444);"><i data-lucide="trash-2"></i></button>
         </td>
       </tr>`;
     }).join('');
@@ -311,6 +312,14 @@ export class AdminModule {
       b.addEventListener('click', () => this.showApplicationForm(b.dataset.id)));
     body.querySelectorAll('.btn-print-app').forEach((b) =>
       b.addEventListener('click', () => this.showApplicationForm(b.dataset.id, true)));
+    body.querySelectorAll('.btn-del-single-app').forEach((b) =>
+      b.addEventListener('click', async () => {
+        const id = b.dataset.id;
+        const app = (this._apps || []).find((a) => a.id === id);
+        const name = app ? (app.studentName || app.appId || id) : id;
+        if (!confirm(`Permanently delete application for "${name}" (${app?.appId || id})? This cannot be undone.`)) return;
+        await this.deleteApplications([id]);
+      }));
 
     // Hydrate applicant photo thumbnails with signed URLs (private bucket).
     body.querySelectorAll('.app-photo-thumb').forEach((img) =>
@@ -504,11 +513,13 @@ export class AdminModule {
               <tr><th style="text-align:left;">Username</th><td><input class="form-input" id="cred-username" value="${esc(credential.username)}"></td></tr>
               <tr><th style="text-align:left;">Password</th><td><input class="form-input font-mono" id="cred-password" value="${esc(credential.password)}"></td></tr>
             </tbody></table>
-            <div style="display:flex; gap:8px; margin-top:8px;">
+            <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
               <button class="btn btn-secondary btn-sm" id="btn-save-credential"><i data-lucide="save"></i> Save</button>
               <button class="btn btn-secondary btn-sm" id="btn-resend-credential"><i data-lucide="send"></i> Resend</button>
+              ${(credential.userId || app.parentUserId) ? '' : '<button class="btn btn-primary btn-sm" id="btn-activate-credential"><i data-lucide="key-round"></i> Activate Login</button>'}
               <button class="btn btn-secondary btn-sm" id="btn-delete-credential" style="color:#ef4444;"><i data-lucide="trash-2"></i> Delete</button>
-            </div>`
+            </div>
+            ${(credential.userId || app.parentUserId) ? '' : '<p style="font-size:0.74rem;color:#b45309;margin-top:6px;">This parent login has not been activated yet (the account could not be created when the form was submitted). Click <strong>Activate Login</strong> to create it now.</p>'}`
             : '<p style="font-size:0.82rem;color:var(--text-muted);">No credentials generated for this application.</p>'}
         </div>
         <div>
@@ -525,6 +536,7 @@ export class AdminModule {
       <button class="btn btn-secondary" id="btn-app-verifying"><i data-lucide="clock"></i> Mark Under Verification</button>
       <button class="btn btn-secondary" id="btn-app-reject" style="color:#ef4444;"><i data-lucide="x-circle"></i> Reject</button>
       <button class="btn btn-primary" id="btn-app-approve"><i data-lucide="check-circle"></i> Approve</button>
+      <button class="btn btn-secondary" id="btn-app-delete-modal" style="color:#ef4444; margin-left:auto;"><i data-lucide="trash-2"></i> Delete</button>
     `;
 
     UIComponents.openModal({ title: `Application ${app.appId || app.id}`, bodyHtml, footerHtml });
@@ -533,6 +545,14 @@ export class AdminModule {
     document.getElementById('btn-app-approve').addEventListener('click', () => this.setApplicationStatus(app, 'Approved'));
     document.getElementById('btn-app-reject').addEventListener('click', () => this.setApplicationStatus(app, 'Rejected'));
     document.getElementById('btn-app-verifying').addEventListener('click', () => this.setApplicationStatus(app, 'Under Verification'));
+    const delModalBtn = document.getElementById('btn-app-delete-modal');
+    if (delModalBtn) {
+      delModalBtn.addEventListener('click', async () => {
+        if (!confirm(`Permanently delete application ${app.appId || app.id}? This cannot be undone.`)) return;
+        UIComponents.closeModal();
+        await this.deleteApplications([app.id]);
+      });
+    }
 
     // Applicant photo (signed URL from the private bucket).
     if (photoPath) {
@@ -597,8 +617,37 @@ export class AdminModule {
     const resendCred = document.getElementById('btn-resend-credential');
     if (resendCred) {
       resendCred.addEventListener('click', async () => {
-        const row = await admissionService.resendCredentials(app);
-        UIComponents.showToast(row ? 'Credentials sent to the parent portal.' : 'No credentials to resend.', row ? 'success' : 'warning');
+        const res = await admissionService.resendCredentials(app);
+        if (res.delivered) {
+          UIComponents.showToast('Credentials sent to the parent portal.', 'success');
+        } else if (res.row) {
+          UIComponents.showToast(`Nothing was sent. ${res.reason || ''}`.trim(), 'warning');
+        } else {
+          UIComponents.showToast('No credentials to resend.', 'warning');
+        }
+      });
+    }
+
+    const activateCred = document.getElementById('btn-activate-credential');
+    if (activateCred) {
+      activateCred.addEventListener('click', async () => {
+        activateCred.disabled = true;
+        activateCred.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Activating…';
+        UIComponents.refreshIcons();
+        const res = await admissionService.activateParentAccount(app);
+        if (res.error) {
+          UIComponents.showToast(`Could not activate the login: ${res.error}`, 'danger');
+          activateCred.disabled = false;
+          activateCred.innerHTML = '<i data-lucide="key-round"></i> Activate Login';
+          UIComponents.refreshIcons();
+          return;
+        }
+        await auditService.log('PARENT_LOGIN_ACTIVATED', 'ADMISSIONS', { appId: app.appId, userId: res.userId }, app.id);
+        UIComponents.showToast('Parent login activated. The parent can now sign in.', 'success');
+        UIComponents.closeModal();
+        const tabContent = document.getElementById('admin-tab-content');
+        await this.refreshApplications(tabContent);
+        this.openApplicationModal(app.id);
       });
     }
 
@@ -1436,7 +1485,9 @@ export class AdminModule {
 
     tabContent.querySelectorAll('.btn-reveal-pass').forEach((b) =>
       b.addEventListener('click', () => {
-        const span = tabContent.querySelector(`.user-pass[data-user="${b.dataset.user}"]`);
+        const userId = b.dataset.user || '';
+        const span = Array.from(tabContent.querySelectorAll('.user-pass'))
+          .find((el) => el.dataset.user === userId);
         if (span) span.style.display = span.style.display === 'none' ? 'inline' : 'none';
       }));
 
