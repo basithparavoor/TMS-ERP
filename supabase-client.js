@@ -193,14 +193,24 @@ class SupabaseDataService {
   }
 
   async delete(collection, id) {
+    const ids = Array.isArray(id) ? id : [id];
+    const idSet = new Set(ids);
     let items = this.getLocal(collection);
-    items = items.filter(item => item.id !== id);
+    items = items.filter(item => !idSet.has(item.id) && !idSet.has(item.appId) && !idSet.has(item.app_id));
     this.setLocal(collection, items);
 
     if (this.client && this.isOnline) {
       try {
-        const { error } = await this.client.from(collection).delete().eq('id', id);
-        if (error) throw error;
+        for (const singleId of ids) {
+          let query = this.client.from(collection).delete();
+          if (collection === 'admissions_applications') {
+            query = query.or(`id.eq.${singleId},app_id.eq.${singleId}`);
+          } else {
+            query = query.eq('id', singleId);
+          }
+          const { error } = await query;
+          if (error) throw error;
+        }
       } catch (e) {
         console.error(`Supabase delete FAILED for ${collection}:`, e.message);
         return false;
