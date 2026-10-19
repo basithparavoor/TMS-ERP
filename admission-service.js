@@ -106,7 +106,7 @@ class AdmissionService {
     const existing = rows.find((r) => r.id === 'default') || {};
     return {
       id: 'default',
-      session: existing.session || '2025 - 2026',
+      session: existing.session || '2027 - 2028',
       formTitle: existing.formTitle || 'Admission Application Form',
       formSubtitle: existing.formSubtitle || 'Run by : Thaiba Heritage, Kolkata',
       admitCardTitle: existing.admitCardTitle || 'ADMIT CARD',
