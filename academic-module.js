@@ -26,10 +26,10 @@ export class AcademicModule {
       </div>
 
       <div class="kpi-grid">
-        ${UIComponents.renderKpiCard({ title: 'Active Academic Session', value: TMS_CONFIG.academic.currentYear, icon: 'calendar', color: 'blue', subtitle: 'Terms 1 & 2 Configured' })}
-        ${UIComponents.renderKpiCard({ title: 'Configured Grades', value: '12 Grades', icon: 'layers', color: 'emerald', subtitle: 'Grade 1 through Grade 12' })}
-        ${UIComponents.renderKpiCard({ title: 'Master Subjects', value: '28 Subjects', icon: 'book', color: 'amber', subtitle: 'Theory & Practical Labs' })}
-        ${UIComponents.renderKpiCard({ title: 'Timetable Status', value: '0 Conflicts', icon: 'check-circle', color: 'emerald', subtitle: 'All Periods Validated' })}
+        ${UIComponents.renderKpiCard({ title: 'Active Academic Session', value: TMS_CONFIG.academic.currentYear, icon: 'calendar', color: 'blue', subtitle: 'Configured Session' })}
+        ${UIComponents.renderKpiCard({ title: 'Configured Grades', value: `${TMS_CONFIG.academic.classes.length}`, icon: 'layers', color: 'emerald', subtitle: 'Defined in Academic Settings' })}
+        ${UIComponents.renderKpiCard({ title: 'Master Subjects', value: '0', icon: 'book', color: 'amber', subtitle: 'No Subjects Configured Yet' })}
+        ${UIComponents.renderKpiCard({ title: 'Timetable Status', value: '—', icon: 'check-circle', color: 'emerald', subtitle: 'No Timetable Published Yet' })}
       </div>
 
       <!-- Academic Tabs -->
@@ -76,40 +76,7 @@ export class AcademicModule {
               </thead>
               <tbody>
                 <tr>
-                  <td><strong>Grade 9</strong></td>
-                  <td><span class="badge badge-info">Section A</span></td>
-                  <td>Room 9-A (Ibn Sina Block)</td>
-                  <td>35 Students</td>
-                  <td><strong>Prof. Rashid Rahman</strong></td>
-                  <td>36 Periods</td>
-                  <td><span class="badge badge-success">Active</span></td>
-                </tr>
-                <tr>
-                  <td><strong>Grade 9</strong></td>
-                  <td><span class="badge badge-info">Section B</span></td>
-                  <td>Room 9-B (Ibn Sina Block)</td>
-                  <td>35 Students</td>
-                  <td>Mrs. Bushra Siddique</td>
-                  <td>36 Periods</td>
-                  <td><span class="badge badge-success">Active</span></td>
-                </tr>
-                <tr>
-                  <td><strong>Grade 10</strong></td>
-                  <td><span class="badge badge-info">Section A</span></td>
-                  <td>Room 10-A (Ibn Sina Block)</td>
-                  <td>35 Students</td>
-                  <td>Mr. Salman Faris</td>
-                  <td>36 Periods</td>
-                  <td><span class="badge badge-success">Active</span></td>
-                </tr>
-                <tr>
-                  <td><strong>Grade 11 (Science)</strong></td>
-                  <td><span class="badge badge-info">Section A</span></td>
-                  <td>Room 11-Sci (Al-Farabi Wing)</td>
-                  <td>40 Students</td>
-                  <td>Dr. A. K. Basheer</td>
-                  <td>40 Periods</td>
-                  <td><span class="badge badge-success">Active</span></td>
+                  <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">No records available yet.</td>
                 </tr>
               </tbody>
             </table>
@@ -137,36 +104,7 @@ export class AcademicModule {
               </thead>
               <tbody>
                 <tr>
-                  <td><span class="font-mono">MAT-09</span></td>
-                  <td>Mathematics & Applied Geometry</td>
-                  <td>Theory + Lab</td>
-                  <td>6 Hours / Wk</td>
-                  <td>Prof. Rashid Rahman</td>
-                  <td><span class="badge badge-success">Yes (Math Lab)</span></td>
-                </tr>
-                <tr>
-                  <td><span class="font-mono">PHY-09</span></td>
-                  <td>Physics & Energy Dynamics</td>
-                  <td>Theory + Practical</td>
-                  <td>5 Hours / Wk</td>
-                  <td>Dr. A. K. Basheer</td>
-                  <td><span class="badge badge-success">Yes (Physics Lab)</span></td>
-                </tr>
-                <tr>
-                  <td><span class="font-mono">ENG-09</span></td>
-                  <td>English Communicative & Literature</td>
-                  <td>Theory</td>
-                  <td>5 Hours / Wk</td>
-                  <td>Mrs. Fathima Zahra</td>
-                  <td><span class="badge badge-info">Language Lab</span></td>
-                </tr>
-                <tr>
-                  <td><span class="font-mono">ISL-09</span></td>
-                  <td>Islamic Studies & Moral Education</td>
-                  <td>Theory & Value Grooming</td>
-                  <td>4 Hours / Wk</td>
-                  <td>Usthad Hameed Faizy</td>
-                  <td><span class="badge badge-secondary">No</span></td>
+                  <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 30px;">No records available yet.</td>
                 </tr>
               </tbody>
             </table>
@@ -178,31 +116,12 @@ export class AcademicModule {
         <div class="card">
           <div class="card-header">
             <h3 class="card-title">Syllabus Completion & Lesson Plan Monitoring</h3>
-            <span class="badge badge-success">On Schedule for Midterm</span>
+            <span class="badge badge-info">No Active Lesson Plans</span>
           </div>
 
-          <div style="display: grid; gap: 20px;">
-            <div style="background: rgba(0,0,0,0.02); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-              <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                <strong>Grade 9 Mathematics — Quadratic Equations & Trigonometry</strong>
-                <span style="font-weight: 700; color: #3b82f6;">78% Completed</span>
-              </div>
-              <div style="height: 10px; background: var(--border-color); border-radius: 999px; overflow: hidden;">
-                <div style="width: 78%; height: 100%; background: #3b82f6; border-radius: 999px;"></div>
-              </div>
-              <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 6px;">Unit 4 finished. Commencing Exercise 5.1 next Monday.</div>
-            </div>
-
-            <div style="background: rgba(0,0,0,0.02); padding: 16px; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-              <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                <strong>Grade 11 Physics — Thermodynamics & Kinetic Theory</strong>
-                <span style="font-weight: 700; color: #10b981;">84% Completed</span>
-              </div>
-              <div style="height: 10px; background: var(--border-color); border-radius: 999px; overflow: hidden;">
-                <div style="width: 84%; height: 100%; background: #10b981; border-radius: 999px;"></div>
-              </div>
-              <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 6px;">All 6 laboratory experiments verified and countersigned.</div>
-            </div>
+          <div style="text-align: center; color: var(--text-muted); padding: 40px;">
+            <i data-lucide="inbox" style="width:40px;height:40px;display:block;margin:0 auto 10px;"></i>
+            No records available yet.
           </div>
         </div>
       `;
@@ -227,7 +146,7 @@ export class AcademicModule {
     const clashBtn = container.querySelector('#btn-detect-clashes');
     if (clashBtn) {
       clashBtn.addEventListener('click', () => {
-        UIComponents.showToast('Automated conflict check completed: 0 timetable collisions detected across all classrooms!', 'success');
+        UIComponents.showToast('Automated conflict check completed. No conflicts recorded.', 'info');
       });
     }
 
@@ -240,7 +159,7 @@ export class AcademicModule {
             <form id="form-new-sub">
               <div class="form-group">
                 <label class="form-label">Subject Code</label>
-                <input class="form-input" id="sub-code" required placeholder="e.g. BIO-10" value="BIO-10">
+                <input class="form-input" id="sub-code" required placeholder="e.g. BIO-10">
               </div>
               <div class="form-group">
                 <label class="form-label">Subject Name</label>

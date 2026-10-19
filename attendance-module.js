@@ -28,10 +28,10 @@ export class AttendanceModule {
       </div>
 
       <div class="kpi-grid">
-        ${UIComponents.renderKpiCard({ title: 'Student Attendance Today', value: '94.2%', icon: 'users', color: 'emerald', subtitle: '480 / 510 Enrolled Present' })}
-        ${UIComponents.renderKpiCard({ title: 'Faculty Present', value: '44 / 46', icon: 'user-check', color: 'blue', subtitle: '2 Approved Casual Leaves' })}
-        ${UIComponents.renderKpiCard({ title: 'Approved Leaves', value: '8 Students', icon: 'shield-check', color: 'amber', subtitle: 'Gold Badges Protected' })}
-        ${UIComponents.renderKpiCard({ title: 'Late Arrivals', value: '4 Cases', icon: 'clock', color: 'rose', subtitle: 'After 08:30 AM Entry' })}
+        ${UIComponents.renderKpiCard({ title: 'Student Attendance Today', value: '—', icon: 'users', color: 'emerald', subtitle: `${students.length} Enrolled` })}
+        ${UIComponents.renderKpiCard({ title: 'Faculty Present', value: '—', icon: 'user-check', color: 'blue', subtitle: 'No Staff Records' })}
+        ${UIComponents.renderKpiCard({ title: 'Approved Leaves', value: `${students.filter(s => s.leaveStatus === 'approved').length} Students`, icon: 'shield-check', color: 'amber', subtitle: 'Gold Badges Protected' })}
+        ${UIComponents.renderKpiCard({ title: 'Late Arrivals', value: '—', icon: 'clock', color: 'rose', subtitle: 'No Records Available' })}
       </div>
 
       <!-- Filters Row -->
@@ -103,12 +103,12 @@ export class AttendanceModule {
                         <span class="badge badge-info">Regular</span>
                       `}
                     </td>
-                    <td class="font-mono">${isLeave ? '—' : '08:24:10 AM'}</td>
+                    <td class="font-mono">—</td>
                     <td>
                       ${isLeave ? `
                         <span class="badge badge-warning">Excused (Protected)</span>
                       ` : `
-                        <span class="badge badge-success">Present</span>
+                        <span class="badge badge-info">Not Recorded</span>
                       `}
                     </td>
                     <td>
@@ -154,11 +154,10 @@ export class AttendanceModule {
         document.getElementById('btn-simulate-scan').addEventListener('click', async () => {
           await auditService.log('TERMINAL_QR_PUNCH', 'ATTENDANCE', {
             scannerTerminalId: 'GATE-01-NORTH',
-            studentId: 'TMS-STU-1001',
             status: 'Present'
-          }, 'TMS-STU-1001');
+          });
           UIComponents.closeModal();
-          UIComponents.showToast('Student QR Verified: Mohammed Rayan K marked Present at 08:26 AM', 'success');
+          UIComponents.showToast('QR punch verified.', 'success');
         });
       });
     }

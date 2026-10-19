@@ -28,7 +28,7 @@ class AuditService {
       category: category, // e.g., 'ACADEMIC', 'FINANCE', 'ATTENDANCE', 'AUTH', 'SECURITY'
       entityRef: entityRef, // e.g., 'TMS-STU-1001', 'INV-2024-001'
       details: typeof details === 'string' ? details : JSON.stringify(details),
-      ipAddress: '127.0.0.1 (Campus Intranet / Gateway)',
+      ipAddress: null, // Client-side JS cannot determine the true source IP; leave unset.
       clientAgent: navigator.userAgent
     };
 
@@ -37,11 +37,28 @@ class AuditService {
     logs.unshift(entry);
     dbService.setLocal(this.collection, logs);
 
-    // Queue for cloud sync if Supabase is connected
+    // Queue for cloud sync if Supabase is connected.
+    // The local copy above is camelCase (for the UI); the database uses
+    // snake_case columns, so map explicitly here before inserting.
     const client = dbService.getClient();
     if (client && dbService.isOnline) {
+      const payload = {
+        id: entry.id,
+        timestamp: entry.timestamp,
+        user_id: entry.userId,
+        user_name: entry.userName,
+        user_role: entry.userRole,
+        user_scope: entry.userScope,
+        action: entry.action,
+        category: entry.category,
+        entity_ref: entry.entityRef,
+        details: entry.details,
+        ip_address: entry.ipAddress,
+        client_agent: entry.clientAgent
+      };
       try {
-        await client.from(this.collection).insert([entry]);
+        const { error } = await client.from(this.collection).insert([payload]);
+        if (error) throw error;
       } catch (err) {
         // Enqueue for background retry
         const pending = dbService.getLocal('audit_logs_pending');

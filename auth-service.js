@@ -1,6 +1,9 @@
 /**
  * THAIBA MODEL SCHOOL — Authentication & Identity Service
- * Strict Production Mode: Strict Supabase Auth & cmbasith786@gmail.com Super Admin
+ * Strict Production Mode:
+ *   - Authenticates exclusively against Supabase Auth.
+ *   - Authorisation (role/scope) is read ONLY from the server-side `profiles` table.
+ *   - Never trusts localStorage, user_metadata, or client-supplied roles.
  */
 
 import { TMS_CONFIG } from './config.js';
@@ -10,58 +13,106 @@ class AuthService {
   constructor() {
     this.sessionKey = 'tms_auth_session';
     this.currentUser = null;
-    this.initSession();
+    // Cache is for UI hydration only; it is always re-validated against the server.
+    this.cachedUser = this.readCache();
   }
 
-  initSession() {
+  readCache() {
     try {
-      const stored = localStorage.getItem(this.sessionKey);
-      if (stored) {
-        const user = JSON.parse(stored);
-        this.currentUser = this.normalizeUserProfile(user);
-      } else {
-        this.currentUser = null; // Strict: No auto-login
-      }
+      const raw = localStorage.getItem(this.sessionKey);
+      return raw ? JSON.parse(raw) : null;
     } catch (e) {
-      this.currentUser = null;
+      return null;
     }
   }
 
-  normalizeUserProfile(user) {
-    if (!user || !user.email) return null;
-    const isSuperAdmin = user.email.toLowerCase() === TMS_CONFIG.superAdminEmail.toLowerCase();
-
-    if (isSuperAdmin) {
-      return {
-        id: user.id || 'super_admin_basith',
-        email: user.email.toLowerCase(),
-        name: user.name || 'C. M. Basith',
-        role: TMS_CONFIG.roles.ADMIN,
-        isSuperAdmin: true,
-        title: 'Executive Director & Super Administrator',
-        scope: TMS_CONFIG.scopes.SCHOOL_WIDE,
-        department: 'Executive Governance & Administration',
-        avatar: user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'
-      };
+  /**
+   * Validate the current Supabase session and load the authoritative profile.
+   * Must be awaited before any authentication decision is made.
+   */
+  async init() {
+    const client = dbService.getClient();
+    if (!client) {
+      this.currentUser = null;
+      this.clearCache();
+      return null;
     }
+
+    try {
+      const { data: { session } } = await client.auth.getSession();
+      if (!session || !session.user) {
+        this.currentUser = null;
+        this.clearCache();
+        return null;
+      }
+
+      const profile = await this.loadProfile(session.user);
+      if (!profile) {
+        // Authenticated but no profile / inactive: deny access.
+        await client.auth.signOut();
+        this.currentUser = null;
+        this.clearCache();
+        return null;
+      }
+
+      this.currentUser = profile;
+      this.saveCache(profile);
+      return profile;
+    } catch (e) {
+      console.error('TMS session validation failed:', e);
+      this.currentUser = null;
+      this.clearCache();
+      return null;
+    }
+  }
+
+  async loadProfile(authUser) {
+    const client = dbService.getClient();
+    if (!client || !authUser) return null;
+
+    const { data, error } = await client
+      .from('profiles')
+      .select('*')
+      .eq('id', authUser.id)
+      .single();
+
+    if (error || !data) {
+      console.warn('TMS profile lookup failed:', error?.message);
+      return null;
+    }
+
+    if (data.is_active === false) return null;
+
+    return this.normalizeProfile(data);
+  }
+
+  normalizeProfile(profile) {
+    if (!profile || !profile.role) return null;
+
+    const isSuperAdmin =
+      profile.role === TMS_CONFIG.roles.ADMIN &&
+      profile.scope === TMS_CONFIG.scopes.SCHOOL_WIDE;
 
     return {
-      id: user.id,
-      email: user.email.toLowerCase(),
-      name: user.name || user.email.split('@')[0],
-      role: user.role || TMS_CONFIG.roles.TEACHER,
-      isSuperAdmin: false,
-      title: user.title || 'Faculty Member',
-      scope: user.scope || TMS_CONFIG.scopes.ASSIGNED_CLASS,
-      department: user.department || 'Academics',
-      assignedClass: user.assignedClass || null,
-      assignedSection: user.assignedSection || null,
-      avatar: user.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'
+      id: profile.id,
+      email: (profile.email || '').toLowerCase(),
+      name: profile.name || (profile.email ? profile.email.split('@')[0] : 'TMS User'),
+      role: profile.role,
+      isSuperAdmin,
+      title: profile.title || 'Staff Member',
+      scope: profile.scope || TMS_CONFIG.scopes.OWN_RECORDS,
+      department: profile.department || '—',
+      assignedClass: profile.assigned_class || null,
+      assignedSection: profile.assigned_section || null,
+      phone: profile.phone || '',
+      rawTitle: profile.title || '',
+      rawDepartment: profile.department || '',
+      avatar: profile.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150'
     };
   }
 
   isAuthenticated() {
-    return !!this.currentUser && !!this.currentUser.email;
+    return !!this.currentUser && !!this.currentUser.id && !!this.currentUser.role;
   }
 
   getCurrentUser() {
@@ -69,89 +120,140 @@ class AuthService {
   }
 
   async login(email, password) {
-    const cleanEmail = email.trim().toLowerCase();
-    const cleanPass = password.trim();
-
     const client = dbService.getClient();
-
-    // 1. Authenticate with Supabase Auth
-    if (client) {
-      try {
-        const { data, error } = await client.auth.signInWithPassword({
-          email: cleanEmail,
-          password: cleanPass
-        });
-
-        if (error) {
-          // If user does not exist in Supabase auth yet and is superAdmin, try sign up
-          if (cleanEmail === TMS_CONFIG.superAdminEmail.toLowerCase() && (error.message.includes('Invalid') || error.message.includes('not found'))) {
-            const { data: signUpData, error: signUpErr } = await client.auth.signUp({
-              email: cleanEmail,
-              password: cleanPass,
-              options: {
-                data: {
-                  full_name: 'C. M. Basith',
-                  role: TMS_CONFIG.roles.ADMIN
-                }
-              }
-            });
-            if (!signUpErr && signUpData?.user) {
-              const profile = this.normalizeUserProfile({
-                id: signUpData.user.id,
-                email: cleanEmail,
-                name: 'C. M. Basith'
-              });
-              this.saveSession(profile);
-              return { success: true, user: profile };
-            }
-          }
-          throw error;
-        }
-
-        if (data && data.user) {
-          const profile = this.normalizeUserProfile({
-            id: data.user.id,
-            email: data.user.email,
-            name: data.user.user_metadata?.full_name || (cleanEmail === TMS_CONFIG.superAdminEmail.toLowerCase() ? 'C. M. Basith' : cleanEmail.split('@')[0]),
-            role: data.user.user_metadata?.role || (cleanEmail === TMS_CONFIG.superAdminEmail.toLowerCase() ? TMS_CONFIG.roles.ADMIN : TMS_CONFIG.roles.TEACHER)
-          });
-          this.saveSession(profile);
-          return { success: true, user: profile };
-        }
-      } catch (err) {
-        console.warn('Supabase Auth response:', err.message);
-        // Fallback for offline credential initialization for superAdmin
-        if (cleanEmail === TMS_CONFIG.superAdminEmail.toLowerCase() && cleanPass.length >= 6) {
-          const profile = this.normalizeUserProfile({
-            id: 'super_admin_basith',
-            email: cleanEmail,
-            name: 'C. M. Basith'
-          });
-          this.saveSession(profile);
-          return { success: true, user: profile };
-        }
-        return { success: false, error: err.message };
-      }
+    if (!client) {
+      return { success: false, error: 'Authentication service is unavailable. Please retry.' };
     }
 
-    // Direct check for superAdmin if client is uninitialized
-    if (cleanEmail === TMS_CONFIG.superAdminEmail.toLowerCase() && cleanPass.length >= 6) {
-      const profile = this.normalizeUserProfile({
-        id: 'super_admin_basith',
+    const cleanEmail = String(email || '').trim().toLowerCase();
+    const cleanPass = String(password || '');
+
+    if (!cleanEmail || !cleanPass) {
+      return { success: false, error: 'Email and password are required.' };
+    }
+
+    try {
+      const { data, error } = await client.auth.signInWithPassword({
         email: cleanEmail,
-        name: 'C. M. Basith'
+        password: cleanPass
       });
-      this.saveSession(profile);
-      return { success: true, user: profile };
-    }
 
-    return { success: false, error: 'Invalid credentials or user not provisioned in Supabase.' };
+      if (error || !data || !data.user) {
+        return { success: false, error: 'Invalid email or password.' };
+      }
+
+      const profile = await this.loadProfile(data.user);
+      if (!profile) {
+        await client.auth.signOut();
+        return {
+          success: false,
+          error: 'Your account has no assigned role yet. Please contact school administration.'
+        };
+      }
+
+      this.currentUser = profile;
+      this.saveCache(profile);
+      return { success: true, user: profile };
+    } catch (err) {
+      return { success: false, error: 'Sign-in failed. Please try again.' };
+    }
   }
 
-  saveSession(profile) {
-    this.currentUser = profile;
-    localStorage.setItem(this.sessionKey, JSON.stringify(profile));
+  async requestPasswordReset(email) {
+    const client = dbService.getClient();
+    if (!client) return { success: false, error: 'Service unavailable.' };
+    try {
+      const { error } = await client.auth.resetPasswordForEmail(
+        String(email || '').trim().toLowerCase(),
+        { redirectTo: window.location.origin + '/login.html' }
+      );
+      if (error) return { success: false, error: error.message };
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: 'Unable to send reset email.' };
+    }
+  }
+
+  async updateOwnProfile(fields) {
+    const client = dbService.getClient();
+    if (!client) return { success: false, error: 'Service unavailable.' };
+    try {
+      const { error } = await client.rpc('update_own_profile', {
+        p_name: fields.name || null,
+        p_title: fields.title || null,
+        p_department: fields.department || null,
+        p_phone: fields.phone || null,
+        p_avatar: fields.avatar || null
+      });
+      if (error) return { success: false, error: error.message };
+      await this.init();
+      return { success: true, user: this.currentUser };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  async changePassword(newPassword) {
+    const client = dbService.getClient();
+    if (!client) return { success: false, error: 'Service unavailable.' };
+    if (!newPassword || newPassword.length < 6) {
+      return { success: false, error: 'Password must be at least 6 characters.' };
+    }
+    try {
+      const { error } = await client.auth.updateUser({ password: newPassword });
+      if (error) return { success: false, error: error.message };
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  async adminSetPassword(userId, newPassword) {
+    const client = dbService.getClient();
+    if (!client) return { success: false, error: 'Service unavailable.' };
+    if (!newPassword || newPassword.length < 6) {
+      return { success: false, error: 'Password must be at least 6 characters.' };
+    }
+    try {
+      const { error } = await client.rpc('admin_set_password', {
+        p_user_id: userId,
+        p_new_password: newPassword
+      });
+      if (error) return { success: false, error: error.message };
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  /** Permanently remove a user's login and profile (admin only). */
+  async adminDeleteUser(userId) {
+    const client = dbService.getClient();
+    if (!client) return { success: false, error: 'Service unavailable.' };
+    if (!userId) return { success: false, error: 'No user selected.' };
+    if (this.currentUser && this.currentUser.id === userId) {
+      return { success: false, error: 'You cannot delete your own account.' };
+    }
+    try {
+      const { error } = await client.rpc('admin_delete_user', { p_user_id: userId });
+      if (error) return { success: false, error: error.message };
+      return { success: true };
+    } catch (e) {
+      return { success: false, error: e.message };
+    }
+  }
+
+  saveCache(profile) {
+    try {
+      localStorage.setItem(this.sessionKey, JSON.stringify(profile));
+    } catch (e) {
+      /* ignore quota errors */
+    }
     window.dispatchEvent(new CustomEvent('tms_auth_changed', { detail: profile }));
+  }
+
+  clearCache() {
+    localStorage.removeItem(this.sessionKey);
   }
 
   async logout() {
@@ -160,11 +262,11 @@ class AuthService {
       try {
         await client.auth.signOut();
       } catch (e) {
-        // ignore
+        /* ignore */
       }
     }
-    localStorage.removeItem(this.sessionKey);
     this.currentUser = null;
+    this.clearCache();
     window.location.href = 'login.html';
   }
 }

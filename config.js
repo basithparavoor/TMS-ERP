@@ -15,9 +15,12 @@ export const TMS_CONFIG = {
     logoBadge: "TMS",
     address: {
       campus: "Baghait, Tapan",
+      village: "Baghait",
+      city: "Tapan",
       district: "Dakshin Dinajpur",
       state: "West Bengal",
       country: "India",
+      pin: "733127",
       locality: "Thaiba Garden, Tapan"
     },
     contact: {
@@ -37,6 +40,16 @@ export const TMS_CONFIG = {
 
   // Highest-level Super Administrator Email
   superAdminEmail: "cmbasith786@gmail.com",
+
+  // Parent logins are auto-generated as <username>@<parentEmailDomain>
+  parentEmailDomain: "parents.thaibamodel.school",
+
+  admissionStatuses: {
+    SUBMITTED: "Submitted",
+    UNDER_VERIFICATION: "Under Verification",
+    APPROVED: "Approved",
+    REJECTED: "Rejected"
+  },
 
   supabase: {
     url: "https://rzcihdpzqrnzcaupjfla.supabase.co",
@@ -59,6 +72,7 @@ export const TMS_CONFIG = {
     HR: "hr",
     LIBRARIAN: "librarian",
     OPERATIONS: "operations",
+    OFFICE_BOY: "office_boy",
     STUDENT: "student",
     PARENT: "parent"
   },
@@ -96,34 +110,7 @@ export const TMS_CONFIG = {
     ]
   },
 
-  // Default Editable Admission Form & Fee Configuration
-  admissionFormDefaults: {
-    session: "2025 - 2026",
-    formFee: 300,
-    testCentre: "Campus Main Auditorium, Baghait, Tapan",
-    instructions: [
-      "Fill the form in capital letters using a black or blue ballpoint pen.",
-      "Attach two passport-size color photographs and photocopy of Aadhaar card.",
-      "Submit photocopy of Birth Certificate and Previous School Marksheet / Transfer Certificate.",
-      "Retain the lower Admit Card slip for entrance screening and admission interview.",
-      "Admission confirmation is subject to seat vacancy and document verification."
-    ],
-    feeStructure: [
-      { id: "fee_adm", name: "One-Time Admission & Registration Fee", amount: 4500, type: "One-Time", mandatory: true },
-      { id: "fee_tui", name: "Quarterly Tuition & Academic Instruction", amount: 3600, type: "Quarterly", mandatory: true },
-      { id: "fee_dev", name: "Campus Infrastructure & Development Fund", amount: 2000, type: "Annual", mandatory: true },
-      { id: "fee_lab", name: "Computer, Science Lab & Smart Classroom", amount: 1500, type: "Annual", mandatory: true },
-      { id: "fee_kit", name: "Student Diary, ID Card & Educational Kit", amount: 800, type: "Annual", mandatory: true }
-    ],
-    customFields: [
-      { key: "aadhaar", label: "Aadhaar Card Number", enabled: true, required: true },
-      { key: "religion", label: "Religion", enabled: true, required: false },
-      { key: "monthlyIncome", label: "Guardian Monthly Income", enabled: true, required: false },
-      { key: "identificationMarks", label: "Identification Marks", enabled: true, required: false },
-      { key: "previousSchool", label: "Previous School & Last Class", enabled: true, required: true },
-      { key: "references", label: "Admission Reference Source", enabled: true, required: false }
-    ]
-  },
+  // Admission form/fee defaults now live in admission-service.js (DB-backed, admin-editable).
 
   finance: {
     currencySymbol: "₹",

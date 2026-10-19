@@ -3,6 +3,20 @@
  */
 
 export class UIComponents {
+  /**
+   * Escape untrusted values before interpolating them into HTML templates.
+   * Prevents stored/reflected XSS from user- or staff-supplied data.
+   */
+  static escapeHtml(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   static initTheme() {
     const savedTheme = localStorage.getItem('tms_theme') || 'light';
     if (savedTheme === 'dark') {
@@ -55,7 +69,7 @@ export class UIComponents {
 
     toast.innerHTML = `
       <i data-lucide="${icon}" style="color: ${color}; width: 20px; height: 20px;"></i>
-      <span style="font-weight: 500;">${message}</span>
+      <span style="font-weight: 500;">${this.escapeHtml(message)}</span>
     `;
 
     container.appendChild(toast);

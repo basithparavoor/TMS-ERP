@@ -24,6 +24,11 @@ import { FinanceModule } from './finance-module.js';
 import { CommunicationModule } from './communication-module.js';
 import { OperationsModule } from './operations-module.js';
 import { ReportsModule } from './reports-module.js';
+import { AdmissionsEntryModule } from './admissions-entry-module.js';
+import { NotificationCenter } from './notification-center.js';
+import { admissionService } from './admission-service.js';
+import { brandingService } from './branding-service.js';
+import { checkMigration } from './migration-check.js';
 
 class AppController {
   constructor() {
@@ -34,14 +39,34 @@ class AppController {
   async init() {
     UIComponents.initTheme();
 
+    // Validate the server-side session before rendering or touching data.
+    await authService.init();
+
     // Strict Authentication Guard
     if (!authService.isAuthenticated()) {
       window.location.href = 'login.html';
       return;
     }
 
+    // Load the institute logo (cached value already applied at import time).
+    brandingService.refresh().then(() => {
+      const logoHost = document.getElementById('shell-logo');
+      if (logoHost) logoHost.innerHTML = TMS_LOGO.emblemSvg(42);
+    });
+
+    // Warn clearly if the add-on migration has not been applied yet.
+    checkMigration();
+
     this.renderShell();
     this.bindGlobalEvents();
+    await NotificationCenter.init();
+
+    const user = authService.getCurrentUser() || {};
+    if (user.role === TMS_CONFIG.roles.OFFICE_BOY &&
+        (!window.location.hash || window.location.hash === '#/dashboard' || window.location.hash === '#/')) {
+      window.location.hash = '#/admissions-entry';
+    }
+
     this.initRouter();
   }
 
@@ -62,7 +87,7 @@ class AppController {
         <!-- Sidebar Navigation -->
         <aside class="app-sidebar" id="app-sidebar">
           <div class="sidebar-header">
-            ${TMS_LOGO.emblemSvg(42)}
+            <span id="shell-logo" style="display:inline-flex;">${TMS_LOGO.emblemSvg(42)}</span>
             <div class="brand-info">
               <h2>${TMS_CONFIG.institution.name}</h2>
               <p>Thaiba Heritage, Kolkata</p>
@@ -74,11 +99,11 @@ class AppController {
           </nav>
 
           <div class="sidebar-footer">
-            <div class="user-mini-card">
-              <img src="${user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}" alt="Avatar">
+            <div class="user-mini-card" id="user-mini-card" role="button" tabindex="0" title="Edit my profile" style="cursor:pointer;">
+              <img id="user-mini-avatar" src="${user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}" alt="Avatar">
               <div class="user-details-mini">
-                <div class="name">${user.name || 'TMS Authorized'}</div>
-                <div class="role">${user.isSuperAdmin ? 'Super Admin' : (user.title || user.role)}</div>
+                <div class="name" id="user-mini-name">${user.name || 'TMS Authorized'}</div>
+                <div class="role" id="user-mini-role">${user.isSuperAdmin ? 'Super Admin' : (user.title || user.role)}</div>
               </div>
             </div>
           </div>
@@ -105,6 +130,15 @@ class AppController {
                 <i data-lucide="calendar" style="width: 14px; height: 14px;"></i>
                 <span>Session ${TMS_CONFIG.academic.currentYear} Active</span>
               </div>
+
+              <button class="icon-btn" id="notification-bell" title="Notifications" style="position: relative;">
+                <i data-lucide="bell"></i>
+                <span id="notification-badge" class="badge badge-danger" style="display: none; position: absolute; top: -4px; right: -4px; font-size: 0.58rem; padding: 1px 5px; line-height: 1.4;">0</span>
+              </button>
+
+              <button class="icon-btn" id="btn-my-profile" title="My Profile">
+                <i data-lucide="user-cog"></i>
+              </button>
 
               <button class="icon-btn" id="theme-toggle-btn" title="Toggle Light/Dark Mode">
                 <i data-lucide="moon"></i>
@@ -135,6 +169,7 @@ class AppController {
     const navItems = [
       { id: 'dashboard', label: 'Overview Dashboard', icon: 'layout-dashboard', module: 'dashboard' },
       { id: 'my-work', label: 'Staff Workspace', icon: 'briefcase', module: 'my-work' },
+      { id: 'admissions-entry', label: 'Admission Entry', icon: 'clipboard-pen', module: 'admissions-entry' },
       { id: 'students', label: 'Student Directory', icon: 'graduation-cap', module: 'students' },
       { id: 'attendance', label: 'Attendance & Radar', icon: 'user-check', module: 'attendance' },
       { id: 'academics', label: 'Academic & Timetable', icon: 'book-open', module: 'academics' },
@@ -211,6 +246,16 @@ class AppController {
       });
     }
 
+    const profileBtn = document.getElementById('btn-my-profile');
+    if (profileBtn) profileBtn.addEventListener('click', () => this.openMyProfile());
+    const miniCard = document.getElementById('user-mini-card');
+    if (miniCard) {
+      miniCard.addEventListener('click', () => this.openMyProfile());
+      miniCard.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); this.openMyProfile(); }
+      });
+    }
+
     // Global Search (Ctrl + K)
     const searchTrigger = document.getElementById('global-search-trigger');
     const openSearch = () => {
@@ -237,35 +282,37 @@ class AppController {
         }
 
         const students = await dbService.select('students');
-        const staff = await dbService.select('staff');
+        const staff = await dbService.select('staff_directory');
         const invoices = await dbService.select('invoices');
 
         const matchedStudents = students.filter(s => (s.fullName || s.full_name || '').toLowerCase().includes(q) || (s.admissionNo || s.admission_no || '').toLowerCase().includes(q));
         const matchedStaff = staff.filter(st => (st.name || '').toLowerCase().includes(q) || (st.empId || st.emp_id || '').toLowerCase().includes(q));
         const matchedInvoices = invoices.filter(i => (i.invoiceNo || i.invoice_no || '').toLowerCase().includes(q) || (i.studentName || i.student_name || '').toLowerCase().includes(q));
 
+        const esc = (v) => UIComponents.escapeHtml(v);
+
         let html = '';
         if (matchedStudents.length) {
           html += `<div style="font-weight: 700; color: #16a34a; margin: 8px 0 4px;">Students:</div>`;
           matchedStudents.forEach(s => {
-            html += `<div style="padding: 6px; border-bottom: 1px solid var(--border-color);">${s.fullName || s.full_name} (${s.admissionNo || s.admission_no}) — ${s.grade}</div>`;
+            html += `<div style="padding: 6px; border-bottom: 1px solid var(--border-color);">${esc(s.fullName || s.full_name)} (${esc(s.admissionNo || s.admission_no)}) — ${esc(s.grade)}</div>`;
           });
         }
         if (matchedStaff.length) {
           html += `<div style="font-weight: 700; color: #3b82f6; margin: 8px 0 4px;">Faculty & Staff:</div>`;
           matchedStaff.forEach(st => {
-            html += `<div style="padding: 6px; border-bottom: 1px solid var(--border-color);">${st.name} (${st.designation})</div>`;
+            html += `<div style="padding: 6px; border-bottom: 1px solid var(--border-color);">${esc(st.name)} (${esc(st.designation)})</div>`;
           });
         }
         if (matchedInvoices.length) {
           html += `<div style="font-weight: 700; color: #f59e0b; margin: 8px 0 4px;">Invoices:</div>`;
           matchedInvoices.forEach(inv => {
-            html += `<div style="padding: 6px; border-bottom: 1px solid var(--border-color);">${inv.invoiceNo || inv.invoice_no} — ${inv.studentName || inv.student_name} (₹ ${inv.amount})</div>`;
+            html += `<div style="padding: 6px; border-bottom: 1px solid var(--border-color);">${esc(inv.invoiceNo || inv.invoice_no)} — ${esc(inv.studentName || inv.student_name)} (₹ ${esc(inv.amount)})</div>`;
           });
         }
 
         if (!html) {
-          html = `<p style="color: var(--text-muted); text-align: center; padding: 20px;">No records found matching "${q}"</p>`;
+          html = `<p style="color: var(--text-muted); text-align: center; padding: 20px;">No records found matching "${esc(q)}"</p>`;
         }
         results.innerHTML = html;
       });
@@ -278,6 +325,88 @@ class AppController {
         openSearch();
       }
     });
+  }
+
+  /** Self-service profile editor available to every signed-in user. */
+  async openMyProfile() {
+    const user = authService.currentUser || {};
+    let pendingAvatar = null;
+
+    const bodyHtml = `
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+        <div class="form-group" style="grid-column:1/-1; display:flex; gap:16px; align-items:center;">
+          <img id="pf-avatar" src="${UIComponents.escapeHtml(user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150')}" alt="Avatar" style="width:76px;height:76px;border-radius:50%;object-fit:cover;border:1px solid var(--border-color);">
+          <div>
+            <label class="form-label">Profile Photo</label>
+            <input type="file" id="pf-avatar-file" accept="image/*" class="form-input">
+          </div>
+        </div>
+        <div class="form-group"><label class="form-label">Full Name</label><input class="form-input" id="pf-name" value="${UIComponents.escapeHtml(user.name || '')}"></div>
+        <div class="form-group"><label class="form-label">Email (read-only)</label><input class="form-input" id="pf-email" value="${UIComponents.escapeHtml(user.email || '')}" readonly></div>
+        <div class="form-group"><label class="form-label">Designation / Title</label><input class="form-input" id="pf-title" value="${UIComponents.escapeHtml(user.rawTitle || '')}"></div>
+        <div class="form-group"><label class="form-label">Department</label><input class="form-input" id="pf-department" value="${UIComponents.escapeHtml(user.rawDepartment || '')}"></div>
+        <div class="form-group" style="grid-column:1/-1;"><label class="form-label">Phone</label><input class="form-input" id="pf-phone" value="${UIComponents.escapeHtml(user.phone || '')}"></div>
+        <div class="form-group" style="grid-column:1/-1; border-top:1px solid var(--border-color); padding-top:12px;">
+          <label class="form-label">Change My Password</label>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <input type="password" class="form-input" id="pf-new-password" placeholder="New password (min 6 characters)" style="flex:1; min-width:200px;">
+            <button class="btn btn-secondary" id="pf-change-password"><i data-lucide="key-round"></i> Update Password</button>
+          </div>
+        </div>
+      </div>
+    `;
+    const footerHtml = `
+      <button class="btn btn-secondary" id="pf-cancel">Cancel</button>
+      <button class="btn btn-primary" id="pf-save"><i data-lucide="save"></i> Save Profile</button>
+    `;
+    UIComponents.openModal({ title: 'My Profile', bodyHtml, footerHtml });
+
+    document.getElementById('pf-avatar-file').addEventListener('change', async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      const path = `users/${user.id}-${Date.now()}-${admissionService.sanitizeFileName(file.name)}`;
+      const res = await admissionService.uploadFile('avatars', path, file);
+      if (res.error) { UIComponents.showToast(`Photo upload failed: ${res.error}`, 'warning'); return; }
+      pendingAvatar = admissionService.getPublicUrl('avatars', res.path) || res.path;
+      document.getElementById('pf-avatar').src = pendingAvatar;
+      UIComponents.showToast('Photo ready — click Save Profile.', 'success');
+    });
+
+    document.getElementById('pf-cancel').addEventListener('click', () => UIComponents.closeModal());
+
+    document.getElementById('pf-change-password').addEventListener('click', async () => {
+      const pw = document.getElementById('pf-new-password').value;
+      if (!pw || pw.length < 6) { UIComponents.showToast('Password must be at least 6 characters.', 'warning'); return; }
+      const r = await authService.changePassword(pw);
+      if (r.success) {
+        document.getElementById('pf-new-password').value = '';
+        UIComponents.showToast('Password updated.', 'success');
+      } else {
+        UIComponents.showToast(`Could not update password: ${r.error}`, 'danger');
+      }
+    });
+
+    document.getElementById('pf-save').addEventListener('click', async () => {
+      const fields = {
+        name: document.getElementById('pf-name').value.trim(),
+        title: document.getElementById('pf-title').value.trim(),
+        department: document.getElementById('pf-department').value.trim(),
+        phone: document.getElementById('pf-phone').value.trim(),
+        avatar: pendingAvatar
+      };
+      const r = await authService.updateOwnProfile(fields);
+      if (!r.success) { UIComponents.showToast(`Could not save profile: ${r.error}`, 'danger'); return; }
+      const updated = r.user || fields;
+      const nameEl = document.getElementById('user-mini-name');
+      const roleEl = document.getElementById('user-mini-role');
+      const avatarEl = document.getElementById('user-mini-avatar');
+      if (nameEl && updated.name) nameEl.innerText = updated.name;
+      if (roleEl && updated.title) roleEl.innerText = updated.title;
+      if (avatarEl && pendingAvatar) avatarEl.src = pendingAvatar;
+      UIComponents.showToast('Profile updated.', 'success');
+      UIComponents.closeModal();
+    });
+    UIComponents.refreshIcons();
   }
 
   initRouter() {
@@ -325,6 +454,9 @@ class AppController {
       case 'my-work':
         await MyWorkModule.render(viewport);
         break;
+      case 'admissions-entry':
+        await AdmissionsEntryModule.render(viewport);
+        break;
       case 'students':
         await StudentModule.render(viewport);
         break;
@@ -367,7 +499,7 @@ class AppController {
 
   async renderDashboard(container) {
     const students = await dbService.select('students');
-    const staff = await dbService.select('staff');
+    const staff = await dbService.select('staff_directory');
     const invoices = await dbService.select('invoices');
     const user = authService.getCurrentUser() || {};
 

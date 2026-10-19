@@ -9,8 +9,26 @@ import { UIComponents } from './ui-components.js';
 export class ReportsModule {
   static async render(container) {
     const students = await dbService.select('students');
-    const staff = await dbService.select('staff');
+    const staff = await dbService.select('staff_directory');
     const invoices = await dbService.select('invoices');
+
+    const totalBilled = invoices.reduce((sum, inv) => sum + (inv.amount || 0), 0);
+    const totalCollected = invoices.reduce((sum, inv) => sum + (inv.paid || 0), 0);
+    const totalOutstanding = invoices.reduce((sum, inv) => sum + (inv.balance || 0), 0);
+    const ratioValue = staff.length ? `${Math.round(students.length / staff.length)} : 1` : '—';
+    const clearanceValue = totalBilled > 0 ? `${((totalCollected / totalBilled) * 100).toFixed(1)}%` : '—';
+    const financeRows = invoices.length ? `
+      <tr style="font-weight: 700; background: rgba(59,130,246,0.06);">
+        <td>All Invoiced Fees</td>
+        <td>${totalBilled.toLocaleString()}</td>
+        <td>${totalCollected.toLocaleString()}</td>
+        <td style="color: #ef4444;">${totalOutstanding.toLocaleString()}</td>
+      </tr>
+    ` : `
+      <tr>
+        <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 30px;">No records available yet.</td>
+      </tr>
+    `;
 
     container.innerHTML = `
       <div style="margin-bottom: 24px;">
@@ -29,10 +47,10 @@ export class ReportsModule {
       </div>
 
       <div class="kpi-grid">
-        ${UIComponents.renderKpiCard({ title: 'Student-Teacher Ratio', value: '14 : 1', icon: 'users', color: 'emerald', subtitle: 'Optimal Learning Ratio' })}
-        ${UIComponents.renderKpiCard({ title: 'Term 1 Fee Clearance', value: '88.4%', icon: 'credit-card', color: 'blue', subtitle: 'Target: 95% by Nov' })}
-        ${UIComponents.renderKpiCard({ title: 'Average Monthly Attendance', value: '94.6%', icon: 'award', color: 'amber', subtitle: 'Gold Badge Exclusions Factored' })}
-        ${UIComponents.renderKpiCard({ title: 'Academic Distinction Rate', value: '42.8%', icon: 'graduation-cap', color: 'rose', subtitle: 'Grade A+ and A Combined' })}
+        ${UIComponents.renderKpiCard({ title: 'Student-Teacher Ratio', value: ratioValue, icon: 'users', color: 'emerald', subtitle: 'Based on Enrolled Records' })}
+        ${UIComponents.renderKpiCard({ title: 'Term 1 Fee Clearance', value: clearanceValue, icon: 'credit-card', color: 'blue', subtitle: 'From Recorded Invoices' })}
+        ${UIComponents.renderKpiCard({ title: 'Average Monthly Attendance', value: '—', icon: 'award', color: 'amber', subtitle: 'No Attendance Records Yet' })}
+        ${UIComponents.renderKpiCard({ title: 'Academic Distinction Rate', value: '—', icon: 'graduation-cap', color: 'rose', subtitle: 'No Results Published Yet' })}
       </div>
 
       <!-- Analytic Report Sections -->
@@ -56,39 +74,7 @@ export class ReportsModule {
               </thead>
               <tbody>
                 <tr>
-                  <td>Grade 9A</td>
-                  <td>35</td>
-                  <td>96.2%</td>
-                  <td>100%</td>
-                  <td>0</td>
-                </tr>
-                <tr>
-                  <td>Grade 9B</td>
-                  <td>35</td>
-                  <td>93.8%</td>
-                  <td>97.1%</td>
-                  <td>1</td>
-                </tr>
-                <tr>
-                  <td>Grade 10A</td>
-                  <td>34</td>
-                  <td>95.4%</td>
-                  <td>100%</td>
-                  <td>0</td>
-                </tr>
-                <tr>
-                  <td>Grade 11 Science</td>
-                  <td>40</td>
-                  <td>94.0%</td>
-                  <td>95.0%</td>
-                  <td>2</td>
-                </tr>
-                <tr>
-                  <td>Grade 12 Science</td>
-                  <td>38</td>
-                  <td>97.5%</td>
-                  <td>100%</td>
-                  <td>0</td>
+                  <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 30px;">No records available yet.</td>
                 </tr>
               </tbody>
             </table>
@@ -112,30 +98,7 @@ export class ReportsModule {
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td>Tuition & Laboratory Fee</td>
-                  <td>85,50,000</td>
-                  <td>76,20,000</td>
-                  <td style="color: #ef4444;">9,30,000</td>
-                </tr>
-                <tr>
-                  <td>School Transport Fleet</td>
-                  <td>18,40,000</td>
-                  <td>16,80,000</td>
-                  <td style="color: #ef4444;">1,60,000</td>
-                </tr>
-                <tr>
-                  <td>Hostel & Mess Charges</td>
-                  <td>28,00,000</td>
-                  <td>25,50,000</td>
-                  <td style="color: #ef4444;">2,50,000</td>
-                </tr>
-                <tr style="font-weight: 700; background: rgba(59,130,246,0.06);">
-                  <td>Total Campus Realization</td>
-                  <td>1,31,90,000</td>
-                  <td>1,18,50,000</td>
-                  <td style="color: #ef4444;">13,40,000</td>
-                </tr>
+                ${financeRows}
               </tbody>
             </table>
           </div>
@@ -150,14 +113,15 @@ export class ReportsModule {
   static bindEvents(container) {
     const csvBtn = container.querySelector('#btn-export-reports-csv');
     if (csvBtn) {
-      csvBtn.addEventListener('click', () => {
-        const csvContent = "data:text/csv;charset=utf-8," +
-          "Class,Strength,AttendanceRate,PassRate\n" +
-          "Grade 9A,35,96.2%,100%\n" +
-          "Grade 9B,35,93.8%,97.1%\n" +
-          "Grade 10A,34,95.4%,100%\n" +
-          "Grade 11 Sci,40,94.0%,95.0%\n" +
-          "Grade 12 Sci,38,97.5%,100%\n";
+      csvBtn.addEventListener('click', async () => {
+        const invoices = await dbService.select('invoices');
+        const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+        const header = 'InvoiceNo,StudentName,Grade,Term,Billed,Paid,Balance\n';
+        const body = invoices.map(inv => [
+          inv.invoiceNo, inv.studentName, inv.grade, inv.term,
+          inv.amount || 0, inv.paid || 0, inv.balance || 0
+        ].map(esc).join(',')).join('\n');
+        const csvContent = "data:text/csv;charset=utf-8," + header + body;
         const encodedUri = encodeURI(csvContent);
         const link = document.createElement("a");
         link.setAttribute("href", encodedUri);

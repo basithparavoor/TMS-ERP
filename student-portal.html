@@ -24,7 +24,7 @@
         </div>
       </div>
       <div class="topbar-right">
-        <span class="badge badge-info">Grade 9 - Section A (Roll #01)</span>
+        <span class="badge badge-info" id="portal-topbar-badge">—</span>
         <button class="icon-btn" id="theme-toggle-btn"><i data-lucide="moon"></i></button>
       </div>
     </header>
@@ -34,11 +34,13 @@
         <!-- Welcome Card -->
         <div class="card" style="margin-bottom: 24px;">
           <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
-            <img src="https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150" alt="Student" style="width: 72px; height: 72px; border-radius: 50%; border: 3px solid #3b82f6; object-fit: cover;">
+            <div style="width: 72px; height: 72px; border-radius: 50%; border: 3px solid #3b82f6; background: #334155; display: flex; align-items: center; justify-content: center;">
+              <i data-lucide="user" style="width: 36px; height: 36px; color: #94a3b8;"></i>
+            </div>
             <div>
-              <h2 style="font-size: 1.4rem;">Mohammed Rayan K</h2>
-              <p style="color: var(--text-muted); font-size: 0.88rem;">
-                Admission No: <span class="font-mono" style="font-weight: 600;">TMS/2024/001</span> • Class: <strong>Grade 9A</strong> • House: <strong>Ibn Battuta Blue House</strong>
+              <h2 style="font-size: 1.4rem;" id="portal-student-name">—</h2>
+              <p style="color: var(--text-muted); font-size: 0.88rem;" id="portal-student-meta">
+                Admission No: <span class="font-mono" style="font-weight: 600;">—</span>
               </p>
             </div>
           </div>
@@ -47,19 +49,19 @@
         <div class="kpi-grid">
           <div class="kpi-card">
             <div class="kpi-icon kpi-emerald"><i data-lucide="check-circle-2"></i></div>
-            <div class="kpi-meta"><h3>96.4%</h3><p>Attendance Record</p></div>
+            <div class="kpi-meta"><h3 id="portal-attendance">—</h3><p>Attendance Record</p></div>
           </div>
           <div class="kpi-card">
             <div class="kpi-icon kpi-blue"><i data-lucide="award"></i></div>
-            <div class="kpi-meta"><h3>A+</h3><p>Term 1 Aggregate</p></div>
+            <div class="kpi-meta"><h3 id="portal-aggregate">—</h3><p>Term 1 Aggregate</p></div>
           </div>
           <div class="kpi-card">
             <div class="kpi-icon kpi-amber"><i data-lucide="book-open"></i></div>
-            <div class="kpi-meta"><h3>2 Books</h3><p>Library Borrowed</p></div>
+            <div class="kpi-meta"><h3 id="portal-library">—</h3><p>Library Borrowed</p></div>
           </div>
           <div class="kpi-card">
             <div class="kpi-icon kpi-rose"><i data-lucide="receipt"></i></div>
-            <div class="kpi-meta"><h3>₹ 0 Due</h3><p>Fee Status Cleared</p></div>
+            <div class="kpi-meta"><h3 id="portal-fee">—</h3><p>Fee Status</p></div>
           </div>
         </div>
 
@@ -69,17 +71,14 @@
             <div class="card" style="margin-bottom: 24px;">
               <div class="card-header">
                 <h3 class="card-title">My Academic Timetable</h3>
-                <span class="badge badge-info">Today: Wednesday</span>
+                <span class="badge badge-info">No Timetable Published</span>
               </div>
               <table class="tms-table font-mono" style="font-size: 0.85rem;">
                 <thead>
                   <tr><th>Period</th><th>Subject</th><th>Teacher</th><th>Room</th></tr>
                 </thead>
                 <tbody>
-                  <tr><td>08:30 - 09:15</td><td>Mathematics</td><td>Prof. Rashid Rahman</td><td>Room 9-A</td></tr>
-                  <tr><td>09:15 - 10:00</td><td>Physics</td><td>Dr. A. K. Basheer</td><td>Room 9-A</td></tr>
-                  <tr><td>10:15 - 11:00</td><td>Math Lab Practical</td><td>Prof. Rashid Rahman</td><td>Math Lab</td></tr>
-                  <tr><td>11:45 - 12:30</td><td>English Literature</td><td>Mrs. Fathima Zahra</td><td>Room 9-A</td></tr>
+                  <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 30px;">No records available yet.</td></tr>
                 </tbody>
               </table>
             </div>
@@ -87,12 +86,12 @@
             <div class="card">
               <div class="card-header">
                 <h3 class="card-title">Term 1 Assessment Report</h3>
-                <span class="badge badge-success">Promoted with Distinction</span>
+                <span class="badge badge-info">No Results Published Yet</span>
               </div>
               <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 12px;">Official verified grades released by Examination Office.</p>
-              <div style="background: rgba(16,185,129,0.08); border-left: 4px solid #10b981; padding: 14px; border-radius: var(--radius-md);">
-                <strong>Overall Percentage: 91.6% (Rank 1 in 9A)</strong><br>
-                Mathematics: 95/100 (A+) • Physics: 92/100 (A+) • English: 88/100 (A)
+              <div style="text-align: center; color: var(--text-muted); padding: 30px;">
+                <i data-lucide="inbox" style="width:40px;height:40px;display:block;margin:0 auto 10px;"></i>
+                No records available yet.
               </div>
             </div>
           </div>
@@ -102,7 +101,7 @@
               <h3 class="card-title" style="margin-bottom: 14px;">Digital ID & QR</h3>
               <div style="text-align: center;">
                 <div style="width: 120px; height: 120px; background: #000; color: #fff; margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; font-size: 0.72rem; border-radius: 8px;">
-                  [QR SECURE<br>TMS/2024/001]
+                  <span id="portal-qr">[QR SECURE]</span>
                 </div>
                 <div style="font-size: 0.78rem; color: var(--text-muted);">Scan at Campus Gate & Library Terminal</div>
               </div>
@@ -110,13 +109,9 @@
 
             <div class="card">
               <h3 class="card-title" style="margin-bottom: 12px;">Pending Homework</h3>
-              <div style="font-size: 0.85rem; line-height: 1.5;">
-                <div style="padding-bottom: 8px; margin-bottom: 8px; border-bottom: 1px solid var(--border-color);">
-                  <strong>Math:</strong> Complete Exercise 4.2 (Q 1 to 5)
-                </div>
-                <div>
-                  <strong>Physics:</strong> Lab manual write-up on Ohm's Law
-                </div>
+              <div style="text-align: center; color: var(--text-muted); padding: 24px;">
+                <i data-lucide="inbox" style="width:40px;height:40px;display:block;margin:0 auto 10px;"></i>
+                No records available yet.
               </div>
             </div>
           </div>
@@ -127,16 +122,65 @@
 
   <script type="module">
     import { authService } from './auth-service.js';
+    import { dbService } from './supabase-client.js';
     import { UIComponents } from './ui-components.js';
+    import { TMS_CONFIG } from './config.js';
+    import { brandingService } from './branding-service.js';
 
-    if (!authService.isAuthenticated()) {
-      window.location.href = 'login.html';
-    } else {
+    (async () => {
+      brandingService.refresh();
+      await authService.init();
+      const user = authService.getCurrentUser();
+      const allowed = user && [TMS_CONFIG.roles.STUDENT, TMS_CONFIG.roles.ADMIN].includes(user.role);
+
+      if (!allowed) {
+        window.location.href = user ? 'index.html#/dashboard' : 'login.html';
+        return;
+      }
+
       UIComponents.initTheme();
       UIComponents.refreshIcons();
       const themeBtn = document.getElementById('theme-toggle-btn');
       if (themeBtn) themeBtn.addEventListener('click', () => UIComponents.toggleTheme());
-    }
+
+      const esc = (v) => UIComponents.escapeHtml(v);
+      const setText = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+      };
+
+      try {
+        const students = await dbService.select('students');
+        const student = students.find(s => s.userId === user.id) || students[0] || null;
+
+        if (!student) {
+          setText('portal-student-name', 'No Student Record Linked');
+          UIComponents.refreshIcons();
+          return;
+        }
+
+        setText('portal-student-name', student.fullName || '—');
+        setText('portal-topbar-badge', `${student.grade || '—'} - Section ${student.section || '—'} (Roll #${student.rollNo || '—'})`);
+
+        const metaEl = document.getElementById('portal-student-meta');
+        if (metaEl) {
+          metaEl.innerHTML = `Admission No: <span class="font-mono" style="font-weight: 600;">${esc(student.admissionNo)}</span> • Class: <strong>${esc(student.grade)}${esc(student.section)}</strong>`;
+        }
+
+        const qrEl = document.getElementById('portal-qr');
+        if (qrEl) qrEl.innerHTML = `[QR SECURE<br>${esc(student.admissionNo)}]`;
+
+        const invoices = await dbService.select('invoices');
+        const due = invoices
+          .filter(inv => inv.studentId === student.id || inv.studentName === student.fullName)
+          .reduce((sum, inv) => sum + (inv.balance || 0), 0);
+        setText('portal-fee', `₹ ${due.toLocaleString()} Due`);
+      } catch (e) {
+        console.error('Student portal hydration failed:', e);
+      }
+
+      UIComponents.refreshIcons();
+    })();
   </script>
 </body>
 </html>

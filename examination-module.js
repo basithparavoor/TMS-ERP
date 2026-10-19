@@ -28,10 +28,10 @@ export class ExaminationModule {
       </div>
 
       <div class="kpi-grid">
-        ${UIComponents.renderKpiCard({ title: 'Current Assessment', value: 'Term 1 Exam', icon: 'award', color: 'blue', subtitle: 'Academic Year 2024-25' })}
-        ${UIComponents.renderKpiCard({ title: 'School Overall Pass Rate', value: '98.5%', icon: 'trending-up', color: 'emerald', subtitle: 'Above CBSE Benchmark' })}
-        ${UIComponents.renderKpiCard({ title: 'Class Toppers (A+)', value: '38 Students', icon: 'star', color: 'amber', subtitle: 'GPA 10.0 Honor Roll' })}
-        ${UIComponents.renderKpiCard({ title: 'Remedial Follow-ups', value: '6 Cases', icon: 'help-circle', color: 'rose', subtitle: 'Personal Mentoring Assigned' })}
+        ${UIComponents.renderKpiCard({ title: 'Current Assessment', value: 'Term 1 Exam', icon: 'award', color: 'blue', subtitle: TMS_CONFIG.academic.currentYear })}
+        ${UIComponents.renderKpiCard({ title: 'School Overall Pass Rate', value: '—', icon: 'trending-up', color: 'emerald', subtitle: 'No Results Published Yet' })}
+        ${UIComponents.renderKpiCard({ title: 'Class Toppers (A+)', value: '—', icon: 'star', color: 'amber', subtitle: 'No Results Published Yet' })}
+        ${UIComponents.renderKpiCard({ title: 'Remedial Follow-ups', value: '—', icon: 'help-circle', color: 'rose', subtitle: 'No Cases Recorded' })}
       </div>
 
       <!-- Result Cards / Roster -->
@@ -41,7 +41,7 @@ export class ExaminationModule {
             <h3 class="card-title">Term 1 Assessment Ledger — Grade 9 Section A</h3>
             <p class="card-desc">Marks entered for Theory (80), Practical (20), and Attendance Remarks.</p>
           </div>
-          <span class="badge badge-success">Results Verified & Ready</span>
+          <span class="badge badge-info">No Results Published Yet</span>
         </div>
 
         <div class="table-responsive">
@@ -61,64 +61,7 @@ export class ExaminationModule {
             </thead>
             <tbody>
               <tr>
-                <td><strong>01</strong></td>
-                <td><span class="font-mono">TMS/2024/001</span></td>
-                <td><strong>Mohammed Rayan K</strong></td>
-                <td>95</td>
-                <td>92</td>
-                <td>88</td>
-                <td><strong>91.6%</strong></td>
-                <td><span class="badge badge-success">A+ (Outstanding)</span></td>
-                <td>
-                  <button class="btn btn-secondary btn-sm btn-print-report" data-student="Mohammed Rayan K" data-adm="TMS/2024/001" data-grade="Grade 9A" data-perc="91.6%" data-res="A+">
-                    <i data-lucide="file-check"></i> Report Card
-                  </button>
-                </td>
-              </tr>
-              <tr>
-                <td><strong>02</strong></td>
-                <td><span class="font-mono">TMS/2024/002</span></td>
-                <td><strong>Fathima Nuha</strong></td>
-                <td>88</td>
-                <td>85</td>
-                <td>94</td>
-                <td><strong>89.0%</strong></td>
-                <td><span class="badge badge-success">A (Excellent)</span></td>
-                <td>
-                  <button class="btn btn-secondary btn-sm btn-print-report" data-student="Fathima Nuha" data-adm="TMS/2024/002" data-grade="Grade 9A" data-perc="89.0%" data-res="A">
-                    <i data-lucide="file-check"></i> Report Card
-                  </button>
-                </td>
-              </tr>
-              <tr>
-                <td><strong>03</strong></td>
-                <td><span class="font-mono">TMS/2024/003</span></td>
-                <td><strong>Zayan Ahmed</strong></td>
-                <td>74</td>
-                <td>78</td>
-                <td>80</td>
-                <td><strong>77.3%</strong></td>
-                <td><span class="badge badge-info">B+ (Very Good)</span></td>
-                <td>
-                  <button class="btn btn-secondary btn-sm btn-print-report" data-student="Zayan Ahmed" data-adm="TMS/2024/003" data-grade="Grade 9A" data-perc="77.3%" data-res="B+">
-                    <i data-lucide="file-check"></i> Report Card
-                  </button>
-                </td>
-              </tr>
-              <tr>
-                <td><strong>04</strong></td>
-                <td><span class="font-mono">TMS/2024/004</span></td>
-                <td><strong>Amina Zehra</strong></td>
-                <td>98</td>
-                <td>96</td>
-                <td>95</td>
-                <td><strong>96.3%</strong></td>
-                <td><span class="badge badge-success">A+ (Topper)</span></td>
-                <td>
-                  <button class="btn btn-secondary btn-sm btn-print-report" data-student="Amina Zehra" data-adm="TMS/2024/004" data-grade="Grade 9A" data-perc="96.3%" data-res="A+">
-                    <i data-lucide="file-check"></i> Report Card
-                  </button>
-                </td>
+                <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 30px;">No records available yet.</td>
               </tr>
             </tbody>
           </table>
@@ -141,7 +84,17 @@ export class ExaminationModule {
 
     const marksBtn = container.querySelector('#btn-enter-marks');
     if (marksBtn) {
-      marksBtn.addEventListener('click', () => {
+      marksBtn.addEventListener('click', async () => {
+        const esc = (v) => UIComponents.escapeHtml(v);
+        const roster = await dbService.select('students', s => s.grade === 'Grade 9' && s.section === 'A');
+        const rosterRows = roster.map(s => `
+          <tr>
+            <td>${esc(s.fullName)}</td>
+            <td><input type="number" class="form-input" style="width: 70px; padding: 4px;"></td>
+            <td><input type="number" class="form-input" style="width: 70px; padding: 4px;"></td>
+            <td>—</td>
+          </tr>
+        `).join('');
         UIComponents.openModal({
           title: 'Bulk Marks Entry — Grade 9 Section A',
           bodyHtml: `
@@ -159,18 +112,7 @@ export class ExaminationModule {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td>Mohammed Rayan K</td>
-                    <td><input type="number" class="form-input" style="width: 70px; padding: 4px;" value="76"></td>
-                    <td><input type="number" class="form-input" style="width: 70px; padding: 4px;" value="19"></td>
-                    <td><strong>95 / 100</strong></td>
-                  </tr>
-                  <tr>
-                    <td>Fathima Nuha</td>
-                    <td><input type="number" class="form-input" style="width: 70px; padding: 4px;" value="70"></td>
-                    <td><input type="number" class="form-input" style="width: 70px; padding: 4px;" value="18"></td>
-                    <td><strong>88 / 100</strong></td>
-                  </tr>
+                  ${rosterRows || `<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 30px;">No records available yet.</td></tr>`}
                 </tbody>
               </table>
             </div>
@@ -211,7 +153,7 @@ export class ExaminationModule {
                 <div><strong>Student Name:</strong> ${student}</div>
                 <div><strong>Admission No:</strong> ${adm}</div>
                 <div><strong>Class & Section:</strong> ${grade}</div>
-                <div><strong>Attendance Ratio:</strong> 96.4%</div>
+                <div><strong>Attendance Ratio:</strong> —</div>
               </div>
 
               <table class="tms-table" style="margin-bottom: 16px; font-size: 0.82rem;">
@@ -226,32 +168,14 @@ export class ExaminationModule {
                 </thead>
                 <tbody>
                   <tr>
-                    <td>Mathematics</td>
-                    <td>100</td>
-                    <td>95</td>
-                    <td><strong>A+</strong></td>
-                    <td>Exemplary analytical aptitude</td>
-                  </tr>
-                  <tr>
-                    <td>Physics & Lab Practical</td>
-                    <td>100</td>
-                    <td>92</td>
-                    <td><strong>A+</strong></td>
-                    <td>Excellent practical methodology</td>
-                  </tr>
-                  <tr>
-                    <td>English Communicative</td>
-                    <td>100</td>
-                    <td>88</td>
-                    <td><strong>A</strong></td>
-                    <td>Very good articulate expression</td>
+                    <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 30px;">No records available yet.</td>
                   </tr>
                   <tr style="font-weight: 700; background: #f1f5f9;">
                     <td>Overall Aggregate</td>
-                    <td>300</td>
-                    <td>275 (${perc})</td>
+                    <td>—</td>
+                    <td>— (${perc})</td>
                     <td><strong>${res}</strong></td>
-                    <td>Promoted with Distinction</td>
+                    <td>—</td>
                   </tr>
                 </tbody>
               </table>

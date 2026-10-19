@@ -39,17 +39,29 @@
     import { AdminModule } from './admin-module.js';
     import { authService } from './auth-service.js';
     import { UIComponents } from './ui-components.js';
+    import { TMS_CONFIG } from './config.js';
+    import { brandingService } from './branding-service.js';
+    import { checkMigration } from './migration-check.js';
 
-    if (!authService.isAuthenticated()) {
-      window.location.href = 'login.html';
-    } else {
+    (async () => {
+      brandingService.refresh();
+      checkMigration();
+      await authService.init();
+      const user = authService.getCurrentUser();
+      const allowed = user && [TMS_CONFIG.roles.ADMIN, TMS_CONFIG.roles.PRINCIPAL].includes(user.role);
+
+      if (!allowed) {
+        window.location.href = user ? 'index.html#/dashboard' : 'login.html';
+        return;
+      }
+
       UIComponents.initTheme();
       const themeBtn = document.getElementById('theme-toggle-btn');
       if (themeBtn) themeBtn.addEventListener('click', () => UIComponents.toggleTheme());
 
       const viewport = document.getElementById('admin-portal-viewport');
       AdminModule.render(viewport);
-    }
+    })();
   </script>
 </body>
 </html>

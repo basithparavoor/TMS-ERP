@@ -1,386 +1,133 @@
 /**
  * THAIBA MODEL SCHOOL — School Administration & Governance Module
- * With Full Admission Form & Fee Structure Builder Engine
+ * Admission form builder, fee & payment configuration, application review
+ * workflow (approve / reject / resend), notifications and audit trail.
  */
 
 import { TMS_CONFIG } from './config.js';
 import { dbService } from './supabase-client.js';
+import { authService } from './auth-service.js';
 import { auditService } from './audit-service.js';
 import { UIComponents } from './ui-components.js';
 import { TMS_LOGO } from './logo.js';
+import { admissionService } from './admission-service.js';
+import { notificationService } from './notification-service.js';
+import { brandingService } from './branding-service.js';
+import { downloadCsv, exportPdf, kvTable } from './export-utils.js';
+
+const esc = (v) => UIComponents.escapeHtml(v);
+
+const STATUS_BADGE = {
+  'Submitted': 'badge-info',
+  'Under Verification': 'badge-warning',
+  'Approved': 'badge-success',
+  'Rejected': 'badge-danger'
+};
+
+const ROLE_LABELS = {
+  admin: 'Administrator',
+  principal: 'Principal',
+  coordinator: 'Coordinator',
+  teacher: 'Teacher',
+  finance: 'Finance Officer',
+  hr: 'HR Manager',
+  librarian: 'Librarian',
+  operations: 'Operations',
+  office_boy: 'Office Boy (Data Entry)',
+  student: 'Student',
+  parent: 'Parent / Guardian',
+  pending: 'Pending Assignment'
+};
+
+function statusBadge(status) {
+  return `<span class="badge ${STATUS_BADGE[status] || 'badge-info'}">${esc(status || '—')}</span>`;
+}
+
+function payBadge(status) {
+  const map = { Paid: 'badge-success', Pending: 'badge-warning', 'Not Required': 'badge-info' };
+  return `<span class="badge ${map[status] || 'badge-info'}">${esc(status || 'Pending')}</span>`;
+}
+
+function fmtDate(value) {
+  if (!value) return '—';
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? '—' : d.toLocaleString('en-GB');
+}
+
+function fmtMoney(value) {
+  return `₹ ${Number(value || 0).toLocaleString('en-IN')}`;
+}
 
 export class AdminModule {
+  /* ================================================================== */
+  /* Shell                                                              */
+  /* ================================================================== */
+
   static async render(container) {
-    const logs = await auditService.getLogs();
-    const admissions = await dbService.select('admissions_applications');
+    const stats = await admissionService.getStats();
 
     container.innerHTML = `
       <div style="margin-bottom: 24px;">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
           <div>
-            <h1 style="font-size: 1.8rem;">School Administration & Governance</h1>
+            <h1 style="font-size: 1.8rem;">School Administration &amp; Governance</h1>
             <p style="color: var(--text-muted); font-size: 0.9rem;">
-              Executive administration, admission form builder, fee configuration, leadership directory, and immutable audit trails.
+              Admission form builder, fee &amp; payment configuration, application review, notifications and audit trail.
             </p>
           </div>
           <div style="display: flex; gap: 10px;">
             <a href="student-admission-portal.html" target="_blank" class="btn btn-secondary"><i data-lucide="external-link"></i> Public Admission Gateway</a>
-            <button class="btn btn-primary" id="btn-academic-calendar"><i data-lucide="calendar"></i> School Calendar</button>
+            <button class="btn btn-primary" id="btn-new-notification"><i data-lucide="bell-plus"></i> New Notification</button>
           </div>
         </div>
       </div>
 
-      <!-- School Profile Overview Card with Official Logo -->
+      <div class="kpi-grid" style="margin-bottom: 22px;">
+        ${UIComponents.renderKpiCard({ title: 'Total Applications', value: stats.total, icon: 'file-text', color: 'blue' })}
+        ${UIComponents.renderKpiCard({ title: 'Awaiting Verification', value: stats.submitted, icon: 'clock', color: 'amber' })}
+        ${UIComponents.renderKpiCard({ title: 'Approved', value: stats.approved, icon: 'check-circle', color: 'emerald' })}
+        ${UIComponents.renderKpiCard({ title: 'Fee Collected', value: fmtMoney(stats.collected), icon: 'indian-rupee', color: 'rose' })}
+      </div>
+
       <div class="card" style="margin-bottom: 24px;">
         <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
-          <div style="flex-shrink: 0;">
-            ${TMS_LOGO.emblemSvg(72)}
-          </div>
+          <div style="flex-shrink: 0;">${TMS_LOGO.emblemSvg(64)}</div>
           <div style="flex: 1; min-width: 260px;">
-            <h2 style="font-size: 1.45rem; letter-spacing: 0.02em;">${TMS_CONFIG.institution.name}</h2>
-            <div style="color: #16a34a; font-weight: 700; font-size: 0.88rem; text-transform: uppercase;">
-              ${TMS_CONFIG.institution.tagline}
+            <h2 style="font-size: 1.3rem; letter-spacing: 0.02em;">${esc(TMS_CONFIG.institution.name)}</h2>
+            <div style="color: #16a34a; font-weight: 700; font-size: 0.85rem; text-transform: uppercase;">
+              ${esc(TMS_CONFIG.institution.tagline)}
             </div>
-            <div style="font-size: 0.82rem; color: var(--text-muted); margin-top: 4px;">
-              ${TMS_CONFIG.institution.address.campus}, ${TMS_CONFIG.institution.address.district}, ${TMS_CONFIG.institution.address.state} • Regd. No.: ${TMS_CONFIG.institution.regNo}
+            <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">
+              ${esc(TMS_CONFIG.institution.address.campus)}, ${esc(TMS_CONFIG.institution.address.district)}, ${esc(TMS_CONFIG.institution.address.state)} • Regd. No.: ${esc(TMS_CONFIG.institution.regNo)}
             </div>
-            <div style="display: flex; gap: 16px; margin-top: 8px; font-size: 0.82rem; color: var(--text-muted); flex-wrap: wrap;">
-              <span><i data-lucide="phone" style="width: 14px; height: 14px; vertical-align: middle;"></i> ${TMS_CONFIG.institution.contact.phone1}, ${TMS_CONFIG.institution.contact.phone2}</span>
-              <span><i data-lucide="mail" style="width: 14px; height: 14px; vertical-align: middle;"></i> ${TMS_CONFIG.institution.contact.email}</span>
-              <span><i data-lucide="globe" style="width: 14px; height: 14px; vertical-align: middle;"></i> ${TMS_CONFIG.institution.contact.website}</span>
-            </div>
-          </div>
-          <div>
-            <span class="badge badge-success" style="padding: 8px 16px; font-size: 0.84rem;">
-              Session ${TMS_CONFIG.academic.currentYear} Active
-            </span>
           </div>
         </div>
       </div>
 
-      <!-- Admin Tabs -->
+      <div id="admin-auth-warning"></div>
+
       <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; overflow-x: auto;">
-        <button class="btn btn-primary admin-tab-btn" data-tab="admissions-builder">Admission & Fee Builder</button>
-        <button class="btn btn-secondary admin-tab-btn" data-tab="applications-list">Submitted Applications (${admissions.length})</button>
-        <button class="btn btn-secondary admin-tab-btn" data-tab="leadership">Leadership Directory</button>
-        <button class="btn btn-secondary admin-tab-btn" data-tab="credentials">Security & Access</button>
-        <button class="btn btn-secondary admin-tab-btn" data-tab="audit">Audit Trail (${logs.length})</button>
+        <button class="btn btn-primary admin-tab-btn" data-tab="applications">Applications (${stats.total})</button>
+        <button class="btn btn-secondary admin-tab-btn" data-tab="form-builder">Admission Form Builder</button>
+        <button class="btn btn-secondary admin-tab-btn" data-tab="fees">Admission Fees</button>
+        <button class="btn btn-secondary admin-tab-btn" data-tab="payment-settings">Payment &amp; Session</button>
+        <button class="btn btn-secondary admin-tab-btn" data-tab="notifications">Notifications</button>
+        <button class="btn btn-secondary admin-tab-btn" data-tab="users">Users &amp; Roles</button>
+        <button class="btn btn-secondary admin-tab-btn" data-tab="branding">Branding &amp; Logo</button>
+        <button class="btn btn-secondary admin-tab-btn" data-tab="audit">Audit Trail</button>
       </div>
 
       <div id="admin-tab-content"></div>
     `;
 
     this.bindEvents(container);
-    this.renderTab('admissions-builder');
-  }
-
-  static async renderTab(tabKey) {
-    const tabContent = document.getElementById('admin-tab-content');
-    if (!tabContent) return;
-
-    if (tabKey === 'admissions-builder') {
-      const conf = JSON.parse(localStorage.getItem('tms_admission_config')) || TMS_CONFIG.admissionFormDefaults;
-
-      tabContent.innerHTML = `
-        <div class="card" style="margin-bottom: 24px;">
-          <div class="card-header">
-            <div>
-              <h3 class="card-title">Admission Form & Fee Structure Builder</h3>
-              <p class="card-desc">Configure academic session, admission fee schedule, guidelines, and form fields for THAIBA MODEL SCHOOL.</p>
-            </div>
-            <button class="btn btn-primary" id="btn-save-admission-builder"><i data-lucide="save"></i> Save Configuration</button>
-          </div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px;">
-            <!-- Session & Test Centre Settings -->
-            <div>
-              <h4 style="font-size: 1rem; color: #16a34a; margin-bottom: 14px;">General Parameters</h4>
-              <div class="form-group">
-                <label class="form-label">Academic Session Title</label>
-                <input class="form-input" id="cfg-session" value="${conf.session || '2025 - 2026'}">
-              </div>
-              <div class="form-group">
-                <label class="form-label">Application Form Fee (₹)</label>
-                <input type="number" class="form-input" id="cfg-form-fee" value="${conf.formFee || 300}">
-              </div>
-              <div class="form-group">
-                <label class="form-label">Admission Test & Screening Centre</label>
-                <input class="form-input" id="cfg-test-centre" value="${conf.testCentre || 'Campus Main Auditorium, Baghait, Tapan'}">
-              </div>
-            </div>
-
-            <!-- Form Instructions -->
-            <div>
-              <h4 style="font-size: 1rem; color: #16a34a; margin-bottom: 14px;">Candidate Instructions</h4>
-              <div class="form-group">
-                <label class="form-label">Instructions (One per line)</label>
-                <textarea class="form-textarea" id="cfg-instructions" rows="7">${(conf.instructions || []).join('\n')}</textarea>
-              </div>
-            </div>
-          </div>
-
-          <!-- Fee Structure Builder -->
-          <div style="border-top: 1px solid var(--border-color); padding-top: 20px; margin-bottom: 24px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
-              <div>
-                <h4 style="font-size: 1rem; color: #16a34a;">Fee Structure Components</h4>
-                <p style="font-size: 0.8rem; color: var(--text-muted);">Set fees, types (One-Time, Quarterly, Annual), and amounts displayed to parents and on admission documents.</p>
-              </div>
-              <button class="btn btn-secondary btn-sm" id="btn-add-fee-row"><i data-lucide="plus"></i> Add Fee Head</button>
-            </div>
-
-            <div class="table-responsive">
-              <table class="tms-table" id="builder-fees-table">
-                <thead>
-                  <tr>
-                    <th>Fee Name / Head</th>
-                    <th>Payment Schedule</th>
-                    <th>Amount (₹)</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody id="builder-fees-tbody">
-                  ${(conf.feeStructure || []).map((f, i) => `
-                    <tr data-index="${i}">
-                      <td><input class="form-input fee-name" value="${f.name}"></td>
-                      <td>
-                        <select class="form-select fee-type">
-                          <option ${f.type === 'One-Time' ? 'selected' : ''}>One-Time</option>
-                          <option ${f.type === 'Quarterly' ? 'selected' : ''}>Quarterly</option>
-                          <option ${f.type === 'Annual' ? 'selected' : ''}>Annual</option>
-                          <option ${f.type === 'Monthly' ? 'selected' : ''}>Monthly</option>
-                        </select>
-                      </td>
-                      <td><input type="number" class="form-input fee-amount" value="${f.amount}" style="width: 120px;"></td>
-                      <td>
-                        <button class="btn btn-secondary btn-sm btn-del-fee" style="color: #ef4444;"><i data-lucide="trash-2"></i></button>
-                      </td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-        </div>
-      `;
-
-      // Bind Builder Events
-      document.getElementById('btn-add-fee-row').addEventListener('click', () => {
-        const tbody = document.getElementById('builder-fees-tbody');
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td><input class="form-input fee-name" placeholder="New Fee Head Name" value="Special Activity Fee"></td>
-          <td>
-            <select class="form-select fee-type">
-              <option>Annual</option>
-              <option>One-Time</option>
-              <option>Quarterly</option>
-              <option>Monthly</option>
-            </select>
-          </td>
-          <td><input type="number" class="form-input fee-amount" value="1000" style="width: 120px;"></td>
-          <td>
-            <button class="btn btn-secondary btn-sm btn-del-fee" style="color: #ef4444;"><i data-lucide="trash-2"></i></button>
-          </td>
-        `;
-        tbody.appendChild(tr);
-        UIComponents.refreshIcons();
-        tr.querySelector('.btn-del-fee').addEventListener('click', () => tr.remove());
-      });
-
-      tabContent.querySelectorAll('.btn-del-fee').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          e.currentTarget.closest('tr').remove();
-        });
-      });
-
-      document.getElementById('btn-save-admission-builder').addEventListener('click', async () => {
-        const session = document.getElementById('cfg-session').value;
-        const formFee = parseFloat(document.getElementById('cfg-form-fee').value) || 300;
-        const testCentre = document.getElementById('cfg-test-centre').value;
-        const instructions = document.getElementById('cfg-instructions').value.split('\n').filter(Boolean);
-
-        const feeRows = document.querySelectorAll('#builder-fees-tbody tr');
-        const feeStructure = [];
-        feeRows.forEach((r, idx) => {
-          const name = r.querySelector('.fee-name').value;
-          const type = r.querySelector('.fee-type').value;
-          const amount = parseFloat(r.querySelector('.fee-amount').value) || 0;
-          if (name) {
-            feeStructure.push({ id: `fee_${idx}`, name, type, amount, mandatory: true });
-          }
-        });
-
-        const newConfig = {
-          session,
-          formFee,
-          testCentre,
-          instructions,
-          feeStructure
-        };
-
-        localStorage.setItem('tms_admission_config', JSON.stringify(newConfig));
-        await auditService.log('ADMISSION_CONFIG_UPDATED', 'GOVERNANCE', { session, feeCount: feeStructure.length });
-        UIComponents.showToast('Admission form structure & fee schedule updated successfully!', 'success');
-      });
-
-    } else if (tabKey === 'applications-list') {
-      const admissions = await dbService.select('admissions_applications');
-
-      tabContent.innerHTML = `
-        <div class="card">
-          <div class="card-header">
-            <div>
-              <h3 class="card-title">Submitted Online & Offline Applications</h3>
-              <p class="card-desc">Official candidate enrollment applications registered in THAIBA MODEL SCHOOL database.</p>
-            </div>
-            <a href="student-admission-portal.html" target="_blank" class="btn btn-primary"><i data-lucide="plus"></i> New Application</a>
-          </div>
-
-          <div class="table-responsive">
-            <table class="tms-table font-mono" style="font-size: 0.85rem;">
-              <thead>
-                <tr>
-                  <th>Form No</th>
-                  <th>Student Candidate</th>
-                  <th>Applying Class</th>
-                  <th>Guardian</th>
-                  <th>Contact Phone</th>
-                  <th>Status</th>
-                  <th>Print A4 PDF</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${admissions.length === 0 ? `
-                  <tr><td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">No admission applications recorded yet.</td></tr>
-                ` : admissions.map(a => `
-                  <tr>
-                    <td><strong>${a.app_id || a.id}</strong></td>
-                    <td style="font-family: var(--font-sans); font-weight: 700;">${a.student_name}</td>
-                    <td><span class="badge badge-info">${a.grade}</span></td>
-                    <td style="font-family: var(--font-sans);">${a.guardian_name}</td>
-                    <td>${a.phone}</td>
-                    <td><span class="badge badge-success">${a.status || 'Active'}</span></td>
-                    <td>
-                      <a href="student-admission-portal.html" target="_blank" class="btn btn-secondary btn-sm" title="Print A4 Admission Form & Admit Card">
-                        <i data-lucide="printer"></i> Print A4 Form
-                      </a>
-                    </td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      `;
-    } else if (tabKey === 'leadership') {
-      tabContent.innerHTML = `
-        <div class="card">
-          <div class="card-header">
-            <h3 class="card-title">School Leadership & Governing Directorate</h3>
-            <span class="badge badge-success">Single-Institution Governance</span>
-          </div>
-          <div class="table-responsive">
-            <table class="tms-table">
-              <thead>
-                <tr>
-                  <th>Designation / Office</th>
-                  <th>Official Identity</th>
-                  <th>Institutional Email</th>
-                  <th>Authority Scope</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr style="background: rgba(22, 163, 74, 0.04);">
-                  <td><strong>Super Administrator & Executive Director</strong></td>
-                  <td><strong>C. M. Basith</strong></td>
-                  <td><span class="font-mono" style="color: #16a34a; font-weight: 700;">cmbasith786@gmail.com</span></td>
-                  <td><span class="badge badge-success">Highest Level Super Admin</span></td>
-                  <td><span class="badge badge-success">Active</span></td>
-                </tr>
-                <tr>
-                  <td><strong>Academic Principal</strong></td>
-                  <td>Dr. Zubair Al-Qasimi</td>
-                  <td><span class="font-mono">principal@thaibaschool.edu.in</span></td>
-                  <td><span class="badge badge-info">Academics & Faculty</span></td>
-                  <td><span class="badge badge-success">Active</span></td>
-                </tr>
-                <tr>
-                  <td><strong>Chief Bursar & Finance Manager</strong></td>
-                  <td>Mr. Sameer Babu</td>
-                  <td><span class="font-mono">accounts@thaibaschool.edu.in</span></td>
-                  <td><span class="badge badge-warning">Finance & Collections</span></td>
-                  <td><span class="badge badge-success">Active</span></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      `;
-    } else if (tabKey === 'credentials') {
-      tabContent.innerHTML = `
-        <div class="card">
-          <div class="card-header">
-            <h3 class="card-title">Security & Credential Management</h3>
-            <span class="badge badge-info">Supabase Cloud Authentication Active</span>
-          </div>
-          <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 16px;">
-            Higher-Level Super Administrator: <strong>cmbasith786@gmail.com</strong> possesses full system governance. Plaintext passwords are never retrievable.
-          </p>
-          <div style="background: rgba(22, 163, 74, 0.05); padding: 18px; border-radius: var(--radius-md); border: 1px solid #16a34a;">
-            <h4 style="color: #15803d; margin-bottom: 6px;">Super Administrator Account</h4>
-            <div style="font-size: 0.88rem;">Email: <strong>cmbasith786@gmail.com</strong> • Full Authority Scope: <strong>School-Wide</strong></div>
-            <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 4px;">Role-Based Access Control verified against Supabase Auth engine.</div>
-          </div>
-        </div>
-      `;
-    } else if (tabKey === 'audit') {
-      const logs = await auditService.getLogs();
-      tabContent.innerHTML = `
-        <div class="card">
-          <div class="card-header">
-            <h3 class="card-title">Immutable Audit Trail</h3>
-            <span class="badge badge-info">${logs.length} Logged Events</span>
-          </div>
-          <div class="table-responsive">
-            <table class="tms-table font-mono" style="font-size: 0.82rem;">
-              <thead>
-                <tr>
-                  <th>Audit ID</th>
-                  <th>Timestamp</th>
-                  <th>Operator</th>
-                  <th>Action</th>
-                  <th>Entity Reference</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${logs.length === 0 ? `
-                  <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 30px;">No audit events recorded yet.</td></tr>
-                ` : logs.map(l => `
-                  <tr>
-                    <td><strong>${l.id}</strong></td>
-                    <td>${new Date(l.timestamp).toLocaleString()}</td>
-                    <td>${l.userName} (${l.userRole})</td>
-                    <td><span class="badge badge-warning">${l.action}</span></td>
-                    <td>${l.entityRef || '—'}</td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      `;
-    }
-
-    UIComponents.refreshIcons();
+    await this.renderTab('applications');
   }
 
   static bindEvents(container) {
-    container.querySelectorAll('.admin-tab-btn').forEach(btn => {
+    container.querySelectorAll('.admin-tab-btn').forEach((btn) => {
       btn.addEventListener('click', (e) => {
-        container.querySelectorAll('.admin-tab-btn').forEach(b => {
+        container.querySelectorAll('.admin-tab-btn').forEach((b) => {
           b.classList.remove('btn-primary');
           b.classList.add('btn-secondary');
         });
@@ -390,24 +137,1619 @@ export class AdminModule {
       });
     });
 
-    const calBtn = container.querySelector('#btn-academic-calendar');
-    if (calBtn) {
-      calBtn.addEventListener('click', () => {
-        UIComponents.openModal({
-          title: 'THAIBA MODEL SCHOOL — Academic Calendar',
-          bodyHtml: `
-            <div style="font-size: 0.9rem; line-height: 1.6;">
-              <p><strong>Official Academic Session:</strong> ${TMS_CONFIG.academic.currentYear}</p>
-              <ul style="margin: 12px 0 12px 20px;">
-                <li>Admission Applications Open: November 1, 2024</li>
-                <li>Entrance Screening & Interviews: December 15 - January 10</li>
-                <li>Academic Session Commences: April 2, 2025</li>
-              </ul>
+    const bell = container.querySelector('#btn-new-notification');
+    if (bell) bell.addEventListener('click', () => this.openNotificationModal());
+  }
+
+  static async renderTab(tabKey) {
+    const tabContent = document.getElementById('admin-tab-content');
+    if (!tabContent) return;
+
+    try {
+      if (tabKey === 'applications') await this.renderApplicationsTab(tabContent);
+      else if (tabKey === 'form-builder') await this.renderFormBuilderTab(tabContent);
+      else if (tabKey === 'fees') await this.renderFeesTab(tabContent);
+      else if (tabKey === 'payment-settings') await this.renderPaymentSettingsTab(tabContent);
+      else if (tabKey === 'notifications') await this.renderNotificationsTab(tabContent);
+      else if (tabKey === 'users') await this.renderUsersTab(tabContent);
+      else if (tabKey === 'branding') await this.renderBrandingTab(tabContent);
+      else if (tabKey === 'audit') await this.renderAuditTab(tabContent);
+    } catch (e) {
+      console.error('Admin tab failed:', e);
+      tabContent.innerHTML = `<div class="card"><p style="color:#dc2626;">Failed to load this section: ${esc(e.message)}</p></div>`;
+    }
+
+    UIComponents.refreshIcons();
+  }
+
+  /* ================================================================== */
+  /* Applications                                                       */
+  /* ================================================================== */
+
+  static async renderApplicationsTab(tabContent) {
+    const apps = await admissionService.listApplications();
+    this._apps = apps;
+    this._selected = new Set();
+
+    tabContent.innerHTML = `
+      <div class="card">
+        <div class="card-header" style="flex-wrap: wrap; gap: 12px;">
+          <div>
+            <h3 class="card-title">Submitted Admission Applications</h3>
+            <p class="card-desc">Select rows for bulk approve / reject / delete, or open an application to review, print the form and record payments.</p>
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button class="btn btn-secondary btn-sm" id="btn-export-csv"><i data-lucide="file-spreadsheet"></i> Export CSV</button>
+            <button class="btn btn-secondary btn-sm" id="btn-export-pdf"><i data-lucide="file-text"></i> Export PDF</button>
+            <button class="btn btn-secondary btn-sm" id="btn-delete-pending" style="color:#ef4444;"><i data-lucide="trash-2"></i> Delete Pending</button>
+            <a href="student-admission-portal.html" target="_blank" class="btn btn-primary btn-sm"><i data-lucide="plus"></i> New Entry</a>
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; align-items:center;">
+          <input class="form-input" id="app-search" placeholder="Search name, form no, phone…" style="max-width: 280px;">
+          <select class="form-select" id="app-status-filter" style="max-width: 200px;">
+            <option value="">All Statuses</option>
+            <option value="Submitted">Submitted</option>
+            <option value="Under Verification">Under Verification</option>
+            <option value="Approved">Approved</option>
+            <option value="Rejected">Rejected</option>
+          </select>
+          <button class="btn btn-secondary" id="btn-select-visible"><i data-lucide="check-square"></i> Select All Shown</button>
+          <button class="btn btn-secondary" id="btn-clear-selection">Clear</button>
+        </div>
+
+        <div id="app-bulk-bar" style="display:none; align-items:center; gap:10px; flex-wrap:wrap; background:var(--bg-subtle); border:1px solid var(--border-color); border-radius:8px; padding:10px 12px; margin-bottom:12px;">
+          <strong id="app-bulk-count">0 selected</strong>
+          <button class="btn btn-primary btn-sm" id="bulk-approve"><i data-lucide="check-circle"></i> Approve</button>
+          <button class="btn btn-secondary btn-sm" id="bulk-reject"><i data-lucide="x-circle"></i> Reject</button>
+          <button class="btn btn-secondary btn-sm" id="bulk-export"><i data-lucide="download"></i> Export Selected</button>
+          <button class="btn btn-secondary btn-sm" id="bulk-delete" style="color:#ef4444;"><i data-lucide="trash-2"></i> Delete</button>
+        </div>
+
+        <div class="table-responsive">
+          <table class="tms-table" style="font-size: 0.85rem;">
+            <thead>
+              <tr>
+                <th style="width: 34px;"><input type="checkbox" id="app-select-all" title="Select all shown"></th>
+                <th>Photo</th>
+                <th>Form No</th>
+                <th>Candidate</th>
+                <th>Class</th>
+                <th>Guardian</th>
+                <th>Phone</th>
+                <th>Entered By</th>
+                <th>Fees</th>
+                <th>Payment</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="app-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    `;
+
+    this.renderApplicationRows(tabContent);
+
+    document.getElementById('app-search').addEventListener('input', () => this.renderApplicationRows(tabContent));
+    document.getElementById('app-status-filter').addEventListener('change', () => this.renderApplicationRows(tabContent));
+    document.getElementById('btn-export-csv').addEventListener('click', () => this.exportApplicationsCsv());
+    document.getElementById('btn-export-pdf').addEventListener('click', () => this.exportApplicationsPdf());
+    document.getElementById('btn-delete-pending').addEventListener('click', () => this.deletePendingApplications());
+    document.getElementById('btn-select-visible').addEventListener('click', () => this.toggleSelectAll(true, tabContent));
+    document.getElementById('btn-clear-selection').addEventListener('click', () => this.toggleSelectAll(false, tabContent));
+    document.getElementById('app-select-all').addEventListener('change', (e) => this.toggleSelectAll(e.target.checked, tabContent));
+    document.getElementById('bulk-approve').addEventListener('click', () => this.bulkStatus('Approved'));
+    document.getElementById('bulk-reject').addEventListener('click', () => this.bulkStatus('Rejected'));
+    document.getElementById('bulk-export').addEventListener('click', () => this.exportSelectedCsv());
+    document.getElementById('bulk-delete').addEventListener('click', () => this.bulkDelete());
+  }
+
+  static filteredApplications() {
+    const search = (document.getElementById('app-search')?.value || '').toLowerCase().trim();
+    const status = document.getElementById('app-status-filter')?.value || '';
+    return (this._apps || []).filter((a) => {
+      if (status && a.status !== status) return false;
+      if (!search) return true;
+      const haystack = [a.appId, a.studentName, a.guardianName, a.phone, a.parentUsername]
+        .filter(Boolean).join(' ').toLowerCase();
+      return haystack.includes(search);
+    });
+  }
+
+  static renderApplicationRows(tabContent) {
+    const body = document.getElementById('app-table-body');
+    if (!body) return;
+    const rows = this.filteredApplications();
+    if (!this._selected) this._selected = new Set();
+
+    if (!rows.length) {
+      body.innerHTML = '<tr><td colspan="12" style="text-align: center; color: var(--text-muted); padding: 30px;">No applications match the current filters.</td></tr>';
+      this.updateBulkBar();
+      return;
+    }
+
+    body.innerHTML = rows.map((a) => {
+      const photoName = (a.payload || {}).photo;
+      const photoCell = photoName
+        ? `<img class="app-photo-thumb" data-path="${esc(photoName)}" alt="Applicant photo"
+             style="width:30px;height:36px;object-fit:cover;border:1px solid var(--border-color);border-radius:4px;background:#f1f5f9;cursor:pointer;"
+             title="Click to view the photographed applicant">`
+        : '<span style="color:var(--text-subtle);">—</span>';
+      return `
+      <tr>
+        <td><input type="checkbox" class="app-row-check" data-id="${esc(a.id)}" ${this._selected.has(a.id) ? 'checked' : ''}></td>
+        <td>${photoCell}</td>
+        <td><strong class="font-mono">${esc(a.appId || a.id)}</strong></td>
+        <td style="font-weight: 700;">${esc(a.studentName || '—')}</td>
+        <td><span class="badge badge-info">${esc(a.grade || '—')}</span></td>
+        <td>${esc(a.guardianName || '—')}</td>
+        <td class="font-mono">${esc(a.phone || '—')}</td>
+        <td>${esc(a.submittedByName || 'Self / Public')}</td>
+        <td>${fmtMoney(a.feeTotal)}</td>
+        <td>${payBadge(a.paymentStatus)}</td>
+        <td>${statusBadge(a.status)}</td>
+        <td style="white-space:nowrap;">
+          <button class="btn btn-secondary btn-sm btn-view-app" data-id="${esc(a.id)}" title="Open"><i data-lucide="eye"></i></button>
+          <button class="btn btn-secondary btn-sm btn-form-app" data-id="${esc(a.id)}" title="View as Form"><i data-lucide="file-text"></i></button>
+          <button class="btn btn-secondary btn-sm btn-print-app" data-id="${esc(a.id)}" title="Print PDF"><i data-lucide="printer"></i></button>
+        </td>
+      </tr>`;
+    }).join('');
+
+    body.querySelectorAll('.app-row-check').forEach((cb) =>
+      cb.addEventListener('change', () => {
+        if (cb.checked) this._selected.add(cb.dataset.id);
+        else this._selected.delete(cb.dataset.id);
+        this.updateBulkBar();
+      }));
+    body.querySelectorAll('.btn-view-app').forEach((b) =>
+      b.addEventListener('click', () => this.openApplicationModal(b.dataset.id)));
+    body.querySelectorAll('.btn-form-app').forEach((b) =>
+      b.addEventListener('click', () => this.showApplicationForm(b.dataset.id)));
+    body.querySelectorAll('.btn-print-app').forEach((b) =>
+      b.addEventListener('click', () => this.showApplicationForm(b.dataset.id, true)));
+
+    // Hydrate applicant photo thumbnails with signed URLs (private bucket).
+    body.querySelectorAll('.app-photo-thumb').forEach((img) =>
+      admissionService.getSignedUrl('admission-docs', img.dataset.path, 3600).then((url) => {
+        if (url) img.src = url;
+        else img.style.display = 'none';
+      }));
+    body.querySelectorAll('.app-photo-thumb').forEach((img) =>
+      img.addEventListener('click', () => {
+        const app = rows.find((a) => (a.payload || {}).photo === img.dataset.path);
+        if (app) this.openApplicationModal(app.id);
+      }));
+
+    this.updateBulkBar();
+    UIComponents.refreshIcons();
+  }
+
+  static updateBulkBar() {
+    const bar = document.getElementById('app-bulk-bar');
+    if (!bar) return;
+    const count = (this._selected || new Set()).size;
+    bar.style.display = count ? 'flex' : 'none';
+    const countEl = document.getElementById('app-bulk-count');
+    if (countEl) countEl.innerText = `${count} selected`;
+    const selectAll = document.getElementById('app-select-all');
+    if (selectAll) {
+      const visible = this.filteredApplications();
+      selectAll.checked = visible.length > 0 && visible.every((a) => this._selected.has(a.id));
+    }
+  }
+
+  static toggleSelectAll(checked, tabContent) {
+    if (!this._selected) this._selected = new Set();
+    const visible = this.filteredApplications();
+    if (checked) visible.forEach((a) => this._selected.add(a.id));
+    else this._selected.clear();
+    this.renderApplicationRows(tabContent);
+  }
+
+  static async bulkStatus(status) {
+    const ids = Array.from(this._selected || []);
+    if (!ids.length) return;
+    if (status === 'Rejected' && !confirm(`Reject ${ids.length} application(s) without individual remarks?`)) return;
+    for (const id of ids) {
+      // eslint-disable-next-line no-await-in-loop
+      await admissionService.verifyApplication(id, { status, remarks: '' });
+      if (status === 'Approved') {
+        const app = (this._apps || []).find((a) => a.id === id);
+        // eslint-disable-next-line no-await-in-loop
+        if (app) await admissionService.resendCredentials(app);
+      }
+    }
+    await auditService.log('ADMISSION_BULK_STATUS', 'ADMISSIONS', { status, count: ids.length });
+    UIComponents.showToast(`${ids.length} application(s) marked ${status}.`, 'success');
+    this._selected.clear();
+    await this.refreshApplications(document.getElementById('admin-tab-content'));
+  }
+
+  static async bulkDelete() {
+    const ids = Array.from(this._selected || []);
+    if (!ids.length) return;
+    if (!confirm(`Permanently delete ${ids.length} application(s) and their parent credentials? This cannot be undone.`)) return;
+    await this.deleteApplications(ids);
+  }
+
+  static async deletePendingApplications() {
+    const pending = (this._apps || []).filter((a) => a.status === 'Submitted' || a.status === 'Under Verification');
+    if (!pending.length) { UIComponents.showToast('No pending applications to delete.', 'info'); return; }
+    if (!confirm(`Delete ALL ${pending.length} pending application(s) (Submitted / Under Verification)? This cannot be undone.`)) return;
+    await this.deleteApplications(pending.map((a) => a.id));
+  }
+
+  static async deleteApplications(ids) {
+    for (const id of ids) {
+      // eslint-disable-next-line no-await-in-loop
+      const cred = await admissionService.getCredentials(id);
+      // eslint-disable-next-line no-await-in-loop
+      if (cred) await dbService.delete('parent_credentials', cred.id);
+      // eslint-disable-next-line no-await-in-loop
+      await dbService.delete('admissions_applications', id);
+    }
+    await auditService.log('ADMISSION_DELETED', 'ADMISSIONS', { count: ids.length });
+    UIComponents.showToast(`${ids.length} application(s) deleted.`, 'success');
+    this._selected = new Set();
+    await this.refreshApplications(document.getElementById('admin-tab-content'));
+  }
+
+  static exportSelectedCsv() {
+    const rows = (this._apps || []).filter((a) => (this._selected || new Set()).has(a.id));
+    if (!rows.length) { UIComponents.showToast('Select at least one application first.', 'warning'); return; }
+    const header = ['Form No', 'Candidate', 'Class', 'Guardian', 'Phone', 'Entered By', 'Fees', 'Payment', 'Status', 'Remarks'];
+    const data = rows.map((a) => [
+      a.appId || a.id, a.studentName, a.grade, a.guardianName, a.phone,
+      a.submittedByName || 'Self / Public', a.feeTotal, a.paymentStatus, a.status, a.remarks || ''
+    ]);
+    downloadCsv(`TMS-Admissions-Selected-${new Date().toISOString().slice(0, 10)}.csv`, [header, ...data]);
+    UIComponents.showToast('Selected rows exported.', 'success');
+  }
+
+  static async openApplicationModal(id) {
+    const app = (this._apps || []).find((a) => a.id === id);
+    if (!app) return;
+
+    const fields = await admissionService.listFields();
+    const credential = await admissionService.getCredentials(id);
+
+    const detailsRows = fields
+      .map((f) => {
+        const isFile = (f.fieldType || 'text') === 'file';
+        const raw = (app.payload || {})[f.fieldKey];
+        let cell;
+        if (isFile) {
+          cell = raw
+            ? `<a href="#" class="doc-link" data-path="${esc(raw)}">${esc(String(raw).split('/').pop())}</a>`
+            : '<span style="color:var(--text-muted);">Not attached</span>';
+        } else {
+          cell = esc(raw || '—');
+        }
+        return `<tr><th style="text-align:left;">${esc(f.label)}</th><td>${cell}</td></tr>`;
+      })
+      .join('');
+
+    const photoPath = (app.payload || {}).photo;
+    const photoBlock = photoPath
+      ? `<div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
+           <img id="app-photo-img" alt="Applicant photo" style="width:84px;height:104px;object-fit:cover;border:1px solid var(--border-color);border-radius:6px;background:#f1f5f9;">
+           <div style="font-size:0.78rem;color:var(--text-muted);">Applicant photograph on file.</div>
+         </div>`
+      : '';
+
+    const payments = Array.isArray(app.payments) ? app.payments : [];
+    const paymentRows = payments.length
+      ? payments.map((p) => `<tr>
+          <td>${fmtDate(p.date)}</td>
+          <td>${esc(p.mode)}</td>
+          <td>${esc(p.reference || '—')}</td>
+          <td style="text-align:right;">${fmtMoney(p.amount)}</td>
+        </tr>`).join('')
+      : '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);">No payments recorded.</td></tr>';
+
+    const bodyHtml = `
+      <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px; align-items:center;">
+        ${statusBadge(app.status)} ${payBadge(app.paymentStatus)}
+        <span class="badge badge-info">Fees: ${fmtMoney(app.feeTotal)}</span>
+        <span class="badge badge-info">Entered by: ${esc(app.submittedByName || 'Self / Public')}</span>
+      </div>
+
+      ${photoBlock}
+
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div>
+          <h4 style="font-size:0.95rem; margin-bottom:8px; color:#15803d;">Application Details</h4>
+          <table class="tms-table" style="font-size:0.82rem;"><tbody>
+            <tr><th style="text-align:left;">Form No</th><td class="font-mono">${esc(app.appId || app.id)}</td></tr>
+            <tr><th style="text-align:left;">Submitted</th><td>${fmtDate(app.createdAt)}</td></tr>
+            ${detailsRows}
+          </tbody></table>
+        </div>
+        <div>
+          <h4 style="font-size:0.95rem; margin-bottom:8px; color:#15803d;">Fees</h4>
+          <table class="tms-table" style="font-size:0.82rem;"><tbody>
+            ${(app.feeItems || []).map((f) => `<tr><th style="text-align:left;">${esc(f.name)}</th><td style="text-align:right;">${fmtMoney(f.amount)}</td></tr>`).join('') || '<tr><td style="color:var(--text-muted);">No fees.</td></tr>'}
+            <tr><th style="text-align:left;">Total</th><td style="text-align:right; font-weight:800;">${fmtMoney(app.feeTotal)}</td></tr>
+          </tbody></table>
+
+          <h4 style="font-size:0.95rem; margin:16px 0 8px; color:#15803d;">Payments Ledger</h4>
+          <table class="tms-table" style="font-size:0.82rem;">
+            <thead><tr><th>Date</th><th>Mode</th><th>Reference</th><th style="text-align:right;">Amount</th></tr></thead>
+            <tbody>${paymentRows}</tbody>
+          </table>
+
+          <div style="background: var(--bg-subtle); padding:12px; border-radius:8px; margin-top:12px;">
+            <h4 style="font-size:0.9rem; margin-bottom:8px;">Record a Payment</h4>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end;">
+              <input type="number" class="form-input" id="pay-amount" placeholder="Amount" style="width:110px;">
+              <select class="form-select" id="pay-mode" style="width:120px;">
+                <option>Cash</option><option>UPI</option><option>Cheque</option><option>Card</option><option>Bank Transfer</option>
+              </select>
+              <input class="form-input" id="pay-ref" placeholder="Reference / Note" style="flex:1; min-width:140px;">
+              <button class="btn btn-primary btn-sm" id="btn-record-payment"><i data-lucide="plus"></i> Add</button>
             </div>
-          `
-        });
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:18px; display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+        <div>
+          <h4 style="font-size:0.95rem; margin-bottom:8px; color:#b45309;">Parent Portal Credentials</h4>
+          ${credential ? `
+            <table class="tms-table" style="font-size:0.82rem;"><tbody>
+              <tr><th style="text-align:left;">Username</th><td><input class="form-input" id="cred-username" value="${esc(credential.username)}"></td></tr>
+              <tr><th style="text-align:left;">Password</th><td><input class="form-input font-mono" id="cred-password" value="${esc(credential.password)}"></td></tr>
+            </tbody></table>
+            <div style="display:flex; gap:8px; margin-top:8px;">
+              <button class="btn btn-secondary btn-sm" id="btn-save-credential"><i data-lucide="save"></i> Save</button>
+              <button class="btn btn-secondary btn-sm" id="btn-resend-credential"><i data-lucide="send"></i> Resend</button>
+              <button class="btn btn-secondary btn-sm" id="btn-delete-credential" style="color:#ef4444;"><i data-lucide="trash-2"></i> Delete</button>
+            </div>`
+            : '<p style="font-size:0.82rem;color:var(--text-muted);">No credentials generated for this application.</p>'}
+        </div>
+        <div>
+          <h4 style="font-size:0.95rem; margin-bottom:8px; color:#15803d;">Verification Remarks</h4>
+          <textarea class="form-textarea" id="app-remarks" rows="3" placeholder="Remarks shown to the applicant…">${esc(app.remarks || '')}</textarea>
+        </div>
+      </div>
+    `;
+
+    const footerHtml = `
+      <button class="btn btn-secondary" id="btn-app-close">Close</button>
+      <button class="btn btn-secondary" id="btn-app-form"><i data-lucide="file-text"></i> View as Form</button>
+      <button class="btn btn-secondary" id="btn-app-print"><i data-lucide="printer"></i> Print Form</button>
+      <button class="btn btn-secondary" id="btn-app-verifying"><i data-lucide="clock"></i> Mark Under Verification</button>
+      <button class="btn btn-secondary" id="btn-app-reject" style="color:#ef4444;"><i data-lucide="x-circle"></i> Reject</button>
+      <button class="btn btn-primary" id="btn-app-approve"><i data-lucide="check-circle"></i> Approve</button>
+    `;
+
+    UIComponents.openModal({ title: `Application ${app.appId || app.id}`, bodyHtml, footerHtml });
+
+    document.getElementById('btn-app-close').addEventListener('click', () => UIComponents.closeModal());
+    document.getElementById('btn-app-approve').addEventListener('click', () => this.setApplicationStatus(app, 'Approved'));
+    document.getElementById('btn-app-reject').addEventListener('click', () => this.setApplicationStatus(app, 'Rejected'));
+    document.getElementById('btn-app-verifying').addEventListener('click', () => this.setApplicationStatus(app, 'Under Verification'));
+
+    // Applicant photo (signed URL from the private bucket).
+    if (photoPath) {
+      admissionService.getSignedUrl('admission-docs', photoPath).then((url) => {
+        const img = document.getElementById('app-photo-img');
+        if (img && url) img.src = url;
       });
     }
+
+    // Document links open via short-lived signed URLs.
+    document.querySelectorAll('.doc-link').forEach((link) =>
+      link.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const url = await admissionService.getSignedUrl('admission-docs', link.dataset.path);
+        if (url) window.open(url, '_blank');
+        else UIComponents.showToast('Could not open the document (storage not configured).', 'warning');
+      }));
+
+    const formBtn = document.getElementById('btn-app-form');
+    if (formBtn) {
+      formBtn.addEventListener('click', async () => {
+        const formHtml = await this.buildApplicationFormHtml(app, fields, credential);
+        document.getElementById('global-modal-body').innerHTML = `<div style="max-height:62vh; overflow:auto;">${formHtml}</div>`;
+        UIComponents.refreshIcons();
+      });
+    }
+    const printBtn = document.getElementById('btn-app-print');
+    if (printBtn) {
+      printBtn.addEventListener('click', async () => {
+        const formHtml = await this.buildApplicationFormHtml(app, fields, credential);
+        exportPdf(`Admission-Form-${app.appId || app.id}`, formHtml);
+      });
+    }
+
+    const recBtn = document.getElementById('btn-record-payment');
+    if (recBtn) {
+      recBtn.addEventListener('click', async () => {
+        const amount = parseFloat(document.getElementById('pay-amount').value);
+        if (!amount || amount <= 0) { UIComponents.showToast('Enter a valid payment amount.', 'warning'); return; }
+        const mode = document.getElementById('pay-mode').value;
+        const reference = document.getElementById('pay-ref').value.trim();
+        await admissionService.recordPayment(app, { amount, mode, reference });
+        await auditService.log('ADMISSION_PAYMENT_RECORDED', 'ADMISSIONS', { formNo: app.appId, amount, mode }, app.id);
+        UIComponents.showToast('Payment recorded.', 'success');
+        UIComponents.closeModal();
+        const tabContent = document.getElementById('admin-tab-content');
+        await this.refreshApplications(tabContent);
+        this.openApplicationModal(app.id);
+      });
+    }
+
+    const saveCred = document.getElementById('btn-save-credential');
+    if (saveCred) {
+      saveCred.addEventListener('click', async () => {
+        const username = document.getElementById('cred-username').value.trim();
+        const password = document.getElementById('cred-password').value;
+        await admissionService.updateCredentials(credential, { username, password });
+        UIComponents.showToast('Credentials updated.', 'success');
+      });
+    }
+
+    const resendCred = document.getElementById('btn-resend-credential');
+    if (resendCred) {
+      resendCred.addEventListener('click', async () => {
+        const row = await admissionService.resendCredentials(app);
+        UIComponents.showToast(row ? 'Credentials sent to the parent portal.' : 'No credentials to resend.', row ? 'success' : 'warning');
+      });
+    }
+
+    const delCred = document.getElementById('btn-delete-credential');
+    if (delCred) {
+      delCred.addEventListener('click', async () => {
+        if (!confirm('Delete the parent portal credentials for this application?')) return;
+        await dbService.delete('parent_credentials', credential.id);
+        UIComponents.showToast('Credentials deleted.', 'success');
+        UIComponents.closeModal();
+        const tabContent = document.getElementById('admin-tab-content');
+        await this.refreshApplications(tabContent);
+        this.openApplicationModal(app.id);
+      });
+    }
+
+    UIComponents.refreshIcons();
+  }
+
+  static async refreshApplications(tabContent) {
+    this._apps = await admissionService.listApplications();
+    if (tabContent) this.renderApplicationRows(tabContent);
+  }
+
+  static async setApplicationStatus(app, status) {
+    const remarks = (document.getElementById('app-remarks')?.value || '').trim();
+    if (status === 'Rejected' && !remarks) {
+      UIComponents.showToast('Please add remarks explaining the rejection.', 'warning');
+      return;
+    }
+    await admissionService.verifyApplication(app.id, { status, remarks });
+    await auditService.log('ADMISSION_STATUS_UPDATED', 'ADMISSIONS', { formNo: app.appId, status }, app.id);
+    if (status === 'Approved') {
+      await admissionService.resendCredentials(app);
+    }
+    UIComponents.showToast(`Application marked as ${status}.`, 'success');
+    UIComponents.closeModal();
+    const tabContent = document.getElementById('admin-tab-content');
+    await this.refreshApplications(tabContent);
+  }
+
+  static applicationPairs(app, fields) {
+    const pairs = [
+      ['Form No', esc(app.appId || app.id)],
+      ['Status', esc(app.status)],
+      ['Submitted On', fmtDate(app.createdAt)],
+      ['Entered By', esc(app.submittedByName || 'Self / Public')],
+      ['Fees Total', fmtMoney(app.feeTotal)],
+      ['Payment Status', esc(app.paymentStatus || '—')]
+    ];
+    fields.forEach((f) => pairs.push([esc(f.label), esc((app.payload || {})[f.fieldKey] || '—')]));
+    if (app.parentUsername) pairs.push(['Portal Username', esc(app.parentUsername)]);
+    if (app.remarks) pairs.push(['Remarks', esc(app.remarks)]);
+    return pairs;
+  }
+
+  static async printApplication(id) {
+    const app = (this._apps || []).find((a) => a.id === id);
+    if (!app) return;
+    const fields = await admissionService.listFields();
+    const body = `
+      <div class="doc-title">${esc(TMS_CONFIG.institution.name)}</div>
+      <div class="doc-sub">Admission Application — ${esc(app.appId || app.id)}</div>
+      ${kvTable(this.applicationPairs(app, fields))}`;
+    exportPdf(`Admission-${app.appId || app.id}`, body);
+  }
+
+  /** Build the application laid out exactly like the printed admission form. */
+  static async buildApplicationFormHtml(app, fields, credential) {
+    const list = fields || (await admissionService.listFields());
+    const cred = credential === undefined ? await admissionService.getCredentials(app.id) : credential;
+
+    const photoKey = 'photo';
+
+    // Real photograph (signed URL from the private admission bucket).
+    const photoPath = (app.payload || {})[photoKey] || '';
+    let photoUrl = '';
+    if (photoPath) {
+      photoUrl = (await admissionService.getSignedUrl('admission-docs', photoPath, 3600)) || '';
+    }
+    const photoBox = `
+      <div style="width:100px;height:124px;border:1px solid #000;margin-left:auto;display:flex;align-items:center;justify-content:center;overflow:hidden;text-align:center;font-size:9px;background:#fafafa;">
+        ${photoUrl
+          ? `<img src="${esc(photoUrl)}" alt="Applicant photograph" style="width:100%;height:100%;object-fit:cover;display:block;">`
+          : 'Passport size photo'}
+      </div>`;
+
+    const groups = new Map();
+    list.forEach((f) => {
+      if (f.fieldKey === photoKey) return;
+      const s = f.section || 'General';
+      if (!groups.has(s)) groups.set(s, []);
+      groups.get(s).push(f);
+    });
+
+    let details = '';
+    groups.forEach((sectionFields, section) => {
+      details += `<div style="font-size:12px; font-weight:800; text-decoration:underline; margin:10px 0 4px;">${esc(section)}</div>`;
+      details += '<table style="width:100%; border-collapse:collapse; font-size:10.5px; margin-bottom:6px;"><tbody>';
+      sectionFields.forEach((f) => {
+        const raw = (app.payload || {})[f.fieldKey];
+        const isFile = (f.fieldType || 'text') === 'file';
+        const shown = isFile
+          ? (raw ? esc(String(raw).split('/').pop()) : 'Not attached')
+          : (raw ? esc(raw) : '&#8212;');
+        details += `<tr>
+          <td style="width:38%; padding:3px 0;"><strong>${esc(f.label)} :</strong></td>
+          <td style="padding:3px 0;">${shown}</td>
+        </tr>`;
+      });
+      details += '</tbody></table>';
+    });
+
+    const feeRows = (app.feeItems || [])
+      .map((f) => `<tr><td style="padding:2px 0;">${esc(f.name)}</td><td style="text-align:right;">${fmtMoney(f.amount)}</td></tr>`)
+      .join('');
+
+    const credBlock = cred
+      ? `<div style="border:1.5px dashed #b45309; padding:8px; margin-top:12px;">
+           <div style="font-size:11px; font-weight:800; text-decoration:underline;">Parent Portal Login</div>
+           <div style="font-size:10.5px; margin-top:4px;">
+             Username: <strong>${esc(cred.username)}</strong> &nbsp;&nbsp; Password: <strong>${esc(cred.password)}</strong>
+           </div>
+         </div>`
+      : '';
+
+    return `
+      <div class="doc-title">${esc(TMS_CONFIG.institution.name)}</div>
+      <div class="doc-sub">${esc(TMS_CONFIG.institution.tagline || '')} &nbsp;|&nbsp; Admission Application Form</div>
+      <div style="display:flex; align-items:flex-start; gap:16px;">
+        <table style="flex:1; font-size:11px; margin-bottom:10px;"><tbody>
+          <tr>
+            <th style="text-align:left;">Form No</th><td>${esc(app.appId || app.id)}</td>
+          </tr>
+          <tr>
+            <th style="text-align:left;">Status</th><td>${esc(app.status || '')}</td>
+          </tr>
+          <tr>
+            <th style="text-align:left;">Submitted</th><td>${fmtDate(app.createdAt)}</td>
+          </tr>
+          <tr>
+            <th style="text-align:left;">Entered By</th><td>${esc(app.submittedByName || 'Self / Public')}</td>
+          </tr>
+        </tbody></table>
+        ${photoBox}
+      </div>
+      ${details}
+      <div style="font-size:12px; font-weight:800; text-decoration:underline; margin:12px 0 4px;">Fees &amp; Payment</div>
+      <table style="width:62%; font-size:10.5px; border-collapse:collapse;">
+        <tbody>
+          ${feeRows || '<tr><td>No fees configured.</td><td></td></tr>'}
+          <tr>
+            <td style="border-top:1px solid #000; font-weight:800; padding-top:3px;">Total</td>
+            <td style="border-top:1px solid #000; text-align:right; font-weight:800; padding-top:3px;">${fmtMoney(app.feeTotal)}</td>
+          </tr>
+          <tr><td>Payment Status</td><td style="text-align:right;">${esc(app.paymentStatus || 'Pending')}</td></tr>
+        </tbody>
+      </table>
+      ${app.remarks ? `<div style="margin-top:12px; font-size:10.5px;"><strong>Remarks:</strong> ${esc(app.remarks)}</div>` : ''}
+      ${credBlock}
+      <div style="margin-top:24px; display:flex; justify-content:space-between; font-size:10px;">
+        <span>Parent / Guardian Signature</span>
+        <span>Office Use Only</span>
+      </div>
+    `;
+  }
+
+  /** Show the application rendered as the admission form; optionally open the print dialog. */
+  static async showApplicationForm(id, print = false) {
+    const app = (this._apps || []).find((a) => a.id === id);
+    if (!app) return;
+    const fields = await admissionService.listFields();
+    const credential = await admissionService.getCredentials(app.id);
+    const formHtml = await this.buildApplicationFormHtml(app, fields, credential);
+    if (print) {
+      exportPdf(`Admission-Form-${app.appId || app.id}`, formHtml);
+      return;
+    }
+    UIComponents.openModal({
+      title: `Form View — ${app.appId || app.id}`,
+      bodyHtml: `<div style="max-height:66vh; overflow:auto;">${formHtml}</div>`,
+      footerHtml: `
+        <button class="btn btn-secondary" id="btn-form-close">Close</button>
+        <button class="btn btn-primary" id="btn-form-print"><i data-lucide="printer"></i> Print / Save PDF</button>`
+    });
+    document.getElementById('btn-form-close').addEventListener('click', () => UIComponents.closeModal());
+    document.getElementById('btn-form-print').addEventListener('click', () => exportPdf(`Admission-Form-${app.appId || app.id}`, formHtml));
+    UIComponents.refreshIcons();
+  }
+
+  static exportApplicationsCsv() {
+    const rows = this.filteredApplications();
+    const header = ['Form No', 'Candidate', 'Class', 'Guardian', 'Phone', 'Entered By', 'Fees', 'Payment', 'Status', 'Remarks'];
+    const data = rows.map((a) => [
+      a.appId || a.id, a.studentName, a.grade, a.guardianName, a.phone,
+      a.submittedByName || 'Self / Public', a.feeTotal, a.paymentStatus, a.status, a.remarks || ''
+    ]);
+    downloadCsv(`TMS-Admissions-${new Date().toISOString().slice(0, 10)}.csv`, [header, ...data]);
+    UIComponents.showToast('CSV exported.', 'success');
+  }
+
+  static exportApplicationsPdf() {
+    const rows = this.filteredApplications();
+    const body = `
+      <div class="doc-title">${esc(TMS_CONFIG.institution.name)}</div>
+      <div class="doc-sub">Admission Applications Report — Generated ${new Date().toLocaleString('en-GB')}</div>
+      <table>
+        <thead><tr><th>Form No</th><th>Candidate</th><th>Class</th><th>Guardian</th><th>Phone</th><th>Fees</th><th>Payment</th><th>Status</th></tr></thead>
+        <tbody>
+          ${rows.map((a) => `<tr>
+            <td>${esc(a.appId || a.id)}</td><td>${esc(a.studentName)}</td><td>${esc(a.grade)}</td>
+            <td>${esc(a.guardianName)}</td><td>${esc(a.phone)}</td><td>${fmtMoney(a.feeTotal)}</td>
+            <td>${esc(a.paymentStatus)}</td><td>${esc(a.status)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+    exportPdf('TMS-Admissions-Report', body);
+  }
+
+  /* ================================================================== */
+  /* Form Builder                                                       */
+  /* ================================================================== */
+
+  static async renderFormBuilderTab(tabContent) {
+    const fields = await admissionService.listAllFields();
+    const usingDefaults = fields.length === 0;
+    const list = usingDefaults
+      ? (await admissionService.listFields())
+      : fields;
+
+    tabContent.innerHTML = `
+      <div class="card">
+        <div class="card-header" style="flex-wrap:wrap; gap:12px;">
+          <div>
+            <h3 class="card-title">Admission Form Builder</h3>
+            <p class="card-desc">Add, edit, reorder and mark fields required. ${usingDefaults ? '<strong style="color:#b45309;">Showing built-in defaults — save to persist.</strong>' : ''}</p>
+          </div>
+          <div style="display:flex; gap:8px;">
+            ${usingDefaults ? '<button class="btn btn-secondary btn-sm" id="btn-seed-fields"><i data-lucide="download"></i> Load &amp; Save Defaults</button>' : ''}
+            ${usingDefaults ? '' : '<button class="btn btn-secondary btn-sm" id="btn-select-all-fields"><i data-lucide="check-square"></i> Select All</button><button class="btn btn-secondary btn-sm" id="btn-bulk-del-fields" style="color:#ef4444;"><i data-lucide="trash-2"></i> Delete Selected (<span id="field-selected-count">0</span>)</button>'}
+            <button class="btn btn-primary btn-sm" id="btn-add-field"><i data-lucide="plus"></i> Add Field</button>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="tms-table" style="font-size:0.85rem;">
+            <thead><tr><th style="width:34px;">${usingDefaults ? '' : '<input type="checkbox" id="field-select-all">'}</th><th>#</th><th>Label</th><th>Key</th><th>Type</th><th>Section</th><th>Required</th><th>Active</th><th>Actions</th></tr></thead>
+            <tbody>
+              ${list.map((f, i) => `<tr>
+                <td>${usingDefaults ? '' : `<input type="checkbox" class="field-row-check" value="${esc(f.id)}">`}</td>
+                <td>${f.displayOrder || i + 1}</td>
+                <td style="font-weight:600;">${esc(f.label)}</td>
+                <td class="font-mono">${esc(f.fieldKey)}</td>
+                <td><span class="badge badge-info">${esc(f.fieldType)}</span></td>
+                <td>${esc(f.section || '—')}</td>
+                <td>${f.required ? '<span class="badge badge-success">Yes</span>' : '<span class="badge">No</span>'}</td>
+                <td>${f.isActive === false ? '<span class="badge badge-warning">Off</span>' : '<span class="badge badge-success">On</span>'}</td>
+                <td>
+                  <button class="btn btn-secondary btn-sm btn-edit-field" data-key="${esc(f.fieldKey)}"><i data-lucide="pencil"></i></button>
+                  <button class="btn btn-secondary btn-sm btn-del-field" data-id="${esc(f.id)}" style="color:#ef4444;"><i data-lucide="trash-2"></i></button>
+                </td>
+              </tr>`).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:26px;">No fields configured.</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+
+    const seedBtn = document.getElementById('btn-seed-fields');
+    if (seedBtn) seedBtn.addEventListener('click', async () => {
+      await admissionService.seedDefaultFields();
+      await auditService.log('ADMISSION_FORM_FIELDS_SEEDED', 'GOVERNANCE', {});
+      UIComponents.showToast('Default fields saved.', 'success');
+      this.renderTab('form-builder');
+    });
+
+    const checkedFields = () => Array.from(tabContent.querySelectorAll('.field-row-check:checked')).map((c) => c.value);
+    const syncFieldCount = () => {
+      const el = document.getElementById('field-selected-count');
+      if (el) el.innerText = checkedFields().length;
+    };
+    tabContent.querySelectorAll('.field-row-check').forEach((c) => c.addEventListener('change', syncFieldCount));
+    const fieldSelAll = document.getElementById('field-select-all');
+    if (fieldSelAll) fieldSelAll.addEventListener('change', (e) => {
+      tabContent.querySelectorAll('.field-row-check').forEach((c) => { c.checked = e.target.checked; });
+      syncFieldCount();
+    });
+    const fieldSelBtn = document.getElementById('btn-select-all-fields');
+    if (fieldSelBtn) fieldSelBtn.addEventListener('click', () => {
+      tabContent.querySelectorAll('.field-row-check').forEach((c) => { c.checked = true; });
+      syncFieldCount();
+    });
+    const fieldBulkDel = document.getElementById('btn-bulk-del-fields');
+    if (fieldBulkDel) fieldBulkDel.addEventListener('click', async () => {
+      const ids = checkedFields();
+      if (!ids.length) { UIComponents.showToast('Select at least one field.', 'warning'); return; }
+      if (!confirm(`Delete ${ids.length} form field(s)?`)) return;
+      for (const id of ids) {
+        // eslint-disable-next-line no-await-in-loop
+        await admissionService.removeField(id);
+      }
+      await auditService.log('ADMISSION_FORM_FIELDS_BULK_DELETED', 'GOVERNANCE', { count: ids.length });
+      UIComponents.showToast(`${ids.length} field(s) deleted.`, 'success');
+      this.renderTab('form-builder');
+    });
+
+    document.getElementById('btn-add-field').addEventListener('click', () => this.openFieldModal(null));
+    tabContent.querySelectorAll('.btn-edit-field').forEach((b) =>
+      b.addEventListener('click', () => this.openFieldModal(list.find((f) => f.fieldKey === b.dataset.key) || null)));
+    tabContent.querySelectorAll('.btn-del-field').forEach((b) =>
+      b.addEventListener('click', async () => {
+        if (!confirm('Delete this field?')) return;
+        await admissionService.removeField(b.dataset.id);
+        UIComponents.showToast('Field deleted.', 'success');
+        this.renderTab('form-builder');
+      }));
+    UIComponents.refreshIcons();
+  }
+
+  static openFieldModal(field) {
+    const f = field || {};
+    const bodyHtml = `
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+        <div class="form-group" style="grid-column:1/-1;">
+          <label class="form-label">Field Label *</label>
+          <input class="form-input" id="fld-label" value="${esc(f.label || '')}" placeholder="e.g. Mother's Name">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Field Key (unique, no spaces) *</label>
+          <input class="form-input font-mono" id="fld-key" value="${esc(f.fieldKey || '')}" placeholder="e.g. motherName">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Response Type</label>
+          <select class="form-select" id="fld-type">
+            ${['text', 'textarea', 'number', 'date', 'tel', 'email', 'select', 'checkbox', 'file'].map((t) => `<option ${f.fieldType === t ? 'selected' : ''}>${t}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Section</label>
+          <input class="form-input" id="fld-section" value="${esc(f.section || 'General')}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Display Order</label>
+          <input type="number" class="form-input" id="fld-order" value="${f.displayOrder || 0}">
+        </div>
+        <div class="form-group" style="grid-column:1/-1;">
+          <label class="form-label">Options (comma separated — for select)</label>
+          <input class="form-input" id="fld-options" value="${esc((f.options || []).join(', '))}">
+        </div>
+        <div class="form-group" style="grid-column:1/-1;">
+          <label class="form-label">Placeholder / Help Text</label>
+          <input class="form-input" id="fld-placeholder" value="${esc(f.placeholder || '')}">
+        </div>
+        <label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" id="fld-required" ${f.required ? 'checked' : ''}> Required</label>
+        <label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" id="fld-active" ${f.isActive === false ? '' : 'checked'}> Active</label>
+      </div>
+    `;
+    const footerHtml = `
+      <button class="btn btn-secondary" id="fld-cancel">Cancel</button>
+      <button class="btn btn-primary" id="fld-save"><i data-lucide="save"></i> Save Field</button>
+    `;
+    UIComponents.openModal({ title: field ? 'Edit Field' : 'Add Field', bodyHtml, footerHtml });
+    document.getElementById('fld-cancel').addEventListener('click', () => UIComponents.closeModal());
+    document.getElementById('fld-save').addEventListener('click', async () => {
+      const options = document.getElementById('fld-options').value.split(',').map((s) => s.trim()).filter(Boolean);
+      try {
+        await admissionService.saveField({
+          id: f.id,
+          label: document.getElementById('fld-label').value.trim(),
+          fieldKey: document.getElementById('fld-key').value.trim(),
+          fieldType: document.getElementById('fld-type').value,
+          section: document.getElementById('fld-section').value.trim(),
+          displayOrder: Number(document.getElementById('fld-order').value || 0),
+          options,
+          placeholder: document.getElementById('fld-placeholder').value.trim(),
+          required: document.getElementById('fld-required').checked,
+          isActive: document.getElementById('fld-active').checked
+        });
+        await auditService.log('ADMISSION_FIELD_SAVED', 'GOVERNANCE', { key: document.getElementById('fld-key').value });
+        UIComponents.showToast('Field saved.', 'success');
+        UIComponents.closeModal();
+        this.renderTab('form-builder');
+      } catch (e) {
+        UIComponents.showToast(e.message, 'danger');
+      }
+    });
+    UIComponents.refreshIcons();
+  }
+
+  /* ================================================================== */
+  /* Fees                                                               */
+  /* ================================================================== */
+
+  static async renderFeesTab(tabContent) {
+    const fees = await admissionService.listAllFees();
+    const usingDefaults = fees.length === 0;
+    const list = usingDefaults ? await admissionService.listFees() : fees;
+
+    tabContent.innerHTML = `
+      <div class="card">
+        <div class="card-header" style="flex-wrap:wrap; gap:12px;">
+          <div>
+            <h3 class="card-title">Admission Fee Items</h3>
+            <p class="card-desc">Ticked items are offered to applicants. Mandatory items are always charged. ${usingDefaults ? '<strong style="color:#b45309;">Showing built-in defaults — save to persist.</strong>' : ''}</p>
+          </div>
+          <div style="display:flex; gap:8px;">
+            ${usingDefaults ? '<button class="btn btn-secondary btn-sm" id="btn-seed-fees"><i data-lucide="download"></i> Load &amp; Save Defaults</button>' : ''}
+            ${usingDefaults ? '' : '<button class="btn btn-secondary btn-sm" id="btn-select-all-fees"><i data-lucide="check-square"></i> Select All</button><button class="btn btn-secondary btn-sm" id="btn-bulk-del-fees" style="color:#ef4444;"><i data-lucide="trash-2"></i> Delete Selected (<span id="fee-selected-count">0</span>)</button>'}
+            <button class="btn btn-primary btn-sm" id="btn-add-fee"><i data-lucide="plus"></i> Add Fee Item</button>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="tms-table" style="font-size:0.85rem;">
+            <thead><tr><th style="width:34px;">${usingDefaults ? '' : '<input type="checkbox" id="fee-select-all">'}</th><th>#</th><th>Fee Name</th><th>Schedule</th><th>Amount</th><th>Mandatory</th><th>Active</th><th>Description</th><th>Actions</th></tr></thead>
+            <tbody>
+              ${list.map((f, i) => `<tr>
+                <td>${usingDefaults ? '' : `<input type="checkbox" class="fee-row-check" value="${esc(f.id)}">`}</td>
+                <td>${f.displayOrder || i + 1}</td>
+                <td style="font-weight:600;">${esc(f.name)}</td>
+                <td>${esc(f.schedule || '—')}</td>
+                <td>${fmtMoney(f.amount)}</td>
+                <td>${f.mandatory ? '<span class="badge badge-warning">Yes</span>' : '<span class="badge">No</span>'}</td>
+                <td>${f.isActive === false ? '<span class="badge badge-warning">Off</span>' : '<span class="badge badge-success">On</span>'}</td>
+                <td style="font-size:0.78rem;color:var(--text-muted);">${esc(f.description || '—')}</td>
+                <td>
+                  <button class="btn btn-secondary btn-sm btn-edit-fee" data-id="${esc(f.id)}"><i data-lucide="pencil"></i></button>
+                  <button class="btn btn-secondary btn-sm btn-del-fee" data-id="${esc(f.id)}" style="color:#ef4444;"><i data-lucide="trash-2"></i></button>
+                </td>
+              </tr>`).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:26px;">No fee items configured.</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+
+    const seedBtn = document.getElementById('btn-seed-fees');
+    if (seedBtn) seedBtn.addEventListener('click', async () => {
+      await admissionService.seedDefaultFees();
+      UIComponents.showToast('Default fees saved.', 'success');
+      this.renderTab('fees');
+    });
+
+    const checkedFees = () => Array.from(tabContent.querySelectorAll('.fee-row-check:checked')).map((c) => c.value);
+    const syncFeeCount = () => {
+      const el = document.getElementById('fee-selected-count');
+      if (el) el.innerText = checkedFees().length;
+    };
+    tabContent.querySelectorAll('.fee-row-check').forEach((c) => c.addEventListener('change', syncFeeCount));
+    const feeSelAll = document.getElementById('fee-select-all');
+    if (feeSelAll) feeSelAll.addEventListener('change', (e) => {
+      tabContent.querySelectorAll('.fee-row-check').forEach((c) => { c.checked = e.target.checked; });
+      syncFeeCount();
+    });
+    const feeSelBtn = document.getElementById('btn-select-all-fees');
+    if (feeSelBtn) feeSelBtn.addEventListener('click', () => {
+      tabContent.querySelectorAll('.fee-row-check').forEach((c) => { c.checked = true; });
+      syncFeeCount();
+    });
+    const feeBulkDel = document.getElementById('btn-bulk-del-fees');
+    if (feeBulkDel) feeBulkDel.addEventListener('click', async () => {
+      const ids = checkedFees();
+      if (!ids.length) { UIComponents.showToast('Select at least one fee item.', 'warning'); return; }
+      if (!confirm(`Delete ${ids.length} fee item(s)?`)) return;
+      for (const id of ids) {
+        // eslint-disable-next-line no-await-in-loop
+        await admissionService.removeFee(id);
+      }
+      await auditService.log('ADMISSION_FEES_BULK_DELETED', 'GOVERNANCE', { count: ids.length });
+      UIComponents.showToast(`${ids.length} fee item(s) deleted.`, 'success');
+      this.renderTab('fees');
+    });
+
+    document.getElementById('btn-add-fee').addEventListener('click', () => this.openFeeModal(null));
+    tabContent.querySelectorAll('.btn-edit-fee').forEach((b) =>
+      b.addEventListener('click', () => this.openFeeModal(list.find((f) => f.id === b.dataset.id) || null)));
+    tabContent.querySelectorAll('.btn-del-fee').forEach((b) =>
+      b.addEventListener('click', async () => {
+        if (!confirm('Delete this fee item?')) return;
+        await admissionService.removeFee(b.dataset.id);
+        UIComponents.showToast('Fee item deleted.', 'success');
+        this.renderTab('fees');
+      }));
+    UIComponents.refreshIcons();
+  }
+
+  static openFeeModal(fee) {
+    const f = fee || {};
+    const bodyHtml = `
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+        <div class="form-group" style="grid-column:1/-1;">
+          <label class="form-label">Fee Name *</label>
+          <input class="form-input" id="fee-name" value="${esc(f.name || '')}" placeholder="e.g. Registration Fee">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Amount (₹)</label>
+          <input type="number" class="form-input" id="fee-amount" value="${Number(f.amount || 0)}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Schedule</label>
+          <input class="form-input" id="fee-schedule" value="${esc(f.schedule || '')}" placeholder="e.g. One-Time / Monthly">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Display Order</label>
+          <input type="number" class="form-input" id="fee-order" value="${f.displayOrder || 0}">
+        </div>
+        <label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" id="fee-mandatory" ${f.mandatory ? 'checked' : ''}> Mandatory</label>
+        <label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" id="fee-active" ${f.isActive === false ? '' : 'checked'}> Active</label>
+        <div class="form-group" style="grid-column:1/-1;">
+          <label class="form-label">Description</label>
+          <input class="form-input" id="fee-desc" value="${esc(f.description || '')}">
+        </div>
+      </div>
+    `;
+    const footerHtml = `
+      <button class="btn btn-secondary" id="fee-cancel">Cancel</button>
+      <button class="btn btn-primary" id="fee-save"><i data-lucide="save"></i> Save Fee</button>
+    `;
+    UIComponents.openModal({ title: fee ? 'Edit Fee Item' : 'Add Fee Item', bodyHtml, footerHtml });
+    document.getElementById('fee-cancel').addEventListener('click', () => UIComponents.closeModal());
+    document.getElementById('fee-save').addEventListener('click', async () => {
+      await admissionService.saveFee({
+        id: f.id,
+        name: document.getElementById('fee-name').value.trim(),
+        amount: parseFloat(document.getElementById('fee-amount').value) || 0,
+        schedule: document.getElementById('fee-schedule').value.trim(),
+        description: document.getElementById('fee-desc').value.trim(),
+        displayOrder: Number(document.getElementById('fee-order').value || 0),
+        mandatory: document.getElementById('fee-mandatory').checked,
+        isActive: document.getElementById('fee-active').checked
+      });
+      UIComponents.showToast('Fee saved.', 'success');
+      UIComponents.closeModal();
+      this.renderTab('fees');
+    });
+    UIComponents.refreshIcons();
+  }
+
+  /* ================================================================== */
+  /* Payment & Session settings                                         */
+  /* ================================================================== */
+
+  static async renderPaymentSettingsTab(tabContent) {
+    const s = await admissionService.loadSettings();
+    const instructions = Array.isArray(s.instructions) ? s.instructions : [];
+
+    tabContent.innerHTML = `
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3 class="card-title">Payment &amp; Session Settings</h3>
+            <p class="card-desc">Configure the academic session, the UPI collection account and whether payment is mandatory before submission.</p>
+          </div>
+          <button class="btn btn-primary" id="btn-save-settings"><i data-lucide="save"></i> Save Settings</button>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
+          <div>
+            <h4 style="font-size:1rem; color:#16a34a; margin-bottom:14px;">General</h4>
+            <div class="form-group">
+              <label class="form-label">Academic Session</label>
+              <input class="form-input" id="set-session" value="${esc(s.session || '')}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Form / Test Centre</label>
+              <input class="form-input" id="set-centre" value="${esc(s.testCentre || '')}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Success Message (after submission)</label>
+              <textarea class="form-textarea" id="set-success" rows="2">${esc(s.successMessage || '')}</textarea>
+            </div>
+            <label style="display:flex; gap:10px; align-items:center; margin-top:8px; font-weight:600;">
+              <input type="checkbox" id="set-payment-required" ${s.paymentRequired ? 'checked' : ''}>
+              Payment is mandatory before an application can be submitted
+            </label>
+          </div>
+          <div>
+            <h4 style="font-size:1rem; color:#16a34a; margin-bottom:14px;">UPI Collection Account</h4>
+            <div class="form-group">
+              <label class="form-label">UPI ID (VPA)</label>
+              <input class="form-input font-mono" id="set-upi-id" value="${esc(s.upiId || '')}" placeholder="school@upi">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Payee Name</label>
+              <input class="form-input" id="set-upi-name" value="${esc(s.upiPayeeName || TMS_CONFIG.institution.name)}">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Payment Instructions</label>
+              <textarea class="form-textarea" id="set-payment-instructions" rows="3">${esc(s.paymentInstructions || '')}</textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label">General Instructions (one per line)</label>
+              <textarea class="form-textarea" id="set-instructions" rows="4">${esc(instructions.join('\n'))}</textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById('btn-save-settings').addEventListener('click', async () => {
+      await admissionService.saveSettings({
+        session: document.getElementById('set-session').value.trim(),
+        testCentre: document.getElementById('set-centre').value.trim(),
+        successMessage: document.getElementById('set-success').value.trim(),
+        paymentRequired: document.getElementById('set-payment-required').checked,
+        upiId: document.getElementById('set-upi-id').value.trim(),
+        upiPayeeName: document.getElementById('set-upi-name').value.trim(),
+        paymentInstructions: document.getElementById('set-payment-instructions').value.trim(),
+        instructions: document.getElementById('set-instructions').value.split('\n').map((x) => x.trim()).filter(Boolean)
+      });
+      await auditService.log('ADMISSION_SETTINGS_UPDATED', 'GOVERNANCE', { paymentRequired: document.getElementById('set-payment-required').checked });
+      UIComponents.showToast('Settings saved.', 'success');
+    });
+    UIComponents.refreshIcons();
+  }
+
+  /* ================================================================== */
+  /* Notifications                                                      */
+  /* ================================================================== */
+
+  static async renderNotificationsTab(tabContent) {
+    const list = await notificationService.list();
+
+    tabContent.innerHTML = `
+      <div class="card">
+        <div class="card-header" style="flex-wrap:wrap; gap:12px;">
+          <div>
+            <h3 class="card-title">Notifications</h3>
+            <p class="card-desc">Publish announcements to all portals. Targeted notices reach staff, students, parents or a specific role.</p>
+          </div>
+          <button class="btn btn-primary btn-sm" id="btn-create-notification"><i data-lucide="bell-plus"></i> Create Notification</button>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:12px;">
+          <button class="btn btn-secondary btn-sm" id="btn-select-all-notices"><i data-lucide="check-square"></i> Select All</button>
+          <button class="btn btn-secondary btn-sm" id="btn-clear-notices">Clear</button>
+          <button class="btn btn-secondary btn-sm" id="btn-bulk-del-notices" style="color:#ef4444;"><i data-lucide="trash-2"></i> Delete Selected (<span id="notif-selected-count">0</span>)</button>
+        </div>
+        <div class="table-responsive">
+          <table class="tms-table" style="font-size:0.85rem;">
+            <thead><tr><th style="width:34px;"><input type="checkbox" id="notif-select-all"></th><th>Title</th><th>Audience</th><th>Priority</th><th>Created By</th><th>Date</th><th>Actions</th></tr></thead>
+            <tbody>
+              ${list.map((n) => `<tr>
+                <td><input type="checkbox" class="notif-row-check" value="${esc(n.id)}"></td>
+                <td style="font-weight:600;">${esc(n.title)}<div style="font-size:0.76rem;color:var(--text-muted);font-weight:400;">${esc((n.message || '').slice(0, 100))}</div></td>
+                <td><span class="badge badge-info">${esc(n.audience)}${n.targetRole ? ': ' + esc(n.targetRole) : ''}</span></td>
+                <td>${esc(n.priority || 'Normal')}</td>
+                <td>${esc(n.createdByName || '—')}</td>
+                <td>${fmtDate(n.createdAt)}</td>
+                <td>
+                  <button class="btn btn-secondary btn-sm btn-del-notice" data-id="${esc(n.id)}" style="color:#ef4444;"><i data-lucide="trash-2"></i></button>
+                </td>
+              </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:26px;">No notifications published yet.</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+
+    const checkedNotices = () => Array.from(tabContent.querySelectorAll('.notif-row-check:checked')).map((c) => c.value);
+    const syncNoticeCount = () => {
+      const el = document.getElementById('notif-selected-count');
+      if (el) el.innerText = checkedNotices().length;
+    };
+    tabContent.querySelectorAll('.notif-row-check').forEach((c) => c.addEventListener('change', syncNoticeCount));
+    document.getElementById('notif-select-all').addEventListener('change', (e) => {
+      tabContent.querySelectorAll('.notif-row-check').forEach((c) => { c.checked = e.target.checked; });
+      syncNoticeCount();
+    });
+    document.getElementById('btn-select-all-notices').addEventListener('click', () => {
+      tabContent.querySelectorAll('.notif-row-check').forEach((c) => { c.checked = true; });
+      syncNoticeCount();
+    });
+    document.getElementById('btn-clear-notices').addEventListener('click', () => {
+      tabContent.querySelectorAll('.notif-row-check').forEach((c) => { c.checked = false; });
+      syncNoticeCount();
+    });
+    document.getElementById('btn-bulk-del-notices').addEventListener('click', async () => {
+      const ids = checkedNotices();
+      if (!ids.length) { UIComponents.showToast('Select at least one notification.', 'warning'); return; }
+      if (!confirm(`Delete ${ids.length} notification(s)?`)) return;
+      for (const id of ids) {
+        // eslint-disable-next-line no-await-in-loop
+        await notificationService.remove(id);
+      }
+      await auditService.log('NOTIFICATIONS_BULK_DELETED', 'GOVERNANCE', { count: ids.length });
+      UIComponents.showToast(`${ids.length} notification(s) deleted.`, 'success');
+      this.renderTab('notifications');
+    });
+
+    document.getElementById('btn-create-notification').addEventListener('click', () => this.openNotificationModal());
+    tabContent.querySelectorAll('.btn-del-notice').forEach((b) =>
+      b.addEventListener('click', async () => {
+        if (!confirm('Delete this notification?')) return;
+        await notificationService.remove(b.dataset.id);
+        UIComponents.showToast('Notification deleted.', 'success');
+        this.renderTab('notifications');
+      }));
+    UIComponents.refreshIcons();
+  }
+
+  static openNotificationModal() {
+    const roles = Object.values(TMS_CONFIG.roles).filter((r) => r !== 'super_admin');
+    const bodyHtml = `
+      <div class="form-group">
+        <label class="form-label">Title *</label>
+        <input class="form-input" id="notif-title" placeholder="e.g. Half-yearly Examination Schedule">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Message *</label>
+        <textarea class="form-textarea" id="notif-message" rows="4" placeholder="Write the announcement…"></textarea>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;">
+        <div class="form-group">
+          <label class="form-label">Audience</label>
+          <select class="form-select" id="notif-audience">
+            <option value="all">Everyone</option>
+            <option value="staff">All Staff</option>
+            <option value="students">Students</option>
+            <option value="parents">Parents</option>
+            <option value="role">Specific Role</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Target Role</label>
+          <select class="form-select" id="notif-role">
+            ${roles.map((r) => `<option value="${esc(r)}">${esc(ROLE_LABELS[r] || r)}</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Priority</label>
+          <select class="form-select" id="notif-priority">
+            <option>Normal</option><option>High</option><option>Urgent</option>
+          </select>
+        </div>
+      </div>
+    `;
+    const footerHtml = `
+      <button class="btn btn-secondary" id="notif-cancel">Cancel</button>
+      <button class="btn btn-primary" id="notif-send"><i data-lucide="send"></i> Publish Notification</button>
+    `;
+    UIComponents.openModal({ title: 'Create Notification', bodyHtml, footerHtml });
+    document.getElementById('notif-cancel').addEventListener('click', () => UIComponents.closeModal());
+    document.getElementById('notif-send').addEventListener('click', async () => {
+      const title = document.getElementById('notif-title').value.trim();
+      const message = document.getElementById('notif-message').value.trim();
+      const audience = document.getElementById('notif-audience').value;
+      if (!title || !message) { UIComponents.showToast('Title and message are required.', 'warning'); return; }
+      await notificationService.create({
+        title,
+        message,
+        audience,
+        targetRole: audience === 'role' ? document.getElementById('notif-role').value : null,
+        priority: document.getElementById('notif-priority').value
+      });
+      await auditService.log('NOTIFICATION_PUBLISHED', 'GOVERNANCE', { title, audience });
+      UIComponents.showToast('Notification published.', 'success');
+      UIComponents.closeModal();
+      const active = document.querySelector('.admin-tab-btn.btn-primary');
+      if (active && active.dataset.tab === 'notifications') this.renderTab('notifications');
+    });
+    UIComponents.refreshIcons();
+  }
+
+  /* ================================================================== */
+  /* Users & Roles                                                      */
+  /* ================================================================== */
+
+  static async renderUsersTab(tabContent) {
+    let profiles = [];
+    try {
+      profiles = await dbService.select('profiles');
+    } catch (e) { /* non-admin */ }
+
+    // Admin-visible login identifiers issued to staff and parents.
+    let creds = [];
+    try { creds = await dbService.select('staff_credentials'); } catch (e) { creds = []; }
+    let parentCreds = [];
+    try { parentCreds = await dbService.select('parent_credentials'); } catch (e) { parentCreds = []; }
+    const loginByUser = {};
+    parentCreds.forEach((c) => { if (c.userId) loginByUser[c.userId] = c; });
+    creds.forEach((c) => { if (c.userId) loginByUser[c.userId] = c; });
+    this._loginByUser = loginByUser;
+
+    const roles = Object.values(TMS_CONFIG.roles).filter((r) => r !== 'super_admin');
+    const scopes = Object.values(TMS_CONFIG.scopes);
+
+    tabContent.innerHTML = `
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3 class="card-title">Users &amp; Roles</h3>
+            <p class="card-desc">Every account in the system — including staff and parent logins created elsewhere. Use <strong>Edit Details</strong> to change a user's profile, photo, class assignment or password. To make a staff member an Office Boy (admission data entry), set their role to <strong>Office Boy</strong>.</p>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="tms-table" style="font-size:0.85rem;">
+            <thead><tr><th>User</th><th>Email</th><th>Login ID</th><th>Role</th><th>Scope</th><th>Class</th><th>Active</th><th>Action</th></tr></thead>
+            <tbody>
+              ${profiles.map((p) => {
+                const login = loginByUser[p.id];
+                return `<tr data-id="${esc(p.id)}">
+                <td style="font-weight:600; display:flex; align-items:center; gap:8px;">
+                  <img src="${esc(p.avatar || '')}" alt="" style="width:28px;height:28px;border-radius:50%;object-fit:cover;border:1px solid var(--border-color);background:#f1f5f9;">
+                  <span>${esc(p.name || '—')}</span>
+                </td>
+                <td class="font-mono" style="font-size:0.78rem;">${esc(p.email || '—')}</td>
+                <td style="font-size:0.78rem;">
+                  ${login && login.username
+                    ? `<span class="font-mono">${esc(login.username)}</span>
+                       <button class="btn btn-secondary btn-sm btn-reveal-pass" data-user="${esc(p.id)}" title="Show password" style="padding:2px 6px;"><i data-lucide="eye"></i></button>
+                       <span class="user-pass font-mono" data-user="${esc(p.id)}" style="display:none; color:#b45309;">${esc(login.password || '—')}</span>`
+                    : '<span style="color:var(--text-muted);">—</span>'}
+                </td>
+                <td>
+                  <select class="form-select user-role" style="min-width:150px;">
+                    ${roles.map((r) => `<option value="${esc(r)}" ${p.role === r ? 'selected' : ''}>${esc(ROLE_LABELS[r] || r)}</option>`).join('')}
+                    ${p.role === 'pending' ? '<option value="pending" selected>Pending</option>' : ''}
+                  </select>
+                </td>
+                <td>
+                  <select class="form-select user-scope" style="min-width:150px;">
+                    ${scopes.map((s) => `<option value="${esc(s)}" ${p.scope === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}
+                  </select>
+                </td>
+                <td style="font-size:0.78rem;">${esc([p.assignedClass, p.assignedSection].filter(Boolean).join(' / ') || '—')}</td>
+                <td><input type="checkbox" class="user-active" ${p.isActive === false ? '' : 'checked'}></td>
+                <td style="white-space:nowrap;">
+                  <button class="btn btn-secondary btn-sm btn-edit-user"><i data-lucide="user-cog"></i> Edit Details</button>
+                  <button class="btn btn-primary btn-sm btn-save-user"><i data-lucide="save"></i> Save</button>
+                </td>
+              </tr>`; }).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:26px;">No user profiles visible.</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+
+    tabContent.querySelectorAll('.btn-reveal-pass').forEach((b) =>
+      b.addEventListener('click', () => {
+        const span = tabContent.querySelector(`.user-pass[data-user="${b.dataset.user}"]`);
+        if (span) span.style.display = span.style.display === 'none' ? 'inline' : 'none';
+      }));
+
+    tabContent.querySelectorAll('.btn-save-user').forEach((b) =>
+      b.addEventListener('click', async () => {
+        const row = b.closest('tr');
+        const id = row.dataset.id;
+        await dbService.update('profiles', id, {
+          role: row.querySelector('.user-role').value,
+          scope: row.querySelector('.user-scope').value,
+          isActive: row.querySelector('.user-active').checked
+        });
+        await auditService.log('USER_ROLE_UPDATED', 'GOVERNANCE', { userId: id, role: row.querySelector('.user-role').value });
+        UIComponents.showToast('User updated.', 'success');
+      }));
+
+    tabContent.querySelectorAll('.btn-edit-user').forEach((b) =>
+      b.addEventListener('click', () => {
+        const id = b.closest('tr').dataset.id;
+        const profile = profiles.find((p) => p.id === id);
+        if (profile) this.openUserEditModal(profile);
+      }));
+    UIComponents.refreshIcons();
+  }
+
+  /** Full user editor: identity, assignment, avatar upload and password reset. */
+  static openUserEditModal(p) {
+    let pendingAvatar = null;
+    const roleList = Object.values(TMS_CONFIG.roles).filter((r) => r !== 'super_admin');
+    if (p.role === 'pending' && !roleList.includes('pending')) roleList.unshift('pending');
+    const scopeList = Object.values(TMS_CONFIG.scopes);
+    const classList = ['', ...(TMS_CONFIG.academic && TMS_CONFIG.academic.classes ? TMS_CONFIG.academic.classes : [])];
+    const sectionList = ['', 'A', 'B', 'C', 'D'];
+
+    const bodyHtml = `
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+        <div class="form-group" style="grid-column:1/-1; display:flex; gap:16px; align-items:center;">
+          <img id="ue-avatar" src="${esc(p.avatar || '')}" alt="" style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:1px solid var(--border-color);background:#f1f5f9;">
+          <div>
+            <label class="form-label">Profile Photo</label>
+            <input type="file" id="ue-avatar-file" accept="image/*" class="form-input">
+          </div>
+        </div>
+        <div class="form-group"><label class="form-label">Full Name</label><input class="form-input" id="ue-name" value="${esc(p.name || '')}"></div>
+        <div class="form-group"><label class="form-label">Email (read-only)</label><input class="form-input" id="ue-email" value="${esc(p.email || '')}" readonly></div>
+        <div class="form-group"><label class="form-label">Title / Designation</label><input class="form-input" id="ue-title" value="${esc(p.title || '')}"></div>
+        <div class="form-group"><label class="form-label">Department</label><input class="form-input" id="ue-department" value="${esc(p.department || '')}"></div>
+        <div class="form-group"><label class="form-label">Phone</label><input class="form-input" id="ue-phone" value="${esc(p.phone || '')}"></div>
+        <div class="form-group"><label class="form-label">Assigned Class</label>
+          <select class="form-select" id="ue-class">${classList.map((c) => `<option value="${esc(c)}" ${p.assignedClass === c ? 'selected' : ''}>${c ? esc(c) : '—'}</option>`).join('')}</select></div>
+        <div class="form-group"><label class="form-label">Assigned Section</label>
+          <select class="form-select" id="ue-section">${sectionList.map((s) => `<option value="${esc(s)}" ${p.assignedSection === s ? 'selected' : ''}>${s || '—'}</option>`).join('')}</select></div>
+        <div class="form-group"><label class="form-label">Role</label>
+          <select class="form-select" id="ue-role">${roleList.map((r) => `<option value="${esc(r)}" ${p.role === r ? 'selected' : ''}>${esc(ROLE_LABELS[r] || r)}</option>`).join('')}</select></div>
+        <div class="form-group"><label class="form-label">Scope</label>
+          <select class="form-select" id="ue-scope">${scopeList.map((s) => `<option value="${esc(s)}" ${p.scope === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select></div>
+        <label style="display:flex;gap:8px;align-items:center;grid-column:1/-1;"><input type="checkbox" id="ue-active" ${p.isActive === false ? '' : 'checked'}> Account active</label>
+        <div class="form-group" style="grid-column:1/-1; border-top:1px solid var(--border-color); padding-top:12px;">
+          <label class="form-label">Set New Password (optional, min 6 characters)</label>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <input type="text" class="form-input font-mono" id="ue-password" placeholder="Leave blank to keep the current password" style="flex:1; min-width:200px;">
+            <button class="btn btn-secondary" id="ue-apply-password"><i data-lucide="key-round"></i> Apply Password</button>
+          </div>
+          <span style="font-size:0.72rem;color:var(--text-subtle);">Works for staff accounts and auto-generated parent logins.</span>
+        </div>
+      </div>
+    `;
+    const footerHtml = `
+      <button class="btn btn-secondary" id="ue-cancel">Cancel</button>
+      <button class="btn btn-secondary" id="ue-delete" style="color:#ef4444;"><i data-lucide="trash-2"></i> Delete User</button>
+      <button class="btn btn-primary" id="ue-save"><i data-lucide="save"></i> Save Changes</button>
+    `;
+    UIComponents.openModal({ title: `Edit User — ${p.name || p.email}`, bodyHtml, footerHtml });
+
+    const fileInput = document.getElementById('ue-avatar-file');
+    fileInput.addEventListener('change', async () => {
+      const file = fileInput.files && fileInput.files[0];
+      if (!file) return;
+      const path = `users/${p.id}-${Date.now()}-${admissionService.sanitizeFileName(file.name)}`;
+      const res = await admissionService.uploadFile('avatars', path, file);
+      if (res.error) { UIComponents.showToast(`Photo upload failed: ${res.error}`, 'warning'); return; }
+      pendingAvatar = admissionService.getPublicUrl('avatars', res.path) || res.path;
+      document.getElementById('ue-avatar').src = pendingAvatar;
+      UIComponents.showToast('Photo uploaded — remember to save.', 'success');
+    });
+
+    document.getElementById('ue-cancel').addEventListener('click', () => UIComponents.closeModal());
+
+    document.getElementById('ue-delete').addEventListener('click', async () => {
+      if (!confirm(`Permanently delete ${p.name || p.email}? This removes their login, profile and access. This cannot be undone.`)) return;
+      const res = await authService.adminDeleteUser(p.id);
+      if (!res.success) { UIComponents.showToast(`Could not delete the user: ${res.error}`, 'danger'); return; }
+      await auditService.log('USER_DELETED', 'GOVERNANCE', { userId: p.id, email: p.email });
+      UIComponents.showToast('User deleted.', 'success');
+      UIComponents.closeModal();
+      this.renderTab('users');
+    });
+
+    document.getElementById('ue-apply-password').addEventListener('click', async () => {
+      const pw = document.getElementById('ue-password').value;
+      if (!pw || pw.length < 6) { UIComponents.showToast('Enter a password of at least 6 characters.', 'warning'); return; }
+      const r = await authService.adminSetPassword(p.id, pw);
+      if (r.success) {
+        // Keep the admin-visible credential records in step with the real password.
+        await this.syncStoredPasswords(p.id, pw);
+        await auditService.log('USER_PASSWORD_RESET', 'GOVERNANCE', { userId: p.id });
+        UIComponents.showToast('Password updated.', 'success');
+        document.getElementById('ue-password').value = '';
+      } else {
+        UIComponents.showToast(`Password change failed: ${r.error}`, 'danger');
+      }
+    });
+
+    document.getElementById('ue-save').addEventListener('click', async () => {
+      const updates = {
+        name: document.getElementById('ue-name').value.trim(),
+        title: document.getElementById('ue-title').value.trim(),
+        department: document.getElementById('ue-department').value.trim(),
+        phone: document.getElementById('ue-phone').value.trim(),
+        assignedClass: document.getElementById('ue-class').value,
+        assignedSection: document.getElementById('ue-section').value,
+        role: document.getElementById('ue-role').value,
+        scope: document.getElementById('ue-scope').value,
+        isActive: document.getElementById('ue-active').checked
+      };
+      if (pendingAvatar) updates.avatar = pendingAvatar;
+      await dbService.update('profiles', p.id, updates);
+      await auditService.log('USER_DETAILS_UPDATED', 'GOVERNANCE', { userId: p.id, role: updates.role });
+      UIComponents.showToast('User details saved.', 'success');
+      UIComponents.closeModal();
+      this.renderTab('users');
+    });
+    UIComponents.refreshIcons();
+  }
+
+  /* ================================================================== */
+  /* Branding & Logo                                                    */
+  /* ================================================================== */
+
+  /** Mirror a password change into the admin-visible credential stores. */
+  static async syncStoredPasswords(userId, password) {
+    if (!userId || !password) return;
+    for (const table of ['staff_credentials', 'parent_credentials']) {
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        const rows = await dbService.select(table);
+        const row = rows.find((r) => r.userId === userId);
+        // eslint-disable-next-line no-await-in-loop
+        if (row) await dbService.update(table, row.id, { password });
+      } catch (e) {
+        // Table may not exist yet (migration not applied) - ignore.
+      }
+    }
+  }
+
+  static async renderBrandingTab(tabContent) {
+    const branding = await brandingService.refresh();
+    const logoUrl = branding.logoUrl || '';
+    const previewSrc = logoUrl || '';
+
+    tabContent.innerHTML = `
+      <div class="card">
+        <div class="card-header" style="flex-wrap:wrap; gap:12px;">
+          <div>
+            <h3 class="card-title">Institute Branding &amp; Logo</h3>
+            <p class="card-desc">Upload the official institute logo. Once saved it is applied everywhere — the sidebar, sign-in page, every portal, the administration console and all printed / PDF documents.</p>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 200px 1fr; gap:24px; align-items:start;">
+          <div style="border:1px dashed var(--border-color); border-radius:10px; padding:16px; text-align:center; background:var(--bg-subtle);">
+            <div id="branding-preview" style="min-height:110px; display:flex; align-items:center; justify-content:center;">
+              ${previewSrc
+                ? `<img src="${esc(previewSrc)}" alt="Institute logo" style="max-width:150px; max-height:150px; object-fit:contain;">`
+                : TMS_LOGO.emblemSvg(110)}
+            </div>
+            <div style="font-size:0.72rem; color:var(--text-muted); margin-top:10px;">
+              ${logoUrl ? 'Current institute logo' : 'Built-in emblem (no logo uploaded)'}
+            </div>
+          </div>
+
+          <div>
+            <div class="form-group">
+              <label class="form-label">Upload Logo (PNG, JPG or SVG)</label>
+              <input type="file" id="branding-file" accept="image/*" class="form-input">
+              <span style="font-size:0.72rem; color:var(--text-subtle);">Transparent PNG or SVG recommended. Square or wide logos both work.</span>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Or paste a public image URL</label>
+              <input class="form-input" id="branding-url" placeholder="https://…/logo.png" value="${esc(logoUrl)}">
+            </div>
+
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
+              <button class="btn btn-primary" id="btn-branding-save"><i data-lucide="save"></i> Save Logo</button>
+              <button class="btn btn-secondary" id="btn-branding-remove" style="color:#ef4444;"><i data-lucide="trash-2"></i> Remove Logo</button>
+              <button class="btn btn-secondary" id="btn-branding-restore"><i data-lucide="rotate-ccw"></i> Restore Built-in Emblem</button>
+            </div>
+          </div>
+        </div>
+
+        <div style="margin-top:22px; padding-top:16px; border-top:1px solid var(--border-color);">
+          <h4 style="font-size:0.95rem; margin-bottom:8px;">Live preview</h4>
+          <div style="display:flex; gap:24px; align-items:center; flex-wrap:wrap; background:var(--bg-subtle); border:1px solid var(--border-color); border-radius:10px; padding:16px;">
+            <div style="text-align:center;">
+              <div id="branding-preview-sm">${TMS_LOGO.emblemSvg(42)}</div>
+              <div style="font-size:0.68rem; color:var(--text-muted); margin-top:6px;">Sidebar</div>
+            </div>
+            <div style="text-align:center;">
+              <div id="branding-preview-lg">${TMS_LOGO.emblemSvg(64)}</div>
+              <div style="font-size:0.68rem; color:var(--text-muted); margin-top:6px;">Sign-in / header</div>
+            </div>
+            <div style="text-align:center;">
+              <div id="branding-preview-print">${TMS_LOGO.emblemSvg(70)}</div>
+              <div style="font-size:0.68rem; color:var(--text-muted); margin-top:6px;">Printed form</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const repaint = (url) => {
+      const preview = document.getElementById('branding-preview');
+      const sm = document.getElementById('branding-preview-sm');
+      const lg = document.getElementById('branding-preview-lg');
+      const pr = document.getElementById('branding-preview-print');
+      const html = url
+        ? `<img src="${esc(url)}" alt="Institute logo" style="object-fit:contain;">`
+        : TMS_LOGO.emblemSvg(110);
+      if (preview) preview.innerHTML = html;
+      if (url) {
+        const img = (size) => `<img src="${esc(url)}" alt="Institute logo" style="width:${size}px;height:${size}px;object-fit:contain;">`;
+        if (sm) sm.innerHTML = img(42);
+        if (lg) lg.innerHTML = img(64);
+        if (pr) pr.innerHTML = img(70);
+      } else {
+        if (sm) sm.innerHTML = TMS_LOGO.emblemSvg(42);
+        if (lg) lg.innerHTML = TMS_LOGO.emblemSvg(64);
+        if (pr) pr.innerHTML = TMS_LOGO.emblemSvg(70);
+      }
+    };
+
+    document.getElementById('branding-file').addEventListener('change', async (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+      UIComponents.showToast('Uploading logo…', 'info');
+      const res = await brandingService.uploadLogo(file);
+      if (res.error) { UIComponents.showToast(`Logo upload failed: ${res.error}`, 'danger'); return; }
+      await auditService.log('BRANDING_LOGO_UPDATED', 'GOVERNANCE', { source: 'upload' });
+      UIComponents.showToast('Institute logo updated everywhere.', 'success');
+      document.getElementById('branding-url').value = res.logoUrl;
+      repaint(res.logoUrl);
+    });
+
+    document.getElementById('btn-branding-save').addEventListener('click', async () => {
+      const url = document.getElementById('branding-url').value.trim();
+      const res = await brandingService.saveBranding({ logoUrl: url || null });
+      if (res.error) { UIComponents.showToast(`Could not save the logo: ${res.error}`, 'danger'); return; }
+      await auditService.log('BRANDING_LOGO_UPDATED', 'GOVERNANCE', { source: 'url' });
+      UIComponents.showToast('Institute logo saved.', 'success');
+      repaint(url);
+    });
+
+    document.getElementById('btn-branding-remove').addEventListener('click', async () => {
+      if (!confirm('Remove the institute logo from every screen and document?')) return;
+      await brandingService.removeLogo();
+      await auditService.log('BRANDING_LOGO_REMOVED', 'GOVERNANCE', {});
+      UIComponents.showToast('Logo removed.', 'success');
+      document.getElementById('branding-url').value = '';
+      repaint('');
+    });
+
+    document.getElementById('btn-branding-restore').addEventListener('click', async () => {
+      await brandingService.removeLogo();
+      await auditService.log('BRANDING_LOGO_RESET', 'GOVERNANCE', {});
+      UIComponents.showToast('Built-in emblem restored.', 'success');
+      document.getElementById('branding-url').value = '';
+      repaint('');
+    });
+
+    UIComponents.refreshIcons();
+  }
+
+  /* ================================================================== */
+  /* Audit Trail                                                        */
+  /* ================================================================== */
+
+  static async renderAuditTab(tabContent) {
+    const logs = await auditService.getLogs();
+    tabContent.innerHTML = `
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Immutable Audit Trail</h3>
+          <span class="badge badge-info">${logs.length} Logged Events</span>
+        </div>
+        <div class="table-responsive">
+          <table class="tms-table font-mono" style="font-size:0.82rem;">
+            <thead><tr><th>Audit ID</th><th>Timestamp</th><th>Operator</th><th>Action</th><th>Entity Reference</th></tr></thead>
+            <tbody>
+              ${logs.length === 0 ? '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:30px;">No audit events recorded yet.</td></tr>'
+                : logs.map((l) => `<tr>
+                    <td><strong>${esc(l.id)}</strong></td>
+                    <td>${fmtDate(l.timestamp)}</td>
+                    <td>${esc(l.userName)} (${esc(l.userRole)})</td>
+                    <td><span class="badge badge-warning">${esc(l.action)}</span></td>
+                    <td>${esc(l.entityRef || '—')}</td>
+                  </tr>`).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+    UIComponents.refreshIcons();
   }
 }
 

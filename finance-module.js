@@ -6,14 +6,20 @@ import { TMS_CONFIG } from './config.js';
 import { dbService } from './supabase-client.js';
 import { UIComponents } from './ui-components.js';
 import { auditService } from './audit-service.js';
+import { PermissionEngine, CAPABILITIES } from './permission-engine.js';
+import { downloadCsv } from './export-utils.js';
+import { notificationService } from './notification-service.js';
 
 export class FinanceModule {
   static async render(container) {
     const invoices = await dbService.select('invoices');
+    const esc = (v) => UIComponents.escapeHtml(v);
+    const canManage = PermissionEngine.can(CAPABILITIES.MANAGE_FINANCE);
 
     const totalBilled = invoices.reduce((sum, inv) => sum + (inv.amount || 0), 0);
     const totalCollected = invoices.reduce((sum, inv) => sum + (inv.paid || 0), 0);
     const totalOutstanding = invoices.reduce((sum, inv) => sum + (inv.balance || 0), 0);
+    const efficiencyValue = totalBilled > 0 ? `${((totalCollected / totalBilled) * 100).toFixed(1)}%` : '—';
 
     container.innerHTML = `
       <div style="margin-bottom: 24px;">
@@ -35,22 +41,33 @@ export class FinanceModule {
         ${UIComponents.renderKpiCard({ title: 'Total Invoiced (Term 1)', value: `₹ ${totalBilled.toLocaleString()}`, icon: 'file-text', color: 'blue' })}
         ${UIComponents.renderKpiCard({ title: 'Total Collections', value: `₹ ${totalCollected.toLocaleString()}`, icon: 'check-circle-2', color: 'emerald', subtitle: 'Bank & Cash Reconciled' })}
         ${UIComponents.renderKpiCard({ title: 'Outstanding Balance', value: `₹ ${totalOutstanding.toLocaleString()}`, icon: 'clock', color: 'rose', subtitle: 'Pending Collection' })}
-        ${UIComponents.renderKpiCard({ title: 'Collection Efficiency', value: '78.5%', icon: 'pie-chart', color: 'amber', subtitle: 'On Track for Due Date' })}
+        ${UIComponents.renderKpiCard({ title: 'Collection Efficiency', value: efficiencyValue, icon: 'pie-chart', color: 'amber', subtitle: 'Collected vs Invoiced' })}
       </div>
 
       <!-- Invoices Ledger Card -->
       <div class="card">
-        <div class="card-header">
+        <div class="card-header" style="flex-wrap:wrap; gap:12px;">
           <div>
-            <h3 class="card-title">Fee Invoices & Student Accounts</h3>
+            <h3 class="card-title">Fee Invoices &amp; Student Accounts</h3>
             <p class="card-desc">Individual ledger accounts, payment modes (UPI, Cash, Bank Transfer), and receipts.</p>
           </div>
+          ${canManage ? '<button class="btn btn-primary btn-sm" id="btn-new-invoice"><i data-lucide="plus"></i> New Invoice</button>' : ''}
         </div>
+
+        ${canManage ? `
+        <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:12px;">
+          <button class="btn btn-secondary btn-sm" id="btn-inv-select-all"><i data-lucide="check-square"></i> Select All</button>
+          <button class="btn btn-secondary btn-sm" id="btn-inv-clear">Clear</button>
+          <button class="btn btn-secondary btn-sm" id="btn-inv-bulk-export"><i data-lucide="download"></i> Export Selected</button>
+          <button class="btn btn-secondary btn-sm" id="btn-inv-bulk-remind"><i data-lucide="bell-ring"></i> Send Reminder</button>
+          <button class="btn btn-secondary btn-sm" id="btn-inv-bulk-delete" style="color:#ef4444;"><i data-lucide="trash-2"></i> Delete Selected (<span id="inv-selected-count">0</span>)</button>
+        </div>` : ''}
 
         <div class="table-responsive">
           <table class="tms-table" id="invoices-table">
             <thead>
               <tr>
+                ${canManage ? '<th style="width:34px;"><input type="checkbox" id="inv-select-all-cb"></th>' : ''}
                 <th>Invoice No</th>
                 <th>Student Name</th>
                 <th>Grade</th>
@@ -63,16 +80,17 @@ export class FinanceModule {
               </tr>
             </thead>
             <tbody>
-              ${invoices.map(inv => `
+              ${invoices.length ? invoices.map(inv => `
                 <tr>
-                  <td><span class="font-mono" style="font-weight: 600;">${inv.invoiceNo}</span></td>
-                  <td><strong>${inv.studentName}</strong></td>
-                  <td>${inv.grade}</td>
-                  <td>${inv.term}</td>
-                  <td class="font-mono">₹ ${inv.amount.toLocaleString()}</td>
-                  <td class="font-mono" style="color: #10b981;">₹ ${inv.paid.toLocaleString()}</td>
+                  ${canManage ? `<td><input type="checkbox" class="inv-row-check" value="${esc(inv.id)}"></td>` : ''}
+                  <td><span class="font-mono" style="font-weight: 600;">${esc(inv.invoiceNo)}</span></td>
+                  <td><strong>${esc(inv.studentName)}</strong></td>
+                  <td>${esc(inv.grade)}</td>
+                  <td>${esc(inv.term)}</td>
+                  <td class="font-mono">₹ ${esc((inv.amount || 0).toLocaleString())}</td>
+                  <td class="font-mono" style="color: #10b981;">₹ ${esc((inv.paid || 0).toLocaleString())}</td>
                   <td class="font-mono" style="color: ${inv.balance > 0 ? '#ef4444' : 'inherit'}; font-weight: ${inv.balance > 0 ? '700' : 'normal'};">
-                    ₹ ${inv.balance.toLocaleString()}
+                    ₹ ${esc((inv.balance || 0).toLocaleString())}
                   </td>
                   <td>
                     ${inv.status === 'Paid' ? `
@@ -84,7 +102,7 @@ export class FinanceModule {
                     `}
                   </td>
                   <td>
-                    <div style="display: flex; gap: 6px;">
+                    <div style="display: flex; gap: 6px; flex-wrap:wrap;">
                       <button class="btn btn-secondary btn-sm btn-print-receipt" data-inv="${inv.invoiceNo}" data-name="${inv.studentName}" data-amt="${inv.paid || inv.amount}" data-date="${inv.paidDate || inv.dueDate}" data-mode="${inv.paymentMode || 'Cash'}">
                         <i data-lucide="receipt"></i> Receipt
                       </button>
@@ -93,24 +111,120 @@ export class FinanceModule {
                           <i data-lucide="check"></i> Pay
                         </button>
                       ` : ''}
+                      ${canManage ? `
+                      <button class="btn btn-secondary btn-sm btn-edit-invoice" data-id="${esc(inv.id)}" title="Edit invoice"><i data-lucide="pencil"></i></button>
+                      <button class="btn btn-secondary btn-sm btn-del-invoice" data-id="${esc(inv.id)}" title="Delete invoice" style="color:#ef4444;"><i data-lucide="trash-2"></i></button>` : ''}
                     </div>
                   </td>
                 </tr>
-              `).join('')}
+              `).join('') : `
+                <tr>
+                  <td colspan="${canManage ? 10 : 9}" style="text-align: center; color: var(--text-muted); padding: 30px;">No records available yet.</td>
+                </tr>
+              `}
             </tbody>
           </table>
         </div>
       </div>
     `;
 
+    this._invoices = invoices;
     this.bindEvents(container);
     UIComponents.refreshIcons();
   }
 
   static bindEvents(container) {
+    /* ---- Selection, bulk actions, edit & delete ---- */
+    const invoices = this._invoices || [];
+    const canManage = PermissionEngine.can(CAPABILITIES.MANAGE_FINANCE);
+    const checked = () => Array.from(container.querySelectorAll('.inv-row-check:checked')).map((c) => c.value);
+    const syncCount = () => {
+      const el = container.querySelector('#inv-selected-count');
+      if (el) el.innerText = checked().length;
+    };
+    const selectedInvoices = () => invoices.filter((i) => checked().includes(i.id));
+
+    container.querySelectorAll('.inv-row-check').forEach((c) => c.addEventListener('change', syncCount));
+    const selAllCb = container.querySelector('#inv-select-all-cb');
+    if (selAllCb) {
+      selAllCb.addEventListener('change', () => {
+        container.querySelectorAll('.inv-row-check').forEach((c) => { c.checked = selAllCb.checked; });
+        syncCount();
+      });
+    }
+    const selAllBtn = container.querySelector('#btn-inv-select-all');
+    if (selAllBtn) {
+      selAllBtn.addEventListener('click', () => {
+        container.querySelectorAll('.inv-row-check').forEach((c) => { c.checked = true; });
+        syncCount();
+      });
+    }
+    const clearBtn = container.querySelector('#btn-inv-clear');
+    if (clearBtn) {
+      clearBtn.addEventListener('click', () => {
+        container.querySelectorAll('.inv-row-check').forEach((c) => { c.checked = false; });
+        syncCount();
+      });
+    }
+    const bulkDelete = container.querySelector('#btn-inv-bulk-delete');
+    if (bulkDelete) {
+      bulkDelete.addEventListener('click', () => {
+        const rows = selectedInvoices();
+        if (!rows.length) { UIComponents.showToast('Select at least one invoice.', 'warning'); return; }
+        this.deleteInvoices(rows, container);
+      });
+    }
+    const bulkExport = container.querySelector('#btn-inv-bulk-export');
+    if (bulkExport) {
+      bulkExport.addEventListener('click', () => {
+        const rows = selectedInvoices();
+        if (!rows.length) { UIComponents.showToast('Select at least one invoice.', 'warning'); return; }
+        const header = ['Invoice No', 'Student', 'Grade', 'Term', 'Billed', 'Paid', 'Balance', 'Status', 'Due Date'];
+        const data = rows.map((i) => [i.invoiceNo, i.studentName, i.grade, i.term, i.amount, i.paid, i.balance, i.status, i.dueDate]);
+        downloadCsv(`TMS-Invoices-${new Date().toISOString().slice(0, 10)}.csv`, [header, ...data]);
+        UIComponents.showToast('Selected invoices exported.', 'success');
+      });
+    }
+    const bulkRemind = container.querySelector('#btn-inv-bulk-remind');
+    if (bulkRemind) {
+      bulkRemind.addEventListener('click', async () => {
+        const rows = selectedInvoices().filter((i) => Number(i.balance) > 0);
+        if (!rows.length) { UIComponents.showToast('Select at least one invoice with an outstanding balance.', 'warning'); return; }
+        try {
+          await notificationService.create({
+            title: 'Fee Payment Reminder',
+            message: `A friendly reminder that ${rows.length} fee invoice(s) remain outstanding. Please settle the balance at the school office or via UPI.`,
+            audience: 'parents'
+          });
+          await auditService.log('FEE_REMINDERS_SENT', 'FINANCE', { count: rows.length });
+          UIComponents.showToast(`Reminder sent for ${rows.length} invoice(s).`, 'success');
+        } catch (e) {
+          UIComponents.showToast(`Could not send the reminder: ${e.message}`, 'danger');
+        }
+      });
+    }
+    container.querySelectorAll('.btn-edit-invoice').forEach((b) =>
+      b.addEventListener('click', () => {
+        const inv = invoices.find((x) => x.id === b.dataset.id);
+        if (inv) this.openInvoiceModal(inv, container);
+      }));
+    container.querySelectorAll('.btn-del-invoice').forEach((b) =>
+      b.addEventListener('click', () => {
+        const inv = invoices.find((x) => x.id === b.dataset.id);
+        if (inv) this.deleteInvoices([inv], container);
+      }));
+    const newInvBtn = container.querySelector('#btn-new-invoice');
+    if (newInvBtn) newInvBtn.addEventListener('click', () => this.openInvoiceModal(null, container));
+
     const counterBtn = container.querySelector('#btn-open-cash-counter');
     if (counterBtn) {
-      counterBtn.addEventListener('click', () => {
+      counterBtn.addEventListener('click', async () => {
+        const escOpt = (v) => UIComponents.escapeHtml(v);
+        const allInvoices = await dbService.select('invoices');
+        const dueInvoices = allInvoices.filter(inv => (inv.balance || 0) > 0);
+        const studentOptions = dueInvoices.map(inv => `
+          <option value="${escOpt(inv.id)}|${escOpt(inv.studentName)}|${escOpt(inv.balance)}">${escOpt(inv.studentName)} (${escOpt(inv.grade)}) — Due: ₹ ${escOpt((inv.balance || 0).toLocaleString())}</option>
+        `).join('');
         UIComponents.openModal({
           title: 'Cash Counter — Collect Student Fee',
           bodyHtml: `
@@ -118,14 +232,12 @@ export class FinanceModule {
               <div class="form-group">
                 <label class="form-label">Student Identification</label>
                 <select class="form-select" id="fee-student-select">
-                  <option value="TMS-STU-1003|Zayan Ahmed|24500">Zayan Ahmed (Grade 9A) — Due: ₹ 24,500</option>
-                  <option value="TMS-STU-1002|Fathima Nuha|9500">Fathima Nuha (Grade 9A) — Due: ₹ 9,500</option>
-                  <option value="TMS-STU-1001|Mohammed Rayan K|0">Mohammed Rayan K (Grade 9A) — Due: ₹ 0</option>
+                  ${studentOptions || `<option value="">No students with outstanding dues</option>`}
                 </select>
               </div>
               <div class="form-group">
                 <label class="form-label">Amount Collecting (₹)</label>
-                <input type="number" class="form-input font-mono" id="fee-pay-amount" required value="24500">
+                <input type="number" class="form-input font-mono" id="fee-pay-amount" required placeholder="0">
               </div>
               <div class="form-group">
                 <label class="form-label">Payment Mode</label>
@@ -152,6 +264,11 @@ export class FinanceModule {
           const mode = document.getElementById('fee-pay-mode').value;
           const ref = document.getElementById('fee-pay-ref').value || 'CASH-REC-' + Date.now().toString().substr(-6);
 
+          if (!studentName) {
+            UIComponents.showToast('No student selected', 'warning');
+            return;
+          }
+
           const invoices = await dbService.select('invoices');
           const inv = invoices.find(i => i.studentName === studentName);
           if (inv) {
@@ -159,13 +276,17 @@ export class FinanceModule {
             const newBal = Math.max(0, inv.amount - newPaid);
             const newStatus = newBal === 0 ? 'Paid' : 'Partial';
 
-            await dbService.update('invoices', inv.id, {
+            const res = await dbService.update('invoices', inv.id, {
               paid: newPaid,
               balance: newBal,
               status: newStatus,
               paidDate: new Date().toISOString().split('T')[0],
               paymentMode: mode
             });
+            if (res && res._syncError) {
+              UIComponents.showToast(`Payment could not be recorded: ${res._syncError}`, 'danger');
+              return;
+            }
           }
 
           await auditService.log('FEE_COLLECTION_RECEIVED', 'FINANCE', {
@@ -199,22 +320,23 @@ export class FinanceModule {
         const amt = e.currentTarget.dataset.amt;
         const date = e.currentTarget.dataset.date;
         const mode = e.currentTarget.dataset.mode;
+        const esc = (v) => UIComponents.escapeHtml(v);
 
         UIComponents.openModal({
           title: `Fee Receipt — ${inv}`,
           bodyHtml: `
             <div id="printable-receipt" style="background: #fff; color: #0f172a; padding: 24px; border: 2px dashed #0f172a; border-radius: 8px;">
               <div style="text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 16px;">
-                <h2 style="font-size: 1.3rem; margin-bottom: 2px;">${TMS_CONFIG.institution.name}</h2>
+                <h2 style="font-size: 1.3rem; margin-bottom: 2px;">${esc(TMS_CONFIG.institution.name)}</h2>
                 <p style="font-size: 0.8rem; color: #64748b;">OFFICIAL FEE RECEIPT • BURSAR'S OFFICE</p>
-                <div style="font-size: 0.85rem; font-weight: 700; margin-top: 6px;">Receipt #${inv}</div>
+                <div style="font-size: 0.85rem; font-weight: 700; margin-top: 6px;">Receipt #${esc(inv)}</div>
               </div>
 
               <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.85rem; margin-bottom: 16px;">
-                <div><strong>Student:</strong> ${name}</div>
-                <div><strong>Date:</strong> ${date}</div>
-                <div><strong>Payment Mode:</strong> ${mode}</div>
-                <div><strong>Academic Year:</strong> ${TMS_CONFIG.academic.currentYear}</div>
+                <div><strong>Student:</strong> ${esc(name)}</div>
+                <div><strong>Date:</strong> ${esc(date)}</div>
+                <div><strong>Payment Mode:</strong> ${esc(mode)}</div>
+                <div><strong>Academic Year:</strong> ${esc(TMS_CONFIG.academic.currentYear)}</div>
               </div>
 
               <table class="tms-table" style="font-size: 0.82rem; margin-bottom: 16px;">
@@ -227,11 +349,11 @@ export class FinanceModule {
                 <tbody>
                   <tr>
                     <td>Tuition & Laboratory Term Fee</td>
-                    <td style="text-align: right;">₹ ${parseFloat(amt).toLocaleString()}</td>
+                    <td style="text-align: right;">₹ ${esc(parseFloat(amt).toLocaleString())}</td>
                   </tr>
                   <tr style="font-weight: 700;">
                     <td>Net Amount Received</td>
-                    <td style="text-align: right; color: #10b981;">₹ ${parseFloat(amt).toLocaleString()}</td>
+                    <td style="text-align: right; color: #10b981;">₹ ${esc(parseFloat(amt).toLocaleString())}</td>
                   </tr>
                 </tbody>
               </table>
@@ -252,6 +374,128 @@ export class FinanceModule {
         });
       });
     });
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Create / Edit / Delete invoices                                     */
+  /* ------------------------------------------------------------------ */
+
+  static nextInvoiceNo() {
+    const existing = this._invoices || [];
+    const year = (TMS_CONFIG.academic && TMS_CONFIG.academic.currentYear) || new Date().getFullYear();
+    const maxSeq = existing.reduce((max, i) => {
+      const m = String(i.invoiceNo || '').match(/(\d+)\s*$/);
+      return m ? Math.max(max, parseInt(m[1], 10)) : max;
+    }, 0);
+    return `INV-${year}-${(maxSeq + 1).toString().padStart(4, '0')}`;
+  }
+
+  static openInvoiceModal(invoice, container) {
+    const esc = (v) => UIComponents.escapeHtml(v);
+    const inv = invoice || {};
+    const isEdit = !!invoice;
+    const classes = (TMS_CONFIG.academic && TMS_CONFIG.academic.classes) || [];
+    const terms = ['Term 1', 'Term 2', 'Term 3', 'Annual', 'Monthly', 'Admission'];
+
+    const bodyHtml = `
+      <form id="form-invoice">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+          <div class="form-group">
+            <label class="form-label">Invoice No</label>
+            <input class="form-input font-mono" id="inv-no" value="${esc(inv.invoiceNo || this.nextInvoiceNo())}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Student Name *</label>
+            <input class="form-input" id="inv-name" required value="${esc(inv.studentName || '')}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Grade / Class</label>
+            <select class="form-select" id="inv-grade">
+              ${classes.map((c) => `<option ${inv.grade === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Term / Period</label>
+            <select class="form-select" id="inv-term">
+              ${terms.map((t) => `<option ${inv.term === t ? 'selected' : ''}>${esc(t)}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Amount Billed (₹) *</label>
+            <input type="number" class="form-input" id="inv-amount" required value="${inv.amount != null ? esc(inv.amount) : ''}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Amount Paid (₹)</label>
+            <input type="number" class="form-input" id="inv-paid" value="${inv.paid != null ? esc(inv.paid) : 0}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Due Date</label>
+            <input type="date" class="form-input" id="inv-due" value="${esc((inv.dueDate || '').slice(0, 10))}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Payment Mode</label>
+            <select class="form-select" id="inv-mode">
+              ${['', 'Cash', 'UPI', 'Bank Transfer', 'Cheque', 'Card'].map((m) => `<option value="${esc(m)}" ${inv.paymentMode === m ? 'selected' : ''}>${m || '—'}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <p style="font-size:0.74rem; color:var(--text-subtle); margin-top:8px;">The outstanding balance and status are calculated automatically from the billed and paid amounts.</p>
+      </form>
+    `;
+    const footerHtml = `
+      <button class="btn btn-secondary" id="inv-cancel">Cancel</button>
+      ${isEdit ? '<button class="btn btn-secondary" id="inv-delete" style="color:#ef4444;"><i data-lucide="trash-2"></i> Delete</button>' : ''}
+      <button class="btn btn-primary" id="inv-save"><i data-lucide="save"></i> ${isEdit ? 'Save Invoice' : 'Create Invoice'}</button>
+    `;
+    UIComponents.openModal({ title: isEdit ? `Edit Invoice — ${inv.invoiceNo || ''}` : 'Create Fee Invoice', bodyHtml, footerHtml });
+
+    document.getElementById('inv-cancel').addEventListener('click', () => UIComponents.closeModal());
+    const delBtn = document.getElementById('inv-delete');
+    if (delBtn) delBtn.addEventListener('click', () => { UIComponents.closeModal(); this.deleteInvoices([inv], container); });
+
+    document.getElementById('inv-save').addEventListener('click', async () => {
+      const name = document.getElementById('inv-name').value.trim();
+      const amount = parseFloat(document.getElementById('inv-amount').value) || 0;
+      const paid = parseFloat(document.getElementById('inv-paid').value) || 0;
+      if (!name) { UIComponents.showToast('Student name is required.', 'warning'); return; }
+      if (amount <= 0) { UIComponents.showToast('The billed amount must be greater than zero.', 'warning'); return; }
+      const balance = Math.max(0, amount - paid);
+      const status = paid <= 0 ? 'Unpaid' : (balance <= 0 ? 'Paid' : 'Partial');
+      const payload = {
+        invoiceNo: document.getElementById('inv-no').value.trim() || this.nextInvoiceNo(),
+        studentName: name,
+        grade: document.getElementById('inv-grade').value,
+        term: document.getElementById('inv-term').value,
+        amount,
+        paid,
+        balance,
+        status,
+        dueDate: document.getElementById('inv-due').value || null,
+        paymentMode: document.getElementById('inv-mode').value || null
+      };
+      const res = isEdit
+        ? await dbService.update('invoices', inv.id, payload)
+        : await dbService.insert('invoices', payload);
+      if (res && res._syncError) { UIComponents.showToast(`Could not save the invoice: ${res._syncError}`, 'danger'); return; }
+      await auditService.log(isEdit ? 'INVOICE_UPDATED' : 'INVOICE_CREATED', 'FINANCE', { invoiceNo: payload.invoiceNo, amount, paid });
+      UIComponents.showToast(`Invoice ${payload.invoiceNo} ${isEdit ? 'updated' : 'created'}.`, 'success');
+      UIComponents.closeModal();
+      await FinanceModule.render(container);
+    });
+    UIComponents.refreshIcons();
+  }
+
+  static async deleteInvoices(rows, container) {
+    const label = rows.length === 1 ? `Delete invoice ${rows[0].invoiceNo}?` : `Delete ${rows.length} invoices?`;
+    if (!confirm(`${label}\n\nThis permanently removes the invoice record. This cannot be undone.`)) return;
+    for (const inv of rows) {
+      // eslint-disable-next-line no-await-in-loop
+      await dbService.delete('invoices', inv.id);
+      // eslint-disable-next-line no-await-in-loop
+      await auditService.log('INVOICE_DELETED', 'FINANCE', { invoiceNo: inv.invoiceNo, studentName: inv.studentName }, inv.id);
+    }
+    UIComponents.showToast(`${rows.length} invoice(s) deleted.`, 'success');
+    await FinanceModule.render(container);
   }
 }
 

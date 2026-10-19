@@ -1,9 +1,29 @@
 /**
  * THAIBA MODEL SCHOOL — Supabase Data Layer
  * Strict Production Mode: No Hardcoded Demo Seed Data
+ *
+ * Converts between the database's snake_case columns and the application's
+ * camelCase field names at this single boundary, so modules can use one style.
  */
 
 import { TMS_CONFIG } from './config.js';
+
+const toCamel = (key) => key.replace(/_([a-z0-9])/g, (_, c) => c.toUpperCase());
+const toSnake = (key) => key.replace(/[A-Z]/g, (c) => '_' + c.toLowerCase());
+
+function rowFromDb(row) {
+  if (!row || typeof row !== 'object') return row;
+  const out = {};
+  for (const [k, v] of Object.entries(row)) out[toCamel(k)] = v;
+  return out;
+}
+
+function rowToDb(row) {
+  if (!row || typeof row !== 'object') return row;
+  const out = {};
+  for (const [k, v] of Object.entries(row)) out[toSnake(k)] = v;
+  return out;
+}
 
 class SupabaseDataService {
   constructor() {
@@ -35,7 +55,8 @@ class SupabaseDataService {
         this.client = window.supabase.createClient(this.url, this.key, {
           auth: {
             persistSession: true,
-            autoRefreshToken: true
+            autoRefreshToken: true,
+            detectSessionInUrl: true
           }
         });
       }
@@ -83,12 +104,14 @@ class SupabaseDataService {
     if (this.client && this.isOnline) {
       try {
         const { data, error } = await this.client.from(collection).select('*');
-        if (!error && Array.isArray(data)) {
-          this.setLocal(collection, data);
-          return filterFn ? data.filter(filterFn) : data;
+        if (error) throw error;
+        if (Array.isArray(data)) {
+          const mapped = data.map(rowFromDb);
+          this.setLocal(collection, mapped);
+          return filterFn ? mapped.filter(filterFn) : mapped;
         }
       } catch (err) {
-        // Fallback to local cache
+        console.warn(`Supabase select failed for ${collection}, using local cache:`, err.message);
       }
     }
     const localData = this.getLocal(collection);
@@ -103,7 +126,7 @@ class SupabaseDataService {
       ...record
     };
 
-    // Update local cache
+    // Update local cache (camelCase form)
     const items = this.getLocal(collection);
     items.unshift(enriched);
     this.setLocal(collection, items);
@@ -111,9 +134,34 @@ class SupabaseDataService {
     // Sync to Supabase
     if (this.client && this.isOnline) {
       try {
-        await this.client.from(collection).insert([enriched]);
+        const { error } = await this.client.from(collection).insert([rowToDb(enriched)]);
+        if (error) throw error;
       } catch (e) {
-        console.warn(`Supabase insert queued for ${collection}:`, e.message);
+        console.error(`Supabase insert FAILED for ${collection}:`, e.message);
+        return { ...enriched, _syncError: e.message };
+      }
+    }
+    return enriched;
+  }
+
+  async upsert(collection, record, onConflict = 'id') {
+    const enriched = { ...record, updated_at: new Date().toISOString() };
+
+    const items = this.getLocal(collection);
+    const index = items.findIndex(item => item.id === enriched.id);
+    if (index !== -1) items[index] = { ...items[index], ...enriched };
+    else if (enriched.id) items.unshift(enriched);
+    this.setLocal(collection, items);
+
+    if (this.client && this.isOnline) {
+      try {
+        const { error } = await this.client
+          .from(collection)
+          .upsert(rowToDb(enriched), { onConflict });
+        if (error) throw error;
+      } catch (e) {
+        console.error(`Supabase upsert FAILED for ${collection}:`, e.message);
+        return { ...enriched, _syncError: e.message };
       }
     }
     return enriched;
@@ -122,20 +170,26 @@ class SupabaseDataService {
   async update(collection, id, updates) {
     const items = this.getLocal(collection);
     const index = items.findIndex(item => item.id === id);
-    if (index !== -1) {
-      items[index] = { ...items[index], ...updates, updated_at: new Date().toISOString() };
-      this.setLocal(collection, items);
+    const stamped = { ...updates, updated_at: new Date().toISOString() };
 
-      if (this.client && this.isOnline) {
-        try {
-          await this.client.from(collection).update(updates).eq('id', id);
-        } catch (e) {
-          console.warn(`Supabase update failed for ${collection}:`, e.message);
-        }
-      }
-      return items[index];
+    if (index !== -1) {
+      items[index] = { ...items[index], ...stamped };
+      this.setLocal(collection, items);
     }
-    return null;
+
+    if (this.client && this.isOnline) {
+      try {
+        const { error } = await this.client.from(collection).update(rowToDb(updates)).eq('id', id);
+        if (error) throw error;
+      } catch (e) {
+        console.error(`Supabase update FAILED for ${collection}:`, e.message);
+        return index !== -1
+          ? { ...items[index], _syncError: e.message }
+          : { id, ...stamped, _syncError: e.message };
+      }
+    }
+
+    return index !== -1 ? items[index] : { id, ...stamped };
   }
 
   async delete(collection, id) {
@@ -145,9 +199,11 @@ class SupabaseDataService {
 
     if (this.client && this.isOnline) {
       try {
-        await this.client.from(collection).delete().eq('id', id);
+        const { error } = await this.client.from(collection).delete().eq('id', id);
+        if (error) throw error;
       } catch (e) {
-        console.warn(`Supabase delete failed for ${collection}:`, e.message);
+        console.error(`Supabase delete FAILED for ${collection}:`, e.message);
+        return false;
       }
     }
     return true;

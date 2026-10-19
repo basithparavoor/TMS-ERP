@@ -31,11 +31,12 @@
       <!-- Login Form -->
       <form id="tms-login-form">
         <div class="form-group">
-          <label class="form-label">Institutional Email</label>
+          <label class="form-label">Email or Username</label>
           <div style="position: relative;">
-            <input type="email" class="form-input" id="login-email" required placeholder="cmbasith786@gmail.com" autofocus style="padding-left: 40px;">
-            <i data-lucide="mail" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--text-muted);"></i>
+            <input type="text" class="form-input" id="login-email" required placeholder="cmbasith786@gmail.com or parent username" autofocus style="padding-left: 40px;">
+            <i data-lucide="user" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--text-muted);"></i>
           </div>
+          <span style="font-size:0.72rem; color:var(--text-subtle);">Parents: sign in using the username printed on your admission form.</span>
         </div>
 
         <div class="form-group" style="margin-bottom: 24px;">
@@ -74,8 +75,33 @@
     import { authService } from './auth-service.js';
     import { UIComponents } from './ui-components.js';
     import { TMS_LOGO } from './logo.js';
+    import { TMS_CONFIG } from './config.js';
+    import { dbService } from './supabase-client.js';
+    import { brandingService } from './branding-service.js';
+    import { checkMigration } from './migration-check.js';
 
     UIComponents.initTheme();
+    brandingService.refresh();
+    checkMigration();
+
+    /**
+     * Resolve what the user typed into the account e-mail to authenticate with.
+     * Full e-mails are used as-is; short usernames are looked up in the shared
+     * `login_aliases` table (staff) and otherwise fall back to the parent
+     * username domain.
+     */
+    async function resolveLoginEmail(identifier) {
+      const value = String(identifier || '').trim();
+      if (!value) return value;
+      if (value.includes('@')) return value;
+      const username = value.toLowerCase();
+      try {
+        const rows = await dbService.select('login_aliases');
+        const alias = rows.find((r) => String(r.username || '').toLowerCase() === username);
+        if (alias && alias.email) return alias.email;
+      } catch (e) { /* table not created yet - fall back below */ }
+      return `${username}@${TMS_CONFIG.parentEmailDomain}`;
+    }
     document.getElementById('login-brand-container').innerHTML = `
       <div style="display: inline-flex; align-items: center; justify-content: center; margin-bottom: 8px;">
         ${TMS_LOGO.emblemSvg(64)}
@@ -103,14 +129,18 @@
       submitBtn.innerHTML = `<i data-lucide="loader-2" class="spin"></i> Authenticating...`;
       UIComponents.refreshIcons();
 
-      const email = document.getElementById('login-email').value;
+      const identifier = document.getElementById('login-email').value.trim();
       const pass = document.getElementById('login-password').value;
+
+      // Staff and parents sign in with a username; map it to the account e-mail.
+      const email = await resolveLoginEmail(identifier);
 
       const res = await authService.login(email, pass);
       if (res && res.success) {
         UIComponents.showToast(`Welcome back, ${res.user.name}!`, 'success');
+        const isParent = res.user.role === TMS_CONFIG.roles.PARENT;
         setTimeout(() => {
-          window.location.href = 'index.html#/dashboard';
+          window.location.href = isParent ? 'parent-portal.html' : 'index.html#/dashboard';
         }, 400);
       } else {
         errBox.innerText = res.error || 'Authentication failed. Please verify credentials.';
@@ -121,8 +151,20 @@
       }
     });
 
-    document.getElementById('btn-forgot-password').addEventListener('click', () => {
-      alert('Password reset link has been dispatched to your registered institutional email.');
+    document.getElementById('btn-forgot-password').addEventListener('click', async (e) => {
+      e.preventDefault();
+      const ident = document.getElementById('login-email').value.trim();
+      if (!ident) {
+        UIComponents.showToast('Enter your email or username first.', 'warning');
+        return;
+      }
+      const email = await resolveLoginEmail(ident);
+      const res = await authService.requestPasswordReset(email);
+      if (res.success) {
+        UIComponents.showToast('Password reset link sent to your email.', 'success');
+      } else {
+        UIComponents.showToast(res.error || 'Unable to send reset email.', 'danger');
+      }
     });
   </script>
 </body>

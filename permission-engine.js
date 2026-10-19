@@ -1,5 +1,9 @@
 /**
  * THAIBA MODEL SCHOOL — Role-Based Access Control (RBAC) & Permission Engine
+ *
+ * Authorisation derives EXCLUSIVELY from the server-verified profile
+ * (role + scope) held by authService. No email or client value can elevate
+ * privileges here.
  */
 
 import { TMS_CONFIG } from './config.js';
@@ -10,46 +14,49 @@ export const CAPABILITIES = {
   MANAGE_SETTINGS: 'manage_settings',
   VIEW_AUDIT_LOGS: 'view_audit_logs',
   MANAGE_USERS: 'manage_users',
-  
+
+  // Admissions
+  MANAGE_ADMISSIONS: 'manage_admissions',
+
   // Facilities
   MANAGE_FACILITIES: 'manage_facilities',
-  
+
   // Academics
   MANAGE_ACADEMICS: 'manage_academics',
   VIEW_TIMETABLE: 'view_timetable',
-  
+
   // Attendance
   MARK_CLASS_ATTENDANCE: 'mark_class_attendance',
   PUNCH_STAFF_ATTENDANCE: 'punch_staff_attendance',
   VIEW_ATTENDANCE: 'view_attendance',
-  
+
   // Students
   MANAGE_STUDENTS: 'manage_students',
   VIEW_STUDENTS: 'view_students',
-  
+
   // Staff & HR
   MANAGE_STAFF: 'manage_staff',
   VIEW_STAFF: 'view_staff',
   MANAGE_PAYROLL: 'manage_payroll',
-  
+
   // Exams
   MANAGE_EXAMS: 'manage_exams',
   ENTER_MARKS: 'enter_marks',
   VIEW_RESULTS: 'view_results',
-  
+
   // Finance
   MANAGE_FINANCE: 'manage_finance',
   COLLECT_FEES: 'collect_fees',
   VIEW_INVOICES: 'view_invoices',
-  
+
   // Operations & Library
   MANAGE_OPERATIONS: 'manage_operations',
   CIRCULATE_BOOKS: 'circulate_books',
-  
+
   // Communication
   PUBLISH_NOTICES: 'publish_notices',
   VIEW_NOTICES: 'view_notices',
-  
+
   // Reports
   VIEW_REPORTS: 'view_reports'
 };
@@ -134,6 +141,11 @@ const ROLE_CAPABILITY_MATRIX = {
     CAPABILITIES.VIEW_NOTICES
   ],
 
+  [TMS_CONFIG.roles.OFFICE_BOY]: [
+    CAPABILITIES.MANAGE_ADMISSIONS,
+    CAPABILITIES.VIEW_NOTICES
+  ],
+
   [TMS_CONFIG.roles.STUDENT]: [
     CAPABILITIES.VIEW_TIMETABLE,
     CAPABILITIES.VIEW_ATTENDANCE,
@@ -151,20 +163,34 @@ const ROLE_CAPABILITY_MATRIX = {
   ]
 };
 
+// Highest privilege level recognised by the engine.
+const PRIVILEGED_MODULE_ROLES = [
+  TMS_CONFIG.roles.ADMIN,
+  TMS_CONFIG.roles.PRINCIPAL
+];
+
 export class PermissionEngine {
+  static _user() {
+    return authService.getCurrentUser();
+  }
+
+  static _isSuperAdmin(user) {
+    return !!user && user.isSuperAdmin === true;
+  }
+
   static can(capability) {
-    const user = authService.getCurrentUser();
+    const user = this._user();
     if (!user || !user.role) return false;
-    if (user.isSuperAdmin || (user.email && user.email.toLowerCase() === TMS_CONFIG.superAdminEmail.toLowerCase())) {
-      return true; // Super Admin has unrestricted access to all capabilities
+    if (this._isSuperAdmin(user) || user.role === TMS_CONFIG.roles.ADMIN) {
+      return true; // Administrator has unrestricted access to all capabilities
     }
     const allowed = ROLE_CAPABILITY_MATRIX[user.role] || [];
     return allowed.includes(capability);
   }
 
   static getScope() {
-    const user = authService.getCurrentUser();
-    if (user?.isSuperAdmin || (user?.email && user.email.toLowerCase() === TMS_CONFIG.superAdminEmail.toLowerCase())) {
+    const user = this._user();
+    if (this._isSuperAdmin(user)) {
       return TMS_CONFIG.scopes.SCHOOL_WIDE;
     }
     return user?.scope || TMS_CONFIG.scopes.OWN_RECORDS;
@@ -175,26 +201,33 @@ export class PermissionEngine {
   }
 
   static canAccessModule(moduleId) {
-    const user = authService.getCurrentUser();
-    if (!user) return false;
-    if (user.isSuperAdmin || (user.email && user.email.toLowerCase() === TMS_CONFIG.superAdminEmail.toLowerCase())) {
-      return true; // Super Admin has access to all modules
-    }
-    const role = user.role;
+    const user = this._user();
+    if (!user || !user.role) return false;
 
-    if (role === TMS_CONFIG.roles.ADMIN || role === TMS_CONFIG.roles.PRINCIPAL) {
+    // Unknown / unassigned roles get nothing.
+    if (user.role === 'pending') return false;
+
+    if (this._isSuperAdmin(user) || user.role === TMS_CONFIG.roles.ADMIN) {
       return true;
     }
 
+    if (PRIVILEGED_MODULE_ROLES.includes(user.role)) {
+      return true; // Principal
+    }
+
+    const role = user.role;
+
     switch (moduleId) {
       case 'dashboard':
-        return true;
+        return user.role !== TMS_CONFIG.roles.OFFICE_BOY;
+      case 'admissions-entry':
+        return [TMS_CONFIG.roles.OFFICE_BOY, TMS_CONFIG.roles.COORDINATOR].includes(role);
       case 'my-work':
         return [TMS_CONFIG.roles.TEACHER, TMS_CONFIG.roles.COORDINATOR, TMS_CONFIG.roles.HR, TMS_CONFIG.roles.FINANCE, TMS_CONFIG.roles.LIBRARIAN].includes(role);
       case 'students':
         return [TMS_CONFIG.roles.COORDINATOR, TMS_CONFIG.roles.TEACHER, TMS_CONFIG.roles.FINANCE, TMS_CONFIG.roles.LIBRARIAN].includes(role);
       case 'staff':
-        return [TMS_CONFIG.roles.HR, TMS_CONFIG.roles.COORDINATOR].includes(role);
+        return [TMS_CONFIG.roles.HR].includes(role);
       case 'academics':
         return [TMS_CONFIG.roles.COORDINATOR, TMS_CONFIG.roles.TEACHER, TMS_CONFIG.roles.STUDENT, TMS_CONFIG.roles.PARENT].includes(role);
       case 'attendance':

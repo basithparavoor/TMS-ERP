@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="app.css">
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body style="min-height: 100vh; padding: 24px 16px; background-color: var(--bg-canvas);">
   <div class="ambient-mesh">
@@ -16,15 +17,16 @@
   </div>
 
   <div style="max-width: 900px; margin: 0 auto; position: relative; z-index: 10;">
-    
+
     <!-- Top Action Nav -->
     <div class="no-print" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
       <a href="login.html" class="btn btn-secondary btn-sm">
         <i data-lucide="arrow-left"></i> Authorized Staff Login
       </a>
-      <div style="display: flex; gap: 10px;">
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <span id="entry-by-badge" class="badge badge-success" style="display: none;"></span>
         <button class="btn btn-secondary btn-sm" id="btn-toggle-instructions">
-          <i data-lucide="info"></i> Fee & Instructions
+          <i data-lucide="info"></i> Fee &amp; Instructions
         </button>
         <button class="btn btn-primary btn-sm" id="btn-print-a4-blank">
           <i data-lucide="printer"></i> Print Blank A4 Form
@@ -32,29 +34,25 @@
       </div>
     </div>
 
-    <!-- Instructions & Fee Structure Modal/Card (Collapsible) -->
+    <!-- Instructions & Fee Structure (Collapsible) -->
     <div class="card no-print" id="instructions-panel" style="margin-bottom: 24px; border-left: 4px solid #16a34a;">
       <div class="card-header">
-        <h3 class="card-title" style="color: #16a34a;">Academic Session 2025 - 2026 Admissions</h3>
+        <h3 class="card-title" style="color: #16a34a;">Academic Session <span id="dyn-session-badge">—</span> Admissions</h3>
         <span class="badge badge-success">Online Applications Active</span>
       </div>
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
         <div>
           <h4 style="font-size: 0.95rem; margin-bottom: 8px;">Admission Fee Schedule</h4>
-          <div id="fee-schedule-list" style="font-size: 0.85rem; line-height: 1.6;">
-            <!-- Dynamically populated from config -->
-          </div>
+          <div id="fee-schedule-list" style="font-size: 0.85rem; line-height: 1.6;"></div>
         </div>
         <div>
           <h4 style="font-size: 0.95rem; margin-bottom: 8px;">General Guidelines</h4>
-          <ul id="instructions-list" style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.5; padding-left: 18px;">
-            <!-- Dynamically populated from config -->
-          </ul>
+          <ul id="instructions-list" style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.5; padding-left: 18px;"></ul>
         </div>
       </div>
     </div>
 
-    <!-- Interactive Admission Form Card -->
+    <!-- Interactive Admission Form -->
     <div class="card no-print" id="interactive-form-card" style="box-shadow: var(--shadow-lg); padding: 32px 28px; margin-bottom: 30px;">
       <div style="text-align: center; margin-bottom: 24px;">
         <div id="portal-emblem-container" style="margin-bottom: 8px;"></div>
@@ -62,161 +60,21 @@
           Admission Application Form
         </h2>
         <p style="color: #16a34a; font-weight: 700; font-size: 0.88rem;">
-          Run by : Thaiba Heritage, Kolkata • Academic Session: <span id="dyn-session-text">2025 - 2026</span>
+          Run by : Thaiba Heritage, Kolkata • Academic Session: <span id="dyn-session-text">—</span>
         </p>
       </div>
 
       <form id="tms-admission-form">
-        <!-- 1. Candidate Details -->
-        <h3 style="font-size: 1.05rem; font-weight: 700; color: #15803d; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; margin-bottom: 16px;">
-          1. Candidate Details
-        </h3>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 20px;">
-          <div class="form-group" style="grid-column: 1 / -1;">
-            <label class="form-label">Full Name of the Candidate (in BLOCK letters) *</label>
-            <input type="text" class="form-input" id="cand-name" required placeholder="e.g. MOHAMMED RAYAN K" style="text-transform: uppercase;">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Date of Birth *</label>
-            <input type="date" class="form-input" id="cand-dob" required>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Gender (M/F) *</label>
-            <select class="form-select" id="cand-gender" required>
-              <option value="Male">Male</option>
-              <option value="Female">Female</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Blood Group *</label>
-            <select class="form-select" id="cand-blood">
-              <option>O+</option><option>O-</option><option>A+</option><option>A-</option>
-              <option>B+</option><option>B-</option><option>AB+</option><option>AB-</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Applying for Class *</label>
-            <select class="form-select" id="cand-class" required>
-              <option>Nursery</option><option>LKG</option><option>UKG</option>
-              <option>Grade 1</option><option>Grade 2</option><option>Grade 3</option>
-              <option>Grade 4</option><option>Grade 5</option><option>Grade 6</option>
-              <option>Grade 7</option><option>Grade 8</option><option selected>Grade 9</option>
-              <option>Grade 10</option><option>Grade 11 (Science)</option><option>Grade 11 (Commerce)</option><option>Grade 11 (Arts)</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Religion</label>
-            <input type="text" class="form-input" id="cand-religion" placeholder="e.g. Islam / General">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Aadhaar Card No. (12 Digits) *</label>
-            <input type="text" class="form-input font-mono" id="cand-aadhaar" maxlength="12" placeholder="1234 5678 9012" required>
-          </div>
-        </div>
+        <!-- Student Photograph -->
+        <div id="student-photo-panel" style="margin-bottom: 22px;"></div>
 
-        <!-- 2. Guardian Details -->
-        <h3 style="font-size: 1.05rem; font-weight: 700; color: #15803d; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; margin-bottom: 16px;">
-          2. Guardian Details
-        </h3>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 20px;">
-          <div class="form-group">
-            <label class="form-label">Father's Full Name *</label>
-            <input type="text" class="form-input" id="f-name" required placeholder="Father Name">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Father's Qualification</label>
-            <input type="text" class="form-input" id="f-qual" placeholder="e.g. Graduate / B.Com">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Father's Occupation</label>
-            <input type="text" class="form-input" id="f-occ" placeholder="e.g. Business / Service">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Monthly Income (₹)</label>
-            <input type="number" class="form-input" id="f-income" placeholder="35000">
-          </div>
+        <div id="dynamic-form-container"></div>
 
-          <div class="form-group">
-            <label class="form-label">Mother's Full Name *</label>
-            <input type="text" class="form-input" id="m-name" required placeholder="Mother Name">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Mother's Qualification</label>
-            <input type="text" class="form-input" id="m-qual" placeholder="e.g. Higher Secondary">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Mother's Occupation</label>
-            <input type="text" class="form-input" id="m-occ" placeholder="e.g. Homemaker / Teacher">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Primary Mobile Contact No. *</label>
-            <input type="tel" class="form-input font-mono" id="m-phone" required placeholder="+91 98470 00000">
-          </div>
-        </div>
+        <!-- Fee Selection & Payment -->
+        <div id="fee-payment-section" style="margin-top: 8px;"></div>
 
-        <!-- 3. Address Details -->
-        <h3 style="font-size: 1.05rem; font-weight: 700; color: #15803d; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; margin-bottom: 16px;">
-          3. Address & Identification
-        </h3>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 20px;">
-          <div class="form-group">
-            <label class="form-label">Village / Town *</label>
-            <input type="text" class="form-input" id="addr-village" required placeholder="Village">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Post Office (P.O.) *</label>
-            <input type="text" class="form-input" id="addr-po" required placeholder="P.O.">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Police Station (P.S.) *</label>
-            <input type="text" class="form-input" id="addr-ps" required placeholder="P.S.">
-          </div>
-          <div class="form-group">
-            <label class="form-label">District *</label>
-            <input type="text" class="form-input" id="addr-dist" required value="Dakshin Dinajpur">
-          </div>
-          <div class="form-group">
-            <label class="form-label">PIN Code *</label>
-            <input type="text" class="form-input font-mono" id="addr-pin" required maxlength="6" placeholder="733127">
-          </div>
-          <div class="form-group" style="grid-column: 1 / -1;">
-            <label class="form-label">Identification Marks</label>
-            <input type="text" class="form-input" id="cand-ident" placeholder="e.g. Mole on right forehead">
-          </div>
-        </div>
-
-        <!-- 4. Academic Details & References -->
-        <h3 style="font-size: 1.05rem; font-weight: 700; color: #15803d; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; margin-bottom: 16px;">
-          4. Academic Background & Referral
-        </h3>
-        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 16px; margin-bottom: 20px;">
-          <div class="form-group">
-            <label class="form-label">Previous School Name & City</label>
-            <input type="text" class="form-input" id="acad-prev-school" placeholder="School name">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Last Attended Class</label>
-            <input type="text" class="form-input" id="acad-last-class" placeholder="Grade 8">
-          </div>
-          <div class="form-group">
-            <label class="form-label">% Marks Obtained</label>
-            <input type="text" class="form-input" id="acad-marks" placeholder="88%">
-          </div>
-        </div>
-
-        <div class="form-group" style="margin-bottom: 24px;">
-          <label class="form-label">Admission Reference Source</label>
-          <div style="display: flex; gap: 16px; flex-wrap: wrap; font-size: 0.85rem;">
-            <label><input type="radio" name="ref-source" value="Banner" checked> Banner / Hoarding</label>
-            <label><input type="radio" name="ref-source" value="Newspaper"> Newspaper</label>
-            <label><input type="radio" name="ref-source" value="Handbill"> Handbill</label>
-            <label><input type="radio" name="ref-source" value="Social Media"> Social Media</label>
-            <label><input type="radio" name="ref-source" value="Word of Mouth"> Friends / Relative</label>
-          </div>
-        </div>
-
-        <!-- 5. Declaration -->
-        <div style="background: rgba(22, 163, 74, 0.05); border: 1px solid #16a34a; border-radius: var(--radius-md); padding: 16px; margin-bottom: 24px;">
+        <!-- Declaration -->
+        <div style="background: rgba(22, 163, 74, 0.05); border: 1px solid #16a34a; border-radius: var(--radius-md); padding: 16px; margin-bottom: 24px; margin-top: 20px;">
           <label style="display: flex; gap: 10px; align-items: flex-start; cursor: pointer; font-size: 0.88rem; line-height: 1.5;">
             <input type="checkbox" id="declaration-check" required style="margin-top: 4px;">
             <span>
@@ -226,152 +84,54 @@
         </div>
 
         <button type="submit" class="btn btn-primary" style="width: 100%; padding: 14px; font-size: 1.05rem;" id="btn-submit-admission">
-          <i data-lucide="check-circle-2"></i> Submit Application & Generate Printable A4 Form
+          <i data-lucide="check-circle-2"></i> Submit Application &amp; Generate Printable A4 Form
         </button>
       </form>
     </div>
 
-    <!-- PRINTABLE A4 PREVIEW CONTAINER (Matching Exact PDF Format + Premium Styling + Admit Card) -->
+    <!-- PRINTABLE A4 PREVIEW -->
     <div id="a4-document-wrapper" style="display: none;">
-      <div class="no-print" style="margin-bottom: 16px; text-align: center;">
+      <div class="no-print" style="margin-bottom: 16px; text-align: center; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
         <button class="btn btn-primary" onclick="window.print()" style="font-size: 1rem; padding: 12px 24px;">
-          <i data-lucide="printer"></i> Print A4 Admission Form & Admit Card
+          <i data-lucide="printer"></i> Print / Save as PDF
         </button>
-        <button class="btn btn-secondary" onclick="document.getElementById('a4-document-wrapper').style.display='none'; document.getElementById('interactive-form-card').style.display='block';">
+        <button class="btn btn-secondary" id="btn-back-to-form">
           <i data-lucide="edit"></i> Back to Form
         </button>
       </div>
 
+      <!-- Credentials highlight (screen only) -->
+      <div class="card no-print" id="credentials-screen-card" style="margin-bottom: 18px; border-left: 4px solid #f59e0b; display: none;"></div>
+
       <div class="a4-preview-container" id="printable-a4-area">
-        <!-- Exact PDF Header -->
         <div id="a4-header-slot"></div>
 
-        <!-- Form No & Session Row -->
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 12px;">
-          <div>
-            <strong>Form No :</strong> <span class="font-mono" id="a4-form-no" style="font-size: 14px; font-weight: 800; border-bottom: 1px dotted #000; padding: 0 10px;">TMS/2025/ADM-0001</span>
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; font-size: 12px;">
+          <div style="flex: 1;">
+            <strong>Form No :</strong> <span class="font-mono" id="a4-form-no" style="font-size: 14px; font-weight: 800; border-bottom: 1px dotted #000; padding: 0 10px;">—</span>
           </div>
-          <div style="text-align: center;">
+          <div style="flex: 2; text-align: center;">
             <h2 style="font-size: 16px; font-weight: 800; text-transform: uppercase; margin: 0; text-decoration: underline;">
               Admission Application Form
             </h2>
             <div style="font-size: 11.5px; font-weight: 700; margin-top: 2px;">
-              Academic Session : <span id="a4-session-text">2025 - 2026</span>
+              Academic Session : <span id="a4-session-text">—</span>
             </div>
           </div>
-          <div style="width: 120px;"></div>
-        </div>
-
-        <!-- Candidate Details Section -->
-        <div style="margin-bottom: 10px;">
-          <div style="font-size: 12px; font-weight: 800; text-decoration: underline; margin-bottom: 4px;">
-            Candidate Details :
-          </div>
-          
-          <!-- Name of Candidate Boxes -->
-          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
-            <span style="font-size: 11px; font-weight: 700; white-space: nowrap;">Name of the Candidate <span style="color:red;">*</span> :</span>
-            <div class="letter-boxes-row" id="a4-name-boxes" style="flex: 1;">
-              <!-- 24 Letter Boxes -->
+          <div style="width: 130px; text-align: right; font-size: 9px;">
+            <div id="a4-photo" style="width: 100px; height: 124px; border: 1px solid #000; margin-left: auto; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 8.5px; line-height: 1.25; background: #fafafa; overflow: hidden;">
+              Affix recent<br>passport-size<br>photograph
             </div>
-          </div>
-
-          <!-- DOB, Gender, Blood Group -->
-          <table style="width: 100%; border-collapse: collapse; font-size: 10.5px; margin-bottom: 6px;">
-            <tr>
-              <td style="width: 33%; padding: 4px 0;"><strong>Date of Birth <span style="color:red;">*</span> :</strong> <span id="a4-dob" style="border-bottom: 1px solid #000; padding: 0 8px;">—</span></td>
-              <td style="width: 33%; padding: 4px 0;"><strong>Gender (M/F) :</strong> <span id="a4-gender" style="border-bottom: 1px solid #000; padding: 0 8px;">—</span></td>
-              <td style="width: 34%; padding: 4px 0;"><strong>Blood Group <span style="color:red;">*</span> :</strong> <span id="a4-blood" style="border-bottom: 1px solid #000; padding: 0 8px;">—</span></td>
-            </tr>
-            <tr>
-              <td style="padding: 4px 0;"><strong>Applying for class <span style="color:red;">*</span> :</strong> <span id="a4-class" style="border-bottom: 1px solid #000; padding: 0 8px; font-weight: 700;">—</span></td>
-              <td style="padding: 4px 0;"><strong>Religion :</strong> <span id="a4-religion" style="border-bottom: 1px solid #000; padding: 0 8px;">—</span></td>
-              <td style="padding: 4px 0;">
-                <div style="display: flex; align-items: center; gap: 4px;">
-                  <strong>Aadhaar No. :</strong>
-                  <div class="letter-boxes-row" id="a4-aadhaar-boxes" style="width: 130px;">
-                    <!-- 12 Boxes -->
-                  </div>
-                </div>
-              </td>
-            </tr>
-          </table>
-        </div>
-
-        <!-- Guardian Details Section -->
-        <div style="margin-bottom: 10px;">
-          <div style="font-size: 12px; font-weight: 800; text-decoration: underline; margin-bottom: 4px;">
-            Guardian Details :
-          </div>
-          
-          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-            <span style="font-size: 11px; font-weight: 700; white-space: nowrap;">Father's Name <span style="color:red;">*</span> :</span>
-            <div class="letter-boxes-row" id="a4-father-boxes" style="flex: 1;"></div>
-          </div>
-          <table style="width: 100%; font-size: 10px; margin-bottom: 6px;">
-            <tr>
-              <td style="width: 35%;"><strong>Qualification :</strong> <span id="a4-f-qual" style="border-bottom: 1px solid #000; padding: 0 6px;">—</span></td>
-              <td style="width: 35%;"><strong>Occupation :</strong> <span id="a4-f-occ" style="border-bottom: 1px solid #000; padding: 0 6px;">—</span></td>
-              <td style="width: 30%;"><strong>Monthly Income :</strong> <span id="a4-f-income" style="border-bottom: 1px solid #000; padding: 0 6px;">—</span></td>
-            </tr>
-          </table>
-
-          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-            <span style="font-size: 11px; font-weight: 700; white-space: nowrap;">Mother's Name <span style="color:red;">*</span> :</span>
-            <div class="letter-boxes-row" id="a4-mother-boxes" style="flex: 1;"></div>
-          </div>
-          <table style="width: 100%; font-size: 10px; margin-bottom: 6px;">
-            <tr>
-              <td style="width: 35%;"><strong>Qualification :</strong> <span id="a4-m-qual" style="border-bottom: 1px solid #000; padding: 0 6px;">—</span></td>
-              <td style="width: 35%;"><strong>Occupation :</strong> <span id="a4-m-occ" style="border-bottom: 1px solid #000; padding: 0 6px;">—</span></td>
-              <td style="width: 30%;"><strong>Phone No. <span style="color:red;">*</span> :</strong> <span id="a4-phone" style="border-bottom: 1px solid #000; padding: 0 6px; font-weight: 700;">—</span></td>
-            </tr>
-          </table>
-        </div>
-
-        <!-- Address Details Section -->
-        <div style="margin-bottom: 10px;">
-          <div style="font-size: 12px; font-weight: 800; text-decoration: underline; margin-bottom: 4px;">
-            Address Details <span style="color:red;">*</span> :
-          </div>
-          <table style="width: 100%; font-size: 10.5px; border-collapse: collapse; margin-bottom: 4px;">
-            <tr>
-              <td style="width: 50%; padding: 3px 0;"><strong>Village :</strong> <span id="a4-village" style="border-bottom: 1px solid #000; padding: 0 8px;">—</span></td>
-              <td style="width: 50%; padding: 3px 0;"><strong>P.O :</strong> <span id="a4-po" style="border-bottom: 1px solid #000; padding: 0 8px;">—</span></td>
-            </tr>
-            <tr>
-              <td style="padding: 3px 0;"><strong>P.S :</strong> <span id="a4-ps" style="border-bottom: 1px solid #000; padding: 0 8px;">—</span></td>
-              <td style="padding: 3px 0;"><strong>Dist :</strong> <span id="a4-dist" style="border-bottom: 1px solid #000; padding: 0 8px;">—</span> &nbsp; <strong>Pin :</strong> <span id="a4-pin" style="border-bottom: 1px solid #000; padding: 0 8px;">—</span></td>
-            </tr>
-          </table>
-          <div style="font-size: 10.5px;">
-            <strong>Identification Marks :</strong> <span id="a4-ident" style="border-bottom: 1px solid #000; padding: 0 8px;">—</span>
+            <div id="a4-entry-by" style="margin-top: 4px; font-size: 9px;"></div>
           </div>
         </div>
 
-        <!-- Academic Details Section -->
-        <div style="margin-bottom: 8px;">
-          <div style="font-size: 12px; font-weight: 800; text-decoration: underline; margin-bottom: 4px;">
-            Academic Details :
-          </div>
-          <div style="font-size: 10.5px; margin-bottom: 4px;">
-            <strong>Previous School <span style="color:red;">*</span> :</strong> <span id="a4-prev-school" style="border-bottom: 1px solid #000; padding: 0 8px;">—</span>
-          </div>
-          <table style="width: 100%; font-size: 10.5px;">
-            <tr>
-              <td style="width: 50%;"><strong>Last attended class <span style="color:red;">*</span> :</strong> <span id="a4-last-class" style="border-bottom: 1px solid #000; padding: 0 8px;">—</span></td>
-              <td style="width: 50%;"><strong>Percentage of Marks <span style="color:red;">*</span> :</strong> <span id="a4-marks" style="border-bottom: 1px solid #000; padding: 0 8px; font-weight: 700;">—</span></td>
-            </tr>
-          </table>
-        </div>
+        <div id="a4-details-slot"></div>
 
-        <!-- Admission References -->
-        <div style="margin-bottom: 10px; font-size: 10.5px;">
-          <strong>Admission References :</strong> &nbsp;
-          <span style="border: 1px solid #000; padding: 1px 4px;">[ <span id="a4-ref-source">✔</span> ] Reference Source</span>
-        </div>
+        <div id="a4-credentials-slot"></div>
 
-        <!-- Declaration & Signatures -->
+        <div id="a4-fee-slot"></div>
+
         <div style="margin-bottom: 12px;">
           <div style="font-size: 11px; font-weight: 800; text-align: center; text-decoration: underline;">Declaration</div>
           <p style="font-size: 9.5px; text-align: justify; margin: 3px 0 20px;">
@@ -380,7 +140,7 @@
           <table style="width: 100%; font-size: 10.5px;">
             <tr>
               <td style="width: 30%;">
-                Date : <span id="a4-date">__/__/2025</span><br>
+                Date : <span id="a4-date">—</span><br>
                 Place : Tapan
               </td>
               <td style="width: 35%; text-align: center;">
@@ -395,7 +155,6 @@
           </table>
         </div>
 
-        <!-- Perforated Cut Line -->
         <div class="perforated-cut"></div>
 
         <!-- Tear-Off Slip: ADMIT CARD -->
@@ -408,23 +167,23 @@
               <div style="font-size: 11px; font-weight: 700;">THAIBA MODEL SCHOOL</div>
               <div style="font-size: 9px; color: #333;">Baghait, Tapan, Dakshin Dinajpur • Contact : +91 8653382851, +91 8167782851</div>
             </div>
-            <div style="width: 85px; height: 100px; border: 1px solid #000; display: flex; align-items: center; justify-content: center; font-size: 8px; text-align: center; background: #fafafa; margin-left: 10px;">
+            <div id="admit-photo" style="width: 85px; height: 100px; border: 1px solid #000; display: flex; align-items: center; justify-content: center; font-size: 8px; text-align: center; background: #fafafa; margin-left: 10px; overflow: hidden;">
               Passport size photo
             </div>
           </div>
 
           <div style="display: flex; justify-content: space-between; font-size: 10.5px; margin-top: 4px;">
             <div><strong>Form No. :</strong> <span id="admit-form-no" class="font-mono" style="font-weight: 700;">—</span></div>
-            <div><strong>Roll No. :</strong> <span id="admit-roll-no" class="font-mono">_____________</span></div>
+            <div><strong>Application Portal :</strong> <span class="font-mono">Online</span></div>
           </div>
 
           <table style="width: 100%; border-collapse: collapse; font-size: 10px; margin-top: 6px; border: 1px solid #000;">
             <tr>
-              <td style="border: 1px solid #000; padding: 4px; width: 25%;"><strong>Student Name :</strong></td>
+              <td style="border: 1px solid #000; padding: 4px; width: 32%;"><strong>Student Name :</strong></td>
               <td style="border: 1px solid #000; padding: 4px; font-weight: 700;" id="admit-name">—</td>
             </tr>
             <tr>
-              <td style="border: 1px solid #000; padding: 4px;"><strong>Father Name :</strong></td>
+              <td style="border: 1px solid #000; padding: 4px;"><strong>Father / Guardian :</strong></td>
               <td style="border: 1px solid #000; padding: 4px;" id="admit-father">—</td>
             </tr>
             <tr>
@@ -438,6 +197,10 @@
             <tr>
               <td style="border: 1px solid #000; padding: 4px;"><strong>Applying for class :</strong></td>
               <td style="border: 1px solid #000; padding: 4px; font-weight: 700;" id="admit-class">—</td>
+            </tr>
+            <tr>
+              <td style="border: 1px solid #000; padding: 4px;"><strong>Portal Username :</strong></td>
+              <td style="border: 1px solid #000; padding: 4px; font-weight: 700;" id="admit-username">—</td>
             </tr>
             <tr>
               <td style="border: 1px solid #000; padding: 4px;"><strong>Admission Test Centre :</strong></td>
@@ -460,197 +223,608 @@
 
   <script type="module">
     import { TMS_CONFIG } from './config.js';
-    import { dbService } from './supabase-client.js';
     import { auditService } from './audit-service.js';
     import { UIComponents } from './ui-components.js';
     import { TMS_LOGO } from './logo.js';
+    import { authService } from './auth-service.js';
+    import { admissionService } from './admission-service.js';
+    import { brandingService } from './branding-service.js';
+    import { checkMigration } from './migration-check.js';
+
+    const esc = (v) => UIComponents.escapeHtml(v);
+
+    const DEFAULT_INSTRUCTIONS = [
+      'Fill all mandatory (*) fields carefully, preferably in BLOCK letters.',
+      'Self-attested copies of the birth certificate and previous marksheet must be produced at verification.',
+      'The application is provisional until verified and approved by the school administration.',
+      'Save your Form No. and the login credentials shown after submission to track your admission status.',
+      'If a payment is shown, complete it via the UPI QR before submitting.'
+    ];
 
     UIComponents.initTheme();
+    brandingService.refresh().then(() => {
+      document.getElementById('portal-emblem-container').innerHTML = TMS_LOGO.emblemSvg(56);
+      document.getElementById('a4-header-slot').innerHTML = TMS_LOGO.printHeaderSvg();
+    });
+    checkMigration();
     UIComponents.refreshIcons();
-
-    // Render official emblem in header
     document.getElementById('portal-emblem-container').innerHTML = TMS_LOGO.emblemSvg(56);
     document.getElementById('a4-header-slot').innerHTML = TMS_LOGO.printHeaderSvg();
 
-    // Populate admission instructions and fee schedule from configuration
-    const conf = TMS_CONFIG.admissionFormDefaults;
-    const feeContainer = document.getElementById('fee-schedule-list');
-    feeContainer.innerHTML = conf.feeStructure.map(f => `
-      <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border-color); padding: 4px 0;">
-        <span>${f.name}</span>
-        <strong>₹ ${f.amount.toLocaleString()}</strong>
-      </div>
-    `).join('');
+    let settings = null;
+    let fields = [];
+    let fees = [];
+    let staffUser = null;
+    let lastResult = null;
 
-    const instContainer = document.getElementById('instructions-list');
-    instContainer.innerHTML = conf.instructions.map(i => `<li>${i}</li>`).join('');
+    function groupBySection(list) {
+      const map = new Map();
+      list.forEach((f) => {
+        const s = f.section || 'General';
+        if (!map.has(s)) map.set(s, []);
+        map.get(s).push(f);
+      });
+      return map;
+    }
 
-    // Toggle instructions
-    document.getElementById('btn-toggle-instructions').addEventListener('click', () => {
-      const p = document.getElementById('instructions-panel');
-      p.style.display = p.style.display === 'none' ? 'block' : 'none';
-    });
+    const PHOTO_KEY = 'photo';
 
-    // Helper to generate letter boxes
-    function makeLetterBoxes(str, total = 26) {
-      const chars = (str || '').toUpperCase().split('');
-      let html = '';
-      for (let i = 0; i < total; i++) {
-        html += `<div class="letter-box">${chars[i] || ''}</div>`;
+    /** The photograph field: an admin-defined file field, or a built-in default. */
+    function resolvePhotoField() {
+      const existing = fields.find((f) => (f.fieldType || 'text') === 'file'
+        && (f.fieldKey === PHOTO_KEY || /photo|photograph/i.test(String(f.label || ''))));
+      if (existing) return existing;
+      return {
+        fieldKey: PHOTO_KEY,
+        label: 'Student Photograph',
+        fieldType: 'file',
+        section: 'Photo & Documents',
+        required: false,
+        helpText: 'Recent passport-size photograph (JPG or PNG, up to 2 MB). It is printed on the application form and the admit card.'
+      };
+    }
+
+    /** All form fields, always including the photograph field. */
+    function allFields() {
+      const photo = resolvePhotoField();
+      const has = fields.some((f) => f.fieldKey === photo.fieldKey);
+      return has ? fields : [...fields, photo];
+    }
+
+    function fieldInputHtml(f) {
+      const id = `fld-${f.fieldKey}`;
+      const req = f.required ? 'required' : '';
+      const ph = esc(f.placeholder || '');
+      const type = f.fieldType || 'text';
+      let control = '';
+
+      if (type === 'textarea') {
+        control = `<textarea class="form-input" id="${id}" rows="2" placeholder="${ph}" ${req}></textarea>`;
+      } else if (type === 'select') {
+        const opts = (f.options || []).map((o) => `<option value="${esc(o)}">${esc(o)}</option>`).join('');
+        control = `<select class="form-select" id="${id}" ${req}><option value="">— Select —</option>${opts}</select>`;
+      } else if (type === 'checkbox') {
+        control = `<label style="display:flex;gap:8px;align-items:center;font-size:0.88rem;"><input type="checkbox" id="${id}"> ${esc(f.helpText || f.label)}</label>`;
+      } else if (type === 'file') {
+        control = `<input type="file" class="form-input" id="${id}" accept="image/*,.pdf" ${req}>
+          <span class="file-name" data-for="${id}" style="font-size:0.74rem;color:var(--text-subtle);display:block;margin-top:4px;"></span>
+          <span class="file-preview" data-for="${id}"></span>`;
+      } else {
+        control = `<input type="${type}" class="form-input${type === 'tel' || type === 'number' ? ' font-mono' : ''}" id="${id}" placeholder="${ph}" ${req}>`;
       }
+
+      return `
+        <div class="form-group">
+          <label class="form-label">${esc(f.label)} ${f.required ? '<span style="color:#dc2626;">*</span>' : ''}</label>
+          ${control}
+          ${f.helpText && type !== 'checkbox' ? `<span style="font-size:0.72rem;color:var(--text-subtle);">${esc(f.helpText)}</span>` : ''}
+        </div>`;
+    }
+
+    /** Prominent passport-photo capture block shown above the form sections. */
+    function renderPhotoPanel(photo) {
+      const panel = document.getElementById('student-photo-panel');
+      if (!panel) return;
+
+      panel.innerHTML = `
+        <h3 style="font-size: 1.05rem; font-weight: 700; color: #15803d; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; margin-bottom: 16px;">
+          Student Photograph ${photo.required ? '<span style="color:#dc2626;">*</span>' : ''}
+        </h3>
+        <div style="display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap;">
+          <div id="photo-drop" title="Click to upload a photo" style="width:132px;height:162px;border:1.5px dashed var(--border-color);border-radius:10px;background:var(--bg-subtle);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;text-align:center;padding:6px;">
+            <div id="photo-placeholder" style="font-size:0.7rem;color:var(--text-subtle);line-height:1.35;">
+              <i data-lucide="camera" style="width:26px;height:26px;display:block;margin:0 auto 6px;"></i>
+              Click to upload<br>passport-size photo
+            </div>
+            <img id="photo-preview-img" alt="" style="width:100%;height:100%;object-fit:cover;display:none;">
+          </div>
+          <div style="flex:1;min-width:220px;">
+            <input type="file" class="form-input" id="fld-${photo.fieldKey}" accept="image/*" ${photo.required ? 'required' : ''}>
+            <span class="file-name font-mono" data-for="fld-${photo.fieldKey}" style="font-size:0.74rem;color:var(--text-subtle);display:block;margin-top:6px;"></span>
+            <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+              <button type="button" class="btn btn-secondary btn-sm" id="photo-pick"><i data-lucide="upload"></i> Choose Photo</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="photo-remove" style="color:#ef4444;"><i data-lucide="trash-2"></i> Remove</button>
+            </div>
+            <p style="font-size:0.72rem;color:var(--text-subtle);margin-top:8px;">
+              ${esc(photo.helpText || 'Recent passport-size photograph, JPG or PNG up to 2 MB.')}
+            </p>
+          </div>
+        </div>
+      `;
+
+      const input = panel.querySelector(`#fld-${photo.fieldKey}`);
+      const drop = panel.querySelector('#photo-drop');
+      const img = panel.querySelector('#photo-preview-img');
+      const placeholder = panel.querySelector('#photo-placeholder');
+      const nameEl = panel.querySelector(`.file-name[data-for="fld-${photo.fieldKey}"]`);
+
+      const clearPreview = () => {
+        img.style.display = 'none';
+        img.removeAttribute('src');
+        placeholder.style.display = 'block';
+      };
+
+      drop.addEventListener('click', () => input.click());
+      panel.querySelector('#photo-pick').addEventListener('click', () => input.click());
+      panel.querySelector('#photo-remove').addEventListener('click', () => {
+        input.value = '';
+        if (nameEl) nameEl.innerText = '';
+        clearPreview();
+      });
+      input.addEventListener('change', () => {
+        const file = input.files && input.files[0];
+        if (!file) { clearPreview(); if (nameEl) nameEl.innerText = ''; return; }
+        if (nameEl) nameEl.innerText = `${file.name} (${Math.round(file.size / 1024)} KB)`;
+        if (file.type.startsWith('image/')) {
+          img.src = URL.createObjectURL(file);
+          img.style.display = 'block';
+          placeholder.style.display = 'none';
+        } else {
+          clearPreview();
+        }
+      });
+      UIComponents.refreshIcons();
+    }
+
+    function renderForm() {
+      const container = document.getElementById('dynamic-form-container');
+      const photo = resolvePhotoField();
+      const rest = allFields().filter((f) => f.fieldKey !== photo.fieldKey);
+      const groups = groupBySection(rest);
+      let sectionNo = 0;
+      let html = '';
+      groups.forEach((list, section) => {
+        sectionNo += 1;
+        html += `<h3 style="font-size: 1.05rem; font-weight: 700; color: #15803d; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; margin-bottom: 16px;">
+          ${sectionNo}. ${esc(section)}
+        </h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 20px;">
+          ${list.map(fieldInputHtml).join('')}
+        </div>`;
+      });
+      container.innerHTML = html;
+
+      container.querySelectorAll('input[type="file"]').forEach((inp) => {
+        inp.addEventListener('change', () => {
+          const nameEl = container.querySelector(`.file-name[data-for="${inp.id}"]`);
+          const prevEl = container.querySelector(`.file-preview[data-for="${inp.id}"]`);
+          const file = inp.files && inp.files[0];
+          if (!file) {
+            if (nameEl) nameEl.innerText = '';
+            if (prevEl) prevEl.innerHTML = '';
+            return;
+          }
+          if (nameEl) nameEl.innerText = `Selected: ${file.name} (${Math.round(file.size / 1024)} KB)`;
+          if (prevEl && file.type.startsWith('image/')) {
+            const url = URL.createObjectURL(file);
+            prevEl.innerHTML = `<img src="${url}" alt="preview" style="max-width:84px; max-height:104px; border:1px solid var(--border-color); border-radius:6px; margin-top:6px; display:block;">`;
+          } else if (prevEl) {
+            prevEl.innerHTML = '';
+          }
+        });
+      });
+
+      renderPhotoPanel(photo);
+    }
+
+    function renderInstructions() {
+      document.getElementById('dyn-session-text').innerText = settings.session || '—';
+      document.getElementById('dyn-session-badge').innerText = settings.session || 'Current';
+      document.getElementById('a4-session-text').innerText = settings.session || '—';
+
+      document.getElementById('fee-schedule-list').innerHTML = fees.length
+        ? fees.map((f) => `
+            <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border-color); padding: 4px 0;">
+              <span>${esc(f.name)} ${f.mandatory ? '<span class="badge badge-warning" style="font-size:0.6rem;">Mandatory</span>' : ''}</span>
+              <strong>₹ ${Number(f.amount || 0).toLocaleString('en-IN')}</strong>
+            </div>`).join('')
+        : '<p style="color: var(--text-muted);">No fee items configured.</p>';
+
+      const instructions = Array.isArray(settings.instructions) && settings.instructions.length
+        ? settings.instructions
+        : DEFAULT_INSTRUCTIONS;
+      document.getElementById('instructions-list').innerHTML = instructions.map((i) => `<li>${esc(i)}</li>`).join('');
+    }
+
+    function renderFees() {
+      const section = document.getElementById('fee-payment-section');
+      if (!fees.length) {
+        section.innerHTML = '';
+        return;
+      }
+      section.innerHTML = `
+        <h3 style="font-size: 1.05rem; font-weight: 700; color: #15803d; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; margin-bottom: 16px;">
+          Fee Selection${settings.paymentRequired ? ' &amp; Payment' : ''}
+        </h3>
+        <div class="card" style="margin-bottom: 18px;">
+          <div id="fee-checklist" style="display: flex; flex-direction: column; gap: 10px;"></div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-color);">
+            <strong>Total Payable</strong>
+            <strong style="font-size: 1.2rem; color: #16a34a;" id="fee-total-display">₹ 0</strong>
+          </div>
+          ${settings.paymentRequired ? '<p style="font-size:0.78rem;color:#b45309;margin-top:8px;"><i data-lucide="alert-triangle" style="width:14px;height:14px;"></i> Payment is mandatory to submit this application.</p>' : ''}
+        </div>
+        <div id="payment-panel" style="display: none;">
+          <div class="card" style="border-left: 4px solid #16a34a;">
+            <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: center;">
+              <div id="upi-qr-box" style="width: 168px; height: 168px; display: flex; align-items: center; justify-content: center; background: #fff; border: 1px solid var(--border-color); border-radius: 10px;"></div>
+              <div style="flex: 1; min-width: 200px;">
+                <h4 style="font-size: 0.95rem; margin-bottom: 6px;">Scan &amp; Pay via UPI</h4>
+                <div style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.6;">
+                  <div>Payee : <strong>${esc(settings.upiPayeeName || TMS_CONFIG.institution.name)}</strong></div>
+                  <div>UPI ID : <strong class="font-mono">${esc(settings.upiId || 'Not configured')}</strong></div>
+                  <div>Amount : <strong id="upi-amount-label">₹ 0</strong></div>
+                </div>
+                ${settings.paymentInstructions ? `<p style="font-size:0.78rem;color:var(--text-muted);margin-top:8px;">${esc(settings.paymentInstructions)}</p>` : ''}
+                <div class="form-group" style="margin-top: 10px;">
+                  <label class="form-label">UPI Transaction / UTR Reference</label>
+                  <input type="text" class="form-input font-mono" id="payment-ref" placeholder="Enter UPI reference number">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>`;
+
+      const checklist = document.getElementById('fee-checklist');
+      checklist.innerHTML = fees.map((f) => `
+        <label style="display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 0.88rem;">
+          <span style="display: flex; gap: 10px; align-items: center;">
+            <input type="checkbox" class="fee-check" data-fee-id="${esc(f.id)}" data-amount="${Number(f.amount || 0)}" ${f.mandatory ? 'checked disabled' : ''}>
+            <span>${esc(f.name)} ${f.description ? `<span style="color:var(--text-subtle);font-size:0.76rem;">— ${esc(f.description)}</span>` : ''}</span>
+          </span>
+          <strong>₹ ${Number(f.amount || 0).toLocaleString('en-IN')}</strong>
+        </label>`).join('');
+
+      checklist.querySelectorAll('.fee-check').forEach((cb) => {
+        cb.addEventListener('change', updateFeeTotal);
+      });
+      updateFeeTotal();
+      UIComponents.refreshIcons();
+    }
+
+    function selectedFees() {
+      return fees.filter((f) => {
+        const cb = document.querySelector(`.fee-check[data-fee-id="${CSS.escape(f.id)}"]`);
+        return f.mandatory || (cb && cb.checked);
+      });
+    }
+
+    function updateFeeTotal() {
+      const chosen = selectedFees();
+      const total = chosen.reduce((s, f) => s + Number(f.amount || 0), 0);
+      document.getElementById('fee-total-display').innerText = `₹ ${total.toLocaleString('en-IN')}`;
+      const label = document.getElementById('upi-amount-label');
+      if (label) label.innerText = `₹ ${total.toLocaleString('en-IN')}`;
+
+      const panel = document.getElementById('payment-panel');
+      if (total > 0) {
+        panel.style.display = 'block';
+        renderQr(total);
+      } else {
+        panel.style.display = 'none';
+      }
+    }
+
+    function upiLink(amount) {
+      if (!settings.upiId) return '';
+      const params = new URLSearchParams({
+        pa: settings.upiId,
+        pn: settings.upiPayeeName || TMS_CONFIG.institution.name,
+        am: String(amount),
+        cu: 'INR',
+        tn: 'Admission Fee'
+      });
+      return `upi://pay?${params.toString()}`;
+    }
+
+    function renderQr(amount) {
+      const box = document.getElementById('upi-qr-box');
+      box.innerHTML = '';
+      const link = upiLink(amount);
+      if (!link) {
+        box.innerHTML = '<p style="color:var(--text-muted);font-size:0.72rem;padding:8px;text-align:center;">UPI ID not configured. Please pay at the school office.</p>';
+        return;
+      }
+      if (window.QRCode) {
+        // eslint-disable-next-line no-new
+        new window.QRCode(box, { text: link, width: 160, height: 160, colorDark: '#000000', colorLight: '#ffffff', correctLevel: window.QRCode.CorrectLevel.M });
+      } else {
+        box.innerHTML = `<p style="font-size:0.7rem;word-break:break-all;padding:8px;">QR unavailable. UPI link:<br><code>${esc(link)}</code></p>`;
+      }
+    }
+
+    function readValues() {
+      const values = {};
+      allFields().forEach((f) => {
+        const type = f.fieldType || 'text';
+        if (type === 'file') return;
+        const el = document.getElementById(`fld-${f.fieldKey}`);
+        if (!el) return;
+        if (type === 'checkbox') values[f.fieldKey] = el.checked ? 'Yes' : 'No';
+        else values[f.fieldKey] = (el.value || '').trim();
+      });
+      return values;
+    }
+
+    async function uploadAttachments(values, formNo) {
+      const folder = `admissions/${String(formNo).replace(/[^A-Za-z0-9]/g, '-')}`;
+      for (const f of allFields()) {
+        if ((f.fieldType || 'text') !== 'file') continue;
+        const input = document.getElementById(`fld-${f.fieldKey}`);
+        const file = input && input.files && input.files[0];
+        if (!file) { values[f.fieldKey] = ''; continue; }
+        const path = `${folder}/${f.fieldKey}-${Date.now()}-${admissionService.sanitizeFileName(file.name)}`;
+        // eslint-disable-next-line no-await-in-loop
+        const res = await admissionService.uploadFile('admission-docs', path, file);
+        if (res.error) {
+          UIComponents.showToast(`Could not upload "${f.label}": ${res.error}`, 'warning');
+          values[f.fieldKey] = '';
+        } else {
+          values[f.fieldKey] = res.path;
+        }
+      }
+    }
+
+    function pick(values, keys, fallback = '—') {
+      for (const k of keys) {
+        if (values[k]) return values[k];
+      }
+      return fallback;
+    }
+
+    function a4DetailsHtml(values) {
+      const photoKey = resolvePhotoField().fieldKey;
+      const groups = groupBySection(allFields().filter((f) => f.fieldKey !== photoKey));
+      let html = '';
+      groups.forEach((list, section) => {
+        html += `<div style="font-size:12px;font-weight:800;text-decoration:underline;margin:8px 0 4px;">${esc(section)} :</div>
+          <table style="width:100%;border-collapse:collapse;font-size:10.5px;margin-bottom:6px;">`;
+        list.forEach((f) => {
+          const val = values[f.fieldKey];
+          const isFile = (f.fieldType || 'text') === 'file';
+          const shown = isFile
+            ? (val ? String(val).split('/').pop() : 'Not attached')
+            : (val ? esc(val) : '\u2014');
+          html += `<tr>
+            <td style="width:38%;padding:3px 0;"><strong>${esc(f.label)}${f.required ? ' <span style="color:red;">*</span>' : ''} :</strong></td>
+            <td style="padding:3px 0;"><span style="border-bottom:1px solid #000;display:inline-block;min-width:150px;padding:0 6px;">${shown}</span></td>
+          </tr>`;
+        });
+        html += '</table>';
+      });
+      html += `<div style="font-size:12px;font-weight:800;text-decoration:underline;margin:8px 0 4px;">Photograph :</div>
+        <div style="font-size:10.5px;padding:3px 0;">
+          ${values[photoKey]
+            ? 'Attached — see the photograph box at the top right of this form.'
+            : 'Not attached — affix a recent passport-size photograph in the box provided above.'}
+        </div>`;
       return html;
     }
 
-    // Blank Printout trigger
-    document.getElementById('btn-print-a4-blank').addEventListener('click', () => {
-      populateA4Preview({
-        formNo: 'TMS/' + new Date().getFullYear() + '/ADM-____',
-        name: '',
-        dob: '',
-        gender: '',
-        blood: '',
-        grade: '',
-        religion: '',
-        aadhaar: '',
-        fatherName: '',
-        fatherQual: '',
-        fatherOcc: '',
-        fatherIncome: '',
-        motherName: '',
-        motherQual: '',
-        motherOcc: '',
-        phone: '',
-        village: '',
-        po: '',
-        ps: '',
-        dist: 'Dakshin Dinajpur',
-        pin: '',
-        ident: '',
-        prevSchool: '',
-        lastClass: '',
-        marks: '',
-        refSource: 'Handbill'
+    /** Show the uploaded student photograph in the A4 form and admit card. */
+    async function applyA4Photo(values) {
+      const boxes = [document.getElementById('a4-photo'), document.getElementById('admit-photo')].filter(Boolean);
+      boxes.forEach((b) => {
+        if (!b.dataset.placeholder) b.dataset.placeholder = b.innerHTML;
+        b.innerHTML = b.dataset.placeholder;
       });
+
+      const path = (values && values[resolvePhotoField().fieldKey]) || '';
+      if (!path) return;
+      const url = await admissionService.getSignedUrl('admission-docs', path, 3600);
+      if (!url) return;
+      boxes.forEach((b) => {
+        b.innerHTML = `<img src="${esc(url)}" alt="Student photograph" style="width:100%;height:100%;object-fit:cover;display:block;">`;
+      });
+    }
+
+    function a4FeeHtml(data) {
+      const chosen = data.feeItems || [];
+      if (!chosen.length) return '';
+      const rows = chosen.map((f) => `<tr><td style="padding:2px 4px;">${esc(f.name)}</td><td style="padding:2px 4px;text-align:right;">₹ ${Number(f.amount || 0).toLocaleString('en-IN')}</td></tr>`).join('');
+      return `<div style="margin-bottom:10px;">
+        <div style="font-size:12px;font-weight:800;text-decoration:underline;margin-bottom:4px;">Fee &amp; Payment :</div>
+        <table style="width:60%;font-size:10.5px;border-collapse:collapse;">
+          ${rows}
+          <tr><td style="padding:2px 4px;border-top:1px solid #000;font-weight:800;">Total</td><td style="padding:2px 4px;border-top:1px solid #000;text-align:right;font-weight:800;">₹ ${Number(data.feeTotal || 0).toLocaleString('en-IN')}</td></tr>
+          <tr><td style="padding:2px 4px;">Status</td><td style="padding:2px 4px;text-align:right;">${esc(data.paymentStatus || '—')}${data.paymentRef ? ` (Ref: ${esc(data.paymentRef)})` : ''}</td></tr>
+        </table>
+      </div>`;
+    }
+
+    function a4CredentialsHtml(creds) {
+      if (!creds) return '';
+      return `<div style="border:1.5px dashed #b45309;padding:8px;margin-bottom:10px;background:#fffbeb;">
+        <div style="font-size:11.5px;font-weight:800;text-decoration:underline;">Parent Login Credentials (for admission status tracking)</div>
+        <table style="width:100%;font-size:10.5px;margin-top:4px;">
+          <tr><td style="width:20%;"><strong>Username :</strong></td><td class="font-mono" style="font-weight:700;">${esc(creds.username)}</td>
+              <td style="width:20%;"><strong>Password :</strong></td><td class="font-mono" style="font-weight:700;">${esc(creds.password)}</td></tr>
+        </table>
+        <div style="font-size:9px;margin-top:3px;">Login at the school portal with these credentials to track your admission status and receive notifications. Keep them confidential.</div>
+      </div>`;
+    }
+
+    function populateA4(result) {
+      const values = result.values;
+      document.getElementById('a4-form-no').innerText = result.formNo;
+      document.getElementById('admit-form-no').innerText = result.formNo;
+      document.getElementById('a4-details-slot').innerHTML = a4DetailsHtml(values);
+      document.getElementById('a4-credentials-slot').innerHTML = a4CredentialsHtml(result.credentials);
+      document.getElementById('a4-fee-slot').innerHTML = a4FeeHtml(result.application || {});
+      document.getElementById('a4-date').innerText = new Date().toLocaleDateString('en-GB');
+      document.getElementById('a4-entry-by').innerText = result.entryBy ? `Entered by: ${result.entryBy}` : '';
+
+      const name = pick(values, ['candidateName', 'studentName', 'name']);
+      const father = pick(values, ['fatherName', 'guardianName', 'motherName']);
+      const village = pick(values, ['village', 'address'], '');
+      const pin = pick(values, ['pin'], '');
+      document.getElementById('admit-name').innerText = name;
+      document.getElementById('admit-father').innerText = father;
+      document.getElementById('admit-address').innerText = `${village} ${pin ? '- ' + pin : ''}`.trim() || '—';
+      document.getElementById('admit-contact').innerText = pick(values, ['phone', 'mobile']);
+      document.getElementById('admit-class').innerText = pick(values, ['applyingClass', 'grade']);
+      document.getElementById('admit-username').innerText = result.credentials ? result.credentials.username : '—';
+    }
+
+    function showCredentialsCard(creds) {
+      const card = document.getElementById('credentials-screen-card');
+      if (!creds) { card.style.display = 'none'; return; }
+      card.style.display = 'block';
+      card.innerHTML = `
+        <div class="card-header">
+          <h3 class="card-title" style="color:#b45309;"><i data-lucide="key-round"></i> Parent Login Credentials — Please Note Down</h3>
+        </div>
+        <p style="font-size:0.84rem;color:var(--text-muted);margin-bottom:10px;">
+          These credentials let you track your admission status and receive school notifications. They are also printed on the form below.
+        </p>
+        <div style="display:flex;gap:24px;flex-wrap:wrap;">
+          <div><span style="font-size:0.76rem;color:var(--text-subtle);display:block;">Username</span><strong class="font-mono" style="font-size:1.1rem;">${esc(creds.username)}</strong></div>
+          <div><span style="font-size:0.76rem;color:var(--text-subtle);display:block;">Password</span><strong class="font-mono" style="font-size:1.1rem;">${esc(creds.password)}</strong></div>
+        </div>`;
+      UIComponents.refreshIcons();
+    }
+
+    function setFormBusy(busy) {
+      const btn = document.getElementById('btn-submit-admission');
+      btn.disabled = busy;
+      btn.innerHTML = busy
+        ? '<i data-lucide="loader-2" class="spin"></i> Processing Application...'
+        : '<i data-lucide="check-circle-2"></i> Submit Application &amp; Generate Printable A4 Form';
+      UIComponents.refreshIcons();
+    }
+
+    async function handleSubmit(e) {
+      e.preventDefault();
+
+      const total = selectedFees().reduce((s, f) => s + Number(f.amount || 0), 0);
+      const paymentRef = (document.getElementById('payment-ref')?.value || '').trim();
+      if (settings.paymentRequired && total > 0 && !paymentRef) {
+        UIComponents.showToast('Payment is mandatory. Please pay via the UPI QR and enter the reference number.', 'warning');
+        return;
+      }
+
+      setFormBusy(true);
+      try {
+        const values = readValues();
+        const preFormNo = admissionService.generateFormNo();
+        await uploadAttachments(values, preFormNo);
+        const selectedFeeIds = Array.from(document.querySelectorAll('.fee-check:checked')).map((c) => c.dataset.feeId);
+
+        const result = await admissionService.submitApplication({
+          values,
+          selectedFeeIds,
+          paymentMode: total > 0 ? 'UPI' : '',
+          paymentRef,
+          submittedBy: staffUser,
+          formNo: preFormNo
+        });
+
+        if (result.application && result.application._syncError) {
+          throw new Error(result.application._syncError);
+        }
+
+        const formNo = result.application.appId;
+        await auditService.log('ONLINE_ADMISSION_REGISTERED', 'ADMISSIONS', {
+          formNo,
+          student: values.candidateName || values.studentName || 'Applicant',
+          grade: values.applyingClass || values.grade || '',
+          submittedBy: staffUser ? staffUser.name : 'Public'
+        }, formNo);
+
+        lastResult = { ...result, values, formNo, entryBy: staffUser ? staffUser.name : null };
+        populateA4(lastResult);
+        await applyA4Photo(values);
+        showCredentialsCard(result.credentials);
+
+        document.getElementById('interactive-form-card').style.display = 'none';
+        document.getElementById('a4-document-wrapper').style.display = 'block';
+        window.scrollTo(0, 0);
+
+        UIComponents.showToast(`Application ${formNo} registered successfully.`, 'success');
+        if (result.accountError) {
+          UIComponents.showToast('Parent portal login could not be auto-created; please contact the office.', 'warning');
+        }
+      } catch (err) {
+        console.error(err);
+        UIComponents.showToast('Submission failed. Please retry or contact the school office.', 'danger');
+      } finally {
+        setFormBusy(false);
+      }
+    }
+
+    function printBlankA4() {
+      const blank = {};
+      allFields().forEach((f) => { blank[f.fieldKey] = ''; });
+      populateA4({ formNo: `TMS/${new Date().getFullYear()}/ADM-______`, values: blank, credentials: null, application: { feeItems: [] }, entryBy: null });
+      applyA4Photo(blank);
+      document.getElementById('credentials-screen-card').style.display = 'none';
       document.getElementById('interactive-form-card').style.display = 'none';
       document.getElementById('a4-document-wrapper').style.display = 'block';
       window.scrollTo(0, 0);
       window.print();
-    });
-
-    function populateA4Preview(data) {
-      document.getElementById('a4-form-no').innerText = data.formNo;
-      document.getElementById('admit-form-no').innerText = data.formNo;
-      document.getElementById('a4-name-boxes').innerHTML = makeLetterBoxes(data.name, 26);
-      document.getElementById('a4-dob').innerText = data.dob || '—';
-      document.getElementById('a4-gender').innerText = data.gender || '—';
-      document.getElementById('a4-blood').innerText = data.blood || '—';
-      document.getElementById('a4-class').innerText = data.grade || '—';
-      document.getElementById('a4-religion').innerText = data.religion || '—';
-      document.getElementById('a4-aadhaar-boxes').innerHTML = makeLetterBoxes(data.aadhaar, 12);
-
-      document.getElementById('a4-father-boxes').innerHTML = makeLetterBoxes(data.fatherName, 26);
-      document.getElementById('a4-f-qual').innerText = data.fatherQual || '—';
-      document.getElementById('a4-f-occ').innerText = data.fatherOcc || '—';
-      document.getElementById('a4-f-income').innerText = data.fatherIncome ? '₹ ' + data.fatherIncome : '—';
-
-      document.getElementById('a4-mother-boxes').innerHTML = makeLetterBoxes(data.motherName, 26);
-      document.getElementById('a4-m-qual').innerText = data.motherQual || '—';
-      document.getElementById('a4-m-occ').innerText = data.motherOcc || '—';
-      document.getElementById('a4-phone').innerText = data.phone || '—';
-
-      document.getElementById('a4-village').innerText = data.village || '—';
-      document.getElementById('a4-po').innerText = data.po || '—';
-      document.getElementById('a4-ps').innerText = data.ps || '—';
-      document.getElementById('a4-dist').innerText = data.dist || 'Dakshin Dinajpur';
-      document.getElementById('a4-pin').innerText = data.pin || '—';
-      document.getElementById('a4-ident').innerText = data.ident || '—';
-
-      document.getElementById('a4-prevSchool').innerText = data.prevSchool || '—';
-      document.getElementById('a4-last-class').innerText = data.lastClass || '—';
-      document.getElementById('a4-marks').innerText = data.marks ? data.marks + '%' : '—';
-      document.getElementById('a4-ref-source').innerText = data.refSource || 'Direct';
-
-      document.getElementById('a4-date').innerText = new Date().toLocaleDateString('en-GB');
-
-      // Populate Tear-Off Admit Card
-      document.getElementById('admit-name').innerText = data.name || '—';
-      document.getElementById('admit-father').innerText = data.fatherName || '—';
-      document.getElementById('admit-address').innerText = `${data.village || ''}, P.O: ${data.po || ''}, Dist: ${data.dist || ''} - ${data.pin || ''}`;
-      document.getElementById('admit-contact').innerText = data.phone || '—';
-      document.getElementById('admit-class').innerText = data.grade || '—';
     }
 
-    // Form Submit Handler
-    document.getElementById('tms-admission-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
+    async function boot() {
+      try {
+        [settings, fields, fees] = await Promise.all([
+          admissionService.loadSettings(),
+          admissionService.listFields(),
+          admissionService.listFees()
+        ]);
+      } catch (e) {
+        console.error('Admission config load failed:', e);
+        UIComponents.showToast('Could not load admission configuration. Please refresh.', 'danger');
+      }
 
-      const btn = document.getElementById('btn-submit-admission');
-      btn.disabled = true;
-      btn.innerHTML = `<i data-lucide="loader-2" class="spin"></i> Processing Application...`;
+      try {
+        const user = await authService.init();
+        if (user && user.role && user.role !== 'parent' && user.role !== 'pending') {
+          staffUser = user;
+          const badge = document.getElementById('entry-by-badge');
+          badge.style.display = 'inline-flex';
+          badge.innerText = `Entered by: ${user.name}`;
+        }
+      } catch (e) { /* public visitor */ }
+
+      renderInstructions();
+      renderForm();
+      renderFees();
       UIComponents.refreshIcons();
 
-      const randomDigits = Math.floor(1000 + Math.random() * 9000);
-      const formNo = `TMS/2025/ADM-${randomDigits}`;
-
-      const formData = {
-        formNo: formNo,
-        name: document.getElementById('cand-name').value.trim().toUpperCase(),
-        dob: document.getElementById('cand-dob').value,
-        gender: document.getElementById('cand-gender').value,
-        blood: document.getElementById('cand-blood').value,
-        grade: document.getElementById('cand-class').value,
-        religion: document.getElementById('cand-religion').value,
-        aadhaar: document.getElementById('cand-aadhaar').value.replace(/\s+/g, ''),
-        fatherName: document.getElementById('f-name').value.trim().toUpperCase(),
-        fatherQual: document.getElementById('f-qual').value,
-        fatherOcc: document.getElementById('f-occ').value,
-        fatherIncome: document.getElementById('f-income').value,
-        motherName: document.getElementById('m-name').value.trim().toUpperCase(),
-        motherQual: document.getElementById('m-qual').value,
-        motherOcc: document.getElementById('m-occ').value,
-        phone: document.getElementById('m-phone').value,
-        village: document.getElementById('addr-village').value,
-        po: document.getElementById('addr-po').value,
-        ps: document.getElementById('addr-ps').value,
-        dist: document.getElementById('addr-dist').value,
-        pin: document.getElementById('addr-pin').value,
-        ident: document.getElementById('cand-ident').value,
-        prevSchool: document.getElementById('acad-prev-school').value,
-        lastClass: document.getElementById('acad-last-class').value,
-        marks: document.getElementById('acad-marks').value,
-        refSource: document.querySelector('input[name="ref-source"]:checked')?.value || 'Direct'
-      };
-
-      // Save to Supabase admissions_applications table
-      await dbService.insert('admissions_applications', {
-        app_id: formNo,
-        student_name: formData.name,
-        dob: formData.dob,
-        gender: formData.gender,
-        grade: formData.grade,
-        guardian_name: formData.fatherName,
-        phone: formData.phone,
-        email: formData.phone + '@applicant.tms',
-        address: `${formData.village}, P.O: ${formData.po}, P.S: ${formData.ps}, Dist: ${formData.dist} - ${formData.pin}`,
-        status: 'Submitted'
+      document.getElementById('tms-admission-form').addEventListener('submit', handleSubmit);
+      document.getElementById('btn-toggle-instructions').addEventListener('click', () => {
+        const p = document.getElementById('instructions-panel');
+        p.style.display = p.style.display === 'none' ? 'block' : 'none';
       });
+      document.getElementById('btn-print-a4-blank').addEventListener('click', printBlankA4);
+      document.getElementById('btn-back-to-form').addEventListener('click', () => {
+        document.getElementById('a4-document-wrapper').style.display = 'none';
+        document.getElementById('interactive-form-card').style.display = 'block';
+        window.scrollTo(0, 0);
+      });
+    }
 
-      await auditService.log('ONLINE_ADMISSION_REGISTERED', 'ADMISSIONS', {
-        formNo: formNo,
-        student: formData.name,
-        grade: formData.grade,
-        phone: formData.phone
-      }, formNo);
-
-      populateA4Preview(formData);
-
-      // Show A4 Preview & Hide Form
-      document.getElementById('interactive-form-card').style.display = 'none';
-      document.getElementById('a4-document-wrapper').style.display = 'block';
-      window.scrollTo(0, 0);
-
-      UIComponents.showToast(`Application ${formNo} Registered! Showing printable A4 form.`, 'success');
-    });
+    boot();
   </script>
 </body>
 </html>
