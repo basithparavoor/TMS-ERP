@@ -10,7 +10,7 @@ import { authService } from './auth-service.js';
 import { auditService } from './audit-service.js';
 import { UIComponents } from './ui-components.js';
 import { TMS_LOGO } from './logo.js';
-import { admissionService, DEFAULT_INSTRUCTIONS } from './admission-service.js';
+import { admissionService, DEFAULT_INSTRUCTIONS, DEFAULT_POPUP_INSTRUCTIONS } from './admission-service.js';
 import { notificationService } from './notification-service.js';
 import { brandingService } from './branding-service.js';
 import { downloadCsv, exportPdf, kvTable } from './export-utils.js';
@@ -1194,7 +1194,11 @@ export class AdminModule {
       ? s.instructions.slice()
       : (DEFAULT_INSTRUCTIONS || []).slice();
 
-    const renderList = () => {
+    let currentPopupInstructions = Array.isArray(s.popupInstructions) && s.popupInstructions.length
+      ? s.popupInstructions.slice()
+      : (DEFAULT_POPUP_INSTRUCTIONS || []).slice();
+
+    const renderGuidelinesList = () => {
       const container = document.getElementById('guidelines-list-container');
       if (!container) return;
       if (!currentInstructions.length) {
@@ -1215,7 +1219,8 @@ export class AdminModule {
         inp.addEventListener('input', (e) => {
           const index = parseInt(e.target.dataset.index, 10);
           currentInstructions[index] = e.target.value;
-          syncTextarea();
+          const ta = document.getElementById('set-instructions-raw');
+          if (ta) ta.value = currentInstructions.join('\n');
         });
       });
 
@@ -1223,17 +1228,52 @@ export class AdminModule {
         btn.addEventListener('click', () => {
           const index = parseInt(btn.dataset.index, 10);
           currentInstructions.splice(index, 1);
-          renderList();
-          syncTextarea();
+          renderGuidelinesList();
+          const ta = document.getElementById('set-instructions-raw');
+          if (ta) ta.value = currentInstructions.join('\n');
         });
       });
 
       UIComponents.refreshIcons();
     };
 
-    const syncTextarea = () => {
-      const ta = document.getElementById('set-instructions-raw');
-      if (ta) ta.value = currentInstructions.join('\n');
+    const renderPopupList = () => {
+      const container = document.getElementById('popup-list-container');
+      if (!container) return;
+      if (!currentPopupInstructions.length) {
+        container.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem;padding:8px 0;">No instructions configured. Click "Reset to Defaults" or add one below.</p>';
+        return;
+      }
+      container.innerHTML = currentPopupInstructions.map((item, idx) => `
+        <div style="display:flex; gap:10px; align-items:center; margin-bottom:8px; background:var(--bg-subtle, #f8fafc); padding:8px 12px; border-radius:var(--radius-md); border:1px solid var(--border-color);">
+          <span style="font-weight:700; color:#16a34a; font-size:0.85rem; min-width:22px;">${idx + 1}.</span>
+          <input type="text" class="form-input popup-item-input" data-index="${idx}" value="${esc(item)}" style="flex:1; font-size:0.88rem;">
+          <button type="button" class="btn btn-secondary btn-sm btn-del-popup-item" data-index="${idx}" title="Delete Item" style="color:#ef4444; padding:4px 8px;">
+            <i data-lucide="trash-2"></i>
+          </button>
+        </div>
+      `).join('');
+
+      container.querySelectorAll('.popup-item-input').forEach((inp) => {
+        inp.addEventListener('input', (e) => {
+          const index = parseInt(e.target.dataset.index, 10);
+          currentPopupInstructions[index] = e.target.value;
+          const ta = document.getElementById('set-popup-raw');
+          if (ta) ta.value = currentPopupInstructions.join('\n');
+        });
+      });
+
+      container.querySelectorAll('.btn-del-popup-item').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const index = parseInt(btn.dataset.index, 10);
+          currentPopupInstructions.splice(index, 1);
+          renderPopupList();
+          const ta = document.getElementById('set-popup-raw');
+          if (ta) ta.value = currentPopupInstructions.join('\n');
+        });
+      });
+
+      UIComponents.refreshIcons();
     };
 
     tabContent.innerHTML = `
@@ -1241,7 +1281,7 @@ export class AdminModule {
         <div>
           <h2 style="font-size:1.4rem; font-weight:800; margin:0 0 4px;">Admission Portal &amp; Guidelines Settings</h2>
           <p style="color:var(--text-muted); font-size:0.88rem; margin:0;">
-            Control on-demand toggles for Fee Structure and Guidelines, customize instructions, and configure academic session.
+            Customize form headings, academic session, submission popup instructions, and on-demand display toggles.
           </p>
         </div>
         <button class="btn btn-primary" id="btn-save-settings"><i data-lucide="save"></i> Save All Settings</button>
@@ -1249,20 +1289,65 @@ export class AdminModule {
 
       <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap:22px;">
         
-        <!-- DISPLAY TOGGLES CARD -->
+        <!-- CARD 1: FORM HEADINGS & BRANDING CUSTOMIZER -->
         <div class="card" style="border-left: 4px solid #16a34a;">
           <div class="card-header">
-            <h3 class="card-title"><i data-lucide="sliders" style="color:#16a34a;"></i> Admission Portal Display Toggles</h3>
+            <h3 class="card-title"><i data-lucide="heading" style="color:#16a34a;"></i> Form Headings &amp; Title Customization</h3>
           </div>
-          <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:16px;">
-            These controls determine which on-demand buttons are visible to applicants on the public admission page. Fee schedule and guideline details are only revealed when an applicant explicitly clicks their respective button.
+          <p style="font-size:0.84rem; color:var(--text-muted); margin-bottom:14px;">
+            Configure the main titles, organization line, and session shown on the public admission form, A4 printout, and Admit Card.
           </p>
 
-          <div style="display:flex; flex-direction:column; gap:16px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; background:var(--bg-subtle, #f8fafc); border:1px solid var(--border-color); border-radius:var(--radius-md);">
+          <div class="form-group" style="margin-bottom:12px;">
+            <label class="form-label">Form Main Heading</label>
+            <input class="form-input" id="set-form-title" value="${esc(s.formTitle || 'Admission Application Form')}" placeholder="e.g. Admission Application Form">
+          </div>
+
+          <div class="form-group" style="margin-bottom:12px;">
+            <label class="form-label">Form Subtitle / Trust Line</label>
+            <input class="form-input" id="set-form-subtitle" value="${esc(s.formSubtitle || 'Run by : Thaiba Heritage, Kolkata')}" placeholder="e.g. Run by : Thaiba Heritage, Kolkata">
+          </div>
+
+          <div class="form-group" style="margin-bottom:12px;">
+            <label class="form-label">Academic Session</label>
+            <input class="form-input" id="set-session" value="${esc(s.session || '2025 - 2026')}" placeholder="e.g. 2025 - 2026">
+          </div>
+
+          <div style="border-top:1px solid var(--border-color); padding-top:14px; margin-top:14px;">
+            <h4 style="font-size:0.92rem; color:#15803d; margin-bottom:10px;">Admit Card Slip Titles</h4>
+            <div class="form-group" style="margin-bottom:10px;">
+              <label class="form-label">Admit Card Title</label>
+              <input class="form-input" id="set-admit-title" value="${esc(s.admitCardTitle || 'ADMIT CARD')}" placeholder="e.g. ADMIT CARD">
+            </div>
+            <div class="form-group" style="margin-bottom:10px;">
+              <label class="form-label">School Name on Admit Card</label>
+              <input class="form-input" id="set-admit-subtitle" value="${esc(s.admitCardSubtitle || 'THAIBA MODEL SCHOOL')}" placeholder="e.g. THAIBA MODEL SCHOOL">
+            </div>
+            <div class="form-group" style="margin-bottom:10px;">
+              <label class="form-label">Admit Card Address &amp; Contact</label>
+              <input class="form-input" id="set-admit-address" value="${esc(s.admitCardAddress || 'Baghait, Tapan, Dakshin Dinajpur • Contact : +91 8653382851, +91 8167782851')}">
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">Admission / Test Centre</label>
+              <input class="form-input" id="set-centre" value="${esc(s.testCentre || 'THAIBA MODEL SCHOOL, Baghait, Tapan, Dakshin Dinajpur')}">
+            </div>
+          </div>
+        </div>
+
+        <!-- CARD 2: DISPLAY TOGGLES & POPUP INSTRUCTIONS -->
+        <div class="card" style="border-left: 4px solid #8b5cf6;">
+          <div class="card-header">
+            <h3 class="card-title"><i data-lucide="sliders" style="color:#8b5cf6;"></i> Public Portal Toggles</h3>
+          </div>
+          <p style="font-size:0.84rem; color:var(--text-muted); margin-bottom:14px;">
+            Choose whether to show on-demand buttons for Fee Structure and Guidelines on the public form.
+          </p>
+
+          <div style="display:flex; flex-direction:column; gap:12px; margin-bottom:20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; background:var(--bg-subtle, #f8fafc); border:1px solid var(--border-color); border-radius:var(--radius-md);">
               <div style="padding-right:12px;">
-                <strong style="font-size:0.95rem; display:block; margin-bottom:2px;">Show Fee Structure in Admission Portal</strong>
-                <span style="font-size:0.8rem; color:var(--text-muted);">Displays the "Fee Structure" button on the admission portal so applicants can view fee breakdown on demand.</span>
+                <strong style="font-size:0.92rem; display:block; margin-bottom:2px;">Show Fee Structure Button</strong>
+                <span style="font-size:0.78rem; color:var(--text-muted);">Displays the "Fee Structure" button on the portal to view fee schedule on demand.</span>
               </div>
               <label class="switch" style="position:relative; display:inline-block; width:50px; height:26px; flex-shrink:0;">
                 <input type="checkbox" id="set-show-fee-structure" ${s.showFeeStructure ? 'checked' : ''} style="opacity:0; width:0; height:0;">
@@ -1270,10 +1355,10 @@ export class AdminModule {
               </label>
             </div>
 
-            <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; background:var(--bg-subtle, #f8fafc); border:1px solid var(--border-color); border-radius:var(--radius-md);">
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; background:var(--bg-subtle, #f8fafc); border:1px solid var(--border-color); border-radius:var(--radius-md);">
               <div style="padding-right:12px;">
-                <strong style="font-size:0.95rem; display:block; margin-bottom:2px;">Show General Guidelines in Admission Portal</strong>
-                <span style="font-size:0.8rem; color:var(--text-muted);">Displays the "General Guidelines" button on the admission portal so applicants can read admission instructions on demand.</span>
+                <strong style="font-size:0.92rem; display:block; margin-bottom:2px;">Show General Guidelines Button</strong>
+                <span style="font-size:0.78rem; color:var(--text-muted);">Displays the "General Guidelines" button on the portal to read admission instructions on demand.</span>
               </div>
               <label class="switch" style="position:relative; display:inline-block; width:50px; height:26px; flex-shrink:0;">
                 <input type="checkbox" id="set-show-guidelines" ${s.showGuidelines ? 'checked' : ''} style="opacity:0; width:0; height:0;">
@@ -1282,49 +1367,57 @@ export class AdminModule {
             </div>
           </div>
 
-          <div style="margin-top:22px; border-top:1px solid var(--border-color); padding-top:16px;">
-            <h4 style="font-size:0.95rem; margin-bottom:10px; color:#15803d;">Academic Session &amp; Centre</h4>
-            <div class="form-group" style="margin-bottom:12px;">
-              <label class="form-label">Academic Session</label>
-              <input class="form-input" id="set-session" value="${esc(s.session || '')}" placeholder="e.g. 2026 - 2027">
+          <!-- SUBMISSION POPUP INSTRUCTIONS EDITOR -->
+          <div style="border-top:1px solid var(--border-color); padding-top:16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+              <div>
+                <h4 style="font-size:0.95rem; margin:0 0 2px; color:#6d28d9;"><i data-lucide="message-square" style="width:16px; height:16px; vertical-align:middle;"></i> Post-Submission Popup Instructions</h4>
+                <p style="font-size:0.78rem; color:var(--text-muted); margin:0;">Instructions shown inside the confirmation popup after submitting.</p>
+              </div>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-reset-popup" style="font-size:0.75rem; padding:4px 8px;">
+                <i data-lucide="rotate-ccw"></i> Reset
+              </button>
             </div>
-            <div class="form-group" style="margin-bottom:12px;">
-              <label class="form-label">Admission / Test Centre</label>
-              <input class="form-input" id="set-centre" value="${esc(s.testCentre || '')}">
+
+            <div style="display:flex; gap:8px; margin-bottom:12px;">
+              <input type="text" class="form-input" id="new-popup-text" placeholder="Add an instruction for the submit popup..." style="font-size:0.85rem;">
+              <button type="button" class="btn btn-primary btn-sm" id="btn-add-popup" style="white-space:nowrap;">
+                <i data-lucide="plus"></i> Add
+              </button>
             </div>
-            <div class="form-group" style="margin-bottom:0;">
-              <label class="form-label">Submission Success Note</label>
-              <textarea class="form-textarea" id="set-success" rows="2" placeholder="Message shown to parents upon submission…">${esc(s.successMessage || '')}</textarea>
-            </div>
+
+            <div id="popup-list-container" style="max-height:220px; overflow-y:auto; padding-right:4px;"></div>
+
+            <details style="margin-top:10px; font-size:0.8rem; color:var(--text-muted);">
+              <summary style="cursor:pointer; font-weight:600; color:var(--text-main);">Bulk edit popup instructions</summary>
+              <textarea class="form-textarea" id="set-popup-raw" rows="3" style="font-size:0.8rem; margin-top:6px;">${esc(currentPopupInstructions.join('\n'))}</textarea>
+            </details>
           </div>
         </div>
 
-        <!-- GENERAL GUIDELINES EDITOR CARD -->
-        <div class="card" style="border-left: 4px solid #3b82f6;">
+        <!-- CARD 3: GENERAL GUIDELINES MODAL INSTRUCTIONS -->
+        <div class="card" style="border-left: 4px solid #3b82f6; grid-column: 1 / -1;">
           <div class="card-header" style="flex-wrap:wrap; gap:10px;">
             <div>
-              <h3 class="card-title"><i data-lucide="list-checks" style="color:#3b82f6;"></i> General Guidelines &amp; Instructions</h3>
-              <p class="card-desc">Edit, add, or delete instructions presented to applicants.</p>
+              <h3 class="card-title"><i data-lucide="list-checks" style="color:#3b82f6;"></i> General Guidelines (Modal Content)</h3>
+              <p class="card-desc">Detailed guidelines shown when applicants click the "General Guidelines" button on the portal.</p>
             </div>
             <button type="button" class="btn btn-secondary btn-sm" id="btn-reset-guidelines">
               <i data-lucide="rotate-ccw"></i> Reset Defaults
             </button>
           </div>
 
-          <!-- Add new guideline input -->
-          <div style="display:flex; gap:8px; margin-bottom:16px;">
+          <div style="display:flex; gap:8px; margin-bottom:14px;">
             <input type="text" class="form-input" id="new-guideline-text" placeholder="Type a new guideline here..." style="font-size:0.88rem;">
             <button type="button" class="btn btn-primary btn-sm" id="btn-add-guideline" style="white-space:nowrap;">
               <i data-lucide="plus"></i> Add
             </button>
           </div>
 
-          <!-- List of Guidelines -->
-          <div id="guidelines-list-container" style="max-height:340px; overflow-y:auto; padding-right:4px;"></div>
+          <div id="guidelines-list-container" style="max-height:280px; overflow-y:auto; padding-right:4px;"></div>
 
-          <!-- Collapsible Bulk Text Area -->
-          <details style="margin-top:14px; font-size:0.82rem; color:var(--text-muted);">
-            <summary style="cursor:pointer; font-weight:600; color:var(--text-main); margin-bottom:6px;">Bulk edit instructions (raw lines)</summary>
+          <details style="margin-top:12px; font-size:0.82rem; color:var(--text-muted);">
+            <summary style="cursor:pointer; font-weight:600; color:var(--text-main); margin-bottom:6px;">Bulk edit guidelines (raw lines)</summary>
             <textarea class="form-textarea" id="set-instructions-raw" rows="4" style="font-size:0.82rem; margin-top:6px;">${esc(currentInstructions.join('\n'))}</textarea>
           </details>
         </div>
@@ -1332,7 +1425,8 @@ export class AdminModule {
       </div>
     `;
 
-    renderList();
+    renderGuidelinesList();
+    renderPopupList();
 
     const addSwitchStyles = () => {
       const styleId = 'tms-switch-styles';
@@ -1352,14 +1446,16 @@ export class AdminModule {
     };
     addSwitchStyles();
 
+    // Guidelines listeners
     document.getElementById('btn-add-guideline').addEventListener('click', () => {
       const inp = document.getElementById('new-guideline-text');
       const val = (inp.value || '').trim();
       if (!val) return;
       currentInstructions.push(val);
       inp.value = '';
-      renderList();
-      syncTextarea();
+      renderGuidelinesList();
+      const ta = document.getElementById('set-instructions-raw');
+      if (ta) ta.value = currentInstructions.join('\n');
     });
 
     document.getElementById('new-guideline-text').addEventListener('keydown', (e) => {
@@ -1372,42 +1468,87 @@ export class AdminModule {
     document.getElementById('btn-reset-guidelines').addEventListener('click', () => {
       if (!confirm('Reset all guidelines back to the school default instructions?')) return;
       currentInstructions = (DEFAULT_INSTRUCTIONS || []).slice();
-      renderList();
-      syncTextarea();
+      renderGuidelinesList();
+      const ta = document.getElementById('set-instructions-raw');
+      if (ta) ta.value = currentInstructions.join('\n');
     });
 
     const rawTa = document.getElementById('set-instructions-raw');
     if (rawTa) {
       rawTa.addEventListener('input', (e) => {
         currentInstructions = e.target.value.split('\n').map((x) => x.trim()).filter(Boolean);
-        renderList();
+        renderGuidelinesList();
+      });
+    }
+
+    // Popup instructions listeners
+    document.getElementById('btn-add-popup').addEventListener('click', () => {
+      const inp = document.getElementById('new-popup-text');
+      const val = (inp.value || '').trim();
+      if (!val) return;
+      currentPopupInstructions.push(val);
+      inp.value = '';
+      renderPopupList();
+      const ta = document.getElementById('set-popup-raw');
+      if (ta) ta.value = currentPopupInstructions.join('\n');
+    });
+
+    document.getElementById('new-popup-text').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        document.getElementById('btn-add-popup').click();
+      }
+    });
+
+    document.getElementById('btn-reset-popup').addEventListener('click', () => {
+      if (!confirm('Reset popup instructions back to default?')) return;
+      currentPopupInstructions = (DEFAULT_POPUP_INSTRUCTIONS || []).slice();
+      renderPopupList();
+      const ta = document.getElementById('set-popup-raw');
+      if (ta) ta.value = currentPopupInstructions.join('\n');
+    });
+
+    const rawPopupTa = document.getElementById('set-popup-raw');
+    if (rawPopupTa) {
+      rawPopupTa.addEventListener('input', (e) => {
+        currentPopupInstructions = e.target.value.split('\n').map((x) => x.trim()).filter(Boolean);
+        renderPopupList();
       });
     }
 
     document.getElementById('btn-save-settings').addEventListener('click', async () => {
       const showFeeStructure = document.getElementById('set-show-fee-structure').checked;
       const showGuidelines = document.getElementById('set-show-guidelines').checked;
+      const formTitle = document.getElementById('set-form-title').value.trim();
+      const formSubtitle = document.getElementById('set-form-subtitle').value.trim();
       const session = document.getElementById('set-session').value.trim();
+      const admitCardTitle = document.getElementById('set-admit-title').value.trim();
+      const admitCardSubtitle = document.getElementById('set-admit-subtitle').value.trim();
+      const admitCardAddress = document.getElementById('set-admit-address').value.trim();
       const testCentre = document.getElementById('set-centre').value.trim();
-      const successMessage = document.getElementById('set-success').value.trim();
 
       await admissionService.saveSettings({
         showFeeStructure,
         showGuidelines,
+        formTitle,
+        formSubtitle,
         session,
+        admitCardTitle,
+        admitCardSubtitle,
+        admitCardAddress,
         testCentre,
-        successMessage,
-        instructions: currentInstructions
+        instructions: currentInstructions,
+        popupInstructions: currentPopupInstructions
       });
 
       await auditService.log('ADMISSION_SETTINGS_UPDATED', 'GOVERNANCE', {
         showFeeStructure,
         showGuidelines,
-        session,
-        guidelinesCount: currentInstructions.length
+        formTitle,
+        session
       });
 
-      UIComponents.showToast('Admission settings & guidelines saved successfully!', 'success');
+      UIComponents.showToast('Admission settings, headings & guidelines saved successfully!', 'success');
     });
 
     UIComponents.refreshIcons();
