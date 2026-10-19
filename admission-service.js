@@ -7,6 +7,7 @@
 
 import { TMS_CONFIG } from './config.js';
 import { dbService } from './supabase-client.js';
+import { createUserViaRpc, describeAccountError } from './account-utils.js';
 
 const STATUS = TMS_CONFIG.admissionStatuses;
 
@@ -81,21 +82,35 @@ function randomToken(len) {
   return Math.random().toString(36).replace(/[^a-z0-9]/g, '').slice(0, len).padEnd(len, '0');
 }
 
+export const DEFAULT_INSTRUCTIONS = [
+  'Fill all mandatory (*) fields carefully, preferably in BLOCK letters.',
+  'Self-attested copies of the birth certificate and previous marksheet must be produced at verification.',
+  'The application is provisional until verified and approved by the school administration.',
+  'Save your Form No. and the login credentials shown after submission to track your admission status.',
+  'Original documents must be brought to the school office on the date of verification / admission test.'
+];
+
 class AdmissionService {
   /* ---------------- Settings ---------------- */
 
   async loadSettings() {
     const rows = await dbService.select('admission_settings');
-    return rows.find((r) => r.id === 'default') || {
+    const existing = rows.find((r) => r.id === 'default') || {};
+    return {
       id: 'default',
-      session: '',
-      formFee: 0,
-      paymentRequired: false,
-      upiId: '',
-      upiPayeeName: TMS_CONFIG.institution.name,
-      paymentInstructions: '',
-      instructions: [],
-      successMessage: ''
+      session: existing.session || `${new Date().getFullYear()} - ${new Date().getFullYear() + 1}`,
+      formFee: Number(existing.formFee || 0),
+      showFeeStructure: existing.showFeeStructure === true,
+      showGuidelines: existing.showGuidelines !== false, // default enabled
+      paymentRequired: !!existing.paymentRequired,
+      upiId: existing.upiId || '',
+      upiPayeeName: existing.upiPayeeName || TMS_CONFIG.institution.name,
+      paymentInstructions: existing.paymentInstructions || '',
+      instructions: Array.isArray(existing.instructions) && existing.instructions.length
+        ? existing.instructions
+        : DEFAULT_INSTRUCTIONS,
+      successMessage: existing.successMessage || '',
+      testCentre: existing.testCentre || `${TMS_CONFIG.institution.name}, ${TMS_CONFIG.institution.address.campus}, ${TMS_CONFIG.institution.address.district}`
     };
   }
 
@@ -279,19 +294,41 @@ class AdmissionService {
     };
   }
 
+  /**
+   * Create the parent login.
+   *
+   * Preferred: the `tms_create_user` SQL function — no sign-up endpoint, so no
+   * e-mail rate limit and no confirmation step. Falls back to the legacy
+   * `auth.signUp` call only when that function has not been deployed yet.
+   */
   async createParentAccount(email, password, fullName) {
+    const name = fullName || String(email).split('@')[0];
+
+    const viaRpc = await createUserViaRpc(dbService.getClient(), {
+      p_email: email,
+      p_password: password,
+      p_name: name
+    });
+    if (viaRpc.userId) return { userId: viaRpc.userId };
+    if (viaRpc.error) return { error: viaRpc.error };
+
+    // Legacy fallback (function not deployed).
     const client = ephemeralClient();
     if (!client) return { error: 'supabase-unavailable' };
     try {
       const { data, error } = await client.auth.signUp({
         email,
         password,
-        options: { data: { full_name: fullName || email.split('@')[0] } }
+        options: { data: { full_name: name } }
       });
-      if (error) return { error: error.message };
-      return { userId: data && data.user ? data.user.id : null };
+      if (error) return { error: describeAccountError(error) };
+      const userId = data && data.user ? data.user.id : null;
+      if (!userId) {
+        return { error: 'The account was created but needs e-mail confirmation. Turn OFF "Confirm email" in Supabase Auth.' };
+      }
+      return { userId };
     } catch (e) {
-      return { error: e.message };
+      return { error: describeAccountError(e) };
     }
   }
 
@@ -330,13 +367,17 @@ class AdmissionService {
   async submitApplication({ values, selectedFeeIds = [], paymentMode = '', paymentRef = '', submittedBy = null, formNo = null }) {
     const [settings, feeList] = await Promise.all([this.loadSettings(), this.listFees()]);
 
-    const chosenIds = new Set(selectedFeeIds);
-    feeList.forEach((f) => {
-      if (f.mandatory) chosenIds.add(f.id);
-    });
-    const chosen = feeList.filter((f) => chosenIds.has(f.id));
-    const feeItems = chosen.map((f) => ({ id: f.id, name: f.name, amount: Number(f.amount || 0) }));
-    const feeTotal = feeItems.reduce((s, f) => s + f.amount, 0);
+    let feeItems = [];
+    let feeTotal = 0;
+    if (Array.isArray(selectedFeeIds) && selectedFeeIds.length > 0) {
+      const chosenIds = new Set(selectedFeeIds);
+      feeList.forEach((f) => {
+        if (f.mandatory) chosenIds.add(f.id);
+      });
+      const chosen = feeList.filter((f) => chosenIds.has(f.id));
+      feeItems = chosen.map((f) => ({ id: f.id, name: f.name, amount: Number(f.amount || 0) }));
+      feeTotal = feeItems.reduce((s, f) => s + f.amount, 0);
+    }
 
     const appNo = formNo || this.generateFormNo();
     const credentials = this.buildCredentials(appNo);
@@ -442,26 +483,93 @@ class AdmissionService {
     return rows.find((r) => r.applicationId === applicationId) || null;
   }
 
+  /**
+   * Change a parent's username / password.
+   *
+   * The account e-mail is fixed at creation (`<username>@parent-domain`), so a
+   * rename must NOT change the e-mail — it re-points the shared `login_aliases`
+   * row instead, which is what the sign-in page resolves a username through.
+   */
   async updateCredentials(row, { username, password }) {
-    const updates = { username: username || row.username, password: password || row.password };
-    if (username) updates.email = `${username}@${TMS_CONFIG.parentEmailDomain}`;
-    return dbService.update('parent_credentials', row.id, updates);
+    if (!row) return { error: 'No credentials on file.' };
+    const newUsername = (username || row.username || '').trim().toLowerCase();
+    const newPassword = password || row.password;
+
+    const updates = {
+      username: newUsername,
+      password: newPassword
+    };
+    // Only derive a fresh e-mail while the login has not been activated yet;
+    // once the account exists its auth e-mail must stay untouched.
+    if (!row.userId) updates.email = `${newUsername}@${TMS_CONFIG.parentEmailDomain}`;
+
+    const saved = await dbService.update('parent_credentials', row.id, updates);
+    if (saved && saved._syncError) return { error: saved._syncError };
+
+    // Re-point the public username -> e-mail alias so the new username signs in.
+    const aliasEmail = row.userId ? (row.email || updates.email) : updates.email;
+    if (aliasEmail) {
+      const { staffService } = await import('./staff-service.js');
+      if (row.username && row.username.toLowerCase() !== newUsername) {
+        await staffService.removeAlias(row.username);
+      }
+      await staffService.saveAlias({ username: newUsername, email: aliasEmail, role: 'parent' });
+    }
+
+    if (newPassword && row.userId) {
+      const { staffService } = await import('./staff-service.js');
+      await staffService.setPassword(row.userId, newPassword);
+    }
+    return saved;
   }
 
+  /**
+   * Re-send the parent's credentials as an in-portal notification.
+   * @returns {Promise<{row: object|null, delivered: boolean, reason?: string}>}
+   */
   async resendCredentials(application) {
     const row = await this.getCredentials(application.id);
-    if (!row) return null;
-    if (application.parentUserId) {
-      const { notificationService } = await import('./notification-service.js');
-      await notificationService.create({
-        title: 'Admission Portal Access',
-        message: `Your admission portal access for application ${application.appId} — Username: ${row.username}, Password: ${row.password}. Please keep it safe.`,
-        audience: 'user',
-        recipientId: application.parentUserId,
-        priority: 'High'
-      });
+    if (!row) return { row: null, delivered: false, reason: 'no-credentials' };
+
+    const userId = application.parentUserId || row.userId;
+    if (!userId) {
+      return {
+        row,
+        delivered: false,
+        reason: 'Use “Activate Login” first — this parent has no active account yet.'
+      };
     }
-    return row;
+
+    const { notificationService } = await import('./notification-service.js');
+    await notificationService.create({
+      title: 'Admission Portal Access',
+      message: `Your admission portal access for application ${application.appId} — Username: ${row.username}, Password: ${row.password}. Please keep it safe.`,
+      audience: 'user',
+      recipientId: userId,
+      priority: 'High'
+    });
+    return { row, delivered: true };
+  }
+
+  /**
+   * (Re)activate a parent login whose account could not be created at submission
+   * time — for example when Supabase was rate-limiting the sign-up endpoint.
+   */
+  async activateParentAccount(application) {
+    const row = await this.getCredentials(application.id);
+    if (!row) return { error: 'No credentials on file for this application.' };
+
+    const existingUser = application.parentUserId || row.userId;
+    if (existingUser) return { userId: existingUser, alreadyActive: true };
+
+    const res = await this.createParentAccount(row.email, row.password, row.username);
+    if (!res.userId) return { error: res.error || 'Account could not be created.' };
+
+    await dbService.update('parent_credentials', row.id, { userId: res.userId });
+    if (application && application.id) {
+      await dbService.update('admissions_applications', application.id, { parentUserId: res.userId });
+    }
+    return { userId: res.userId };
   }
 }
 
