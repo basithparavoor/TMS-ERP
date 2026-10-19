@@ -1,0 +1,19 @@
+{
+  "name": "Thaiba Model School — ERP & Portal",
+  "short_name": "TMS ERP",
+  "description": "Institutional ERP, Admissions & Campus Management Suite for Thaiba Model School",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#16a34a",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "./icons/icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
