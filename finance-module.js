@@ -9,6 +9,7 @@ import { auditService } from './audit-service.js';
 import { PermissionEngine, CAPABILITIES } from './permission-engine.js';
 import { downloadCsv } from './export-utils.js';
 import { notificationService } from './notification-service.js';
+import { TMS_LOGO } from './logo.js';
 
 export class FinanceModule {
   static async render(container) {
@@ -30,7 +31,8 @@ export class FinanceModule {
               Tuition fee structures, invoicing engine, cash counter receipts, and student ledger for THAIBA MODEL SCHOOL.
             </p>
           </div>
-          <div style="display: flex; gap: 10px;">
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button class="btn btn-secondary" id="btn-generate-challan"><i data-lucide="layers"></i> 3-Part Fee Challan</button>
             <button class="btn btn-secondary" id="btn-defaulters-list"><i data-lucide="alert-circle"></i> Defaulters Aging</button>
             <button class="btn btn-primary" id="btn-open-cash-counter"><i data-lucide="credit-card"></i> Fee Collection Counter</button>
           </div>
@@ -103,11 +105,14 @@ export class FinanceModule {
                   </td>
                   <td>
                     <div style="display: flex; gap: 6px; flex-wrap:wrap;">
-                      <button class="btn btn-secondary btn-sm btn-print-receipt" data-inv="${inv.invoiceNo}" data-name="${inv.studentName}" data-amt="${inv.paid || inv.amount}" data-date="${inv.paidDate || inv.dueDate}" data-mode="${inv.paymentMode || 'Cash'}">
+                      <button class="btn btn-secondary btn-sm btn-print-receipt" data-inv="${esc(inv.invoiceNo)}" data-name="${esc(inv.studentName)}" data-amt="${esc(inv.paid || inv.amount)}" data-date="${esc(inv.paidDate || inv.dueDate)}" data-mode="${esc(inv.paymentMode || 'Cash')}">
                         <i data-lucide="receipt"></i> Receipt
                       </button>
+                      <button class="btn btn-secondary btn-sm btn-print-challan" data-inv="${esc(inv.invoiceNo)}" data-name="${esc(inv.studentName)}" data-grade="${esc(inv.grade || '')}" data-term="${esc(inv.term || 'Term 1')}" data-amt="${esc(inv.amount)}" data-paid="${esc(inv.paid || 0)}" data-bal="${esc(inv.balance || 0)}" data-due="${esc(inv.dueDate || '')}">
+                        <i data-lucide="layers"></i> Challan
+                      </button>
                       ${inv.balance > 0 ? `
-                        <button class="btn btn-primary btn-sm btn-pay-balance" data-id="${inv.id}" data-name="${inv.studentName}" data-balance="${inv.balance}">
+                        <button class="btn btn-primary btn-sm btn-pay-balance" data-id="${esc(inv.id)}" data-name="${esc(inv.studentName)}" data-balance="${esc(inv.balance)}">
                           <i data-lucide="check"></i> Pay
                         </button>
                       ` : ''}
@@ -374,6 +379,343 @@ export class FinanceModule {
         });
       });
     });
+
+    // Challan printer per invoice
+    container.querySelectorAll('.btn-print-challan').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const inv = e.currentTarget.dataset.inv;
+        const name = e.currentTarget.dataset.name;
+        const grade = e.currentTarget.dataset.grade;
+        const term = e.currentTarget.dataset.term;
+        const amt = e.currentTarget.dataset.amt;
+        const paid = e.currentTarget.dataset.paid;
+        const bal = e.currentTarget.dataset.bal;
+        const due = e.currentTarget.dataset.due;
+
+        FinanceModule.open3PartChallanModal({
+          invoiceNo: inv,
+          studentName: name,
+          grade: grade,
+          term: term,
+          amount: parseFloat(amt) || 0,
+          paid: parseFloat(paid) || 0,
+          balance: parseFloat(bal) || 0,
+          dueDate: due || new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0]
+        });
+      });
+    });
+
+    // Top action: Generate 3-part Challan
+    const genChallanBtn = container.querySelector('#btn-generate-challan');
+    if (genChallanBtn) {
+      genChallanBtn.addEventListener('click', () => {
+        FinanceModule.openCustomChallanModal(container);
+      });
+    }
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* 3-Part Fee Challan Generator Engine                                */
+  /* ------------------------------------------------------------------ */
+
+  static renderChallanPart(copyName, data) {
+    const esc = (v) => UIComponents.escapeHtml(v);
+    const emblem = TMS_LOGO.emblemSvg(38);
+    const amount = Number(data.amount) || 0;
+    const tuition = Math.round(amount * 0.70);
+    const development = Math.round(amount * 0.18);
+    const labComp = Math.max(0, amount - tuition - development);
+
+    return `
+      <div class="challan-copy" style="
+        flex: 1;
+        min-width: 0;
+        padding: 12px 10px;
+        background: #ffffff;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        color: #0f172a;
+        font-size: 0.72rem;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+      ">
+        <div>
+          <!-- Header -->
+          <div style="text-align: center; border-bottom: 1.5px solid #16a34a; padding-bottom: 6px; margin-bottom: 8px;">
+            <div style="display: flex; justify-content: center; margin-bottom: 4px;">${emblem}</div>
+            <div style="font-size: 0.85rem; font-weight: 800; color: #166534; text-transform: uppercase; line-height: 1.1;">
+              ${esc(TMS_CONFIG.institution.name)}
+            </div>
+            <div style="font-size: 0.66rem; font-weight: 600; color: #15803d;">
+              ${esc(TMS_CONFIG.institution.subtitle || 'Run by : Thaiba Heritage, Kolkata')}
+            </div>
+            <div style="font-size: 0.62rem; color: #64748b;">
+              ${esc(TMS_CONFIG.institution.address.campus)}, ${esc(TMS_CONFIG.institution.address.city)}
+            </div>
+            <div style="margin-top: 5px;">
+              <span style="background: #166534; color: #fff; font-size: 0.64rem; font-weight: 700; padding: 2px 8px; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.5px;">
+                ${esc(copyName)}
+              </span>
+            </div>
+          </div>
+
+          <!-- Bank & Session Details -->
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 6px 8px; margin-bottom: 8px; font-size: 0.66rem;">
+            <div><strong>Bank:</strong> State Bank of India • Kolkata Central</div>
+            <div><strong>A/C Name:</strong> Thaiba Model School</div>
+            <div><strong>A/C No:</strong> <span class="font-mono" style="font-weight: 700;">38947291039</span> • <strong>IFSC:</strong> SBIN0001234</div>
+            <div style="display: flex; justify-content: space-between; margin-top: 4px; border-top: 1px dashed #cbd5e1; padding-top: 3px;">
+              <span><strong>Challan:</strong> <span class="font-mono">${esc(data.invoiceNo || 'CHL-2027-001')}</span></span>
+              <span><strong>Session:</strong> ${esc(TMS_CONFIG.academic.currentYear)}</span>
+            </div>
+          </div>
+
+          <!-- Student Meta -->
+          <div style="margin-bottom: 8px; font-size: 0.68rem; line-height: 1.4;">
+            <div><strong>Student:</strong> ${esc(data.studentName)}</div>
+            <div><strong>Admission No:</strong> <span class="font-mono">${esc(data.admissionNo || data.studentId || '—')}</span></div>
+            <div style="display: flex; justify-content: space-between;">
+              <span><strong>Class:</strong> ${esc(data.grade || '—')}</span>
+              <span><strong>Term:</strong> ${esc(data.term || 'Term 1')}</span>
+            </div>
+            <div><strong>Due Date:</strong> <span style="color: #dc2626; font-weight: 600;">${esc(data.dueDate || '15th of Month')}</span></div>
+          </div>
+
+          <!-- Particulars Table -->
+          <table style="width: 100%; border-collapse: collapse; font-size: 0.66rem; margin-bottom: 8px; border: 1px solid #cbd5e1;">
+            <thead>
+              <tr style="background: #f1f5f9; border-bottom: 1px solid #cbd5e1;">
+                <th style="padding: 3px 6px; text-align: left; border: 1px solid #cbd5e1;">Particulars</th>
+                <th style="padding: 3px 6px; text-align: right; border: 1px solid #cbd5e1;">Amount (₹)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding: 3px 6px; border: 1px solid #cbd5e1;">Tuition Fee</td>
+                <td style="padding: 3px 6px; text-align: right; border: 1px solid #cbd5e1;" class="font-mono">${tuition.toLocaleString()}</td>
+              </tr>
+              <tr>
+                <td style="padding: 3px 6px; border: 1px solid #cbd5e1;">Campus Dev & Library</td>
+                <td style="padding: 3px 6px; text-align: right; border: 1px solid #cbd5e1;" class="font-mono">${development.toLocaleString()}</td>
+              </tr>
+              <tr>
+                <td style="padding: 3px 6px; border: 1px solid #cbd5e1;">Computer & Lab Fee</td>
+                <td style="padding: 3px 6px; text-align: right; border: 1px solid #cbd5e1;" class="font-mono">${labComp.toLocaleString()}</td>
+              </tr>
+              <tr style="background: #ecfdf5; font-weight: 700; border-top: 1.5px solid #16a34a;">
+                <td style="padding: 4px 6px; border: 1px solid #cbd5e1; color: #166534;">TOTAL PAYABLE</td>
+                <td style="padding: 4px 6px; text-align: right; border: 1px solid #cbd5e1; color: #166534;" class="font-mono">₹ ${amount.toLocaleString()}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- Payment Mode -->
+          <div style="font-size: 0.62rem; color: #475569; margin-bottom: 12px; line-height: 1.3;">
+            <div>Mode: [ ] Cash &nbsp; [ ] Cheque &nbsp; [ ] DD &nbsp; [ ] UPI/NEFT</div>
+            <div>Ref / UTR No: _______________________</div>
+          </div>
+        </div>
+
+        <!-- Signature Blocks -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; padding-top: 8px; font-size: 0.62rem; text-align: center;">
+          <div style="width: 45%;">
+            <div style="border-bottom: 1px solid #475569; margin-bottom: 2px; padding-bottom: 12px;"></div>
+            <strong>Depositor Sign</strong>
+          </div>
+          <div style="width: 45%;">
+            <div style="border-bottom: 1px solid #475569; margin-bottom: 2px; padding-bottom: 12px;"></div>
+            <strong>Cashier / Bank Seal</strong>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  static open3PartChallanModal(challanData) {
+    const bankCopy = this.renderChallanPart('Bank Copy', challanData);
+    const schoolCopy = this.renderChallanPart('School / Accounts Copy', challanData);
+    const studentCopy = this.renderChallanPart('Student / Parent Copy', challanData);
+
+    const printStyles = `
+      <style>
+        @media print {
+          @page {
+            size: A4 landscape;
+            margin: 6mm;
+          }
+          body * {
+            visibility: hidden;
+          }
+          #print-area-3part-challan, #print-area-3part-challan * {
+            visibility: visible;
+          }
+          #print-area-3part-challan {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            border: none !important;
+            box-shadow: none !important;
+          }
+          .tms-modal-overlay, .tms-modal, .tms-modal-content {
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
+            overflow: visible !important;
+          }
+          .tms-modal-header, .tms-modal-footer, #app-sidebar, header {
+            display: none !important;
+          }
+        }
+      </style>
+    `;
+
+    const bodyHtml = `
+      ${printStyles}
+      <div id="print-area-3part-challan" style="
+        background: #f8fafc;
+        border: 2px solid #cbd5e1;
+        border-radius: 8px;
+        padding: 8px;
+        display: flex;
+        gap: 0;
+        position: relative;
+        overflow-x: auto;
+      ">
+        ${bankCopy}
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 18px; border-left: 1.5px dashed #94a3b8; border-right: 1.5px dashed #94a3b8; background: #f1f5f9; color: #64748b; font-size: 8px; text-align: center; padding: 4px 0;">
+          <span>✂</span>
+          <span style="writing-mode: vertical-rl; transform: rotate(180deg); margin: 6px 0; letter-spacing: 2px;">TEAR ALONG LINE</span>
+          <span>✂</span>
+        </div>
+        ${schoolCopy}
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 18px; border-left: 1.5px dashed #94a3b8; border-right: 1.5px dashed #94a3b8; background: #f1f5f9; color: #64748b; font-size: 8px; text-align: center; padding: 4px 0;">
+          <span>✂</span>
+          <span style="writing-mode: vertical-rl; transform: rotate(180deg); margin: 6px 0; letter-spacing: 2px;">TEAR ALONG LINE</span>
+          <span>✂</span>
+        </div>
+        ${studentCopy}
+      </div>
+    `;
+
+    UIComponents.openModal({
+      title: `3-Part Fee Challan — ${challanData.invoiceNo || challanData.studentName}`,
+      bodyHtml,
+      footerHtml: `
+        <button class="btn btn-secondary" onclick="document.getElementById('global-modal-close').click()">Close</button>
+        <button class="btn btn-primary" onclick="window.print()"><i data-lucide="printer"></i> Print 3-Part Challan (A4)</button>
+      `
+    });
+
+    UIComponents.refreshIcons();
+  }
+
+  static async openCustomChallanModal(container) {
+    const esc = (v) => UIComponents.escapeHtml(v);
+    const students = await dbService.select('students');
+    const classes = (TMS_CONFIG.academic && TMS_CONFIG.academic.classes) || [];
+    const year = (TMS_CONFIG.academic && TMS_CONFIG.academic.currentYear) || new Date().getFullYear();
+
+    const bodyHtml = `
+      <form id="form-custom-challan">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+          <div class="form-group" style="grid-column: span 2;">
+            <label class="form-label">Select Student (Or Enter Manually) *</label>
+            <select class="form-select" id="challan-student-select">
+              <option value="">— Select an enrolled student —</option>
+              ${students.map(s => `
+                <option value="${esc(s.id)}" data-name="${esc(s.fullName)}" data-adm="${esc(s.admissionNo)}" data-grade="${esc(s.grade)}" data-sec="${esc(s.section || '')}">
+                  ${esc(s.fullName)} (${esc(s.admissionNo)} • ${esc(s.grade)})
+                </option>
+              `).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Student Full Name *</label>
+            <input type="text" class="form-input" id="c-student-name" required placeholder="Student Name">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Admission Number</label>
+            <input type="text" class="form-input font-mono" id="c-admission-no" placeholder="TMS/2027/001">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Grade / Class</label>
+            <select class="form-select" id="c-grade">
+              ${classes.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Fee Term / Period</label>
+            <select class="form-select" id="c-term">
+              ${['Term 1', 'Term 2', 'Term 3', 'Admission Fee', 'Annual Fee', 'Monthly Fee'].map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Total Amount Payable (₹) *</label>
+            <input type="number" class="form-input" id="c-amount" required value="4500" min="100">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Due Date</label>
+            <input type="date" class="form-input" id="c-due-date" value="${new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0]}">
+          </div>
+        </div>
+      </form>
+    `;
+
+    const footerHtml = `
+      <button class="btn btn-secondary" onclick="document.getElementById('global-modal-close').click()">Cancel</button>
+      <button class="btn btn-primary" id="btn-submit-custom-challan"><i data-lucide="printer"></i> Preview &amp; Print 3-Part Challan</button>
+    `;
+
+    UIComponents.openModal({
+      title: 'Generate Official 3-Part Bank Challan',
+      bodyHtml,
+      footerHtml
+    });
+
+    const modal = document.querySelector('.tms-modal');
+    if (!modal) return;
+
+    const selectEl = modal.querySelector('#challan-student-select');
+    selectEl.addEventListener('change', () => {
+      const opt = selectEl.selectedOptions[0];
+      if (opt && opt.dataset.name) {
+        modal.querySelector('#c-student-name').value = opt.dataset.name;
+        modal.querySelector('#c-admission-no').value = opt.dataset.adm;
+        modal.querySelector('#c-grade').value = opt.dataset.grade;
+      }
+    });
+
+    modal.querySelector('#btn-submit-custom-challan').addEventListener('click', () => {
+      const name = modal.querySelector('#c-student-name').value.trim();
+      const adm = modal.querySelector('#c-admission-no').value.trim();
+      const grade = modal.querySelector('#c-grade').value;
+      const term = modal.querySelector('#c-term').value;
+      const amount = parseFloat(modal.querySelector('#c-amount').value) || 0;
+      const dueDate = modal.querySelector('#c-due-date').value;
+
+      if (!name || !amount) {
+        UIComponents.showToast('Please provide Student Name and Amount.', 'warning');
+        return;
+      }
+
+      const randomSeq = Math.floor(1000 + Math.random() * 9000);
+      const invoiceNo = `CHL-${year}-${randomSeq}`;
+
+      FinanceModule.open3PartChallanModal({
+        invoiceNo,
+        studentName: name,
+        admissionNo: adm,
+        grade,
+        term,
+        amount,
+        dueDate
+      });
+    });
+
+    UIComponents.refreshIcons();
   }
 
   /* ------------------------------------------------------------------ */
