@@ -25,30 +25,15 @@
       </a>
       <div style="display: flex; gap: 10px; align-items: center;">
         <span id="entry-by-badge" class="badge badge-success" style="display: none;"></span>
-        <button class="btn btn-secondary btn-sm" id="btn-toggle-instructions">
-          <i data-lucide="info"></i> Fee &amp; Instructions
+        <button class="btn btn-secondary btn-sm" id="btn-show-guidelines" style="display: none;">
+          <i data-lucide="book-open"></i> General Guidelines
+        </button>
+        <button class="btn btn-secondary btn-sm" id="btn-show-fees" style="display: none;">
+          <i data-lucide="receipt"></i> Fee Structure
         </button>
         <button class="btn btn-primary btn-sm" id="btn-print-a4-blank">
           <i data-lucide="printer"></i> Print Blank A4 Form
         </button>
-      </div>
-    </div>
-
-    <!-- Instructions & Fee Structure (Collapsible) -->
-    <div class="card no-print" id="instructions-panel" style="margin-bottom: 24px; border-left: 4px solid #16a34a;">
-      <div class="card-header">
-        <h3 class="card-title" style="color: #16a34a;">Academic Session <span id="dyn-session-badge">—</span> Admissions</h3>
-        <span class="badge badge-success">Online Applications Active</span>
-      </div>
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-        <div>
-          <h4 style="font-size: 0.95rem; margin-bottom: 8px;">Admission Fee Schedule</h4>
-          <div id="fee-schedule-list" style="font-size: 0.85rem; line-height: 1.6;"></div>
-        </div>
-        <div>
-          <h4 style="font-size: 0.95rem; margin-bottom: 8px;">General Guidelines</h4>
-          <ul id="instructions-list" style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.5; padding-left: 18px;"></ul>
-        </div>
       </div>
     </div>
 
@@ -69,9 +54,6 @@
         <div id="student-photo-panel" style="margin-bottom: 22px;"></div>
 
         <div id="dynamic-form-container"></div>
-
-        <!-- Fee Selection & Payment -->
-        <div id="fee-payment-section" style="margin-top: 8px;"></div>
 
         <!-- Declaration -->
         <div style="background: rgba(22, 163, 74, 0.05); border: 1px solid #16a34a; border-radius: var(--radius-md); padding: 16px; margin-bottom: 24px; margin-top: 20px;">
@@ -227,19 +209,11 @@
     import { UIComponents } from './ui-components.js';
     import { TMS_LOGO } from './logo.js';
     import { authService } from './auth-service.js';
-    import { admissionService } from './admission-service.js';
+    import { admissionService, DEFAULT_INSTRUCTIONS } from './admission-service.js';
     import { brandingService } from './branding-service.js';
     import { checkMigration } from './migration-check.js';
 
     const esc = (v) => UIComponents.escapeHtml(v);
-
-    const DEFAULT_INSTRUCTIONS = [
-      'Fill all mandatory (*) fields carefully, preferably in BLOCK letters.',
-      'Self-attested copies of the birth certificate and previous marksheet must be produced at verification.',
-      'The application is provisional until verified and approved by the school administration.',
-      'Save your Form No. and the login credentials shown after submission to track your admission status.',
-      'If a payment is shown, complete it via the UPI QR before submitting.'
-    ];
 
     UIComponents.initTheme();
     brandingService.refresh().then(() => {
@@ -427,130 +401,125 @@
       renderPhotoPanel(photo);
     }
 
-    function renderInstructions() {
+    function renderPortalHeader() {
       document.getElementById('dyn-session-text').innerText = settings.session || '—';
-      document.getElementById('dyn-session-badge').innerText = settings.session || 'Current';
       document.getElementById('a4-session-text').innerText = settings.session || '—';
 
-      document.getElementById('fee-schedule-list').innerHTML = fees.length
-        ? fees.map((f) => `
-            <div style="display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border-color); padding: 4px 0;">
-              <span>${esc(f.name)} ${f.mandatory ? '<span class="badge badge-warning" style="font-size:0.6rem;">Mandatory</span>' : ''}</span>
-              <strong>₹ ${Number(f.amount || 0).toLocaleString('en-IN')}</strong>
-            </div>`).join('')
-        : '<p style="color: var(--text-muted);">No fee items configured.</p>';
+      const btnGuidelines = document.getElementById('btn-show-guidelines');
+      if (btnGuidelines) {
+        btnGuidelines.style.display = settings.showGuidelines ? 'inline-flex' : 'none';
+      }
 
-      const instructions = Array.isArray(settings.instructions) && settings.instructions.length
-        ? settings.instructions
-        : DEFAULT_INSTRUCTIONS;
-      document.getElementById('instructions-list').innerHTML = instructions.map((i) => `<li>${esc(i)}</li>`).join('');
+      const btnFees = document.getElementById('btn-show-fees');
+      if (btnFees) {
+        btnFees.style.display = settings.showFeeStructure ? 'inline-flex' : 'none';
+      }
     }
 
-    function renderFees() {
-      const section = document.getElementById('fee-payment-section');
-      if (!fees.length) {
-        section.innerHTML = '';
-        return;
-      }
-      section.innerHTML = `
-        <h3 style="font-size: 1.05rem; font-weight: 700; color: #15803d; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; margin-bottom: 16px;">
-          Fee Selection${settings.paymentRequired ? ' &amp; Payment' : ''}
-        </h3>
-        <div class="card" style="margin-bottom: 18px;">
-          <div id="fee-checklist" style="display: flex; flex-direction: column; gap: 10px;"></div>
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border-color);">
-            <strong>Total Payable</strong>
-            <strong style="font-size: 1.2rem; color: #16a34a;" id="fee-total-display">₹ 0</strong>
+    function openFeeStructureModal() {
+      const activeFees = (fees || []).filter((f) => f.isActive !== false);
+      const rows = activeFees.length
+        ? activeFees.map((f, i) => `
+            <tr>
+              <td style="font-weight:600; width:35px; text-align:center;">${i + 1}</td>
+              <td>
+                <strong>${esc(f.name)}</strong>
+                ${f.description ? `<div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">${esc(f.description)}</div>` : ''}
+              </td>
+              <td style="text-align:center;">
+                ${f.mandatory ? '<span class="badge badge-warning" style="font-size:0.65rem;">Mandatory</span>' : '<span class="badge badge-info" style="font-size:0.65rem;">Optional</span>'}
+              </td>
+              <td style="text-align:right; font-weight:700; font-family:var(--font-mono); font-size:1rem; color:#16a34a;">
+                ₹ ${Number(f.amount || 0).toLocaleString('en-IN')}
+              </td>
+            </tr>
+          `).join('')
+        : '<tr><td colspan="4" style="text-align:center; padding:24px; color:var(--text-muted);">No fee schedule configured for this session.</td></tr>';
+
+      const totalMandatory = activeFees.filter((f) => f.mandatory).reduce((s, f) => s + Number(f.amount || 0), 0);
+
+      const bodyHtml = `
+        <div style="margin-bottom:12px;">
+          <p style="font-size:0.85rem; color:var(--text-muted); margin:0 0 14px;">
+            Official admission fee schedule for Academic Session <strong>${esc(settings.session || 'Current')}</strong>.
+          </p>
+          <div class="table-responsive">
+            <table class="tms-table" style="font-size:0.85rem;">
+              <thead>
+                <tr>
+                  <th style="width:35px; text-align:center;">#</th>
+                  <th>Fee Particulars</th>
+                  <th style="text-align:center;">Type</th>
+                  <th style="text-align:right;">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rows}
+              </tbody>
+              ${activeFees.length ? `
+                <tfoot>
+                  <tr style="border-top:2px solid var(--border-color); font-weight:700;">
+                    <td colspan="3" style="text-align:right; padding:10px;">Mandatory Admission Total :</td>
+                    <td style="text-align:right; padding:10px; font-size:1.05rem; color:#16a34a; font-family:var(--font-mono);">
+                      ₹ ${totalMandatory.toLocaleString('en-IN')}
+                    </td>
+                  </tr>
+                </tfoot>` : ''}
+            </table>
           </div>
-          ${settings.paymentRequired ? '<p style="font-size:0.78rem;color:#b45309;margin-top:8px;"><i data-lucide="alert-triangle" style="width:14px;height:14px;"></i> Payment is mandatory to submit this application.</p>' : ''}
+          <p style="font-size:0.75rem; color:var(--text-muted); margin-top:14px; line-height:1.4;">
+            * Note: Admission fees are payable directly at the THAIBA MODEL SCHOOL accounts desk upon document verification. No online payment is collected through this application form.
+          </p>
         </div>
-        <div id="payment-panel" style="display: none;">
-          <div class="card" style="border-left: 4px solid #16a34a;">
-            <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: center;">
-              <div id="upi-qr-box" style="width: 168px; height: 168px; display: flex; align-items: center; justify-content: center; background: #fff; border: 1px solid var(--border-color); border-radius: 10px;"></div>
-              <div style="flex: 1; min-width: 200px;">
-                <h4 style="font-size: 0.95rem; margin-bottom: 6px;">Scan &amp; Pay via UPI</h4>
-                <div style="font-size: 0.82rem; color: var(--text-muted); line-height: 1.6;">
-                  <div>Payee : <strong>${esc(settings.upiPayeeName || TMS_CONFIG.institution.name)}</strong></div>
-                  <div>UPI ID : <strong class="font-mono">${esc(settings.upiId || 'Not configured')}</strong></div>
-                  <div>Amount : <strong id="upi-amount-label">₹ 0</strong></div>
-                </div>
-                ${settings.paymentInstructions ? `<p style="font-size:0.78rem;color:var(--text-muted);margin-top:8px;">${esc(settings.paymentInstructions)}</p>` : ''}
-                <div class="form-group" style="margin-top: 10px;">
-                  <label class="form-label">UPI Transaction / UTR Reference</label>
-                  <input type="text" class="form-input font-mono" id="payment-ref" placeholder="Enter UPI reference number">
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>`;
+      `;
 
-      const checklist = document.getElementById('fee-checklist');
-      checklist.innerHTML = fees.map((f) => `
-        <label style="display: flex; justify-content: space-between; align-items: center; gap: 10px; font-size: 0.88rem;">
-          <span style="display: flex; gap: 10px; align-items: center;">
-            <input type="checkbox" class="fee-check" data-fee-id="${esc(f.id)}" data-amount="${Number(f.amount || 0)}" ${f.mandatory ? 'checked disabled' : ''}>
-            <span>${esc(f.name)} ${f.description ? `<span style="color:var(--text-subtle);font-size:0.76rem;">— ${esc(f.description)}</span>` : ''}</span>
-          </span>
-          <strong>₹ ${Number(f.amount || 0).toLocaleString('en-IN')}</strong>
-        </label>`).join('');
-
-      checklist.querySelectorAll('.fee-check').forEach((cb) => {
-        cb.addEventListener('change', updateFeeTotal);
+      UIComponents.openModal({
+        title: `Admission Fee Schedule — Session ${settings.session || ''}`,
+        bodyHtml,
+        footerHtml: `<button class="btn btn-secondary" id="btn-close-fee-modal">Close</button>`
       });
-      updateFeeTotal();
+
+      const closeBtn = document.getElementById('btn-close-fee-modal');
+      if (closeBtn) closeBtn.addEventListener('click', () => UIComponents.closeModal());
       UIComponents.refreshIcons();
     }
 
-    function selectedFees() {
-      return fees.filter((f) => {
-        const cb = document.querySelector(`.fee-check[data-fee-id="${CSS.escape(f.id)}"]`);
-        return f.mandatory || (cb && cb.checked);
+    function openGuidelinesModal() {
+      const instructions = Array.isArray(settings.instructions) && settings.instructions.length
+        ? settings.instructions
+        : DEFAULT_INSTRUCTIONS;
+
+      const items = instructions.map((item, idx) => `
+        <li style="display:flex; gap:12px; align-items:flex-start; margin-bottom:12px; font-size:0.88rem; line-height:1.5;">
+          <span style="display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; border-radius:50%; background:rgba(22,163,74,0.12); color:#16a34a; font-weight:700; font-size:0.8rem; flex-shrink:0;">${idx + 1}</span>
+          <span style="padding-top:2px;">${esc(item)}</span>
+        </li>
+      `).join('');
+
+      const bodyHtml = `
+        <div>
+          <p style="font-size:0.85rem; color:var(--text-muted); margin:0 0 16px;">
+            Please read these guidelines thoroughly before completing your admission application:
+          </p>
+          <ul style="list-style:none; padding:0; margin:0;">
+            ${items}
+          </ul>
+          <div style="background:rgba(59,130,246,0.06); border:1px solid #bfdbfe; border-radius:8px; padding:12px; margin-top:16px; font-size:0.82rem; color:#1e40af;">
+            <i data-lucide="info" style="width:16px; height:16px; vertical-align:middle; margin-right:4px;"></i>
+            After submission, you will receive an official <strong>Form No.</strong> and printable application form with your admit card tear-off slip.
+          </div>
+        </div>
+      `;
+
+      UIComponents.openModal({
+        title: 'General Guidelines & Admission Instructions',
+        bodyHtml,
+        footerHtml: `<button class="btn btn-secondary" id="btn-close-guidelines-modal">Close</button>`
       });
-    }
 
-    function updateFeeTotal() {
-      const chosen = selectedFees();
-      const total = chosen.reduce((s, f) => s + Number(f.amount || 0), 0);
-      document.getElementById('fee-total-display').innerText = `₹ ${total.toLocaleString('en-IN')}`;
-      const label = document.getElementById('upi-amount-label');
-      if (label) label.innerText = `₹ ${total.toLocaleString('en-IN')}`;
-
-      const panel = document.getElementById('payment-panel');
-      if (total > 0) {
-        panel.style.display = 'block';
-        renderQr(total);
-      } else {
-        panel.style.display = 'none';
-      }
-    }
-
-    function upiLink(amount) {
-      if (!settings.upiId) return '';
-      const params = new URLSearchParams({
-        pa: settings.upiId,
-        pn: settings.upiPayeeName || TMS_CONFIG.institution.name,
-        am: String(amount),
-        cu: 'INR',
-        tn: 'Admission Fee'
-      });
-      return `upi://pay?${params.toString()}`;
-    }
-
-    function renderQr(amount) {
-      const box = document.getElementById('upi-qr-box');
-      box.innerHTML = '';
-      const link = upiLink(amount);
-      if (!link) {
-        box.innerHTML = '<p style="color:var(--text-muted);font-size:0.72rem;padding:8px;text-align:center;">UPI ID not configured. Please pay at the school office.</p>';
-        return;
-      }
-      if (window.QRCode) {
-        // eslint-disable-next-line no-new
-        new window.QRCode(box, { text: link, width: 160, height: 160, colorDark: '#000000', colorLight: '#ffffff', correctLevel: window.QRCode.CorrectLevel.M });
-      } else {
-        box.innerHTML = `<p style="font-size:0.7rem;word-break:break-all;padding:8px;">QR unavailable. UPI link:<br><code>${esc(link)}</code></p>`;
-      }
+      const closeBtn = document.getElementById('btn-close-guidelines-modal');
+      if (closeBtn) closeBtn.addEventListener('click', () => UIComponents.closeModal());
+      UIComponents.refreshIcons();
     }
 
     function readValues() {
@@ -686,7 +655,7 @@
       document.getElementById('admit-username').innerText = result.credentials ? result.credentials.username : '—';
     }
 
-    function showCredentialsCard(creds) {
+    function showCredentialsCard(creds, accountError) {
       const card = document.getElementById('credentials-screen-card');
       if (!creds) { card.style.display = 'none'; return; }
       card.style.display = 'block';
@@ -700,7 +669,13 @@
         <div style="display:flex;gap:24px;flex-wrap:wrap;">
           <div><span style="font-size:0.76rem;color:var(--text-subtle);display:block;">Username</span><strong class="font-mono" style="font-size:1.1rem;">${esc(creds.username)}</strong></div>
           <div><span style="font-size:0.76rem;color:var(--text-subtle);display:block;">Password</span><strong class="font-mono" style="font-size:1.1rem;">${esc(creds.password)}</strong></div>
-        </div>`;
+        </div>
+        ${accountError ? `
+          <div style="margin-top:14px;padding:10px 12px;border-radius:8px;background:#fef2f2;border:1px solid #fca5a5;color:#991b1b;font-size:0.8rem;">
+            <strong>Note:</strong> the online login could not be activated automatically.<br>
+            ${esc(accountError)}<br>
+            Your application is recorded — please show this username to the school office so they can activate it.
+          </div>` : ''}`;
       UIComponents.refreshIcons();
     }
 
@@ -716,25 +691,17 @@
     async function handleSubmit(e) {
       e.preventDefault();
 
-      const total = selectedFees().reduce((s, f) => s + Number(f.amount || 0), 0);
-      const paymentRef = (document.getElementById('payment-ref')?.value || '').trim();
-      if (settings.paymentRequired && total > 0 && !paymentRef) {
-        UIComponents.showToast('Payment is mandatory. Please pay via the UPI QR and enter the reference number.', 'warning');
-        return;
-      }
-
       setFormBusy(true);
       try {
         const values = readValues();
         const preFormNo = admissionService.generateFormNo();
         await uploadAttachments(values, preFormNo);
-        const selectedFeeIds = Array.from(document.querySelectorAll('.fee-check:checked')).map((c) => c.dataset.feeId);
 
         const result = await admissionService.submitApplication({
           values,
-          selectedFeeIds,
-          paymentMode: total > 0 ? 'UPI' : '',
-          paymentRef,
+          selectedFeeIds: [],
+          paymentMode: '',
+          paymentRef: '',
           submittedBy: staffUser,
           formNo: preFormNo
         });
@@ -754,19 +721,19 @@
         lastResult = { ...result, values, formNo, entryBy: staffUser ? staffUser.name : null };
         populateA4(lastResult);
         await applyA4Photo(values);
-        showCredentialsCard(result.credentials);
+        showCredentialsCard(result.credentials, result.accountError);
 
         document.getElementById('interactive-form-card').style.display = 'none';
         document.getElementById('a4-document-wrapper').style.display = 'block';
         window.scrollTo(0, 0);
 
-        UIComponents.showToast(`Application ${formNo} registered successfully.`, 'success');
+        UIComponents.showToast(`Application ${formNo} registered successfully!`, 'success');
         if (result.accountError) {
-          UIComponents.showToast('Parent portal login could not be auto-created; please contact the office.', 'warning');
+          UIComponents.showToast(`Parent portal login note: ${result.accountError}`, 'warning');
         }
       } catch (err) {
         console.error(err);
-        UIComponents.showToast('Submission failed. Please retry or contact the school office.', 'danger');
+        UIComponents.showToast(`Submission failed: ${err.message}`, 'danger');
       } finally {
         setFormBusy(false);
       }
@@ -806,16 +773,21 @@
         }
       } catch (e) { /* public visitor */ }
 
-      renderInstructions();
+      renderPortalHeader();
       renderForm();
-      renderFees();
       UIComponents.refreshIcons();
 
       document.getElementById('tms-admission-form').addEventListener('submit', handleSubmit);
-      document.getElementById('btn-toggle-instructions').addEventListener('click', () => {
-        const p = document.getElementById('instructions-panel');
-        p.style.display = p.style.display === 'none' ? 'block' : 'none';
-      });
+      
+      const btnGuidelines = document.getElementById('btn-show-guidelines');
+      if (btnGuidelines) {
+        btnGuidelines.addEventListener('click', openGuidelinesModal);
+      }
+      const btnFees = document.getElementById('btn-show-fees');
+      if (btnFees) {
+        btnFees.addEventListener('click', openFeeStructureModal);
+      }
+
       document.getElementById('btn-print-a4-blank').addEventListener('click', printBlankA4);
       document.getElementById('btn-back-to-form').addEventListener('click', () => {
         document.getElementById('a4-document-wrapper').style.display = 'none';
