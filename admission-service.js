@@ -596,6 +596,125 @@ class AdmissionService {
     }
     return { userId: res.userId };
   }
+
+  /* ---------------- Student Enrollment & Verification ---------------- */
+
+  async enrollApplicantAsStudent(applicationId, { section = 'A', rollNo = '', remarks = '' } = {}) {
+    const apps = await this.listApplications();
+    const app = apps.find((a) => a.id === applicationId);
+    if (!app) return { error: 'Application not found.' };
+
+    const payload = app.payload || {};
+    const studentName = app.studentName || payload.candidateName || payload.studentName || 'Student';
+    const dob = app.dob || payload.dob || '';
+    const gender = app.gender || payload.gender || 'Male';
+    const bloodGroup = payload.bloodGroup || 'O+';
+    const grade = app.grade || payload.applyingClass || 'Grade 1';
+    const guardianName = app.guardianName || payload.fatherName || payload.guardianName || '';
+    const guardianPhone = app.phone || payload.phone || payload.mobile || '';
+    const address = app.address || `${payload.village || ''} ${payload.district || ''}`.trim() || '';
+    const photo = payload.photo || null;
+    const aadhaar = payload.aadhaar || '';
+
+    // Calculate next sequence for admission number
+    const existingStudents = await dbService.select('students');
+    const year = new Date().getFullYear();
+    const currentYearStudents = existingStudents.filter((s) => String(s.admissionNo || '').includes(String(year)));
+    const maxSeq = currentYearStudents.reduce((max, s) => {
+      const match = String(s.admissionNo || '').match(/(\d+)\s*$/);
+      return match ? Math.max(max, parseInt(match[1], 10)) : max;
+    }, 0);
+    const nextSeq = maxSeq + 1;
+    const admissionNo = `TMS/${year}/${nextSeq.toString().padStart(3, '0')}`;
+
+    // Compute roll number if not provided
+    let finalRoll = rollNo;
+    if (!finalRoll) {
+      const sameClassCount = existingStudents.filter((s) => s.grade === grade && s.section === section).length;
+      finalRoll = (sameClassCount + 1).toString().padStart(2, '0');
+    }
+
+    const newStudent = await dbService.insert('students', {
+      admissionNo,
+      rollNo: finalRoll,
+      fullName: studentName,
+      dob,
+      gender,
+      bloodGroup,
+      grade,
+      section,
+      guardianName,
+      guardianPhone,
+      address,
+      photo,
+      aadhaar,
+      status: 'Active',
+      leaveStatus: null,
+      applicationId: app.id,
+      enrolledAt: new Date().toISOString()
+    });
+
+    if (newStudent._syncError) {
+      return { error: `Database insert failed: ${newStudent._syncError}` };
+    }
+
+    // Mark application as Enrolled
+    await dbService.update('admissions_applications', app.id, {
+      status: 'Enrolled',
+      enrolledStudentId: newStudent.id,
+      enrolledAdmissionNo: admissionNo,
+      enrolledAt: new Date().toISOString(),
+      remarks: remarks ? `${app.remarks || ''}\n${remarks}`.trim() : app.remarks
+    });
+
+    return { success: true, student: newStudent, admissionNo };
+  }
+
+  async verifyDocument(applicationId, docKey, verifiedBy = 'Authorized Staff') {
+    const apps = await this.listApplications();
+    const app = apps.find((a) => a.id === applicationId);
+    if (!app) return { error: 'Application not found.' };
+
+    const docVerifications = { ...(app.docVerifications || {}) };
+    docVerifications[docKey] = {
+      verified: true,
+      verifiedBy: verifiedBy || 'Authorized Staff',
+      verifiedAt: new Date().toISOString()
+    };
+
+    return dbService.update('admissions_applications', applicationId, { docVerifications });
+  }
+
+  async recordEntranceScore(applicationId, { writtenScore = 0, interviewScore = 0, examinerRemarks = '', evaluatedBy = 'Staff' } = {}) {
+    const written = Number(writtenScore || 0);
+    const interview = Number(interviewScore || 0);
+    const totalScore = written + interview;
+
+    return dbService.update('admissions_applications', applicationId, {
+      entranceExam: {
+        writtenScore: written,
+        interviewScore: interview,
+        totalScore,
+        examinerRemarks: examinerRemarks || '',
+        evaluatedBy: evaluatedBy || 'Staff',
+        evaluatedAt: new Date().toISOString()
+      }
+    });
+  }
+
+  async getMeritList(grade = 'all') {
+    const apps = await this.listApplications();
+    let filtered = apps.filter((a) => a.entranceExam && (a.entranceExam.totalScore != null || a.entranceExam.writtenScore != null));
+    if (grade && grade !== 'all') {
+      filtered = filtered.filter((a) => a.grade === grade);
+    }
+    filtered.sort((a, b) => {
+      const scoreA = Number((a.entranceExam && a.entranceExam.totalScore) || 0);
+      const scoreB = Number((b.entranceExam && b.entranceExam.totalScore) || 0);
+      return scoreB - scoreA;
+    });
+    return filtered;
+  }
 }
 
 export const admissionService = new AdmissionService();
