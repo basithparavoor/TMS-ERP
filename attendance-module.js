@@ -1,61 +1,111 @@
 /**
- * THAIBA MODEL SCHOOL — Attendance Engine & Telemetry Module
+ * THAIBA MODEL SCHOOL — Attendance Engine, Smart Kiosk & Telemetry Module
+ * Daily Registers, 1-Click Status Toggles, Smart QR/Barcode Kiosk Terminal, CSV Reporting
  */
 
 import { TMS_CONFIG } from './config.js';
 import { dbService } from './supabase-client.js';
 import { UIComponents } from './ui-components.js';
 import { auditService } from './audit-service.js';
+import { downloadCsv } from './export-utils.js';
 
 export class AttendanceModule {
   static async render(container) {
-    const students = await dbService.select('students');
+    const esc = (v) => UIComponents.escapeHtml(v);
+
+    this._selectedDate = this._selectedDate || new Date().toISOString().split('T')[0];
+    this._selectedGrade = this._selectedGrade || 'all';
+    this._selectedSection = this._selectedSection || 'all';
+
+    // Fetch students and attendance records
+    const [allStudents, allRecords] = await Promise.all([
+      dbService.select('students'),
+      dbService.select('attendance_records')
+    ]);
+
+    this._students = allStudents || [];
+    this._records = allRecords || [];
+
+    // Filter students by grade and section
+    const filteredStudents = this._students.filter(s => {
+      const matchGrade = this._selectedGrade === 'all' || s.grade === this._selectedGrade;
+      const matchSec = this._selectedSection === 'all' || s.section === this._selectedSection;
+      return matchGrade && matchSec;
+    });
+
+    // Map of records for selected date: studentId -> record
+    const dateRecords = {};
+    this._records.filter(r => r.date === this._selectedDate).forEach(r => {
+      if (r.studentId) dateRecords[r.studentId] = r;
+      if (r.admissionNo) dateRecords[r.admissionNo] = r;
+    });
+
+    // KPI computations
+    let presentCount = 0;
+    let lateCount = 0;
+    let absentCount = 0;
+    let excusedCount = 0;
+
+    filteredStudents.forEach(s => {
+      const rec = dateRecords[s.id] || dateRecords[s.admissionNo];
+      const status = rec ? rec.status : (s.leaveStatus === 'approved' ? 'excused' : 'unrecorded');
+      if (status === 'present') presentCount++;
+      else if (status === 'late') lateCount++;
+      else if (status === 'absent') absentCount++;
+      else if (status === 'excused') excusedCount++;
+    });
+
+    const recordedTotal = presentCount + lateCount + absentCount + excusedCount;
+    const presentRate = filteredStudents.length > 0 ? `${Math.round(((presentCount + lateCount) / filteredStudents.length) * 100)}%` : '—';
 
     container.innerHTML = `
       <div style="margin-bottom: 24px;">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
           <div>
-            <h1 style="font-size: 1.8rem;">Attendance & Geofence Intelligence</h1>
+            <h1 style="font-size: 1.8rem; display: flex; align-items: center; gap: 10px;">
+              <span style="color: #16a34a;"><i data-lucide="check-square"></i></span> Attendance & Smart Campus Telemetry
+            </h1>
             <p style="color: var(--text-muted); font-size: 0.9rem;">
-              GPS geofence polling (5m), QR terminal, NFC integrations, facial verification, and approved-leave protected registers.
+              Daily morning registers, 1-click status toggles, and Smart QR/Barcode Campus Kiosk Terminal.
             </p>
           </div>
-          <div style="display: flex; gap: 10px;">
-            <button class="btn btn-secondary" id="btn-export-att"><i data-lucide="download"></i> Export Registers</button>
-            <button class="btn btn-primary" id="btn-qr-scanner"><i data-lucide="qr-code"></i> Launch QR Scanner</button>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button class="btn btn-secondary" id="btn-export-att"><i data-lucide="download"></i> Export Register (CSV)</button>
+            <button class="btn btn-secondary" id="btn-mark-all-present"><i data-lucide="check-check"></i> Mark All Present</button>
+            <button class="btn btn-primary" id="btn-qr-scanner"><i data-lucide="qr-code"></i> Launch QR Kiosk</button>
           </div>
         </div>
       </div>
 
       <div class="kpi-grid">
-        ${UIComponents.renderKpiCard({ title: 'Student Attendance Today', value: '—', icon: 'users', color: 'emerald', subtitle: `${students.length} Enrolled` })}
-        ${UIComponents.renderKpiCard({ title: 'Faculty Present', value: '—', icon: 'user-check', color: 'blue', subtitle: 'No Staff Records' })}
-        ${UIComponents.renderKpiCard({ title: 'Approved Leaves', value: `${students.filter(s => s.leaveStatus === 'approved').length} Students`, icon: 'shield-check', color: 'amber', subtitle: 'Gold Badges Protected' })}
-        ${UIComponents.renderKpiCard({ title: 'Late Arrivals', value: '—', icon: 'clock', color: 'rose', subtitle: 'No Records Available' })}
+        ${UIComponents.renderKpiCard({ title: 'Attendance Today', value: presentRate, icon: 'users', color: 'emerald', subtitle: `${presentCount + lateCount} / ${filteredStudents.length} Present` })}
+        ${UIComponents.renderKpiCard({ title: 'Late Arrivals', value: `${lateCount}`, icon: 'clock', color: 'amber', subtitle: 'Punched past 09:00 AM' })}
+        ${UIComponents.renderKpiCard({ title: 'Absent Unexcused', value: `${absentCount}`, icon: 'user-x', color: 'rose', subtitle: 'Requires Parent Alert' })}
+        ${UIComponents.renderKpiCard({ title: 'Approved Leaves', value: `${excusedCount}`, icon: 'shield-check', color: 'blue', subtitle: 'Protected Excused Status' })}
       </div>
 
       <!-- Filters Row -->
       <div class="card" style="margin-bottom: 24px;">
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; align-items: flex-end;">
           <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label">Select Grade / Class</label>
+            <label class="form-label" style="font-weight: 600;">Select Grade / Class</label>
             <select class="form-select" id="att-filter-grade">
-              <option value="all">All Classes</option>
-              ${TMS_CONFIG.academic.classes.map(c => `<option value="${c}">${c}</option>`).join('')}
+              <option value="all" ${this._selectedGrade === 'all' ? 'selected' : ''}>All Classes</option>
+              ${TMS_CONFIG.academic.classes.map(c => `<option value="${esc(c)}" ${this._selectedGrade === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}
             </select>
           </div>
           <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label">Section</label>
+            <label class="form-label" style="font-weight: 600;">Section</label>
             <select class="form-select" id="att-filter-section">
-              <option value="all">All Sections</option>
-              <option value="A">Section A</option>
-              <option value="B">Section B</option>
-              <option value="C">Section C</option>
+              <option value="all" ${this._selectedSection === 'all' ? 'selected' : ''}>All Sections</option>
+              <option value="A" ${this._selectedSection === 'A' ? 'selected' : ''}>Section A</option>
+              <option value="B" ${this._selectedSection === 'B' ? 'selected' : ''}>Section B</option>
+              <option value="C" ${this._selectedSection === 'C' ? 'selected' : ''}>Section C</option>
             </select>
           </div>
           <div class="form-group" style="margin-bottom: 0;">
-            <label class="form-label">Date</label>
-            <input type="date" class="form-input" id="att-filter-date" value="${new Date().toISOString().split('T')[0]}">
+            <label class="form-label" style="font-weight: 600;">Date</label>
+            <input type="date" class="form-input" id="att-filter-date" value="${esc(this._selectedDate)}">
           </div>
           <div>
             <button class="btn btn-primary" style="width: 100%;" id="btn-refresh-att"><i data-lucide="filter"></i> Filter Register</button>
@@ -65,60 +115,83 @@ export class AttendanceModule {
 
       <!-- Active Register Card -->
       <div class="card">
-        <div class="card-header">
+        <div class="card-header" style="flex-wrap: wrap; gap: 10px;">
           <div>
-            <h3 class="card-title">School-Wide Attendance Register</h3>
-            <p class="card-desc">Approved-leave protection prevents accidental modification of authorized excused absences.</p>
+            <h3 class="card-title">Daily Register — ${new Date(this._selectedDate).toLocaleDateString('en-GB', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</h3>
+            <p class="card-desc">Click P (Present), L (Late), A (Absent), or E (Excused) to instantly record or update student attendance.</p>
           </div>
-          <span class="badge badge-info">Realtime Geofence Polling Active</span>
+          <span class="badge ${recordedTotal === filteredStudents.length && filteredStudents.length > 0 ? 'badge-success' : 'badge-info'}">
+            ${recordedTotal} / ${filteredStudents.length} Marked
+          </span>
         </div>
 
         <div class="table-responsive">
           <table class="tms-table" id="master-attendance-table">
             <thead>
               <tr>
+                <th style="width: 50px;">Roll</th>
                 <th>Admission No</th>
-                <th>Roll</th>
                 <th>Student Name</th>
                 <th>Grade & Section</th>
-                <th>Leave Status</th>
-                <th>Recorded Punch Time</th>
-                <th>Attendance State</th>
-                <th>Actions</th>
+                <th>Punch Time</th>
+                <th>Source</th>
+                <th>Status</th>
+                <th style="text-align: right;">Quick Status Toggle</th>
               </tr>
             </thead>
             <tbody>
-              ${students.map(s => {
+              ${filteredStudents.length ? filteredStudents.map(s => {
+                const rec = dateRecords[s.id] || dateRecords[s.admissionNo];
                 const isLeave = s.leaveStatus === 'approved';
+                const status = rec ? rec.status : (isLeave ? 'excused' : 'unrecorded');
+                const punchTime = rec ? (rec.punchTime || new Date(rec.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })) : '—';
+                const source = rec ? (rec.source === 'kiosk_qr' ? 'QR Kiosk' : rec.source === 'nfc' ? 'NFC Smartcard' : 'Manual') : '—';
+
                 return `
-                  <tr>
-                    <td><span class="font-mono">${s.admissionNo}</span></td>
-                    <td><strong>${s.rollNo}</strong></td>
-                    <td>${s.fullName}</td>
-                    <td>${s.grade} - ${s.section}</td>
+                  <tr data-student-id="${esc(s.id)}" data-adm="${esc(s.admissionNo)}">
+                    <td><strong>${esc(s.rollNo || '—')}</strong></td>
+                    <td><span class="font-mono">${esc(s.admissionNo || '—')}</span></td>
                     <td>
-                      ${isLeave ? `
-                        <span class="badge badge-gold"><i data-lucide="shield-check" style="width: 12px; height: 12px;"></i> Approved Leave</span>
-                      ` : `
-                        <span class="badge badge-info">Regular</span>
-                      `}
+                      <div style="display: flex; align-items: center; gap: 8px;">
+                        ${s.photo ? `<img src="${esc(s.photo)}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover;">` : `<div style="width: 28px; height: 28px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700;">${esc((s.fullName || 'S').slice(0, 1))}</div>`}
+                        <strong>${esc(s.fullName)}</strong>
+                      </div>
                     </td>
-                    <td class="font-mono">—</td>
+                    <td>${esc(s.grade)} ${s.section ? `• Sec ${esc(s.section)}` : ''}</td>
+                    <td class="font-mono" style="font-size: 0.85rem;">${punchTime}</td>
                     <td>
-                      ${isLeave ? `
-                        <span class="badge badge-warning">Excused (Protected)</span>
-                      ` : `
-                        <span class="badge badge-info">Not Recorded</span>
-                      `}
+                      <span style="font-size: 0.78rem; color: #64748b;">${source}</span>
                     </td>
                     <td>
-                      <button class="btn btn-secondary btn-sm" onclick="alert('Attendance details & audit logs displayed.')">
-                        <i data-lucide="eye"></i> History
-                      </button>
+                      ${status === 'present' ? `
+                        <span class="badge badge-success"><i data-lucide="check" style="width: 12px; height: 12px;"></i> Present</span>
+                      ` : status === 'late' ? `
+                        <span class="badge badge-warning"><i data-lucide="clock" style="width: 12px; height: 12px;"></i> Late</span>
+                      ` : status === 'absent' ? `
+                        <span class="badge badge-danger"><i data-lucide="x" style="width: 12px; height: 12px;"></i> Absent</span>
+                      ` : status === 'excused' ? `
+                        <span class="badge badge-info"><i data-lucide="shield-check" style="width: 12px; height: 12px;"></i> Excused</span>
+                      ` : `
+                        <span class="badge" style="background: #f1f5f9; color: #64748b;">Unrecorded</span>
+                      `}
+                    </td>
+                    <td style="text-align: right;">
+                      <div style="display: inline-flex; gap: 4px;">
+                        <button class="btn btn-sm btn-mark-status ${status === 'present' ? 'btn-primary' : 'btn-secondary'}" data-status="present" data-student-id="${esc(s.id)}" title="Mark Present" style="padding: 3px 8px; font-weight: 700;">P</button>
+                        <button class="btn btn-sm btn-mark-status ${status === 'late' ? 'btn-primary' : 'btn-secondary'}" data-status="late" data-student-id="${esc(s.id)}" title="Mark Late" style="padding: 3px 8px; font-weight: 700;">L</button>
+                        <button class="btn btn-sm btn-mark-status ${status === 'absent' ? 'btn-danger' : 'btn-secondary'}" data-status="absent" data-student-id="${esc(s.id)}" title="Mark Absent" style="padding: 3px 8px; font-weight: 700;">A</button>
+                        <button class="btn btn-sm btn-mark-status ${status === 'excused' ? 'btn-primary' : 'btn-secondary'}" data-status="excused" data-student-id="${esc(s.id)}" title="Mark Excused" style="padding: 3px 8px; font-weight: 700;">E</button>
+                      </div>
                     </td>
                   </tr>
                 `;
-              }).join('')}
+              }).join('') : `
+                <tr>
+                  <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 36px;">
+                    No students found for this class and section filter.
+                  </td>
+                </tr>
+              `}
             </tbody>
           </table>
         </div>
@@ -130,44 +203,392 @@ export class AttendanceModule {
   }
 
   static bindEvents(container) {
-    const qrBtn = container.querySelector('#btn-qr-scanner');
-    if (qrBtn) {
-      qrBtn.addEventListener('click', () => {
-        UIComponents.openModal({
-          title: 'Campus Attendance QR & NFC Terminal',
-          bodyHtml: `
-            <div style="text-align: center; padding: 20px;">
-              <div style="width: 200px; height: 200px; border: 3px solid #3b82f6; border-radius: var(--radius-lg); margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; background: rgba(59,130,246,0.05); position: relative;">
-                <i data-lucide="scan" style="width: 100px; height: 100px; color: #3b82f6; animation: pulse 1.5s infinite;"></i>
-              </div>
-              <h4>Position Student or Staff QR Code</h4>
-              <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 6px;">
-                Camera feed active. Terminal also listens for ISO/IEC 14443 Type A NFC cards.
-              </p>
-              <div style="margin-top: 20px;">
-                <button class="btn btn-primary" id="btn-simulate-scan"><i data-lucide="zap"></i> Simulate Instant Scan</button>
-              </div>
-            </div>
-          `
-        });
+    const esc = (v) => UIComponents.escapeHtml(v);
 
-        document.getElementById('btn-simulate-scan').addEventListener('click', async () => {
-          await auditService.log('TERMINAL_QR_PUNCH', 'ATTENDANCE', {
-            scannerTerminalId: 'GATE-01-NORTH',
-            status: 'Present'
-          });
-          UIComponents.closeModal();
-          UIComponents.showToast('QR punch verified.', 'success');
-        });
+    // Refresh / Filter
+    const refreshBtn = container.querySelector('#btn-refresh-att');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', () => {
+        this._selectedGrade = container.querySelector('#att-filter-grade').value;
+        this._selectedSection = container.querySelector('#att-filter-section').value;
+        this._selectedDate = container.querySelector('#att-filter-date').value;
+        this.render(container);
       });
     }
 
+    // Individual Quick Status Toggle (P / L / A / E)
+    container.querySelectorAll('.btn-mark-status').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const status = e.currentTarget.dataset.status;
+        const studentId = e.currentTarget.dataset.studentId;
+        const student = this._students.find(s => s.id === studentId);
+        if (!student) return;
+
+        btn.disabled = true;
+        await this.recordAttendance(student, status, 'manual');
+        this.render(container);
+        UIComponents.showToast(`${student.fullName} marked as ${status.toUpperCase()}.`, 'info');
+      });
+    });
+
+    // Mark All Present
+    const markAllBtn = container.querySelector('#btn-mark-all-present');
+    if (markAllBtn) {
+      markAllBtn.addEventListener('click', async () => {
+        const filteredStudents = this._students.filter(s => {
+          const matchGrade = this._selectedGrade === 'all' || s.grade === this._selectedGrade;
+          const matchSec = this._selectedSection === 'all' || s.section === this._selectedSection;
+          return matchGrade && matchSec;
+        });
+
+        if (!filteredStudents.length) return;
+        if (!confirm(`Mark all ${filteredStudents.length} students in this register as PRESENT for ${this._selectedDate}?`)) return;
+
+        markAllBtn.disabled = true;
+        markAllBtn.innerText = 'Marking...';
+
+        for (const s of filteredStudents) {
+          // eslint-disable-next-line no-await-in-loop
+          await this.recordAttendance(s, 'present', 'manual');
+        }
+
+        await auditService.log('BULK_ATTENDANCE_MARKED', 'ATTENDANCE', {
+          date: this._selectedDate,
+          grade: this._selectedGrade,
+          count: filteredStudents.length
+        });
+
+        UIComponents.showToast(`Marked ${filteredStudents.length} students as PRESENT!`, 'success');
+        this.render(container);
+      });
+    }
+
+    // Export Registers
     const exportBtn = container.querySelector('#btn-export-att');
     if (exportBtn) {
       exportBtn.addEventListener('click', () => {
-        UIComponents.showToast('Attendance report exported to CSV for Thaiba Model School.', 'info');
+        const filteredStudents = this._students.filter(s => {
+          const matchGrade = this._selectedGrade === 'all' || s.grade === this._selectedGrade;
+          const matchSec = this._selectedSection === 'all' || s.section === this._selectedSection;
+          return matchGrade && matchSec;
+        });
+
+        const dateRecords = {};
+        this._records.filter(r => r.date === this._selectedDate).forEach(r => {
+          if (r.studentId) dateRecords[r.studentId] = r;
+          if (r.admissionNo) dateRecords[r.admissionNo] = r;
+        });
+
+        const rows = [
+          ['Date', 'Roll No', 'Admission No', 'Student Name', 'Grade', 'Section', 'Status', 'Punch Time', 'Source']
+        ];
+
+        filteredStudents.forEach(s => {
+          const rec = dateRecords[s.id] || dateRecords[s.admissionNo];
+          const status = rec ? rec.status : (s.leaveStatus === 'approved' ? 'excused' : 'unrecorded');
+          const punchTime = rec ? (rec.punchTime || '') : '';
+          const source = rec ? (rec.source || 'manual') : '';
+
+          rows.push([
+            this._selectedDate,
+            s.rollNo || '',
+            s.admissionNo || '',
+            s.fullName || '',
+            s.grade || '',
+            s.section || '',
+            status.toUpperCase(),
+            punchTime,
+            source
+          ]);
+        });
+
+        downloadCsv(`Attendance_Register_${this._selectedDate}_${this._selectedGrade}`, rows);
+        UIComponents.showToast('Attendance register exported to CSV.', 'success');
       });
     }
+
+    // QR Kiosk Launcher
+    const qrBtn = container.querySelector('#btn-qr-scanner');
+    if (qrBtn) {
+      qrBtn.addEventListener('click', () => {
+        this.openKioskModal(container);
+      });
+    }
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Database Save Helper                                               */
+  /* ------------------------------------------------------------------ */
+  static async recordAttendance(student, status, source = 'manual') {
+    const existing = this._records.find(r => 
+      (r.studentId === student.id || r.admissionNo === student.admissionNo) && 
+      r.date === this._selectedDate
+    );
+
+    const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const recordData = {
+      id: existing ? existing.id : `att_${student.id}_${this._selectedDate}_${Date.now()}`,
+      studentId: student.id,
+      studentName: student.fullName,
+      admissionNo: student.admissionNo,
+      grade: student.grade,
+      section: student.section,
+      date: this._selectedDate,
+      status,
+      punchTime: nowStr,
+      source,
+      updatedAt: new Date().toISOString()
+    };
+
+    if (existing) {
+      await dbService.update('attendance_records', existing.id, recordData);
+      const idx = this._records.findIndex(r => r.id === existing.id);
+      if (idx >= 0) this._records[idx] = { ...this._records[idx], ...recordData };
+    } else {
+      await dbService.insert('attendance_records', recordData);
+      this._records.push(recordData);
+    }
+
+    return recordData;
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Audio Feedback Synthesizer                                         */
+  /* ------------------------------------------------------------------ */
+  static playChime(type = 'success') {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      if (type === 'success') {
+        osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+        osc.frequency.setValueAtTime(880.00, ctx.currentTime + 0.1); // A5
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.35);
+      } else if (type === 'duplicate') {
+        osc.frequency.setValueAtTime(440, ctx.currentTime);
+        osc.frequency.setValueAtTime(330, ctx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.2, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.4);
+      }
+    } catch (e) {
+      // Audio not permitted or supported
+    }
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Smart Campus QR & Barcode Attendance Kiosk                         */
+  /* ------------------------------------------------------------------ */
+  static openKioskModal(container) {
+    const esc = (v) => UIComponents.escapeHtml(v);
+    const today = new Date().toISOString().split('T')[0];
+
+    const bodyHtml = `
+      <div style="background: #0f172a; color: #f8fafc; border-radius: 12px; padding: 24px; text-align: center;">
+        <!-- Kiosk Header -->
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 14px; margin-bottom: 20px;">
+          <div style="text-align: left;">
+            <div style="font-size: 0.75rem; text-transform: uppercase; color: #22c55e; font-weight: 700; letter-spacing: 1px; display: flex; align-items: center; gap: 6px;">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: #22c55e; display: inline-block; animation: pulse 1.5s infinite;"></span>
+              GATE 01 • MAIN ENTRY TERMINAL ONLINE
+            </div>
+            <div style="font-size: 1.1rem; font-weight: 700; color: #fff;">${esc(TMS_CONFIG.institution.name)}</div>
+          </div>
+          <div style="text-align: right;">
+            <div id="kiosk-live-clock" style="font-size: 1.25rem; font-weight: 800; font-family: monospace; color: #38bdf8;">--:--:--</div>
+            <div style="font-size: 0.75rem; color: #94a3b8;">${new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</div>
+          </div>
+        </div>
+
+        <!-- Scanner / Input Zone -->
+        <div style="max-width: 480px; margin: 0 auto 24px;">
+          <div style="width: 140px; height: 140px; border: 3px solid #22c55e; border-radius: 16px; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; background: rgba(34, 197, 94, 0.08); position: relative;">
+            <i data-lucide="scan" style="width: 70px; height: 70px; color: #22c55e;"></i>
+          </div>
+
+          <label style="display: block; font-size: 0.85rem; color: #cbd5e1; margin-bottom: 8px; font-weight: 600;">
+            Scan Student QR / Barcode Card or Enter Admission No:
+          </label>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="kiosk-scan-input" class="form-input font-mono" placeholder="Scan or enter Admission No (e.g. TMS/2027/001)" autofocus style="font-size: 1.05rem; padding: 10px 14px; text-align: center; background: #1e293b; color: #fff; border-color: #475569;">
+            <button class="btn btn-primary" id="kiosk-punch-btn" style="padding: 0 20px;"><i data-lucide="corner-down-left"></i> Punch</button>
+          </div>
+          <div style="font-size: 0.74rem; color: #94a3b8; margin-top: 6px;">
+            Supports USB Barcode Guns, 2D QR Scanners, and instant keyboard inputs.
+          </div>
+        </div>
+
+        <!-- Live Punch Result Display Box -->
+        <div id="kiosk-punch-feedback" style="min-height: 110px; background: #1e293b; border: 1px dashed #475569; border-radius: 10px; padding: 16px; margin-bottom: 20px; display: flex; align-items: center; justify-content: center;">
+          <span style="color: #64748b; font-size: 0.9rem;">Awaiting student scan or badge swipe...</span>
+        </div>
+
+        <!-- Recent Punches Roster -->
+        <div style="text-align: left;">
+          <div style="font-size: 0.8rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px;">
+            Recent Terminal Punches Today:
+          </div>
+          <div id="kiosk-recent-punches" style="max-height: 160px; overflow-y: auto; background: #1e293b; border-radius: 8px; padding: 8px;">
+            <div style="text-align: center; color: #64748b; font-size: 0.8rem; padding: 12px;">No check-ins recorded in this session yet.</div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    UIComponents.openModal({
+      title: 'Smart Campus Attendance Terminal',
+      bodyHtml,
+      footerHtml: `
+        <button class="btn btn-secondary" onclick="document.getElementById('global-modal-close').click()">Close Kiosk</button>
+      `
+    });
+
+    UIComponents.refreshIcons();
+
+    const modal = document.querySelector('.tms-modal');
+    if (!modal) return;
+
+    // Live clock ticker
+    const clockEl = modal.querySelector('#kiosk-live-clock');
+    const timerId = setInterval(() => {
+      if (!document.contains(clockEl)) {
+        clearInterval(timerId);
+        return;
+      }
+      clockEl.innerText = new Date().toLocaleTimeString();
+    }, 1000);
+
+    const input = modal.querySelector('#kiosk-scan-input');
+    const punchBtn = modal.querySelector('#kiosk-punch-btn');
+    const feedbackBox = modal.querySelector('#kiosk-punch-feedback');
+    const recentBox = modal.querySelector('#kiosk-recent-punches');
+
+    const recentList = [];
+
+    const handlePunch = async () => {
+      const query = input.value.trim();
+      if (!query) return;
+      input.value = '';
+      input.focus();
+
+      // Find student by admissionNo or id or fullName or aadhaar
+      const student = this._students.find(s => 
+        (s.admissionNo && s.admissionNo.toLowerCase() === query.toLowerCase()) ||
+        (s.id && s.id.toLowerCase() === query.toLowerCase()) ||
+        (s.rollNo && s.rollNo.toString() === query) ||
+        (s.fullName && s.fullName.toLowerCase().includes(query.toLowerCase()))
+      );
+
+      if (!student) {
+        this.playChime('duplicate');
+        feedbackBox.innerHTML = `
+          <div style="color: #f87171; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+            <i data-lucide="alert-circle" style="width: 22px; height: 22px;"></i>
+            <span>No student found matching "${esc(query)}". Please verify admission number.</span>
+          </div>
+        `;
+        UIComponents.refreshIcons();
+        return;
+      }
+
+      // Check if already checked in today
+      const alreadyPunched = this._records.find(r => 
+        (r.studentId === student.id || r.admissionNo === student.admissionNo) && 
+        r.date === today &&
+        r.status === 'present'
+      );
+
+      if (alreadyPunched) {
+        this.playChime('duplicate');
+        feedbackBox.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 14px; text-align: left; width: 100%;">
+            <div style="width: 50px; height: 50px; border-radius: 50%; background: #ca8a04; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; font-weight: 800; color: #fff;">
+              ${student.photo ? `<img src="${esc(student.photo)}" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">` : esc(student.fullName.slice(0, 1))}
+            </div>
+            <div>
+              <div style="color: #facc15; font-size: 0.8rem; font-weight: 800; text-transform: uppercase;">ALREADY CHECKED IN</div>
+              <div style="font-size: 1.1rem; font-weight: 700; color: #fff;">${esc(student.fullName)}</div>
+              <div style="font-size: 0.78rem; color: #94a3b8;">${esc(student.grade)} • Admission No: <span class="font-mono">${esc(student.admissionNo)}</span> • Punched at: ${esc(alreadyPunched.punchTime || 'Earlier')}</div>
+            </div>
+          </div>
+        `;
+        UIComponents.refreshIcons();
+        return;
+      }
+
+      // Record as present (or late if after 9:00 AM)
+      const now = new Date();
+      const isLate = now.getHours() >= 9 && now.getMinutes() > 0;
+      const statusToSet = isLate ? 'late' : 'present';
+
+      const rec = await this.recordAttendance(student, statusToSet, 'kiosk_qr');
+      this.playChime('success');
+
+      feedbackBox.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 14px; text-align: left; width: 100%;">
+          <div style="width: 56px; height: 56px; border-radius: 50%; background: ${isLate ? '#d97706' : '#16a34a'}; border: 3px solid ${isLate ? '#f59e0b' : '#4ade80'}; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; font-weight: 800; color: #fff;">
+            ${student.photo ? `<img src="${esc(student.photo)}" style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">` : esc(student.fullName.slice(0, 1))}
+          </div>
+          <div>
+            <div style="color: ${isLate ? '#f59e0b' : '#4ade80'}; font-size: 0.8rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">
+              ${isLate ? '⚠ LATE ARRIVAL RECORDED' : '✓ CHECK-IN SUCCESSFUL • PRESENT'}
+            </div>
+            <div style="font-size: 1.15rem; font-weight: 800; color: #ffffff;">${esc(student.fullName)}</div>
+            <div style="font-size: 0.8rem; color: #cbd5e1;">
+              ${esc(student.grade)} ${student.section ? `• Sec ${esc(student.section)}` : ''} • Adm: <strong class="font-mono">${esc(student.admissionNo)}</strong> • Time: <strong>${rec.punchTime}</strong>
+            </div>
+          </div>
+        </div>
+      `;
+
+      recentList.unshift({
+        name: student.fullName,
+        adm: student.admissionNo,
+        grade: student.grade,
+        time: rec.punchTime,
+        status: statusToSet
+      });
+
+      recentBox.innerHTML = recentList.slice(0, 8).map(item => `
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-bottom: 1px solid #334155; font-size: 0.82rem;">
+          <div>
+            <strong>${esc(item.name)}</strong>
+            <span style="color: #94a3b8; font-size: 0.75rem; margin-left: 6px;">(${esc(item.adm)} • ${esc(item.grade)})</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="font-mono" style="color: #38bdf8;">${esc(item.time)}</span>
+            <span class="badge ${item.status === 'present' ? 'badge-success' : 'badge-warning'}" style="font-size: 0.7rem;">${item.status.toUpperCase()}</span>
+          </div>
+        </div>
+      `).join('');
+
+      await auditService.log('KIOSK_PUNCH', 'ATTENDANCE', {
+        student: student.fullName,
+        admissionNo: student.admissionNo,
+        status: statusToSet,
+        punchTime: rec.punchTime
+      });
+
+      UIComponents.refreshIcons();
+    };
+
+    punchBtn.addEventListener('click', handlePunch);
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handlePunch();
+      }
+    });
+
+    // Auto-focus input
+    setTimeout(() => input?.focus(), 150);
   }
 }
 
