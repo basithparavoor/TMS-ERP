@@ -31,9 +31,6 @@
         <button class="btn btn-secondary btn-sm" id="btn-show-fees" style="display: none;">
           <i data-lucide="receipt"></i> Fee Structure
         </button>
-        <button class="btn btn-primary btn-sm" id="btn-print-a4-blank">
-          <i data-lucide="printer"></i> Print Blank A4 Form
-        </button>
       </div>
     </div>
 
@@ -41,11 +38,11 @@
     <div class="card no-print" id="interactive-form-card" style="box-shadow: var(--shadow-lg); padding: 32px 28px; margin-bottom: 30px;">
       <div style="text-align: center; margin-bottom: 24px;">
         <div id="portal-emblem-container" style="margin-bottom: 8px;"></div>
-        <h2 style="font-size: 1.5rem; font-weight: 800; color: var(--text-main); text-transform: uppercase;">
+        <h2 id="dyn-form-title" style="font-size: 1.5rem; font-weight: 800; color: var(--text-main); text-transform: uppercase;">
           Admission Application Form
         </h2>
         <p style="color: #16a34a; font-weight: 700; font-size: 0.88rem;">
-          Run by : Thaiba Heritage, Kolkata • Academic Session: <span id="dyn-session-text">—</span>
+          <span id="dyn-form-subtitle">Run by : Thaiba Heritage, Kolkata</span> • Academic Session: <span id="dyn-session-text">—</span>
         </p>
       </div>
 
@@ -93,7 +90,7 @@
             <strong>Form No :</strong> <span class="font-mono" id="a4-form-no" style="font-size: 14px; font-weight: 800; border-bottom: 1px dotted #000; padding: 0 10px;">—</span>
           </div>
           <div style="flex: 2; text-align: center;">
-            <h2 style="font-size: 16px; font-weight: 800; text-transform: uppercase; margin: 0; text-decoration: underline;">
+            <h2 id="a4-form-title" style="font-size: 16px; font-weight: 800; text-transform: uppercase; margin: 0; text-decoration: underline;">
               Admission Application Form
             </h2>
             <div style="font-size: 11.5px; font-weight: 700; margin-top: 2px;">
@@ -143,11 +140,11 @@
         <div style="border: 1.5px solid #000; padding: 10px; position: relative;">
           <div style="display: flex; justify-content: space-between; align-items: flex-start;">
             <div style="flex: 1; text-align: center;">
-              <h3 style="font-size: 14px; font-weight: 800; text-transform: uppercase; margin: 0; text-decoration: underline;">
+              <h3 id="admit-slip-title" style="font-size: 14px; font-weight: 800; text-transform: uppercase; margin: 0; text-decoration: underline;">
                 ADMIT CARD
               </h3>
-              <div style="font-size: 11px; font-weight: 700;">THAIBA MODEL SCHOOL</div>
-              <div style="font-size: 9px; color: #333;">Baghait, Tapan, Dakshin Dinajpur • Contact : +91 8653382851, +91 8167782851</div>
+              <div id="admit-slip-school" style="font-size: 11px; font-weight: 700;">THAIBA MODEL SCHOOL</div>
+              <div id="admit-slip-address" style="font-size: 9px; color: #333;">Baghait, Tapan, Dakshin Dinajpur • Contact : +91 8653382851, +91 8167782851</div>
             </div>
             <div id="admit-photo" style="width: 85px; height: 100px; border: 1px solid #000; display: flex; align-items: center; justify-content: center; font-size: 8px; text-align: center; background: #fafafa; margin-left: 10px; overflow: hidden;">
               Passport size photo
@@ -186,7 +183,7 @@
             </tr>
             <tr>
               <td style="border: 1px solid #000; padding: 4px;"><strong>Admission Test Centre :</strong></td>
-              <td style="border: 1px solid #000; padding: 4px;">THAIBA MODEL SCHOOL, Baghait, Tapan, Dakshin Dinajpur</td>
+              <td style="border: 1px solid #000; padding: 4px;" id="admit-slip-centre">THAIBA MODEL SCHOOL, Baghait, Tapan, Dakshin Dinajpur</td>
             </tr>
           </table>
 
@@ -209,7 +206,7 @@
     import { UIComponents } from './ui-components.js';
     import { TMS_LOGO } from './logo.js';
     import { authService } from './auth-service.js';
-    import { admissionService, DEFAULT_INSTRUCTIONS } from './admission-service.js';
+    import { admissionService, DEFAULT_INSTRUCTIONS, DEFAULT_POPUP_INSTRUCTIONS } from './admission-service.js';
     import { brandingService } from './branding-service.js';
     import { checkMigration } from './migration-check.js';
 
@@ -402,8 +399,49 @@
     }
 
     function renderPortalHeader() {
-      document.getElementById('dyn-session-text').innerText = settings.session || '—';
-      document.getElementById('a4-session-text').innerText = settings.session || '—';
+      const formTitle = settings.formTitle || 'Admission Application Form';
+      const formSubtitle = settings.formSubtitle || 'Run by : Thaiba Heritage, Kolkata';
+      const sessionText = settings.session || '—';
+      const admitTitle = settings.admitCardTitle || 'ADMIT CARD';
+      const admitSchool = settings.admitCardSubtitle || 'THAIBA MODEL SCHOOL';
+      const admitAddress = settings.admitCardAddress || 'Baghait, Tapan, Dakshin Dinajpur • Contact : +91 8653382851, +91 8167782851';
+      const admitCentre = settings.admissionTestCentre || 'THAIBA MODEL SCHOOL, Baghait, Tapan, Dakshin Dinajpur';
+
+      const elDynTitle = document.getElementById('dyn-form-title');
+      if (elDynTitle) elDynTitle.innerText = formTitle;
+
+      const elDynSub = document.getElementById('dyn-form-subtitle');
+      if (elDynSub) elDynSub.innerText = formSubtitle;
+
+      const elDynSess = document.getElementById('dyn-session-text');
+      if (elDynSess) elDynSess.innerText = sessionText;
+
+      const elA4Title = document.getElementById('a4-form-title');
+      if (elA4Title) elA4Title.innerText = formTitle;
+
+      const elA4Sess = document.getElementById('a4-session-text');
+      if (elA4Sess) elA4Sess.innerText = sessionText;
+
+      const elAdmitTitle = document.getElementById('admit-slip-title');
+      if (elAdmitTitle) elAdmitTitle.innerText = admitTitle;
+
+      const elAdmitSchool = document.getElementById('admit-slip-school');
+      if (elAdmitSchool) elAdmitSchool.innerText = admitSchool;
+
+      const elAdmitAddr = document.getElementById('admit-slip-address');
+      if (elAdmitAddr) elAdmitAddr.innerText = admitAddress;
+
+      const elAdmitCentre = document.getElementById('admit-slip-centre');
+      if (elAdmitCentre) elAdmitCentre.innerText = admitCentre;
+
+      const a4HeaderSlot = document.getElementById('a4-header-slot');
+      if (a4HeaderSlot) {
+        a4HeaderSlot.innerHTML = TMS_LOGO.printHeaderSvg({
+          title: admitSchool,
+          subtitle: formSubtitle,
+          address: admitAddress
+        });
+      }
 
       const btnGuidelines = document.getElementById('btn-show-guidelines');
       if (btnGuidelines) {
@@ -688,6 +726,145 @@
       UIComponents.refreshIcons();
     }
 
+    function showSubmissionModal(res) {
+      const formNo = res.formNo;
+      const creds = res.credentials;
+      const values = res.values || {};
+      const studentName = pick(values, ['candidateName', 'studentName', 'name']);
+      const applyingClass = pick(values, ['applyingClass', 'grade']);
+      const instructions = Array.isArray(settings && settings.popupInstructions) && settings.popupInstructions.length
+        ? settings.popupInstructions
+        : DEFAULT_POPUP_INSTRUCTIONS;
+
+      const instrItems = instructions.map((item, idx) => `
+        <li style="display:flex; gap:10px; align-items:flex-start; margin-bottom:10px; font-size:0.86rem; line-height:1.45; color:var(--text-main);">
+          <span style="display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:50%; background:rgba(22,163,74,0.14); color:#16a34a; font-weight:700; font-size:0.75rem; flex-shrink:0; margin-top:1px;">${idx + 1}</span>
+          <span>${esc(item)}</span>
+        </li>
+      `).join('');
+
+      const bodyHtml = `
+        <div style="text-align:center; padding: 4px 0 16px;">
+          <div style="width:58px; height:58px; border-radius:50%; background:rgba(22, 163, 74, 0.12); color:#16a34a; display:inline-flex; align-items:center; justify-content:center; margin-bottom:12px;">
+            <i data-lucide="check-circle-2" style="width:36px; height:36px;"></i>
+          </div>
+          <h3 style="font-size:1.3rem; font-weight:800; color:var(--text-main); margin:0 0 6px;">Application Submitted Successfully!</h3>
+          <p style="font-size:0.85rem; color:var(--text-muted); margin:0;">Your admission application has been registered in the institution portal.</p>
+        </div>
+
+        <!-- Unique Application ID Highlight Box -->
+        <div style="background:var(--bg-subtle); border:2px dashed #16a34a; border-radius:12px; padding:16px 20px; margin-bottom:18px; text-align:center;">
+          <div style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.08em; font-weight:700; color:var(--text-muted); margin-bottom:6px;">
+            Your Unique Application ID / Form Number
+          </div>
+          <div style="display:flex; align-items:center; justify-content:center; gap:10px; flex-wrap:wrap;">
+            <span class="font-mono" style="font-size:1.45rem; font-weight:800; color:#15803d; letter-spacing:0.5px;" id="popup-app-id-text">${esc(formNo)}</span>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-copy-popup-id" title="Copy Application ID" style="padding:4px 10px; font-size:0.78rem;">
+              <i data-lucide="copy"></i> Copy ID
+            </button>
+          </div>
+          <div style="margin-top:10px; font-size:0.84rem; color:var(--text-main); display:flex; justify-content:center; gap:16px; flex-wrap:wrap;">
+            <span><strong>Student:</strong> ${esc(studentName)}</span>
+            ${applyingClass && applyingClass !== '—' ? `<span><strong>Applying For:</strong> Class ${esc(applyingClass)}</span>` : ''}
+          </div>
+        </div>
+
+        ${creds ? `
+          <!-- Parent Portal Login Details -->
+          <div style="background:rgba(245, 158, 11, 0.08); border:1px solid #f59e0b; border-radius:10px; padding:12px 16px; margin-bottom:18px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <i data-lucide="key-round" style="width:16px; height:16px; color:#d97706;"></i>
+                <strong style="font-size:0.86rem; color:#b45309;">Parent Portal Login Credentials</strong>
+              </div>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-copy-popup-creds" style="padding:2px 8px; font-size:0.72rem;">
+                <i data-lucide="copy"></i> Copy Login
+              </button>
+            </div>
+            <div style="display:flex; gap:20px; flex-wrap:wrap; font-size:0.85rem;">
+              <div><span style="color:var(--text-muted); font-size:0.75rem; display:block;">Username / Student ID</span><strong class="font-mono" style="color:var(--text-main);">${esc(creds.username)}</strong></div>
+              <div><span style="color:var(--text-muted); font-size:0.75rem; display:block;">Password</span><strong class="font-mono" style="color:var(--text-main);">${esc(creds.password)}</strong></div>
+            </div>
+            <div style="font-size:0.75rem; color:var(--text-muted); margin-top:8px;">
+              Use these credentials to log in to the school portal to track verification, admission status and announcements.
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- Admin-Configured Popup Instructions -->
+        <div style="background:var(--bg-canvas); border:1px solid var(--border-color); border-radius:10px; padding:14px 16px; margin-bottom:6px;">
+          <div style="font-size:0.82rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted); margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+            <i data-lucide="clipboard-list" style="width:16px; height:16px; color:#16a34a;"></i>
+            Important Next Steps &amp; Guidelines
+          </div>
+          <ul style="list-style:none; padding:0; margin:0;">
+            ${instrItems}
+          </ul>
+        </div>
+      `;
+
+      const footerHtml = `
+        <div style="display:flex; justify-content:space-between; align-items:center; width:100%; gap:10px; flex-wrap:wrap;">
+          <button type="button" class="btn btn-secondary" id="btn-popup-close-done">
+            Close
+          </button>
+          <button type="button" class="btn btn-primary" id="btn-popup-print-now" style="padding:10px 20px;">
+            <i data-lucide="printer"></i> View &amp; Print A4 Form / Admit Card
+          </button>
+        </div>
+      `;
+
+      UIComponents.openModal({
+        title: 'Application Confirmation',
+        bodyHtml,
+        footerHtml,
+        maxWidth: '620px'
+      });
+
+      const copyBtn = document.getElementById('btn-copy-popup-id');
+      if (copyBtn) {
+        copyBtn.addEventListener('click', () => {
+          navigator.clipboard.writeText(formNo).then(() => {
+            UIComponents.showToast('Application ID copied to clipboard!', 'success');
+          }).catch(() => {
+            UIComponents.showToast(`Application ID: ${formNo}`, 'info');
+          });
+        });
+      }
+
+      const copyCredsBtn = document.getElementById('btn-copy-popup-creds');
+      if (copyCredsBtn && creds) {
+        copyCredsBtn.addEventListener('click', () => {
+          const text = `Username: ${creds.username}\nPassword: ${creds.password}`;
+          navigator.clipboard.writeText(text).then(() => {
+            UIComponents.showToast('Credentials copied to clipboard!', 'success');
+          }).catch(() => {});
+        });
+      }
+
+      const printBtn = document.getElementById('btn-popup-print-now');
+      if (printBtn) {
+        printBtn.addEventListener('click', () => {
+          UIComponents.closeModal();
+          document.getElementById('interactive-form-card').style.display = 'none';
+          document.getElementById('a4-document-wrapper').style.display = 'block';
+          window.scrollTo(0, 0);
+        });
+      }
+
+      const doneBtn = document.getElementById('btn-popup-close-done');
+      if (doneBtn) {
+        doneBtn.addEventListener('click', () => {
+          UIComponents.closeModal();
+          document.getElementById('interactive-form-card').style.display = 'none';
+          document.getElementById('a4-document-wrapper').style.display = 'block';
+          window.scrollTo(0, 0);
+        });
+      }
+
+      UIComponents.refreshIcons();
+    }
+
     async function handleSubmit(e) {
       e.preventDefault();
 
@@ -727,6 +904,8 @@
         document.getElementById('a4-document-wrapper').style.display = 'block';
         window.scrollTo(0, 0);
 
+        showSubmissionModal(lastResult);
+
         UIComponents.showToast(`Application ${formNo} registered successfully!`, 'success');
         if (result.accountError) {
           UIComponents.showToast(`Parent portal login note: ${result.accountError}`, 'warning');
@@ -737,18 +916,6 @@
       } finally {
         setFormBusy(false);
       }
-    }
-
-    function printBlankA4() {
-      const blank = {};
-      allFields().forEach((f) => { blank[f.fieldKey] = ''; });
-      populateA4({ formNo: `TMS/${new Date().getFullYear()}/ADM-______`, values: blank, credentials: null, application: { feeItems: [] }, entryBy: null });
-      applyA4Photo(blank);
-      document.getElementById('credentials-screen-card').style.display = 'none';
-      document.getElementById('interactive-form-card').style.display = 'none';
-      document.getElementById('a4-document-wrapper').style.display = 'block';
-      window.scrollTo(0, 0);
-      window.print();
     }
 
     async function boot() {
@@ -788,7 +955,6 @@
         btnFees.addEventListener('click', openFeeStructureModal);
       }
 
-      document.getElementById('btn-print-a4-blank').addEventListener('click', printBlankA4);
       document.getElementById('btn-back-to-form').addEventListener('click', () => {
         document.getElementById('a4-document-wrapper').style.display = 'none';
         document.getElementById('interactive-form-card').style.display = 'block';
