@@ -42,7 +42,7 @@
           Admission Application Form
         </h2>
         <p style="color: #16a34a; font-weight: 700; font-size: 0.88rem;">
-          <span id="dyn-form-subtitle">Run by : Thaiba Heritage, Kolkata</span> • Academic Session: <span id="dyn-session-text">—</span>
+          <span id="dyn-form-subtitle">Run by : Thaiba Heritage, Kolkata</span> • Academic Session: <span id="dyn-session-text">2027 - 2028</span>
         </p>
       </div>
 
@@ -94,7 +94,7 @@
               Admission Application Form
             </h2>
             <div style="font-size: 11.5px; font-weight: 700; margin-top: 2px;">
-              Academic Session : <span id="a4-session-text">—</span>
+              Academic Session : <span id="a4-session-text">2027 - 2028</span>
             </div>
           </div>
           <div style="width: 130px; text-align: right; font-size: 9px;">
@@ -405,7 +405,7 @@
       const admitTitle = settings.admitCardTitle || 'ADMIT CARD';
       const admitSchool = settings.admitCardSubtitle || 'THAIBA MODEL SCHOOL';
       const admitAddress = settings.admitCardAddress || 'Baghait, Tapan, Dakshin Dinajpur • Contact : +91 8653382851, +91 8167782851';
-      const admitCentre = settings.admissionTestCentre || 'THAIBA MODEL SCHOOL, Baghait, Tapan, Dakshin Dinajpur';
+      const admitCentre = settings.testCentre || settings.admissionTestCentre || 'THAIBA MODEL SCHOOL, Baghait, Tapan, Dakshin Dinajpur';
 
       const elDynTitle = document.getElementById('dyn-form-title');
       if (elDynTitle) elDynTitle.innerText = formTitle;
