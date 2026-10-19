@@ -10,7 +10,7 @@ import { authService } from './auth-service.js';
 import { auditService } from './audit-service.js';
 import { UIComponents } from './ui-components.js';
 import { TMS_LOGO } from './logo.js';
-import { admissionService } from './admission-service.js';
+import { admissionService, DEFAULT_INSTRUCTIONS } from './admission-service.js';
 import { notificationService } from './notification-service.js';
 import { brandingService } from './branding-service.js';
 import { downloadCsv, exportPdf, kvTable } from './export-utils.js';
@@ -110,7 +110,7 @@ export class AdminModule {
         <button class="btn btn-primary admin-tab-btn" data-tab="applications">Applications (${stats.total})</button>
         <button class="btn btn-secondary admin-tab-btn" data-tab="form-builder">Admission Form Builder</button>
         <button class="btn btn-secondary admin-tab-btn" data-tab="fees">Admission Fees</button>
-        <button class="btn btn-secondary admin-tab-btn" data-tab="payment-settings">Payment &amp; Session</button>
+        <button class="btn btn-secondary admin-tab-btn" data-tab="payment-settings">Admission &amp; Guidelines</button>
         <button class="btn btn-secondary admin-tab-btn" data-tab="notifications">Notifications</button>
         <button class="btn btn-secondary admin-tab-btn" data-tab="users">Users &amp; Roles</button>
         <button class="btn btn-secondary admin-tab-btn" data-tab="branding">Branding &amp; Logo</button>
@@ -1190,75 +1190,226 @@ export class AdminModule {
 
   static async renderPaymentSettingsTab(tabContent) {
     const s = await admissionService.loadSettings();
-    const instructions = Array.isArray(s.instructions) ? s.instructions : [];
+    let currentInstructions = Array.isArray(s.instructions) && s.instructions.length
+      ? s.instructions.slice()
+      : (DEFAULT_INSTRUCTIONS || []).slice();
+
+    const renderList = () => {
+      const container = document.getElementById('guidelines-list-container');
+      if (!container) return;
+      if (!currentInstructions.length) {
+        container.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem;padding:8px 0;">No guidelines configured. Click "Reset to Defaults" or add one below.</p>';
+        return;
+      }
+      container.innerHTML = currentInstructions.map((item, idx) => `
+        <div style="display:flex; gap:10px; align-items:center; margin-bottom:8px; background:var(--bg-subtle, #f8fafc); padding:8px 12px; border-radius:var(--radius-md); border:1px solid var(--border-color);">
+          <span style="font-weight:700; color:var(--text-muted); font-size:0.85rem; min-width:22px;">${idx + 1}.</span>
+          <input type="text" class="form-input guideline-item-input" data-index="${idx}" value="${esc(item)}" style="flex:1; font-size:0.88rem;">
+          <button type="button" class="btn btn-secondary btn-sm btn-del-guideline" data-index="${idx}" title="Delete Guideline" style="color:#ef4444; padding:4px 8px;">
+            <i data-lucide="trash-2"></i>
+          </button>
+        </div>
+      `).join('');
+
+      container.querySelectorAll('.guideline-item-input').forEach((inp) => {
+        inp.addEventListener('input', (e) => {
+          const index = parseInt(e.target.dataset.index, 10);
+          currentInstructions[index] = e.target.value;
+          syncTextarea();
+        });
+      });
+
+      container.querySelectorAll('.btn-del-guideline').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const index = parseInt(btn.dataset.index, 10);
+          currentInstructions.splice(index, 1);
+          renderList();
+          syncTextarea();
+        });
+      });
+
+      UIComponents.refreshIcons();
+    };
+
+    const syncTextarea = () => {
+      const ta = document.getElementById('set-instructions-raw');
+      if (ta) ta.value = currentInstructions.join('\n');
+    };
 
     tabContent.innerHTML = `
-      <div class="card">
-        <div class="card-header">
-          <div>
-            <h3 class="card-title">Payment &amp; Session Settings</h3>
-            <p class="card-desc">Configure the academic session, the UPI collection account and whether payment is mandatory before submission.</p>
-          </div>
-          <button class="btn btn-primary" id="btn-save-settings"><i data-lucide="save"></i> Save Settings</button>
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+        <div>
+          <h2 style="font-size:1.4rem; font-weight:800; margin:0 0 4px;">Admission Portal &amp; Guidelines Settings</h2>
+          <p style="color:var(--text-muted); font-size:0.88rem; margin:0;">
+            Control on-demand toggles for Fee Structure and Guidelines, customize instructions, and configure academic session.
+          </p>
         </div>
+        <button class="btn btn-primary" id="btn-save-settings"><i data-lucide="save"></i> Save All Settings</button>
+      </div>
 
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
-          <div>
-            <h4 style="font-size:1rem; color:#16a34a; margin-bottom:14px;">General</h4>
-            <div class="form-group">
-              <label class="form-label">Academic Session</label>
-              <input class="form-input" id="set-session" value="${esc(s.session || '')}">
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap:22px;">
+        
+        <!-- DISPLAY TOGGLES CARD -->
+        <div class="card" style="border-left: 4px solid #16a34a;">
+          <div class="card-header">
+            <h3 class="card-title"><i data-lucide="sliders" style="color:#16a34a;"></i> Admission Portal Display Toggles</h3>
+          </div>
+          <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:16px;">
+            These controls determine which on-demand buttons are visible to applicants on the public admission page. Fee schedule and guideline details are only revealed when an applicant explicitly clicks their respective button.
+          </p>
+
+          <div style="display:flex; flex-direction:column; gap:16px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; background:var(--bg-subtle, #f8fafc); border:1px solid var(--border-color); border-radius:var(--radius-md);">
+              <div style="padding-right:12px;">
+                <strong style="font-size:0.95rem; display:block; margin-bottom:2px;">Show Fee Structure in Admission Portal</strong>
+                <span style="font-size:0.8rem; color:var(--text-muted);">Displays the "Fee Structure" button on the admission portal so applicants can view fee breakdown on demand.</span>
+              </div>
+              <label class="switch" style="position:relative; display:inline-block; width:50px; height:26px; flex-shrink:0;">
+                <input type="checkbox" id="set-show-fee-structure" ${s.showFeeStructure ? 'checked' : ''} style="opacity:0; width:0; height:0;">
+                <span class="slider" style="position:absolute; cursor:pointer; inset:0; background-color:#cbd5e1; border-radius:26px; transition:.3s;"></span>
+              </label>
             </div>
-            <div class="form-group">
-              <label class="form-label">Form / Test Centre</label>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 16px; background:var(--bg-subtle, #f8fafc); border:1px solid var(--border-color); border-radius:var(--radius-md);">
+              <div style="padding-right:12px;">
+                <strong style="font-size:0.95rem; display:block; margin-bottom:2px;">Show General Guidelines in Admission Portal</strong>
+                <span style="font-size:0.8rem; color:var(--text-muted);">Displays the "General Guidelines" button on the admission portal so applicants can read admission instructions on demand.</span>
+              </div>
+              <label class="switch" style="position:relative; display:inline-block; width:50px; height:26px; flex-shrink:0;">
+                <input type="checkbox" id="set-show-guidelines" ${s.showGuidelines ? 'checked' : ''} style="opacity:0; width:0; height:0;">
+                <span class="slider" style="position:absolute; cursor:pointer; inset:0; background-color:#cbd5e1; border-radius:26px; transition:.3s;"></span>
+              </label>
+            </div>
+          </div>
+
+          <div style="margin-top:22px; border-top:1px solid var(--border-color); padding-top:16px;">
+            <h4 style="font-size:0.95rem; margin-bottom:10px; color:#15803d;">Academic Session &amp; Centre</h4>
+            <div class="form-group" style="margin-bottom:12px;">
+              <label class="form-label">Academic Session</label>
+              <input class="form-input" id="set-session" value="${esc(s.session || '')}" placeholder="e.g. 2026 - 2027">
+            </div>
+            <div class="form-group" style="margin-bottom:12px;">
+              <label class="form-label">Admission / Test Centre</label>
               <input class="form-input" id="set-centre" value="${esc(s.testCentre || '')}">
             </div>
-            <div class="form-group">
-              <label class="form-label">Success Message (after submission)</label>
-              <textarea class="form-textarea" id="set-success" rows="2">${esc(s.successMessage || '')}</textarea>
-            </div>
-            <label style="display:flex; gap:10px; align-items:center; margin-top:8px; font-weight:600;">
-              <input type="checkbox" id="set-payment-required" ${s.paymentRequired ? 'checked' : ''}>
-              Payment is mandatory before an application can be submitted
-            </label>
-          </div>
-          <div>
-            <h4 style="font-size:1rem; color:#16a34a; margin-bottom:14px;">UPI Collection Account</h4>
-            <div class="form-group">
-              <label class="form-label">UPI ID (VPA)</label>
-              <input class="form-input font-mono" id="set-upi-id" value="${esc(s.upiId || '')}" placeholder="school@upi">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Payee Name</label>
-              <input class="form-input" id="set-upi-name" value="${esc(s.upiPayeeName || TMS_CONFIG.institution.name)}">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Payment Instructions</label>
-              <textarea class="form-textarea" id="set-payment-instructions" rows="3">${esc(s.paymentInstructions || '')}</textarea>
-            </div>
-            <div class="form-group">
-              <label class="form-label">General Instructions (one per line)</label>
-              <textarea class="form-textarea" id="set-instructions" rows="4">${esc(instructions.join('\n'))}</textarea>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">Submission Success Note</label>
+              <textarea class="form-textarea" id="set-success" rows="2" placeholder="Message shown to parents upon submission…">${esc(s.successMessage || '')}</textarea>
             </div>
           </div>
         </div>
+
+        <!-- GENERAL GUIDELINES EDITOR CARD -->
+        <div class="card" style="border-left: 4px solid #3b82f6;">
+          <div class="card-header" style="flex-wrap:wrap; gap:10px;">
+            <div>
+              <h3 class="card-title"><i data-lucide="list-checks" style="color:#3b82f6;"></i> General Guidelines &amp; Instructions</h3>
+              <p class="card-desc">Edit, add, or delete instructions presented to applicants.</p>
+            </div>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-reset-guidelines">
+              <i data-lucide="rotate-ccw"></i> Reset Defaults
+            </button>
+          </div>
+
+          <!-- Add new guideline input -->
+          <div style="display:flex; gap:8px; margin-bottom:16px;">
+            <input type="text" class="form-input" id="new-guideline-text" placeholder="Type a new guideline here..." style="font-size:0.88rem;">
+            <button type="button" class="btn btn-primary btn-sm" id="btn-add-guideline" style="white-space:nowrap;">
+              <i data-lucide="plus"></i> Add
+            </button>
+          </div>
+
+          <!-- List of Guidelines -->
+          <div id="guidelines-list-container" style="max-height:340px; overflow-y:auto; padding-right:4px;"></div>
+
+          <!-- Collapsible Bulk Text Area -->
+          <details style="margin-top:14px; font-size:0.82rem; color:var(--text-muted);">
+            <summary style="cursor:pointer; font-weight:600; color:var(--text-main); margin-bottom:6px;">Bulk edit instructions (raw lines)</summary>
+            <textarea class="form-textarea" id="set-instructions-raw" rows="4" style="font-size:0.82rem; margin-top:6px;">${esc(currentInstructions.join('\n'))}</textarea>
+          </details>
+        </div>
+
       </div>
     `;
 
-    document.getElementById('btn-save-settings').addEventListener('click', async () => {
-      await admissionService.saveSettings({
-        session: document.getElementById('set-session').value.trim(),
-        testCentre: document.getElementById('set-centre').value.trim(),
-        successMessage: document.getElementById('set-success').value.trim(),
-        paymentRequired: document.getElementById('set-payment-required').checked,
-        upiId: document.getElementById('set-upi-id').value.trim(),
-        upiPayeeName: document.getElementById('set-upi-name').value.trim(),
-        paymentInstructions: document.getElementById('set-payment-instructions').value.trim(),
-        instructions: document.getElementById('set-instructions').value.split('\n').map((x) => x.trim()).filter(Boolean)
-      });
-      await auditService.log('ADMISSION_SETTINGS_UPDATED', 'GOVERNANCE', { paymentRequired: document.getElementById('set-payment-required').checked });
-      UIComponents.showToast('Settings saved.', 'success');
+    renderList();
+
+    const addSwitchStyles = () => {
+      const styleId = 'tms-switch-styles';
+      if (!document.getElementById(styleId)) {
+        const style = document.createElement('style');
+        style.id = styleId;
+        style.textContent = `
+          .switch input:checked + .slider { background-color: #16a34a !important; }
+          .switch input:checked + .slider:before { transform: translateX(24px); }
+          .slider:before {
+            position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px;
+            background-color: white; border-radius: 50%; transition: .3s;
+          }
+        `;
+        document.head.appendChild(style);
+      }
+    };
+    addSwitchStyles();
+
+    document.getElementById('btn-add-guideline').addEventListener('click', () => {
+      const inp = document.getElementById('new-guideline-text');
+      const val = (inp.value || '').trim();
+      if (!val) return;
+      currentInstructions.push(val);
+      inp.value = '';
+      renderList();
+      syncTextarea();
     });
+
+    document.getElementById('new-guideline-text').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        document.getElementById('btn-add-guideline').click();
+      }
+    });
+
+    document.getElementById('btn-reset-guidelines').addEventListener('click', () => {
+      if (!confirm('Reset all guidelines back to the school default instructions?')) return;
+      currentInstructions = (DEFAULT_INSTRUCTIONS || []).slice();
+      renderList();
+      syncTextarea();
+    });
+
+    const rawTa = document.getElementById('set-instructions-raw');
+    if (rawTa) {
+      rawTa.addEventListener('input', (e) => {
+        currentInstructions = e.target.value.split('\n').map((x) => x.trim()).filter(Boolean);
+        renderList();
+      });
+    }
+
+    document.getElementById('btn-save-settings').addEventListener('click', async () => {
+      const showFeeStructure = document.getElementById('set-show-fee-structure').checked;
+      const showGuidelines = document.getElementById('set-show-guidelines').checked;
+      const session = document.getElementById('set-session').value.trim();
+      const testCentre = document.getElementById('set-centre').value.trim();
+      const successMessage = document.getElementById('set-success').value.trim();
+
+      await admissionService.saveSettings({
+        showFeeStructure,
+        showGuidelines,
+        session,
+        testCentre,
+        successMessage,
+        instructions: currentInstructions
+      });
+
+      await auditService.log('ADMISSION_SETTINGS_UPDATED', 'GOVERNANCE', {
+        showFeeStructure,
+        showGuidelines,
+        session,
+        guidelinesCount: currentInstructions.length
+      });
+
+      UIComponents.showToast('Admission settings & guidelines saved successfully!', 'success');
+    });
+
     UIComponents.refreshIcons();
   }
 
