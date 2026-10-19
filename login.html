@@ -93,13 +93,23 @@
     async function resolveLoginEmail(identifier) {
       const value = String(identifier || '').trim();
       if (!value) return value;
-      if (value.includes('@')) return value;
+      if (value.includes('@')) return value.toLowerCase();
       const username = value.toLowerCase();
       try {
         const rows = await dbService.select('login_aliases');
         const alias = rows.find((r) => String(r.username || '').toLowerCase() === username);
-        if (alias && alias.email) return alias.email;
-      } catch (e) { /* table not created yet - fall back below */ }
+        if (alias && alias.email) return alias.email.toLowerCase();
+      } catch (e) { /* ignore */ }
+      try {
+        const pcreds = await dbService.select('parent_credentials');
+        const pcred = pcreds.find((r) => String(r.username || '').toLowerCase() === username);
+        if (pcred && pcred.email) return pcred.email.toLowerCase();
+      } catch (e) { /* ignore */ }
+      try {
+        const screds = await dbService.select('staff_credentials');
+        const scred = screds.find((r) => String(r.username || '').toLowerCase() === username);
+        if (scred && scred.email) return scred.email.toLowerCase();
+      } catch (e) { /* ignore */ }
       return `${username}@${TMS_CONFIG.parentEmailDomain}`;
     }
     document.getElementById('login-brand-container').innerHTML = `
