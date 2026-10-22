@@ -80,13 +80,17 @@ export class TimetableModule {
       </div>
 
       <!-- Module View Tabs -->
-      <div style="display: flex; gap: 8px; margin-bottom: 16px;">
-        <button class="btn ${this._activeView === 'matrix' ? 'btn-primary' : 'btn-secondary'} btn-sm" id="tab-tt-matrix">
-          <i data-lucide="grid"></i> Class Timetable Matrix
-        </button>
-        <button class="btn ${this._activeView === 'substitution' ? 'btn-primary' : 'btn-secondary'} btn-sm" id="tab-tt-sub">
-          <i data-lucide="refresh-cw" style="color: #6366f1;"></i> Daily Teacher Absence &amp; Proxy Engine
-        </button>
+      <div class="tms-tab-rail-wrapper">
+        <div class="tms-segmented-tabs">
+          <button class="tms-tab-pill ${this._activeView === 'matrix' ? 'active' : ''}" id="tab-tt-matrix">
+            <i data-lucide="grid"></i>
+            <span>Class Timetable Matrix</span>
+          </button>
+          <button class="tms-tab-pill ${this._activeView === 'substitution' ? 'active' : ''}" id="tab-tt-sub">
+            <i data-lucide="refresh-cw" style="color: #6366f1;"></i>
+            <span>Proxy &amp; Substitution Engine</span>
+          </button>
+        </div>
       </div>
 
       ${this._activeView === 'matrix' ? `
