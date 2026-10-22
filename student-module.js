@@ -34,6 +34,7 @@ export class StudentModule {
             </p>
           </div>
           <div style="display: flex; gap: 10px; flex-wrap:wrap;">
+            <button class="btn btn-secondary" id="btn-infirmary-roster"><i data-lucide="cross"></i> Medical &amp; Infirmary Roster</button>
             <button class="btn btn-secondary" id="btn-bulk-print-id-cards"><i data-lucide="printer"></i> Bulk Print PVC ID Cards</button>
             <a href="student-admission-portal.html" target="_blank" class="btn btn-secondary"><i data-lucide="file-text"></i> Admission Form (A4)</a>
             ${canManage ? `<button class="btn btn-primary" id="btn-new-admission"><i data-lucide="user-plus"></i> New Enrollment</button>` : ''}
@@ -92,13 +93,20 @@ export class StudentModule {
                   <td>
                     <strong>${esc(s.fullName)}</strong>
                     <div style="font-size: 0.75rem; color: var(--text-muted);">${esc(s.gender)} • DOB: ${esc(s.dob)}</div>
+                    ${s.allergies || s.medical_conditions ? `
+                      <div style="margin-top: 3px;">
+                        <span class="badge badge-danger" style="font-size: 0.65rem; padding: 1px 5px;" title="${esc(s.allergies || s.medical_conditions)}">
+                          <i data-lucide="alert-circle" style="width: 10px; height: 10px; display: inline;"></i> ${esc(s.allergies ? `Allergy: ${s.allergies}` : s.medical_conditions)}
+                        </span>
+                      </div>
+                    ` : ''}
                   </td>
                   <td>${esc(s.grade)} - ${esc(s.section)}</td>
                   <td>
                     <div>${esc(s.guardianName)}</div>
                     <small style="color: var(--text-muted); font-family: var(--font-mono);">${esc(s.guardianPhone)}</small>
                   </td>
-                  <td><span class="badge badge-info">${esc(s.bloodGroup)}</span></td>
+                  <td><span class="badge ${s.bloodGroup ? 'badge-info' : 'badge-secondary'}" style="font-weight: 700;">${esc(s.bloodGroup || s.blood_group || '—')}</span></td>
                   <td><span class="badge ${s.status === 'Active' ? 'badge-success' : 'badge-warning'}">${esc(s.status)}</span></td>
                   <td>
                     <div style="display: flex; gap: 6px; flex-wrap:wrap;">
@@ -177,7 +185,9 @@ export class StudentModule {
           </div>
           <div class="form-group">
             <label class="form-label">Blood Group</label>
-            <input class="form-input" id="ed-blood" value="${esc(s.bloodGroup || '')}">
+            <select class="form-select" id="ed-blood">
+              ${['', 'A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'].map(b => `<option value="${b}" ${(s.bloodGroup === b || s.blood_group === b) ? 'selected' : ''}>${b || 'Not Recorded'}</option>`).join('')}
+            </select>
           </div>
           <div class="form-group">
             <label class="form-label">Status</label>
@@ -191,6 +201,29 @@ export class StudentModule {
           <div class="form-group" style="grid-column:1/-1;">
             <label class="form-label">Address</label>
             <input class="form-input" id="ed-address" value="${esc(s.address || '')}">
+          </div>
+
+          <!-- Medical & Emergency Information -->
+          <div style="grid-column:1/-1; border-top:1px dashed var(--border-color); padding-top:10px; margin-top:4px;">
+            <div style="font-weight:700; color:#dc2626; font-size:0.85rem; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+              <i data-lucide="cross"></i> Medical, Health &amp; Emergency Alert Records
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Known Allergies (Food / Medication)</label>
+            <input class="form-input" id="ed-allergies" placeholder="e.g. Peanuts, Penicillin, Dust" value="${esc(s.allergies || '')}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Chronic Conditions / Physical Limitations</label>
+            <input class="form-input" id="ed-conditions" placeholder="e.g. Asthma (Inhaler), Type 1 Diabetes, Epilepsy" value="${esc(s.medical_conditions || s.medicalConditions || '')}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Emergency Physician / Clinic</label>
+            <input class="form-input" id="ed-physician" placeholder="e.g. Dr. B. Sen (Kolkata)" value="${esc(s.emergency_physician || s.emergencyPhysician || '')}">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Emergency Hospital / Ambulance Contact</label>
+            <input class="form-input font-mono" id="ed-hospital-phone" placeholder="e.g. +91 98300 12345" value="${esc(s.emergency_hospital_phone || s.emergencyHospitalPhone || '')}">
           </div>
         </div>
       </form>
@@ -221,6 +254,11 @@ export class StudentModule {
         guardianName: document.getElementById('ed-guardian').value.trim(),
         guardianPhone: document.getElementById('ed-phone').value.trim(),
         bloodGroup: document.getElementById('ed-blood').value.trim(),
+        blood_group: document.getElementById('ed-blood').value.trim(),
+        allergies: document.getElementById('ed-allergies').value.trim(),
+        medical_conditions: document.getElementById('ed-conditions').value.trim(),
+        emergency_physician: document.getElementById('ed-physician').value.trim(),
+        emergency_hospital_phone: document.getElementById('ed-hospital-phone').value.trim(),
         address: document.getElementById('ed-address').value.trim(),
         status: document.getElementById('ed-status').value
       });
@@ -455,6 +493,12 @@ export class StudentModule {
     const bulkIdBtn = container.querySelector('#btn-bulk-print-id-cards');
     if (bulkIdBtn) {
       bulkIdBtn.addEventListener('click', () => StudentModule.openBulkIdCardModal());
+    }
+
+    // Medical & Infirmary Roster Button
+    const infirmaryBtn = container.querySelector('#btn-infirmary-roster');
+    if (infirmaryBtn) {
+      infirmaryBtn.addEventListener('click', () => StudentModule.openInfirmaryRosterModal(this._students || []));
     }
 
     // Individual ID Card generator
@@ -733,6 +777,98 @@ export class StudentModule {
         win.document.close();
       });
     }
+
+    UIComponents.refreshIcons();
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Campus Medical, Allergy & Infirmary Roster (A4 Printable)          */
+  /* ------------------------------------------------------------------ */
+  static openInfirmaryRosterModal(students) {
+    const esc = (v) => UIComponents.escapeHtml(v);
+    const dateStr = new Date().toLocaleDateString('en-GB');
+    const emblem = TMS_LOGO.emblemSvg(50);
+
+    const bodyHtml = `
+      <div id="infirmary-roster-print" style="background:#fff; color:#0f172a; padding:20px; font-family:'Plus Jakarta Sans', sans-serif;">
+        <!-- Header -->
+        <div style="text-align:center; border-bottom:2px solid #dc2626; padding-bottom:12px; margin-bottom:16px;">
+          <div style="display:flex; justify-content:center; margin-bottom:4px;">${emblem}</div>
+          <h2 style="font-size:1.3rem; font-weight:800; color:#991b1b; text-transform:uppercase; margin:0;">${esc(TMS_CONFIG.institution.name)}</h2>
+          <div style="font-size:0.75rem; color:#64748b; font-weight:600;">CAMPUS HEALTH SERVICES • OFFICIAL STUDENT INFIRMARY &amp; EMERGENCY ROSTER</div>
+          <div style="display:inline-block; margin-top:6px; background:#fee2e2; border:1px solid #f87171; color:#991b1b; padding:2px 10px; border-radius:4px; font-size:0.75rem; font-weight:700;">
+            Academic Session ${TMS_CONFIG.academic.currentYear} • Confidential Medical Document
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; font-size:0.8rem;">
+          <div>Total Pupils Enrolled: <strong>${students.length}</strong></div>
+          <div>Report Generated: <strong>${dateStr}</strong></div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="tms-table" style="font-size:0.76rem; border:1px solid #cbd5e1; width:100%;">
+            <thead>
+              <tr style="background:#fef2f2; color:#991b1b;">
+                <th>Adm No</th>
+                <th>Student Name</th>
+                <th>Class</th>
+                <th>Blood</th>
+                <th>Allergies &amp; Alerts</th>
+                <th>Chronic Conditions</th>
+                <th>Emergency Physician</th>
+                <th>Guardian Phone</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${students.map(s => {
+                const hasAlert = s.allergies || s.medical_conditions;
+                return `
+                  <tr style="${hasAlert ? 'background:#fff5f5; font-weight:600;' : ''}">
+                    <td><span class="font-mono">${esc(s.admissionNo || '—')}</span></td>
+                    <td><strong>${esc(s.fullName)}</strong></td>
+                    <td>${esc(s.grade || '')} - ${esc(s.section || 'A')}</td>
+                    <td><span class="badge ${s.bloodGroup || s.blood_group ? 'badge-info' : 'badge-secondary'}">${esc(s.bloodGroup || s.blood_group || '—')}</span></td>
+                    <td>
+                      ${s.allergies ? `<span style="color:#dc2626; font-weight:700;">⚠️ ${esc(s.allergies)}</span>` : '<span style="color:#64748b;">None reported</span>'}
+                    </td>
+                    <td>
+                      ${s.medical_conditions ? `<span style="color:#b45309; font-weight:700;">${esc(s.medical_conditions)}</span>` : '<span style="color:#64748b;">None</span>'}
+                    </td>
+                    <td>${esc(s.emergency_physician || 'Campus Infirmary')}</td>
+                    <td><span class="font-mono">${esc(s.phone || s.guardianPhone || '—')}</span></td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; margin-top:24px; font-size:0.72rem; text-align:center;">
+          <div style="width:30%;">
+            <div style="border-bottom:1px solid #0f172a; padding-bottom:20px; margin-bottom:4px;"></div>
+            <strong>Campus Medical Officer</strong>
+          </div>
+          <div style="width:30%;">
+            <div style="border-bottom:1px solid #0f172a; padding-bottom:20px; margin-bottom:4px;"></div>
+            <strong>Physical Education In-Charge</strong>
+          </div>
+          <div style="width:30%;">
+            <div style="border-bottom:1px solid #0f172a; padding-bottom:20px; margin-bottom:4px;"></div>
+            <strong>Principal (Official Seal)</strong>
+          </div>
+        </div>
+      </div>
+    `;
+
+    UIComponents.openModal({
+      title: 'Campus Medical & Infirmary Emergency Roster',
+      bodyHtml,
+      footerHtml: `
+        <button class="btn btn-secondary" onclick="document.getElementById('global-modal-close').click()">Close</button>
+        <button class="btn btn-primary" onclick="window.print()"><i data-lucide="printer"></i> Print Medical Roster (A4)</button>
+      `
+    });
 
     UIComponents.refreshIcons();
   }
