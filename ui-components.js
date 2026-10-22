@@ -140,6 +140,20 @@ export class UIComponents {
     }
   }
 
+  static renderLoading(message = 'Loading verified records...') {
+    return `
+      <div class="tms-animated-loader" style="padding: 48px 20px; text-align: center;">
+        <div class="tms-loader-emblem-wrap" style="position: relative; width: 72px; height: 72px; margin: 0 auto 16px;">
+          <div class="tms-loader-aura"></div>
+          <img src="./tms-logo.png" alt="Thaiba Model School" class="tms-loader-img" style="width: 58px; height: 58px; object-fit: contain; position: relative; z-index: 2;">
+        </div>
+        <div class="tms-loader-text" style="font-family: var(--font-display, 'Outfit', sans-serif); font-weight: 700; color: #16a34a; font-size: 0.92rem; letter-spacing: 0.02em;">
+          ${this.escapeHtml(message)}
+        </div>
+      </div>
+    `;
+  }
+
   static renderKpiCard({ title, value, icon, color = 'blue', subtitle = '' }) {
     return `
       <div class="kpi-card">
