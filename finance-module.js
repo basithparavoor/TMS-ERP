@@ -7,7 +7,7 @@ import { dbService } from './supabase-client.js';
 import { UIComponents } from './ui-components.js';
 import { auditService } from './audit-service.js';
 import { PermissionEngine, CAPABILITIES } from './permission-engine.js';
-import { downloadCsv } from './export-utils.js';
+import { downloadCsv, shareContent } from './export-utils.js';
 import { notificationService } from './notification-service.js';
 import { TMS_LOGO } from './logo.js';
 import { WhatsAppService } from './whatsapp-service.js';
@@ -413,9 +413,23 @@ export class FinanceModule {
           `,
           footerHtml: `
             <button class="btn btn-secondary" onclick="document.getElementById('global-modal-close').click()">Close</button>
+            <button class="btn btn-secondary" id="btn-share-fee-receipt"><i data-lucide="share-2"></i> Share Receipt</button>
             <button class="btn btn-primary" onclick="window.print()"><i data-lucide="printer"></i> Print Official Receipt</button>
           `
         });
+
+        const shareReceiptBtn = document.getElementById('btn-share-fee-receipt');
+        if (shareReceiptBtn) {
+          shareReceiptBtn.addEventListener('click', async () => {
+            await shareContent({
+              title: `Fee Payment Receipt — ${name}`,
+              text: `Official Fee Payment Receipt\nStudent: ${name}\nInvoice No: ${inv}\nAmount Paid: ₹ ${amt}\nPayment Mode: ${mode}\nDate: ${date}\n${TMS_CONFIG.institution.name}, Kolkata`,
+              url: window.location.href
+            });
+            UIComponents.showToast('Receipt shared / copied to clipboard!', 'success');
+          });
+        }
+        UIComponents.refreshIcons();
       });
     });
 
@@ -451,6 +465,215 @@ export class FinanceModule {
         FinanceModule.openCustomChallanModal(container);
       });
     }
+
+    // Top action: Defaulters Aging & WhatsApp Recovery
+    const defaultersBtn = container.querySelector('#btn-defaulters-list');
+    if (defaultersBtn) {
+      defaultersBtn.addEventListener('click', async () => {
+        const allInvoices = await dbService.select('invoices');
+        FinanceModule.openDefaultersAgingModal(allInvoices, this._students || []);
+      });
+    }
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Defaulters Aging Analysis & 1-Click WhatsApp Recovery              */
+  /* ------------------------------------------------------------------ */
+  static openDefaultersAgingModal(invoices = [], students = []) {
+    const esc = (v) => UIComponents.escapeHtml(v);
+    const today = new Date();
+
+    const dueInvoices = invoices.filter(i => (parseFloat(i.balance) || 0) > 0);
+
+    const enriched = dueInvoices.map(inv => {
+      const student = students.find(s => 
+        (s.id && s.id === inv.studentId) || 
+        (s.admissionNo && s.admissionNo === inv.admissionNo) ||
+        (s.fullName && s.fullName.toLowerCase() === (inv.studentName || '').toLowerCase())
+      ) || {};
+
+      let daysPastDue = 0;
+      if (inv.dueDate) {
+        const due = new Date(inv.dueDate);
+        const diff = Math.floor((today - due) / (1000 * 60 * 60 * 24));
+        daysPastDue = Math.max(0, diff);
+      }
+
+      let bucket = '0-30';
+      if (daysPastDue > 90) bucket = '90+';
+      else if (daysPastDue > 60) bucket = '61-90';
+      else if (daysPastDue > 30) bucket = '31-60';
+
+      return {
+        ...inv,
+        student,
+        phone: student.guardianPhone || inv.phone || '',
+        daysPastDue,
+        bucket
+      };
+    });
+
+    // Sort by largest balance first
+    enriched.sort((a, b) => (b.balance || 0) - (a.balance || 0));
+
+    const totalOverdue = enriched.reduce((sum, i) => sum + (parseFloat(i.balance) || 0), 0);
+    const b0_30 = enriched.filter(i => i.bucket === '0-30');
+    const b31_60 = enriched.filter(i => i.bucket === '31-60');
+    const b61_90 = enriched.filter(i => i.bucket === '61-90');
+    const b90_plus = enriched.filter(i => i.bucket === '90+');
+
+    const sum0_30 = b0_30.reduce((s, i) => s + (parseFloat(i.balance) || 0), 0);
+    const sum31_60 = b31_60.reduce((s, i) => s + (parseFloat(i.balance) || 0), 0);
+    const sum61_90 = b61_90.reduce((s, i) => s + (parseFloat(i.balance) || 0), 0);
+    const sum90_plus = b90_plus.reduce((s, i) => s + (parseFloat(i.balance) || 0), 0);
+
+    const bodyHtml = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+        <!-- Header KPI Cards -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 20px;">
+          <div style="background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 8px; padding: 12px; text-align: center;">
+            <div style="font-size: 0.72rem; text-transform: uppercase; color: #64748b; font-weight: 700;">Total Delinquent</div>
+            <div style="font-size: 1.3rem; font-weight: 800; color: #dc2626; margin: 4px 0;">₹ ${totalOverdue.toLocaleString()}</div>
+            <div style="font-size: 0.75rem; color: #64748b;">${enriched.length} Defaulters</div>
+          </div>
+          <div style="background: #f0fdf4; border: 1.5px solid #86efac; border-radius: 8px; padding: 12px; text-align: center;">
+            <div style="font-size: 0.72rem; text-transform: uppercase; color: #166534; font-weight: 700;">0 — 30 Days</div>
+            <div style="font-size: 1.2rem; font-weight: 800; color: #16a34a; margin: 4px 0;">₹ ${sum0_30.toLocaleString()}</div>
+            <div style="font-size: 0.75rem; color: #15803d;">${b0_30.length} Students</div>
+          </div>
+          <div style="background: #fefce8; border: 1.5px solid #fde047; border-radius: 8px; padding: 12px; text-align: center;">
+            <div style="font-size: 0.72rem; text-transform: uppercase; color: #854d0e; font-weight: 700;">31 — 60 Days</div>
+            <div style="font-size: 1.2rem; font-weight: 800; color: #ca8a04; margin: 4px 0;">₹ ${sum31_60.toLocaleString()}</div>
+            <div style="font-size: 0.75rem; color: #a16207;">${b31_60.length} Students</div>
+          </div>
+          <div style="background: #fff7ed; border: 1.5px solid #fdba74; border-radius: 8px; padding: 12px; text-align: center;">
+            <div style="font-size: 0.72rem; text-transform: uppercase; color: #9a3412; font-weight: 700;">61 — 90 Days</div>
+            <div style="font-size: 1.2rem; font-weight: 800; color: #ea580c; margin: 4px 0;">₹ ${sum61_90.toLocaleString()}</div>
+            <div style="font-size: 0.75rem; color: #c2410c;">${b61_90.length} Students</div>
+          </div>
+          <div style="background: #fef2f2; border: 1.5px solid #fca5a5; border-radius: 8px; padding: 12px; text-align: center;">
+            <div style="font-size: 0.72rem; text-transform: uppercase; color: #991b1b; font-weight: 700;">90+ Days Critical</div>
+            <div style="font-size: 1.2rem; font-weight: 800; color: #dc2626; margin: 4px 0;">₹ ${sum90_plus.toLocaleString()}</div>
+            <div style="font-size: 0.75rem; color: #b91c1c;">${b90_plus.length} Students</div>
+          </div>
+        </div>
+
+        <!-- Aging Visual Bar -->
+        <div style="margin-bottom: 20px;">
+          <div style="font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 6px;">Visual Aging Debt Exposure:</div>
+          <div style="display: flex; height: 16px; border-radius: 8px; overflow: hidden; background: #e2e8f0; width: 100%;">
+            ${totalOverdue > 0 ? `
+              <div style="width: ${(sum0_30 / totalOverdue) * 100}%; background: #16a34a;" title="0-30 Days: ₹ ${sum0_30.toLocaleString()}"></div>
+              <div style="width: ${(sum31_60 / totalOverdue) * 100}%; background: #eab308;" title="31-60 Days: ₹ ${sum31_60.toLocaleString()}"></div>
+              <div style="width: ${(sum61_90 / totalOverdue) * 100}%; background: #f97316;" title="61-90 Days: ₹ ${sum61_90.toLocaleString()}"></div>
+              <div style="width: ${(sum90_plus / totalOverdue) * 100}%; background: #dc2626;" title="90+ Days: ₹ ${sum90_plus.toLocaleString()}"></div>
+            ` : `<div style="width: 100%; background: #16a34a;"></div>`}
+          </div>
+        </div>
+
+        <!-- Defaulters Roster Table -->
+        <div class="table-responsive" style="max-height: 380px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px;">
+          <table class="tms-table" style="font-size: 0.82rem;">
+            <thead>
+              <tr style="background: #f8fafc;">
+                <th>Student Full Name</th>
+                <th>Admission No</th>
+                <th>Grade</th>
+                <th>Due Date</th>
+                <th>Overdue Days</th>
+                <th>Outstanding (₹)</th>
+                <th style="text-align: right;">1-Click Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${enriched.length ? enriched.map(i => `
+                <tr>
+                  <td><strong>${esc(i.studentName)}</strong></td>
+                  <td><span class="font-mono">${esc(i.admissionNo || i.student?.admissionNo || '—')}</span></td>
+                  <td>${esc(i.grade || i.student?.grade || '—')}</td>
+                  <td>${esc(i.dueDate || '—')}</td>
+                  <td>
+                    <span class="badge ${i.daysPastDue > 90 ? 'badge-danger' : i.daysPastDue > 60 ? 'badge-warning' : 'badge-secondary'}">
+                      ${i.daysPastDue} Days
+                    </span>
+                  </td>
+                  <td class="font-mono" style="font-weight: 700; color: #dc2626;">
+                    ₹ ${(i.balance || 0).toLocaleString()}
+                  </td>
+                  <td style="text-align: right;">
+                    <button class="btn btn-secondary btn-sm btn-defaulter-wa" data-inv="${esc(i.invoiceNo)}" data-name="${esc(i.studentName)}" data-bal="${esc(i.balance)}" data-due="${esc(i.dueDate || '')}" data-phone="${esc(i.phone)}" style="color: #16a34a; font-weight: 600;">
+                      <i data-lucide="message-circle"></i> WhatsApp Notice
+                    </button>
+                  </td>
+                </tr>
+              `).join('') : `
+                <tr>
+                  <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">
+                    🎉 All student fee accounts are fully settled! No outstanding balances recorded.
+                  </td>
+                </tr>
+              `}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+
+    UIComponents.openModal({
+      title: 'Defaulters Aging Analysis & Automated WhatsApp Recovery',
+      bodyHtml,
+      footerHtml: `
+        <button class="btn btn-secondary" onclick="document.getElementById('global-modal-close').click()">Close</button>
+        <button class="btn btn-secondary" id="btn-export-aging-csv"><i data-lucide="download"></i> Export Defaulters (CSV)</button>
+        <button class="btn btn-primary" onclick="window.print()"><i data-lucide="printer"></i> Print Aging Report</button>
+      `
+    });
+
+    UIComponents.refreshIcons();
+
+    // Export CSV
+    const exportCsvBtn = document.getElementById('btn-export-aging-csv');
+    if (exportCsvBtn) {
+      exportCsvBtn.addEventListener('click', () => {
+        const rows = [
+          ['Invoice No', 'Student Name', 'Admission No', 'Grade', 'Guardian Phone', 'Due Date', 'Days Overdue', 'Aging Bucket', 'Outstanding Balance']
+        ];
+        enriched.forEach(i => {
+          rows.push([
+            i.invoiceNo || '',
+            i.studentName || '',
+            i.admissionNo || i.student?.admissionNo || '',
+            i.grade || i.student?.grade || '',
+            i.phone || '',
+            i.dueDate || '',
+            i.daysPastDue,
+            i.bucket,
+            i.balance || 0
+          ]);
+        });
+        downloadCsv(`TMS_Defaulters_Aging_${new Date().toISOString().split('T')[0]}`, rows);
+        UIComponents.showToast('Defaulters aging report exported to CSV.', 'success');
+      });
+    }
+
+    // Individual WhatsApp trigger
+    document.querySelectorAll('.btn-defaulter-wa').forEach(b => {
+      b.addEventListener('click', (e) => {
+        const invNo = e.currentTarget.dataset.inv;
+        const name = e.currentTarget.dataset.name;
+        const bal = parseFloat(e.currentTarget.dataset.bal) || 0;
+        const due = e.currentTarget.dataset.due;
+        const phone = e.currentTarget.dataset.phone;
+
+        WhatsAppService.sendFeeReminder({
+          invoiceNo: invNo,
+          studentName: name,
+          balance: bal,
+          dueDate: due,
+          phone: phone
+        });
+      });
+    });
   }
 
   /* ------------------------------------------------------------------ */
