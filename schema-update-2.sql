@@ -292,13 +292,26 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public, extensions
 AS $$
+DECLARE
+  v_is_admin BOOLEAN;
 BEGIN
-  IF NOT public.has_role(ARRAY['admin','principal']) THEN
+  -- HR manages the staff registry (and therefore staff logins), so HR may reset
+  -- passwords too -- but never for an administrator or principal account.
+  IF NOT public.has_role(ARRAY['admin','principal','hr']) THEN
     RAISE EXCEPTION 'Not authorized to change passwords';
   END IF;
   IF p_new_password IS NULL OR length(p_new_password) < 6 THEN
     RAISE EXCEPTION 'Password must be at least 6 characters';
   END IF;
+
+  v_is_admin := public.has_role(ARRAY['admin']);
+
+  IF NOT v_is_admin
+     AND EXISTS (SELECT 1 FROM public.profiles
+                  WHERE id = p_user_id AND role IN ('admin', 'principal')) THEN
+    RAISE EXCEPTION 'Only an administrator may change the password of an admin or principal account';
+  END IF;
+
   IF p_user_id <> auth.uid()
      AND EXISTS (SELECT 1 FROM public.profiles WHERE id = p_user_id AND lower(email) = 'cmbasith786@gmail.com') THEN
     RAISE EXCEPTION 'Only the super administrator may change the super administrator password';
@@ -408,7 +421,8 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  IF NOT public.has_role(ARRAY['admin','principal']) THEN
+  -- HR removes departing staff (and their logins); admin/principal as well.
+  IF NOT public.has_role(ARRAY['admin','principal','hr']) THEN
     RAISE EXCEPTION 'Not authorized to delete users';
   END IF;
   IF p_user_id = auth.uid() THEN
@@ -416,6 +430,12 @@ BEGIN
   END IF;
   IF EXISTS (SELECT 1 FROM public.profiles WHERE id = p_user_id AND lower(email) = 'cmbasith786@gmail.com') THEN
     RAISE EXCEPTION 'The super administrator account cannot be deleted';
+  END IF;
+  -- Only a full administrator may remove an administrator or principal account.
+  IF NOT public.has_role(ARRAY['admin'])
+     AND EXISTS (SELECT 1 FROM public.profiles
+                  WHERE id = p_user_id AND role IN ('admin', 'principal')) THEN
+    RAISE EXCEPTION 'Only an administrator may delete an admin or principal account';
   END IF;
   DELETE FROM public.profiles WHERE id = p_user_id;
   DELETE FROM auth.users WHERE id = p_user_id;
@@ -477,5 +497,161 @@ DROP POLICY IF EXISTS "profiles_insert_admin" ON profiles;
 CREATE POLICY "profiles_insert_admin" ON profiles
   FOR INSERT TO authenticated
   WITH CHECK (public.has_role(ARRAY['admin','principal','hr']));
+
+-- ============================================================================
+-- 31. Direct account creation.
+--
+--     The public /auth/v1/signup endpoint is rate limited (HTTP 429) and only
+--     works when "Confirm email" is disabled. Issuing parent and staff logins
+--     through it made admissions fail on busy days.
+--
+--     This SECURITY DEFINER function creates the auth user, its e-mail identity
+--     and the profile row in one transaction, with the password hashed by
+--     pgcrypto and the e-mail pre-confirmed. It never touches the signup
+--     endpoint, so there is no e-mail rate limit and no confirmation step.
+--
+--     Privilege guard: only admin / principal / HR may choose the role & scope.
+--     Every other caller (including anonymous visitors submitting the public
+--     admission form) is forced to role 'parent' with scope 'linked_wards'.
+-- ============================================================================
+CREATE OR REPLACE FUNCTION public.tms_create_user(
+  p_email TEXT,
+  p_password TEXT,
+  p_name TEXT DEFAULT NULL,
+  p_role TEXT DEFAULT 'parent',
+  p_scope TEXT DEFAULT NULL,
+  p_title TEXT DEFAULT NULL,
+  p_department TEXT DEFAULT NULL,
+  p_assigned_class TEXT DEFAULT NULL,
+  p_assigned_section TEXT DEFAULT NULL
+)
+RETURNS UUID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions
+AS $$
+DECLARE
+  v_id UUID;
+  v_email TEXT;
+  v_name TEXT;
+  v_role TEXT;
+  v_scope TEXT;
+BEGIN
+  v_email := lower(trim(COALESCE(p_email, '')));
+  IF position('@' IN v_email) < 2 THEN
+    RAISE EXCEPTION 'A valid e-mail address is required';
+  END IF;
+  IF p_password IS NULL OR length(p_password) < 6 THEN
+    RAISE EXCEPTION 'Password must be at least 6 characters';
+  END IF;
+
+  -- The super administrator is provisioned by the ordinary sign-up trigger so
+  -- that nobody can pre-register that address with a password of their choosing.
+  IF v_email = lower('cmbasith786@gmail.com') THEN
+    RAISE EXCEPTION 'This address is reserved; it is provisioned automatically on first sign-in';
+  END IF;
+
+  v_name := COALESCE(NULLIF(trim(COALESCE(p_name, '')), ''), split_part(v_email, '@', 1));
+
+  IF public.has_role(ARRAY['admin','principal','hr']) THEN
+    v_role := COALESCE(NULLIF(trim(COALESCE(p_role, '')), ''), 'parent');
+    v_scope := COALESCE(NULLIF(trim(COALESCE(p_scope, '')), ''), 'school_wide');
+  ELSE
+    v_role := 'parent';
+    v_scope := 'linked_wards';
+  END IF;
+
+  SELECT id INTO v_id FROM auth.users WHERE lower(email) = v_email LIMIT 1;
+  IF v_id IS NOT NULL THEN
+    RAISE EXCEPTION 'An account with this e-mail already exists';
+  END IF;
+
+  v_id := gen_random_uuid();
+
+  INSERT INTO auth.users (
+    id, instance_id, aud, role, email, encrypted_password,
+    email_confirmed_at, created_at, updated_at,
+    raw_app_meta_data, raw_user_meta_data,
+    is_sso_user, is_anonymous
+  ) VALUES (
+    v_id,
+    '00000000-0000-0000-0000-000000000000',
+    'authenticated',
+    'authenticated',
+    v_email,
+    crypt(p_password, gen_salt('bf')),
+    NOW(), NOW(), NOW(),
+    '{"provider":"email","providers":["email"]}'::jsonb,
+    jsonb_build_object('full_name', v_name, 'email_verified', true),
+    false,
+    false
+  );
+
+  -- E-mail identity so signInWithPassword can resolve the account. Wrapped
+  -- defensively so older `auth.identities` layouts do not abort the signup.
+  BEGIN
+    INSERT INTO auth.identities (
+      id, user_id, identity_data, provider, provider_id, last_sign_in_at, created_at, updated_at
+    ) VALUES (
+      gen_random_uuid(), v_id,
+      jsonb_build_object('sub', v_id::text, 'email', v_email, 'email_verified', true),
+      'email', v_id::text, NOW(), NOW(), NOW()
+    );
+  EXCEPTION WHEN OTHERS THEN
+    BEGIN
+      INSERT INTO auth.identities (
+        id, user_id, identity_data, provider, provider_id, created_at, updated_at
+      ) VALUES (
+        v_id::text, v_id,
+        jsonb_build_object('sub', v_id::text, 'email', v_email, 'email_verified', true),
+        'email', v_id::text, NOW(), NOW()
+      );
+    EXCEPTION WHEN OTHERS THEN
+      NULL;
+    END;
+  END;
+
+  -- Profile (the handle_new_user trigger usually creates it first).
+  INSERT INTO public.profiles (
+    id, email, name, role, scope, title, department,
+    assigned_class, assigned_section, is_active
+  ) VALUES (
+    v_id, v_email, v_name, v_role, v_scope, p_title, p_department,
+    p_assigned_class, p_assigned_section, true
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    email = EXCLUDED.email,
+    name = COALESCE(NULLIF(EXCLUDED.name, ''), public.profiles.name),
+    role = EXCLUDED.role,
+    scope = EXCLUDED.scope,
+    title = COALESCE(EXCLUDED.title, public.profiles.title),
+    department = COALESCE(EXCLUDED.department, public.profiles.department),
+    assigned_class = COALESCE(EXCLUDED.assigned_class, public.profiles.assigned_class),
+    assigned_section = COALESCE(EXCLUDED.assigned_section, public.profiles.assigned_section),
+    is_active = true,
+    updated_at = NOW();
+
+  -- Parent logins are signed in with a short username, so publish a
+  -- username -> e-mail alias. Administration can then rename a parent username
+  -- without breaking the sign-in (the auth e-mail itself never changes).
+  IF v_email LIKE '%@parents.thaibamodel.school' THEN
+    INSERT INTO public.login_aliases (id, username, email, role)
+    VALUES (
+      'alias-' || split_part(v_email, '@', 1),
+      split_part(v_email, '@', 1),
+      v_email,
+      'parent'
+    )
+    ON CONFLICT (username) DO UPDATE SET
+      email = EXCLUDED.email,
+      role = EXCLUDED.role,
+      updated_at = NOW();
+  END IF;
+
+  RETURN v_id;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.tms_create_user(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT) TO anon, authenticated;
 
 NOTIFY pgrst, 'reload schema';

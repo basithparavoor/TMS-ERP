@@ -30,6 +30,10 @@ import { admissionService } from './admission-service.js';
 import { brandingService } from './branding-service.js';
 import { checkMigration } from './migration-check.js';
 
+/** Escape untrusted values before putting them into an HTML template. */
+const esc = (v) => UIComponents.escapeHtml(v);
+const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150';
+
 class AppController {
   constructor() {
     this.currentRoute = '';
@@ -100,10 +104,10 @@ class AppController {
 
           <div class="sidebar-footer">
             <div class="user-mini-card" id="user-mini-card" role="button" tabindex="0" title="Edit my profile" style="cursor:pointer;">
-              <img id="user-mini-avatar" src="${user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150'}" alt="Avatar">
+              <img id="user-mini-avatar" src="${esc(user.avatar || DEFAULT_AVATAR)}" alt="Avatar">
               <div class="user-details-mini">
-                <div class="name" id="user-mini-name">${user.name || 'TMS Authorized'}</div>
-                <div class="role" id="user-mini-role">${user.isSuperAdmin ? 'Super Admin' : (user.title || user.role)}</div>
+                <div class="name" id="user-mini-name">${esc(user.name || 'TMS Authorized')}</div>
+                <div class="role" id="user-mini-role">${esc(user.isSuperAdmin ? 'Super Admin' : (user.title || user.role))}</div>
               </div>
             </div>
           </div>
@@ -335,17 +339,17 @@ class AppController {
     const bodyHtml = `
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
         <div class="form-group" style="grid-column:1/-1; display:flex; gap:16px; align-items:center;">
-          <img id="pf-avatar" src="${UIComponents.escapeHtml(user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150')}" alt="Avatar" style="width:76px;height:76px;border-radius:50%;object-fit:cover;border:1px solid var(--border-color);">
+          <img id="pf-avatar" src="${esc(user.avatar || DEFAULT_AVATAR)}" alt="Avatar" style="width:76px;height:76px;border-radius:50%;object-fit:cover;border:1px solid var(--border-color);">
           <div>
             <label class="form-label">Profile Photo</label>
             <input type="file" id="pf-avatar-file" accept="image/*" class="form-input">
           </div>
         </div>
-        <div class="form-group"><label class="form-label">Full Name</label><input class="form-input" id="pf-name" value="${UIComponents.escapeHtml(user.name || '')}"></div>
-        <div class="form-group"><label class="form-label">Email (read-only)</label><input class="form-input" id="pf-email" value="${UIComponents.escapeHtml(user.email || '')}" readonly></div>
-        <div class="form-group"><label class="form-label">Designation / Title</label><input class="form-input" id="pf-title" value="${UIComponents.escapeHtml(user.rawTitle || '')}"></div>
-        <div class="form-group"><label class="form-label">Department</label><input class="form-input" id="pf-department" value="${UIComponents.escapeHtml(user.rawDepartment || '')}"></div>
-        <div class="form-group" style="grid-column:1/-1;"><label class="form-label">Phone</label><input class="form-input" id="pf-phone" value="${UIComponents.escapeHtml(user.phone || '')}"></div>
+        <div class="form-group"><label class="form-label">Full Name</label><input class="form-input" id="pf-name" value="${esc(user.name || '')}"></div>
+        <div class="form-group"><label class="form-label">Email (read-only)</label><input class="form-input" id="pf-email" value="${esc(user.email || '')}" readonly></div>
+        <div class="form-group"><label class="form-label">Designation / Title</label><input class="form-input" id="pf-title" value="${esc(user.rawTitle || '')}"></div>
+        <div class="form-group"><label class="form-label">Department</label><input class="form-input" id="pf-department" value="${esc(user.rawDepartment || '')}"></div>
+        <div class="form-group" style="grid-column:1/-1;"><label class="form-label">Phone</label><input class="form-input" id="pf-phone" value="${esc(user.phone || '')}"></div>
         <div class="form-group" style="grid-column:1/-1; border-top:1px solid var(--border-color); padding-top:12px;">
           <label class="form-label">Change My Password</label>
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -438,7 +442,7 @@ class AppController {
           <i data-lucide="shield-alert" style="width: 56px; height: 56px; color: #ef4444; margin: 0 auto 16px;"></i>
           <h2>Access Restricted by School Security Policy</h2>
           <p style="color: var(--text-muted); max-width: 500px; margin: 8px auto 20px;">
-            Your authenticated role does not possess capability authorization for module: <strong>${moduleName}</strong>.
+            Your authenticated role does not possess capability authorization for module: <strong>${esc(moduleName)}</strong>.
           </p>
           <a href="#/dashboard" class="btn btn-primary">Return to Overview Dashboard</a>
         </div>
@@ -511,7 +515,7 @@ class AppController {
           <div>
             <h1 style="font-size: 1.85rem;">THAIBA MODEL SCHOOL — Enterprise Overview</h1>
             <p style="color: var(--text-muted); font-size: 0.9rem;">
-              Unified Campus Management • Welcome, <strong>${user.name}</strong> (${user.isSuperAdmin ? 'Super Administrator' : user.title})
+              Unified Campus Management • Welcome, <strong>${esc(user.name)}</strong> (${esc(user.isSuperAdmin ? 'Super Administrator' : user.title)})
             </p>
           </div>
           <div style="display: flex; gap: 10px;">

@@ -128,8 +128,20 @@ screen **and on the printed A4 form**. Parents sign in with their **username** t
 track status, view the fee/payment ledger and read notifications. Admin can
 **edit, resend or delete** the credentials.
 
-> **Supabase setting required:** turn **OFF** *Authentication → Providers → Email →
-> Confirm email* so parent logins are usable immediately.
+Accounts are created by the **`tms_create_user`** SQL function (in
+`schema-update-2.sql`), which writes the auth user, its e-mail identity and the
+profile row in one transaction with the password already confirmed. This bypasses
+the public `/auth/v1/signup` endpoint entirely, so it is **not affected by the
+sign-up e-mail rate limit (HTTP 429)** and does not depend on *Confirm email*.
+
+> **Supabase setting required (only if the migration has not been applied):** turn
+> **OFF** *Authentication → Providers → Email → Confirm email* so the legacy
+> fallback sign-up path works.
+>
+> If a login could not be created at submission time (the credentials card shows a
+> red note), an administrator can create it later from
+> *Admin → Admissions → open application → **Activate Login*** (parents) or
+> *Staff & HR → row **Login** → **Activate Login*** (staff).
 
 ### Office Boy (data-entry role)
 Set a staff member's role to **Office Boy** in *Admin → Users & Roles*. They land on
@@ -233,8 +245,11 @@ client UI mirrors these rules but never *is* the security boundary.
      The super administrator (`cmbasith786@gmail.com`) is provisioned automatically.
    - Only link parent/guardian accounts via the `guardian_links` table, and student
      accounts via `students.user_id`.
-   - Turn **OFF** *Authentication → Providers → Email → Confirm email* so auto-generated
-     parent logins work immediately.
+   - Auto-generated parent and staff logins go through the `tms_create_user` SQL
+     function created by the migration, so *Confirm email* can stay at its default.
+     If you have not applied the migration yet, turn **OFF**
+     *Authentication → Providers → Email → Confirm email* so the legacy sign-up
+     fallback still works.
    - The migration creates two Storage buckets automatically: **`admission-docs`**
      (private — applicant photos and documents) and **`avatars`** (public — profile
      photos). No manual bucket setup is required.

@@ -55,7 +55,19 @@ class NotificationService {
   async markRead(notificationId) {
     const user = authService.getCurrentUser();
     if (!user || !notificationId) return;
-    await dbService.insert('notification_reads', {
+
+    // `notification_reads` is unique on (notification_id, user_id); re-using the
+    // insert would raise a duplicate-key error, so update the existing row when
+    // there is one (the common case after a stale cache or a second click).
+    const reads = await dbService.select('notification_reads');
+    const existing = reads.find((r) => r.notificationId === notificationId && r.userId === user.id);
+    if (existing) {
+      await dbService.update('notification_reads', existing.id, { readAt: new Date().toISOString() });
+      return;
+    }
+
+    await dbService.upsert('notification_reads', {
+      id: `read-${notificationId}-${user.id}`,
       notificationId,
       userId: user.id,
       readAt: new Date().toISOString()

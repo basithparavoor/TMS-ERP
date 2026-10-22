@@ -11,6 +11,7 @@
 
 import { TMS_CONFIG } from './config.js';
 import { dbService } from './supabase-client.js';
+import { createUserViaRpc, describeAccountError } from './account-utils.js';
 
 /* Role category -> data scope used when provisioning the profile. */
 const ROLE_SCOPE = {
@@ -113,7 +114,31 @@ class StaffService {
 
   /* ---------------- Provisioning ---------------- */
 
-  async createLogin({ email, password, name }) {
+  /**
+   * Create the authentication account for a new staff member.
+   *
+   * Preferred: the `tms_create_user` SQL function, which also writes the profile
+   * role/scope in the same transaction — no sign-up endpoint, no rate limit and
+   * no e-mail confirmation. Falls back to `auth.signUp` when it is not deployed.
+   */
+  async createLogin({ email, password, name, role, title, department, assignedClass, assignedSection }) {
+    const scope = this.scopeForRole(role);
+
+    const viaRpc = await createUserViaRpc(dbService.getClient(), {
+      p_email: email,
+      p_password: password,
+      p_name: name,
+      p_role: role || 'pending',
+      p_scope: scope,
+      p_title: title || null,
+      p_department: department || null,
+      p_assigned_class: assignedClass || null,
+      p_assigned_section: assignedSection || null
+    });
+    if (viaRpc.userId) return { userId: viaRpc.userId, profileDone: true };
+    if (viaRpc.error) return { error: viaRpc.error };
+
+    // Legacy fallback (function not deployed): sign up, then patch the profile.
     const client = ephemeralClient();
     if (!client) return { error: 'Authentication service unavailable.' };
     try {
@@ -122,17 +147,17 @@ class StaffService {
         password,
         options: { data: { full_name: name } }
       });
-      if (error) return { error: error.message };
+      if (error) return { error: describeAccountError(error) };
       const userId = data && data.user ? data.user.id : null;
       if (!userId) {
         return {
           error: 'The account was created but needs e-mail confirmation. '
-            + 'Turn OFF "Confirm email" in Supabase Auth so staff can sign in.'
+            + 'Turn OFF "Confirm email" in Supabase Auth, or run schema-update-2.sql.'
         };
       }
       return { userId };
     } catch (e) {
-      return { error: e.message };
+      return { error: describeAccountError(e) };
     }
   }
 
@@ -251,14 +276,28 @@ class StaffService {
     const finalUsername = username || (await this.generateUsername(name, email));
     const finalPassword = password || this.generatePassword();
 
-    const account = await this.createLogin({ email, password: finalPassword, name });
+    const account = await this.createLogin({
+      email,
+      password: finalPassword,
+      name,
+      role,
+      title,
+      department,
+      assignedClass,
+      assignedSection
+    });
     if (account.error) {
       return { error: account.error, username: finalUsername, password: finalPassword };
     }
 
-    const profile = await this.applyProfile(account.userId, {
-      name, email, role, scope: this.scopeForRole(role), title, department, assignedClass, assignedSection
-    });
+    // The SQL function already wrote role/scope; only patch when we fell back
+    // to the legacy sign-up path.
+    let profile = { ok: true };
+    if (!account.profileDone) {
+      profile = await this.applyProfile(account.userId, {
+        name, email, role, scope: this.scopeForRole(role), title, department, assignedClass, assignedSection
+      });
+    }
 
     await this.saveCredentials({
       staffId,
@@ -284,6 +323,13 @@ class StaffService {
     const newEmail = (email || row.email || '').trim();
     const newPassword = password || row.password;
 
+    // Apply the real sign-in password first: if that fails there is nothing
+    // half-saved (the row and its alias stay exactly as they were).
+    if (password && row.userId) {
+      const pw = await this.setPassword(row.userId, password);
+      if (!pw.success) return { error: `Could not update the sign-in password: ${pw.error}` };
+    }
+
     const updates = { username: newUsername, email: newEmail, password: newPassword };
     const saved = await dbService.update('staff_credentials', row.id, updates);
     if (saved && saved._syncError) return { error: saved._syncError };
@@ -293,10 +339,6 @@ class StaffService {
     }
     await this.saveAlias({ username: newUsername, email: newEmail, role });
 
-    if (password && row.userId) {
-      const pw = await this.setPassword(row.userId, password);
-      if (!pw.success) return { error: pw.error, partial: true };
-    }
     return { ok: true, username: newUsername, email: newEmail, password: newPassword };
   }
 }

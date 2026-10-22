@@ -20,7 +20,7 @@ export class MyWorkModule {
           <div>
             <h1 style="font-size: 1.8rem;">Staff Workspace — THAIBA MODEL SCHOOL</h1>
             <p style="color: var(--text-muted); font-size: 0.9rem;">
-              Welcome back, <strong>${user.name || 'Faculty Member'}</strong> (${user.department || 'Academics'})
+              Welcome back, <strong>${esc(user.name || 'Faculty Member')}</strong> (${esc(user.department || 'Academics')})
             </p>
           </div>
           <div style="display: flex; gap: 10px; align-items: center;">
@@ -236,11 +236,11 @@ export class MyWorkModule {
                 ${students.length ? students.map(s => {
                   const isApprovedLeave = s.leaveStatus === 'approved';
                   return `
-                    <tr data-student-id="${s.id}">
-                      <td><strong>${s.rollNo}</strong></td>
-                      <td><span class="font-mono">${s.admissionNo}</span></td>
-                      <td><strong>${s.fullName}</strong></td>
-                      <td>${s.gender}</td>
+                    <tr data-student-id="${esc(s.id)}">
+                      <td><strong>${esc(s.rollNo)}</strong></td>
+                      <td><span class="font-mono">${esc(s.admissionNo)}</span></td>
+                      <td><strong>${esc(s.fullName)}</strong></td>
+                      <td>${esc(s.gender)}</td>
                       <td>
                         ${isApprovedLeave ? `
                           <span class="badge badge-gold"><i data-lucide="shield-check" style="width: 14px; height: 14px;"></i> Approved Leave (Gold)</span>
@@ -261,7 +261,7 @@ export class MyWorkModule {
                             <i data-lucide="lock"></i> Locked
                           </button>
                         ` : `
-                          <button class="btn btn-secondary btn-sm btn-toggle-present" data-id="${s.id}">
+                          <button class="btn btn-secondary btn-sm btn-toggle-present" data-id="${esc(s.id)}">
                             <i data-lucide="check"></i> Mark Present
                           </button>
                         `}

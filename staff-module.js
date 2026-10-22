@@ -652,16 +652,58 @@ export class StaffModule {
         <div style="grid-column:1/-1; font-size:0.78rem; color:var(--text-muted);">
           Linked user account: <span class="font-mono">${esc(cred.userId || 'not linked')}</span>
         </div>
+        ${cred.userId ? '' : `
+        <div style="grid-column:1/-1; padding:10px 12px; border-radius:8px; background:#fffbeb; border:1px solid #fcd34d; color:#92400e; font-size:0.78rem;">
+          This login has not been created in the authentication system yet. Click
+          <strong>Activate Login</strong> to create it (needed before the staff member can sign in).
+        </div>`}
       </div>
     `;
     const footerHtml = `
       <button class="btn btn-secondary" id="cu-cancel">Close</button>
+      ${cred.userId ? '' : '<button class="btn btn-primary" id="cu-activate"><i data-lucide="key-round"></i> Activate Login</button>'}
       <button class="btn btn-secondary" id="cu-delete" style="color:#ef4444;"><i data-lucide="trash-2"></i> Delete Login</button>
       <button class="btn btn-primary" id="cu-save"><i data-lucide="save"></i> Save Credentials</button>
     `;
     UIComponents.openModal({ title: `Login — ${emp.name}`, bodyHtml, footerHtml });
 
     document.getElementById('cu-cancel').addEventListener('click', () => UIComponents.closeModal());
+
+    const activateBtn = document.getElementById('cu-activate');
+    if (activateBtn) {
+      activateBtn.addEventListener('click', async () => {
+        activateBtn.disabled = true;
+        activateBtn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Activating…';
+        UIComponents.refreshIcons();
+        const username = document.getElementById('cu-username').value.trim() || cred.username;
+        const email = document.getElementById('cu-email').value.trim() || cred.email;
+        const password = document.getElementById('cu-password').value || cred.password;
+        const res = await staffService.provision({
+          staffId: emp.id,
+          name: emp.name,
+          email,
+          role: emp.role,
+          title: emp.designation,
+          department: emp.department,
+          assignedClass: emp.assignedClass,
+          assignedSection: emp.assignedSection,
+          username,
+          password
+        });
+        if (!res.userId) {
+          UIComponents.showToast(`Could not activate the login: ${res.error || 'unknown error'}`, 'danger');
+          activateBtn.disabled = false;
+          activateBtn.innerHTML = '<i data-lucide="key-round"></i> Activate Login';
+          UIComponents.refreshIcons();
+          return;
+        }
+        await dbService.update('staff', emp.id, { userId: res.userId });
+        await auditService.log('STAFF_LOGIN_ACTIVATED', 'HR', { staffId: emp.id, username: res.username }, emp.id);
+        UIComponents.closeModal();
+        this.showCredentialsModal({ name: emp.name, email, username: res.username, password: res.password, title: 'Staff Login Activated' });
+        await StaffModule.render(container);
+      });
+    }
     document.getElementById('cu-save').addEventListener('click', async () => {
       const username = document.getElementById('cu-username').value.trim();
       const email = document.getElementById('cu-email').value.trim();
