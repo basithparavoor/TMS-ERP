@@ -8,6 +8,7 @@ import { dbService } from './supabase-client.js';
 import { UIComponents } from './ui-components.js';
 import { auditService } from './audit-service.js';
 import { downloadCsv } from './export-utils.js';
+import { WhatsAppService } from './whatsapp-service.js';
 
 export class AttendanceModule {
   static async render(container) {
@@ -181,6 +182,11 @@ export class AttendanceModule {
                         <button class="btn btn-sm btn-mark-status ${status === 'late' ? 'btn-primary' : 'btn-secondary'}" data-status="late" data-student-id="${esc(s.id)}" title="Mark Late" style="padding: 3px 8px; font-weight: 700;">L</button>
                         <button class="btn btn-sm btn-mark-status ${status === 'absent' ? 'btn-danger' : 'btn-secondary'}" data-status="absent" data-student-id="${esc(s.id)}" title="Mark Absent" style="padding: 3px 8px; font-weight: 700;">A</button>
                         <button class="btn btn-sm btn-mark-status ${status === 'excused' ? 'btn-primary' : 'btn-secondary'}" data-status="excused" data-student-id="${esc(s.id)}" title="Mark Excused" style="padding: 3px 8px; font-weight: 700;">E</button>
+                        ${status === 'absent' ? `
+                          <button class="btn btn-sm btn-secondary btn-wa-absence" data-student-id="${esc(s.id)}" title="Send WhatsApp Absence Alert to Parent" style="padding: 3px 6px; color:#16a34a;">
+                            <i data-lucide="message-circle" style="width:14px; height:14px;"></i>
+                          </button>
+                        ` : ''}
                       </div>
                     </td>
                   </tr>
@@ -228,6 +234,17 @@ export class AttendanceModule {
         await this.recordAttendance(student, status, 'manual');
         this.render(container);
         UIComponents.showToast(`${student.fullName} marked as ${status.toUpperCase()}.`, 'info');
+      });
+    });
+
+    // 1-Click WhatsApp Absence Alert
+    container.querySelectorAll('.btn-wa-absence').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const studentId = e.currentTarget.dataset.studentId;
+        const student = this._students.find(s => s.id === studentId);
+        if (student) {
+          WhatsAppService.sendAbsenceAlert(student, this._selectedDate);
+        }
       });
     });
 
