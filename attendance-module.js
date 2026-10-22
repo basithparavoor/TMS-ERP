@@ -426,8 +426,23 @@ export class AttendanceModule {
 
         <!-- Scanner / Input Zone -->
         <div style="max-width: 480px; margin: 0 auto 24px;">
-          <div style="width: 140px; height: 140px; border: 3px solid #16a34a; border-radius: 16px; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; background: rgba(22, 163, 74, 0.08); position: relative;">
-            <i data-lucide="scan" style="width: 70px; height: 70px; color: #16a34a;"></i>
+          <!-- Camera Scanner Toggle & Stream Preview -->
+          <div style="display: flex; justify-content: center; gap: 8px; margin-bottom: 12px;">
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-toggle-cam" style="display: inline-flex; align-items: center; gap: 6px;">
+              <i data-lucide="camera"></i> <span>Open Camera Scanner</span>
+            </button>
+          </div>
+
+          <div id="kiosk-cam-container" style="display: none; max-width: 320px; margin: 0 auto 16px; position: relative; border-radius: 12px; overflow: hidden; background: #000; border: 2px solid #16a34a;">
+            <video id="kiosk-cam-video" autoplay playsinline muted style="width: 100%; height: 200px; object-fit: cover; display: block;"></video>
+            <div style="position: absolute; inset: 0; pointer-events: none; border: 2px dashed rgba(74, 222, 128, 0.7); margin: 20px; border-radius: 8px;"></div>
+            <div style="position: absolute; bottom: 8px; left: 0; right: 0; text-align: center; color: #fff; font-size: 0.72rem; text-shadow: 0 1px 3px rgba(0,0,0,0.8);">
+              Align student QR badge inside frame
+            </div>
+          </div>
+
+          <div id="kiosk-scan-icon-box" style="width: 120px; height: 120px; border: 3px solid #16a34a; border-radius: 16px; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; background: rgba(22, 163, 74, 0.08); position: relative;">
+            <i data-lucide="scan" style="width: 60px; height: 60px; color: #16a34a;"></i>
           </div>
 
           <label style="display: block; font-size: 0.85rem; color: var(--text-main); margin-bottom: 8px; font-weight: 600;">
@@ -438,7 +453,7 @@ export class AttendanceModule {
             <button class="btn btn-primary" id="kiosk-punch-btn" style="padding: 0 20px;"><i data-lucide="corner-down-left"></i> Punch</button>
           </div>
           <div style="font-size: 0.74rem; color: var(--text-muted); margin-top: 6px;">
-            Supports USB Barcode Guns, 2D QR Scanners, and instant keyboard inputs.
+            Supports Live Camera Video, USB Barcode Guns, 2D Scanners, and manual input.
           </div>
         </div>
 
@@ -603,6 +618,103 @@ export class AttendanceModule {
         handlePunch();
       }
     });
+
+    // Camera Live Scanner Controller
+    const btnToggleCam = modal.querySelector('#btn-toggle-cam');
+    const camContainer = modal.querySelector('#kiosk-cam-container');
+    const camVideo = modal.querySelector('#kiosk-cam-video');
+    const scanIconBox = modal.querySelector('#kiosk-scan-icon-box');
+
+    let activeStream = null;
+    let scanInterval = null;
+    let recentDetectedCode = null;
+
+    const stopCamera = () => {
+      if (scanInterval) {
+        clearInterval(scanInterval);
+        scanInterval = null;
+      }
+      if (activeStream) {
+        activeStream.getTracks().forEach(track => track.stop());
+        activeStream = null;
+      }
+      if (camVideo) camVideo.srcObject = null;
+      if (camContainer) camContainer.style.display = 'none';
+      if (scanIconBox) scanIconBox.style.display = 'flex';
+      if (btnToggleCam) {
+        btnToggleCam.innerHTML = '<i data-lucide="camera"></i> <span>Open Camera Scanner</span>';
+        UIComponents.refreshIcons();
+      }
+    };
+
+    const startCamera = async () => {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        UIComponents.showToast('Camera access is not supported by this browser.', 'warning');
+        return;
+      }
+
+      try {
+        activeStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } }
+        });
+        camVideo.srcObject = activeStream;
+        camContainer.style.display = 'block';
+        scanIconBox.style.display = 'none';
+        btnToggleCam.innerHTML = '<i data-lucide="camera-off"></i> <span>Stop Camera</span>';
+        UIComponents.refreshIcons();
+
+        // Native BarcodeDetector loop if supported
+        if ('BarcodeDetector' in window) {
+          const detector = new window.BarcodeDetector({ formats: ['qr_code', 'code_128', 'code_39', 'ean_13'] });
+          scanInterval = setInterval(async () => {
+            if (camVideo.readyState >= 2) {
+              try {
+                const barcodes = await detector.detect(camVideo);
+                if (barcodes.length > 0) {
+                  const val = barcodes[0].rawValue.trim();
+                  if (val && val !== recentDetectedCode) {
+                    recentDetectedCode = val;
+                    input.value = val;
+                    handlePunch();
+                    setTimeout(() => { recentDetectedCode = null; }, 3000);
+                  }
+                }
+              } catch (e) { /* ignore detection frame drop */ }
+            }
+          }, 300);
+        } else {
+          feedbackBox.innerHTML = `
+            <div style="font-size:0.85rem; color:#16a34a; font-weight:600;">
+              Camera live stream active. If QR code scanner is unassisted, enter Admission No or use hardware scanner gun.
+            </div>
+          `;
+        }
+      } catch (err) {
+        console.error('Camera access failed:', err);
+        UIComponents.showToast('Camera access denied or unavailable: ' + err.message, 'warning');
+        stopCamera();
+      }
+    };
+
+    if (btnToggleCam) {
+      btnToggleCam.addEventListener('click', () => {
+        if (activeStream) {
+          stopCamera();
+        } else {
+          startCamera();
+        }
+      });
+    }
+
+    // Ensure camera stops when modal closes
+    const closeBtn = document.getElementById('global-modal-close');
+    if (closeBtn) {
+      const origClose = closeBtn.onclick;
+      closeBtn.onclick = (e) => {
+        stopCamera();
+        if (typeof origClose === 'function') origClose(e);
+      };
+    }
 
     // Auto-focus input
     setTimeout(() => input?.focus(), 150);
