@@ -26,6 +26,9 @@ import { OperationsModule } from './operations-module.js';
 import { ReportsModule } from './reports-module.js';
 import { AdmissionsEntryModule } from './admissions-entry-module.js';
 import { NotificationCenter } from './notification-center.js';
+import { TimetableModule } from './timetable-module.js';
+import { CertificatesModule } from './certificates-module.js';
+import { WhatsAppService } from './whatsapp-service.js';
 import { admissionService } from './admission-service.js';
 import { brandingService } from './branding-service.js';
 import { checkMigration } from './migration-check.js';
@@ -144,6 +147,31 @@ class AppController {
                 <i data-lucide="user-cog"></i>
               </button>
 
+              <div class="dropdown" style="position: relative; display: inline-block;">
+                <button class="icon-btn" id="btn-theme-picker" title="Choose Institutional Color Theme">
+                  <i data-lucide="palette"></i>
+                </button>
+                <div id="theme-dropdown-menu" style="display: none; position: absolute; right: 0; top: calc(100% + 8px); background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; box-shadow: var(--shadow-lg); padding: 8px; width: 200px; z-index: 1000;">
+                  <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; padding: 4px 8px; letter-spacing: 0.5px;">Theme Palette</div>
+                  <button type="button" class="theme-opt-btn" data-theme="emerald" style="display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; background: transparent; border: none; border-radius: 6px; cursor: pointer; color: var(--text-main); font-size: 0.82rem; text-align: left;">
+                    <span style="width: 14px; height: 14px; border-radius: 50%; background: #16a34a; flex-shrink: 0;"></span>
+                    <span>Thaiba Emerald</span>
+                  </button>
+                  <button type="button" class="theme-opt-btn" data-theme="sapphire" style="display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; background: transparent; border: none; border-radius: 6px; cursor: pointer; color: var(--text-main); font-size: 0.82rem; text-align: left;">
+                    <span style="width: 14px; height: 14px; border-radius: 50%; background: #2563eb; flex-shrink: 0;"></span>
+                    <span>Royal Sapphire</span>
+                  </button>
+                  <button type="button" class="theme-opt-btn" data-theme="burgundy" style="display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; background: transparent; border: none; border-radius: 6px; cursor: pointer; color: var(--text-main); font-size: 0.82rem; text-align: left;">
+                    <span style="width: 14px; height: 14px; border-radius: 50%; background: #991b1b; flex-shrink: 0;"></span>
+                    <span>Noble Burgundy</span>
+                  </button>
+                  <button type="button" class="theme-opt-btn" data-theme="oled" style="display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; background: transparent; border: none; border-radius: 6px; cursor: pointer; color: var(--text-main); font-size: 0.82rem; text-align: left;">
+                    <span style="width: 14px; height: 14px; border-radius: 50%; background: #020617; border: 1px solid #475569; flex-shrink: 0;"></span>
+                    <span>OLED Midnight</span>
+                  </button>
+                </div>
+              </div>
+
               <button class="icon-btn" id="theme-toggle-btn" title="Toggle Light/Dark Mode">
                 <i data-lucide="moon"></i>
               </button>
@@ -177,7 +205,9 @@ class AppController {
       { id: 'students', label: 'Student Directory', icon: 'graduation-cap', module: 'students' },
       { id: 'attendance', label: 'Attendance & Radar', icon: 'user-check', module: 'attendance' },
       { id: 'academics', label: 'Academic & Timetable', icon: 'book-open', module: 'academics' },
+      { id: 'timetable', label: 'Class Timetables', icon: 'calendar-days', module: 'timetable' },
       { id: 'examinations', label: 'Exams & Reports', icon: 'award', module: 'examinations' },
+      { id: 'certificates', label: 'Certificates (TC & Merit)', icon: 'file-check', module: 'certificates' },
       { id: 'finance', label: 'Finance & Accounts', icon: 'credit-card', module: 'finance' },
       { id: 'staff', label: 'Staff & HR', icon: 'users', module: 'staff' },
       { id: 'operations', label: 'Library & Logistics', icon: 'box', module: 'operations' },
@@ -241,6 +271,27 @@ class AppController {
       themeBtn.addEventListener('click', () => UIComponents.toggleTheme());
     }
 
+    // Institutional Color Theme Picker
+    const themePickerBtn = document.getElementById('btn-theme-picker');
+    const themeMenu = document.getElementById('theme-dropdown-menu');
+    if (themePickerBtn && themeMenu) {
+      themePickerBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        themeMenu.style.display = themeMenu.style.display === 'block' ? 'none' : 'block';
+      });
+      document.addEventListener('click', () => {
+        themeMenu.style.display = 'none';
+      });
+      themeMenu.querySelectorAll('.theme-opt-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const theme = btn.dataset.theme;
+          UIComponents.setColorTheme(theme);
+          themeMenu.style.display = 'none';
+        });
+      });
+    }
+
     const logoutBtn = document.getElementById('btn-logout');
     if (logoutBtn) {
       logoutBtn.addEventListener('click', () => {
@@ -260,74 +311,231 @@ class AppController {
       });
     }
 
-    // Global Search (Ctrl + K)
+    // Universal Command Palette (Ctrl + K)
     const searchTrigger = document.getElementById('global-search-trigger');
-    const openSearch = () => {
+    const openCommandPalette = () => {
       UIComponents.openModal({
-        title: 'Global Search across THAIBA MODEL SCHOOL',
+        title: 'Universal Command Palette',
         bodyHtml: `
-          <div class="form-group">
-            <input type="text" class="form-input" id="modal-global-search-input" placeholder="Type name, roll no, invoice, or book..." autofocus>
+          <div style="margin-bottom: 12px; position: relative;">
+            <input type="text" class="form-input" id="cmd-palette-input" placeholder="Search students, invoices, staff, or actions (e.g. 'kiosk', 'fees', 'tc')..." autofocus style="font-size: 1rem; padding: 12px 16px; border-radius: 10px; border-color: var(--primary);">
           </div>
-          <div id="modal-search-results" style="max-height: 250px; overflow-y: auto; font-size: 0.88rem;">
-            <p style="color: var(--text-muted); text-align: center; padding: 20px;">Type to search school directory...</p>
+
+          <div id="cmd-palette-results" style="max-height: 380px; overflow-y: auto; font-size: 0.85rem; padding-right: 4px;">
+            <!-- Rendered by live script -->
           </div>
         `
       });
 
-      const input = document.getElementById('modal-global-search-input');
-      const results = document.getElementById('modal-search-results');
+      const input = document.getElementById('cmd-palette-input');
+      const results = document.getElementById('cmd-palette-results');
+      if (!input || !results) return;
 
-      input.addEventListener('input', async (e) => {
-        const q = e.target.value.toLowerCase().trim();
-        if (!q) {
-          results.innerHTML = `<p style="color: var(--text-muted); text-align: center; padding: 20px;">Type to search school directory...</p>`;
-          return;
-        }
+      const renderQuickActions = () => {
+        results.innerHTML = `
+          <div style="font-size: 0.74rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px;">
+            Institutional Quick Actions &amp; Navigation:
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px;">
+            <button class="btn btn-secondary btn-sm cmd-action-btn" data-action="kiosk" style="justify-content: flex-start; padding: 10px; text-align: left;">
+              <i data-lucide="scan" style="color: #16a34a;"></i>
+              <div><strong>Launch QR Kiosk</strong><div style="font-size: 0.7rem; color: var(--text-muted);">Attendance Terminal</div></div>
+            </button>
+            <button class="btn btn-secondary btn-sm cmd-action-btn" data-action="challan" style="justify-content: flex-start; padding: 10px; text-align: left;">
+              <i data-lucide="layers" style="color: #2563eb;"></i>
+              <div><strong>3-Part Fee Challan</strong><div style="font-size: 0.7rem; color: var(--text-muted);">Print Bank Slips</div></div>
+            </button>
+            <button class="btn btn-secondary btn-sm cmd-action-btn" data-action="timetable" style="justify-content: flex-start; padding: 10px; text-align: left;">
+              <i data-lucide="calendar-days" style="color: #f59e0b;"></i>
+              <div><strong>Class Timetable</strong><div style="font-size: 0.7rem; color: var(--text-muted);">Weekly Period Matrix</div></div>
+            </button>
+            <button class="btn btn-secondary btn-sm cmd-action-btn" data-action="tc" style="justify-content: flex-start; padding: 10px; text-align: left;">
+              <i data-lucide="file-check" style="color: #991b1b;"></i>
+              <div><strong>Transfer Certificate</strong><div style="font-size: 0.7rem; color: var(--text-muted);">Issue Official TC</div></div>
+            </button>
+            <button class="btn btn-secondary btn-sm cmd-action-btn" data-action="reports" style="justify-content: flex-start; padding: 10px; text-align: left;">
+              <i data-lucide="award" style="color: #16a34a;"></i>
+              <div><strong>Exam Gradebook</strong><div style="font-size: 0.7rem; color: var(--text-muted);">CBSE Progress Reports</div></div>
+            </button>
+            <button class="btn btn-secondary btn-sm cmd-action-btn" data-action="backup" style="justify-content: flex-start; padding: 10px; text-align: left;">
+              <i data-lucide="database" style="color: #6366f1;"></i>
+              <div><strong>Data Backup</strong><div style="font-size: 0.7rem; color: var(--text-muted);">Download Full JSON</div></div>
+            </button>
+          </div>
+        `;
+        UIComponents.refreshIcons();
 
-        const students = await dbService.select('students');
-        const staff = await dbService.select('staff_directory');
-        const invoices = await dbService.select('invoices');
-
-        const matchedStudents = students.filter(s => (s.fullName || s.full_name || '').toLowerCase().includes(q) || (s.admissionNo || s.admission_no || '').toLowerCase().includes(q));
-        const matchedStaff = staff.filter(st => (st.name || '').toLowerCase().includes(q) || (st.empId || st.emp_id || '').toLowerCase().includes(q));
-        const matchedInvoices = invoices.filter(i => (i.invoiceNo || i.invoice_no || '').toLowerCase().includes(q) || (i.studentName || i.student_name || '').toLowerCase().includes(q));
-
-        const esc = (v) => UIComponents.escapeHtml(v);
-
-        let html = '';
-        if (matchedStudents.length) {
-          html += `<div style="font-weight: 700; color: #16a34a; margin: 8px 0 4px;">Students:</div>`;
-          matchedStudents.forEach(s => {
-            html += `<div style="padding: 6px; border-bottom: 1px solid var(--border-color);">${esc(s.fullName || s.full_name)} (${esc(s.admissionNo || s.admission_no)}) — ${esc(s.grade)}</div>`;
+        results.querySelectorAll('.cmd-action-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const act = btn.dataset.action;
+            UIComponents.closeModal();
+            if (act === 'kiosk') {
+              window.location.hash = '#/attendance';
+              setTimeout(() => document.getElementById('btn-qr-scanner')?.click(), 250);
+            } else if (act === 'challan') {
+              window.location.hash = '#/finance';
+              setTimeout(() => document.getElementById('btn-generate-challan')?.click(), 250);
+            } else if (act === 'timetable') {
+              window.location.hash = '#/timetable';
+            } else if (act === 'tc') {
+              window.location.hash = '#/certificates';
+              setTimeout(() => document.getElementById('btn-new-tc')?.click(), 250);
+            } else if (act === 'reports') {
+              window.location.hash = '#/examinations';
+            } else if (act === 'backup') {
+              window.location.hash = '#/administration';
+              setTimeout(() => document.querySelector('[data-tab="backup"]')?.click(), 300);
+            }
           });
-        }
-        if (matchedStaff.length) {
-          html += `<div style="font-weight: 700; color: #3b82f6; margin: 8px 0 4px;">Faculty & Staff:</div>`;
-          matchedStaff.forEach(st => {
-            html += `<div style="padding: 6px; border-bottom: 1px solid var(--border-color);">${esc(st.name)} (${esc(st.designation)})</div>`;
-          });
-        }
-        if (matchedInvoices.length) {
-          html += `<div style="font-weight: 700; color: #f59e0b; margin: 8px 0 4px;">Invoices:</div>`;
-          matchedInvoices.forEach(inv => {
-            html += `<div style="padding: 6px; border-bottom: 1px solid var(--border-color);">${esc(inv.invoiceNo || inv.invoice_no)} — ${esc(inv.studentName || inv.student_name)} (₹ ${esc(inv.amount)})</div>`;
-          });
-        }
+        });
+      };
 
-        if (!html) {
-          html = `<p style="color: var(--text-muted); text-align: center; padding: 20px;">No records found matching "${esc(q)}"</p>`;
-        }
-        results.innerHTML = html;
+      renderQuickActions();
+
+      let debounceTimer;
+      input.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(async () => {
+          const q = input.value.trim().toLowerCase();
+          if (!q) {
+            renderQuickActions();
+            return;
+          }
+
+          results.innerHTML = `<div style="text-align:center; padding:16px; color:var(--text-muted); font-size:0.85rem;"><i data-lucide="loader" class="animate-spin"></i> Searching...</div>`;
+          UIComponents.refreshIcons();
+
+          const [students, invoices, staff] = await Promise.all([
+            dbService.select('students'),
+            dbService.select('invoices'),
+            dbService.select('staff_directory')
+          ]);
+
+          const matchedStudents = students.filter(s => 
+            (s.fullName || '').toLowerCase().includes(q) || 
+            (s.admissionNo || '').toLowerCase().includes(q) ||
+            (s.grade || '').toLowerCase().includes(q)
+          ).slice(0, 5);
+
+          const matchedInvoices = invoices.filter(i => 
+            (i.invoiceNo || '').toLowerCase().includes(q) || 
+            (i.studentName || '').toLowerCase().includes(q)
+          ).slice(0, 5);
+
+          const matchedStaff = staff.filter(st => 
+            (st.name || '').toLowerCase().includes(q) || 
+            (st.designation || '').toLowerCase().includes(q)
+          ).slice(0, 4);
+
+          let html = '';
+
+          if (matchedStudents.length) {
+            html += `<div style="font-weight: 700; color: #16a34a; font-size: 0.78rem; text-transform: uppercase; margin: 8px 0 4px;">Students (${matchedStudents.length}):</div>`;
+            matchedStudents.forEach(s => {
+              html += `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding: 8px 10px; border-bottom: 1px solid var(--border-color); background: var(--bg-subtle, #f8fafc); border-radius: 6px; margin-bottom: 4px;">
+                  <div>
+                    <strong>${esc(s.fullName)}</strong>
+                    <span style="color: var(--text-muted); font-size: 0.75rem; margin-left: 6px;">(${esc(s.admissionNo)} • ${esc(s.grade)})</span>
+                  </div>
+                  <div style="display: flex; gap: 4px;">
+                    <button class="btn btn-secondary btn-sm cmd-wa-student" data-phone="${esc(s.phone || s.parentPhone || '')}" data-name="${esc(s.fullName)}" title="WhatsApp Contact" style="padding: 2px 6px; color: #16a34a;">
+                      <i data-lucide="message-circle" style="width: 13px; height: 13px;"></i>
+                    </button>
+                    <button class="btn btn-secondary btn-sm cmd-view-student" data-id="${esc(s.id)}" style="padding: 2px 8px; font-size: 0.72rem;">View Profile</button>
+                  </div>
+                </div>
+              `;
+            });
+          }
+
+          if (matchedInvoices.length) {
+            html += `<div style="font-weight: 700; color: #2563eb; font-size: 0.78rem; text-transform: uppercase; margin: 12px 0 4px;">Fee Invoices (${matchedInvoices.length}):</div>`;
+            matchedInvoices.forEach(inv => {
+              html += `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding: 8px 10px; border-bottom: 1px solid var(--border-color); background: var(--bg-subtle, #f8fafc); border-radius: 6px; margin-bottom: 4px;">
+                  <div>
+                    <span class="font-mono" style="font-weight: 700;">${esc(inv.invoiceNo)}</span>
+                    <span style="margin-left: 6px;">${esc(inv.studentName)}</span>
+                    <span style="color: ${inv.balance > 0 ? '#ef4444' : '#16a34a'}; font-weight: 700; margin-left: 6px;">(₹ ${(inv.balance || inv.amount || 0).toLocaleString()})</span>
+                  </div>
+                  <div style="display: flex; gap: 4px;">
+                    ${inv.balance > 0 ? `
+                      <button class="btn btn-secondary btn-sm cmd-wa-invoice" data-name="${esc(inv.studentName)}" data-inv="${esc(inv.invoiceNo)}" data-bal="${esc(inv.balance)}" data-due="${esc(inv.dueDate || '')}" title="WhatsApp Reminder" style="padding: 2px 6px; color: #16a34a;">
+                        <i data-lucide="message-circle" style="width: 13px; height: 13px;"></i>
+                      </button>
+                    ` : ''}
+                    <button class="btn btn-secondary btn-sm cmd-view-finance" style="padding: 2px 8px; font-size: 0.72rem;">Ledger</button>
+                  </div>
+                </div>
+              `;
+            });
+          }
+
+          if (matchedStaff.length) {
+            html += `<div style="font-weight: 700; color: #6366f1; font-size: 0.78rem; text-transform: uppercase; margin: 12px 0 4px;">Faculty &amp; Staff (${matchedStaff.length}):</div>`;
+            matchedStaff.forEach(st => {
+              html += `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding: 8px 10px; border-bottom: 1px solid var(--border-color); background: var(--bg-subtle, #f8fafc); border-radius: 6px; margin-bottom: 4px;">
+                  <div>
+                    <strong>${esc(st.name)}</strong>
+                    <span style="color: var(--text-muted); font-size: 0.75rem; margin-left: 6px;">(${esc(st.designation || 'Faculty')})</span>
+                  </div>
+                </div>
+              `;
+            });
+          }
+
+          if (!html) {
+            html = `<p style="color: var(--text-muted); text-align: center; padding: 24px;">No records found matching "${esc(q)}".</p>`;
+          }
+
+          results.innerHTML = html;
+          UIComponents.refreshIcons();
+
+          results.querySelectorAll('.cmd-view-student').forEach(b => {
+            b.addEventListener('click', () => {
+              UIComponents.closeModal();
+              window.location.hash = '#/students';
+            });
+          });
+
+          results.querySelectorAll('.cmd-view-finance').forEach(b => {
+            b.addEventListener('click', () => {
+              UIComponents.closeModal();
+              window.location.hash = '#/finance';
+            });
+          });
+
+          results.querySelectorAll('.cmd-wa-student').forEach(b => {
+            b.addEventListener('click', () => {
+              const phone = b.dataset.phone;
+              const name = b.dataset.name;
+              WhatsAppService.openChat(phone, `*${TMS_CONFIG.institution.name}*\nDear Parent of ${name},\nGreetings from the school administration.`);
+            });
+          });
+
+          results.querySelectorAll('.cmd-wa-invoice').forEach(b => {
+            b.addEventListener('click', () => {
+              WhatsAppService.sendFeeReminder({
+                studentName: b.dataset.name,
+                invoiceNo: b.dataset.inv,
+                balance: parseFloat(b.dataset.bal) || 0,
+                dueDate: b.dataset.due
+              });
+            });
+          });
+        }, 150);
       });
     };
 
-    if (searchTrigger) searchTrigger.addEventListener('click', openSearch);
+    if (searchTrigger) searchTrigger.addEventListener('click', openCommandPalette);
     window.addEventListener('keydown', (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        openSearch();
+        openCommandPalette();
       }
+    });
     });
   }
 
@@ -470,8 +678,14 @@ class AppController {
       case 'academics':
         await AcademicModule.render(viewport);
         break;
+      case 'timetable':
+        await TimetableModule.render(viewport);
+        break;
       case 'examinations':
         await ExaminationModule.render(viewport);
+        break;
+      case 'certificates':
+        await CertificatesModule.render(viewport);
         break;
       case 'finance':
         await FinanceModule.render(viewport);
