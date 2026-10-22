@@ -244,7 +244,7 @@ export class PermissionEngine {
       case 'finance':
         return [TMS_CONFIG.roles.FINANCE, TMS_CONFIG.roles.STUDENT, TMS_CONFIG.roles.PARENT].includes(role);
       case 'operations':
-        return [TMS_CONFIG.roles.LIBRARIAN, TMS_CONFIG.roles.OPERATIONS].includes(role);
+        return false;
       case 'communication':
         return true;
       case 'reports':
