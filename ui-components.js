@@ -18,61 +18,45 @@ export class UIComponents {
   }
 
   static initTheme() {
-    const savedTheme = localStorage.getItem('tms_theme') || 'light';
+    // Enforce Pro-Max Luxury Light Theme (Dark mode completely removed as requested)
+    document.body.classList.remove('dark');
+    localStorage.setItem('tms_theme', 'light');
+
     const savedColor = localStorage.getItem('tms_color_theme') || 'emerald';
+    const activeColor = (savedColor === 'oled') ? 'emerald' : savedColor;
 
-    if (savedTheme === 'dark') {
-      document.body.classList.add('dark');
-    } else {
-      document.body.classList.remove('dark');
-    }
-
-    document.documentElement.setAttribute('data-theme', savedColor);
-    document.body.setAttribute('data-theme', savedColor);
-    this.updateThemeButton();
+    document.documentElement.setAttribute('data-theme', activeColor);
+    document.body.setAttribute('data-theme', activeColor);
+    localStorage.setItem('tms_color_theme', activeColor);
   }
 
   static setColorTheme(themeName) {
-    const valid = ['emerald', 'sapphire', 'burgundy', 'oled'];
+    const valid = ['emerald', 'sapphire', 'burgundy'];
     const chosen = valid.includes(themeName) ? themeName : 'emerald';
     
-    if (chosen === 'oled') {
-      document.body.classList.add('dark');
-      localStorage.setItem('tms_theme', 'dark');
-      document.documentElement.setAttribute('data-theme', 'oled');
-      document.body.setAttribute('data-theme', 'oled');
-      localStorage.setItem('tms_color_theme', 'oled');
-    } else {
-      document.documentElement.setAttribute('data-theme', chosen);
-      document.body.setAttribute('data-theme', chosen);
-      localStorage.setItem('tms_color_theme', chosen);
-    }
+    document.body.classList.remove('dark');
+    localStorage.setItem('tms_theme', 'light');
+    document.documentElement.setAttribute('data-theme', chosen);
+    document.body.setAttribute('data-theme', chosen);
+    localStorage.setItem('tms_color_theme', chosen);
 
-    this.updateThemeButton();
     const names = {
-      emerald: 'Thaiba Emerald Theme',
-      sapphire: 'Royal Sapphire Blue Theme',
-      burgundy: 'Noble Burgundy Crimson Theme',
-      oled: 'OLED Midnight Dark Theme'
+      emerald: 'Thaiba Emerald (Classic Institutional)',
+      sapphire: 'Royal Sapphire (Academic Blue)',
+      burgundy: 'Noble Burgundy (Regal Crimson)'
     };
-    this.showToast(`${names[chosen]} applied!`, 'info');
+    this.showToast(`Active Theme: ${names[chosen]} (Premium Light Edition)`, 'success');
   }
 
   static toggleTheme() {
-    const isDark = document.body.classList.toggle('dark');
-    localStorage.setItem('tms_theme', isDark ? 'dark' : 'light');
-    this.updateThemeButton();
-    this.showToast(isDark ? 'Thaiba High-Contrast Dark Mode enabled' : 'Light Canvas Mode enabled', 'info');
+    // Cycle between luxury light palettes
+    const current = localStorage.getItem('tms_color_theme') || 'emerald';
+    const next = current === 'emerald' ? 'sapphire' : (current === 'sapphire' ? 'burgundy' : 'emerald');
+    this.setColorTheme(next);
   }
 
   static updateThemeButton() {
-    const btn = document.getElementById('theme-toggle-btn');
-    if (!btn) return;
-    const isDark = document.body.classList.contains('dark');
-    btn.innerHTML = isDark
-      ? `<i data-lucide="sun"></i>`
-      : `<i data-lucide="moon"></i>`;
-    this.refreshIcons();
+    // No-op for dark mode button
   }
 
   static refreshIcons() {
