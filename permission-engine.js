@@ -229,10 +229,12 @@ export class PermissionEngine {
       case 'staff':
         return [TMS_CONFIG.roles.HR].includes(role);
       case 'academics':
+      case 'timetable':
         return [TMS_CONFIG.roles.COORDINATOR, TMS_CONFIG.roles.TEACHER, TMS_CONFIG.roles.STUDENT, TMS_CONFIG.roles.PARENT].includes(role);
       case 'attendance':
         return [TMS_CONFIG.roles.TEACHER, TMS_CONFIG.roles.COORDINATOR, TMS_CONFIG.roles.STUDENT, TMS_CONFIG.roles.PARENT].includes(role);
       case 'examinations':
+      case 'certificates':
         return [TMS_CONFIG.roles.COORDINATOR, TMS_CONFIG.roles.TEACHER, TMS_CONFIG.roles.STUDENT, TMS_CONFIG.roles.PARENT].includes(role);
       case 'finance':
         return [TMS_CONFIG.roles.FINANCE, TMS_CONFIG.roles.STUDENT, TMS_CONFIG.roles.PARENT].includes(role);
