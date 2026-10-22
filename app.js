@@ -139,10 +139,6 @@ class AppController {
           <!-- Topbar -->
           <header class="app-topbar">
             <div class="topbar-left">
-              <button class="icon-btn mobile-only" id="btn-toggle-sidebar" title="Open Navigation Menu">
-                <i data-lucide="menu"></i>
-              </button>
-
               <div class="search-bar-trigger" id="global-search-trigger">
                 <i data-lucide="search" style="width: 16px; height: 16px;"></i>
                 <span>Search students, staff, records...</span>
@@ -258,26 +254,20 @@ class AppController {
   }
 
   bindGlobalEvents() {
-    const toggleBtn = document.getElementById('btn-toggle-sidebar');
     const sidebar = document.getElementById('app-sidebar');
     const backdrop = document.getElementById('sidebar-backdrop');
+    const mobileMenuTrigger = document.getElementById('mobile-menu-trigger');
 
-    if (toggleBtn && sidebar && backdrop) {
-      toggleBtn.addEventListener('click', () => {
-        sidebar.classList.toggle('open');
-        backdrop.classList.toggle('active');
-      });
+    if (sidebar && backdrop) {
+      if (mobileMenuTrigger) {
+        mobileMenuTrigger.addEventListener('click', () => {
+          sidebar.classList.toggle('open');
+          backdrop.classList.toggle('active');
+        });
+      }
       backdrop.addEventListener('click', () => {
         sidebar.classList.remove('open');
         backdrop.classList.remove('active');
-      });
-    }
-
-    const mobileMenuTrigger = document.getElementById('mobile-menu-trigger');
-    if (mobileMenuTrigger && sidebar && backdrop) {
-      mobileMenuTrigger.addEventListener('click', () => {
-        sidebar.classList.toggle('open');
-        backdrop.classList.toggle('active');
       });
     }
 
@@ -580,12 +570,30 @@ class AppController {
     document.getElementById('pf-avatar-file').addEventListener('change', async (e) => {
       const file = e.target.files && e.target.files[0];
       if (!file) return;
-      const path = `users/${user.id}-${Date.now()}-${admissionService.sanitizeFileName(file.name)}`;
-      const res = await admissionService.uploadFile('avatars', path, file);
-      if (res.error) { UIComponents.showToast(`Photo upload failed: ${res.error}`, 'warning'); return; }
-      pendingAvatar = admissionService.getPublicUrl('avatars', res.path) || res.path;
-      document.getElementById('pf-avatar').src = pendingAvatar;
-      UIComponents.showToast('Photo ready — click Save Profile.', 'success');
+
+      // 1. Instant local preview and fallback
+      const reader = new FileReader();
+      reader.onload = (re) => {
+        const dataUrl = re.target.result;
+        pendingAvatar = dataUrl;
+        const img = document.getElementById('pf-avatar');
+        if (img) img.src = dataUrl;
+      };
+      reader.readAsDataURL(file);
+
+      // 2. Best-effort Supabase Storage upload
+      try {
+        const path = `users/${user.id}-${Date.now()}-${admissionService.sanitizeFileName(file.name)}`;
+        const res = await admissionService.uploadFile('avatars', path, file);
+        if (!res.error) {
+          const publicUrl = admissionService.getPublicUrl('avatars', res.path);
+          if (publicUrl) pendingAvatar = publicUrl;
+        }
+      } catch (err) {
+        console.warn('Storage upload notice:', err.message);
+      }
+
+      UIComponents.showToast('Profile photo ready — click Save Profile.', 'success');
     });
 
     document.getElementById('pf-cancel').addEventListener('click', () => UIComponents.closeModal());
@@ -603,12 +611,13 @@ class AppController {
     });
 
     document.getElementById('pf-save').addEventListener('click', async () => {
+      const avatarToSave = pendingAvatar || user.avatar || DEFAULT_AVATAR;
       const fields = {
         name: document.getElementById('pf-name').value.trim(),
         title: document.getElementById('pf-title').value.trim(),
         department: document.getElementById('pf-department').value.trim(),
         phone: document.getElementById('pf-phone').value.trim(),
-        avatar: pendingAvatar
+        avatar: avatarToSave
       };
       const r = await authService.updateOwnProfile(fields);
       if (!r.success) { UIComponents.showToast(`Could not save profile: ${r.error}`, 'danger'); return; }
@@ -618,8 +627,8 @@ class AppController {
       const avatarEl = document.getElementById('user-mini-avatar');
       if (nameEl && updated.name) nameEl.innerText = updated.name;
       if (roleEl && updated.title) roleEl.innerText = updated.title;
-      if (avatarEl && pendingAvatar) avatarEl.src = pendingAvatar;
-      UIComponents.showToast('Profile updated.', 'success');
+      if (avatarEl && avatarToSave) avatarEl.src = avatarToSave;
+      UIComponents.showToast('Profile updated successfully!', 'success');
       UIComponents.closeModal();
     });
     UIComponents.refreshIcons();
