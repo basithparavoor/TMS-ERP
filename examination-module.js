@@ -9,6 +9,7 @@ import { UIComponents } from './ui-components.js';
 import { auditService } from './audit-service.js';
 import { TMS_LOGO } from './logo.js';
 import { WhatsAppService } from './whatsapp-service.js';
+import { shareContent } from './export-utils.js';
 
 export const STANDARD_SUBJECTS = [
   { code: 'ENG', name: 'English Language & Literature', maxTheory: 80, maxPractical: 20 },
@@ -143,6 +144,11 @@ export class ExaminationModule {
             <span>Early Warning &amp; Remedial Radar</span>
             <span class="tab-badge" style="background: rgba(245, 158, 11, 0.15); color: #d97706;">${remedialCount}</span>
           </button>
+          <button class="tms-tab-pill ${this._examViewTab === 'admit' ? 'active' : ''}" id="tab-exam-admit">
+            <i data-lucide="ticket"></i>
+            <span>Admit Cards &amp; Seating Arranger</span>
+            <span class="tab-badge" style="background: rgba(16, 185, 129, 0.15); color: #059669;">${filteredStudents.length}</span>
+          </button>
         </div>
       </div>
 
@@ -249,7 +255,9 @@ export class ExaminationModule {
           </table>
         </div>
       </div>
-      ` : `
+      ` : ''}
+
+      ${this._examViewTab === 'warning' ? `
       <!-- Academic Early Warning & Remedial Intervention Radar -->
       <div class="card">
         <div class="card-header" style="flex-wrap: wrap; gap: 10px;">
@@ -350,7 +358,187 @@ export class ExaminationModule {
           </table>
         </div>
       </div>
-      `}
+      ` : ''}
+
+      ${this._examViewTab === 'admit' ? `
+      <!-- Admit Card & Seating Studio Toolbar -->
+      <div class="card" style="margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+          <div>
+            <h3 class="card-title" style="display: flex; align-items: center; gap: 8px;">
+              <i data-lucide="ticket" style="color: #16a34a;"></i> Admit Card Studio &amp; Hall Seating Engine
+            </h3>
+            <p class="card-desc">Generate official A4 Hall Tickets (2 per page) and room door seating rosters for ${esc(this._selectedGrade)} ${this._selectedSection !== 'all' ? `(Sec ${esc(this._selectedSection)})` : ''}.</p>
+          </div>
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button class="btn btn-secondary" id="btn-print-seating-chart">
+              <i data-lucide="door-open"></i> Print Room Door Chart
+            </button>
+            <button class="btn btn-primary" id="btn-print-admit-cards">
+              <i data-lucide="printer"></i> Print All Admit Cards (A4 - 2 Per Page)
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Seating Matrix Radar -->
+      <div class="card" style="margin-bottom: 24px;">
+        <div class="card-header" style="flex-wrap: wrap; gap: 10px;">
+          <div>
+            <h3 class="card-title">Interactive Examination Hall Seating Matrix</h3>
+            <p class="card-desc">Automatic zigzag roll-number desk allocator to prevent peer copying during assessments.</p>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <span class="badge badge-success"><i data-lucide="check"></i> 1 Candidate Per Desk</span>
+            <span class="badge badge-info">${filteredStudents.length} Desks Reserved</span>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-top: 10px;">
+          ${filteredStudents.length ? filteredStudents.map((s, idx) => `
+            <div style="background: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 12px; display: flex; align-items: center; gap: 12px; position: relative;">
+              <div style="width: 42px; height: 42px; border-radius: 8px; background: linear-gradient(135deg, #064e3b, #047857); color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 800; flex-shrink: 0;">
+                <span style="font-size: 0.65rem; text-transform: uppercase; opacity: 0.8;">DESK</span>
+                <span style="font-size: 0.95rem; line-height: 1;">${String(idx + 1).padStart(2, '0')}</span>
+              </div>
+              <div style="overflow: hidden; flex: 1;">
+                <div style="font-weight: 700; font-size: 0.88rem; color: #0f172a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                  ${esc(s.fullName)}
+                </div>
+                <div style="font-size: 0.75rem; color: #64748b; display: flex; gap: 6px; align-items: center;">
+                  <span>Roll: <strong>${esc(s.rollNo || (idx + 1))}</strong></span>
+                  <span>•</span>
+                  <span class="font-mono">${esc(s.admissionNo)}</span>
+                </div>
+              </div>
+            </div>
+          `).join('') : `
+            <div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 30px;">
+              No students enrolled in this class to arrange desks.
+            </div>
+          `}
+        </div>
+      </div>
+
+      <!-- Printable A4 Admit Cards Container -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3 class="card-title">Hall Ticket / Admit Card Preview</h3>
+            <p class="card-desc">Click "Print All Admit Cards" above to generate high-resolution physical A4 hall tickets.</p>
+          </div>
+          <span class="badge badge-primary">${filteredStudents.length} Admit Cards Ready</span>
+        </div>
+
+        <div id="admit-cards-print-area">
+          <style>
+            @media print {
+              @page { size: A4 portrait; margin: 8mm; }
+              body * { visibility: hidden !important; }
+              #admit-cards-print-area, #admit-cards-print-area * { visibility: visible !important; }
+              #admit-cards-print-area { position: absolute; left: 0; top: 0; width: 100% !important; margin: 0 !important; }
+              .admit-card-sheet-a4 { page-break-after: always; min-height: 275mm; display: flex; flex-direction: column; justify-content: space-between; margin-bottom: 20px; }
+            }
+          </style>
+
+          ${(() => {
+            const pairs = [];
+            for (let i = 0; i < filteredStudents.length; i += 2) {
+              pairs.push(filteredStudents.slice(i, i + 2));
+            }
+
+            if (!pairs.length) {
+              return `<div style="text-align: center; color: var(--text-muted); padding: 40px;">No students found for Admit Card generation.</div>`;
+            }
+
+            return pairs.map((pair, pIdx) => `
+              <div class="admit-card-sheet-a4" style="display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px;">
+                ${pair.map(st => `
+                  <div style="border: 2px solid #16a34a; border-radius: 10px; padding: 16px 20px; background: #ffffff; color: #0f172a; position: relative; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                    <!-- Card Header -->
+                    <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1.5px solid #16a34a; padding-bottom: 8px; margin-bottom: 10px;">
+                      <div style="flex-shrink: 0;">${TMS_LOGO.emblemSvg(42)}</div>
+                      <div style="text-align: center; flex: 1; padding: 0 10px;">
+                        <h2 style="font-size: 1.15rem; font-weight: 800; color: #166534; margin: 0; text-transform: uppercase; letter-spacing: 0.5px;">
+                          ${esc(TMS_CONFIG.institution.name)}
+                        </h2>
+                        <div style="font-size: 0.72rem; color: #15803d; font-weight: 600;">
+                          ${esc(TMS_CONFIG.institution.subtitle || 'Run by : Thaiba Heritage, Kolkata')} • ${esc(TMS_CONFIG.institution.address.campus)}
+                        </div>
+                        <div style="display: inline-block; background: #f0fdf4; border: 1px solid #86efac; color: #166534; font-size: 0.72rem; font-weight: 700; padding: 1px 12px; border-radius: 10px; margin-top: 4px;">
+                          OFFICIAL EXAMINATION ADMIT CARD / HALL TICKET • ${esc(this._selectedTerm).toUpperCase()}
+                        </div>
+                      </div>
+                      <div style="width: 58px; height: 68px; border: 1px dashed #cbd5e1; border-radius: 4px; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #f8fafc;">
+                        ${st.photo ? `<img src="${esc(st.photo)}" style="width: 100%; height: 100%; object-fit: cover;">` : `<div style="font-size: 8px; text-align: center; color: #94a3b8; font-weight: 700;">PASSPORT PHOTO</div>`}
+                      </div>
+                    </div>
+
+                    <!-- Student Particulars -->
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 12px; margin-bottom: 10px; font-size: 0.78rem;">
+                      <div><span style="color: #64748b;">Candidate Name:</span> <strong style="color: #0f172a; display: block;">${esc(st.fullName)}</strong></div>
+                      <div><span style="color: #64748b;">Admission No:</span> <strong class="font-mono" style="color: #0f172a; display: block;">${esc(st.admissionNo)}</strong></div>
+                      <div><span style="color: #64748b;">Roll Number:</span> <strong style="color: #16a34a; font-size: 0.88rem; display: block;">${esc(st.rollNo || '—')}</strong></div>
+                      <div><span style="color: #64748b;">Class &amp; Section:</span> <strong style="color: #0f172a; display: block;">${esc(st.grade)} ${esc(st.section || 'A')}</strong></div>
+                    </div>
+
+                    <!-- Exam Schedule Table -->
+                    <table style="width: 100%; border-collapse: collapse; font-size: 0.72rem; border: 1px solid #cbd5e1; margin-bottom: 10px;">
+                      <thead>
+                        <tr style="background: #f1f5f9; color: #1e293b; border-bottom: 1px solid #cbd5e1;">
+                          <th style="padding: 4px 6px; text-align: left; border: 1px solid #cbd5e1;">Subject Name</th>
+                          <th style="padding: 4px 6px; text-align: center; border: 1px solid #cbd5e1; width: 60px;">Code</th>
+                          <th style="padding: 4px 6px; text-align: center; border: 1px solid #cbd5e1; width: 95px;">Exam Timing</th>
+                          <th style="padding: 4px 6px; text-align: center; border: 1px solid #cbd5e1; width: 75px;">Hall / Room</th>
+                          <th style="padding: 4px 6px; text-align: center; border: 1px solid #cbd5e1; width: 90px;">Invigilator Sign</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        ${STANDARD_SUBJECTS.map(subj => `
+                          <tr style="border-bottom: 1px solid #e2e8f0;">
+                            <td style="padding: 3px 6px; border: 1px solid #cbd5e1; font-weight: 600;">${esc(subj.name)}</td>
+                            <td style="padding: 3px 6px; text-align: center; border: 1px solid #cbd5e1; font-family: monospace;">${esc(subj.code)}</td>
+                            <td style="padding: 3px 6px; text-align: center; border: 1px solid #cbd5e1; color: #475569;">09:30 - 12:30</td>
+                            <td style="padding: 3px 6px; text-align: center; border: 1px solid #cbd5e1; font-weight: 600;">Hall 01</td>
+                            <td style="padding: 3px 6px; text-align: center; border: 1px solid #cbd5e1; color: #cbd5e1;">___________</td>
+                          </tr>
+                        `).join('')}
+                      </tbody>
+                    </table>
+
+                    <!-- Instructions & Signatures -->
+                    <div style="display: flex; justify-content: space-between; align-items: flex-end; font-size: 0.68rem; color: #475569;">
+                      <div style="max-width: 55%;">
+                        <strong style="color: #0f172a;">Important Instructions:</strong>
+                        <ol style="margin: 2px 0 0 16px; padding: 0; line-height: 1.25;">
+                          <li>Candidate must be seated in the examination hall 15 minutes prior to commencement.</li>
+                          <li>Mobile phones, smartwatches, and study notes are strictly forbidden.</li>
+                          <li>Admit card must be kept clearly visible on desk throughout the assessment.</li>
+                        </ol>
+                      </div>
+                      <div style="display: flex; gap: 24px; text-align: center;">
+                        <div>
+                          <div style="border-bottom: 1px solid #0f172a; width: 95px; margin-bottom: 2px; height: 16px;"></div>
+                          <span>Candidate Signature</span>
+                        </div>
+                        <div>
+                          <div style="border-bottom: 1px solid #0f172a; width: 95px; margin-bottom: 2px; height: 16px;"></div>
+                          <span>Class Teacher</span>
+                        </div>
+                        <div>
+                          <div style="border-bottom: 1px solid #0f172a; width: 110px; margin-bottom: 2px; height: 16px;"></div>
+                          <strong style="color: #166534;">Controller of Exams</strong>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            `).join('');
+          })()}
+        </div>
+      </div>
+      ` : ''}
     `;
 
     this.bindEvents(container);
@@ -363,6 +551,7 @@ export class ExaminationModule {
     // Tab switching
     const tabLedger = container.querySelector('#tab-exam-ledger');
     const tabWarning = container.querySelector('#tab-exam-warning');
+    const tabAdmit = container.querySelector('#tab-exam-admit');
     if (tabLedger) {
       tabLedger.addEventListener('click', () => {
         this._examViewTab = 'ledger';
@@ -373,6 +562,28 @@ export class ExaminationModule {
       tabWarning.addEventListener('click', () => {
         this._examViewTab = 'warning';
         this.render(container);
+      });
+    }
+    if (tabAdmit) {
+      tabAdmit.addEventListener('click', () => {
+        this._examViewTab = 'admit';
+        this.render(container);
+      });
+    }
+
+    // Print Admit Cards Button
+    const printAdmitBtn = container.querySelector('#btn-print-admit-cards');
+    if (printAdmitBtn) {
+      printAdmitBtn.addEventListener('click', () => {
+        window.print();
+      });
+    }
+
+    // Print Seating & Door Chart Button
+    const printSeatingBtn = container.querySelector('#btn-print-seating-chart');
+    if (printSeatingBtn) {
+      printSeatingBtn.addEventListener('click', () => {
+        this.openDoorChartModal();
       });
     }
 
@@ -1142,10 +1353,126 @@ export class ExaminationModule {
       bodyHtml: printStyles + reportHtml,
       footerHtml: `
         <button class="btn btn-secondary" onclick="document.getElementById('global-modal-close').click()">Close</button>
+        <button class="btn btn-secondary" id="btn-share-report-card"><i data-lucide="share-2"></i> Share Report</button>
         <button class="btn btn-primary" onclick="window.print()"><i data-lucide="printer"></i> Print Official Report Card (A4)</button>
       `
     });
 
+    const shareBtn = document.getElementById('btn-share-report-card');
+    if (shareBtn) {
+      shareBtn.addEventListener('click', async () => {
+        await shareContent({
+          title: `Report Card — ${student.fullName}`,
+          text: `Official Cumulative Report Card for ${student.fullName} (Adm: ${student.admissionNo}, Class: ${student.grade})\nTerm: ${this._selectedTerm}\nTotal: ${totalScored}/${totalMax} (${pct}%)\nOverall Grade: ${gradeObj.grade} (${passStatus})\nThaiba Model School, Kolkata`,
+          url: window.location.href
+        });
+        UIComponents.showToast('Report card shared / copied to clipboard!', 'success');
+      });
+    }
+
+    UIComponents.refreshIcons();
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Official Examination Hall Door Chart & Seating Matrix (A4 Print)    */
+  /* ------------------------------------------------------------------ */
+  static openDoorChartModal() {
+    const esc = (v) => UIComponents.escapeHtml(v);
+    const emblem = TMS_LOGO.emblemSvg(44);
+    const filtered = this._students.filter(s => {
+      const matchGrade = this._selectedGrade === 'all' || s.grade === this._selectedGrade;
+      const matchSec = this._selectedSection === 'all' || s.section === this._selectedSection;
+      return matchGrade && matchSec;
+    });
+
+    const printStyles = `
+      <style>
+        @media print {
+          @page { size: A4 portrait; margin: 10mm; }
+          body * { visibility: hidden !important; }
+          #door-chart-print-area, #door-chart-print-area * { visibility: visible !important; }
+          #door-chart-print-area { position: absolute; left: 0; top: 0; width: 100% !important; border: 2px solid #064e3b !important; }
+          .tms-modal-overlay, .tms-modal, .tms-modal-content { background: transparent !important; border: none !important; box-shadow: none !important; }
+          .tms-modal-header, .tms-modal-footer, #app-sidebar, header { display: none !important; }
+        }
+      </style>
+    `;
+
+    const bodyHtml = `
+      ${printStyles}
+      <div id="door-chart-print-area" style="background: #ffffff; color: #0f172a; padding: 28px 32px; border: 2px solid #16a34a; border-radius: 8px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+        <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid #16a34a; padding-bottom: 12px; margin-bottom: 16px;">
+          <div>${emblem}</div>
+          <div style="text-align: center; flex: 1; padding: 0 12px;">
+            <h2 style="font-size: 1.4rem; font-weight: 800; color: #166534; margin: 0; text-transform: uppercase;">${esc(TMS_CONFIG.institution.name)}</h2>
+            <div style="font-size: 0.78rem; color: #15803d; font-weight: 600;">OFFICE OF THE CONTROLLER OF EXAMINATIONS • SESSION ${esc(TMS_CONFIG.academic.currentYear)}</div>
+            <div style="display: inline-block; background: #fef3c7; border: 1.5px solid #f59e0b; color: #b45309; font-weight: 800; font-size: 0.85rem; padding: 3px 18px; border-radius: 12px; margin-top: 6px; text-transform: uppercase; letter-spacing: 0.5px;">
+              EXAMINATION HALL NOTICE BOARD DOOR CHART
+            </div>
+          </div>
+          <div style="text-align: right; font-size: 0.75rem; color: #64748b;">
+            <div>Date: <strong>${new Date().toLocaleDateString('en-GB')}</strong></div>
+            <div>Room: <strong style="color: #16a34a; font-size: 0.9rem;">HALL 01</strong></div>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 14px; margin-bottom: 16px; font-size: 0.82rem;">
+          <div><span style="color: #64748b;">Exam / Term:</span> <strong>${esc(this._selectedTerm)}</strong></div>
+          <div><span style="color: #64748b;">Class &amp; Sec:</span> <strong>${esc(this._selectedGrade)} ${this._selectedSection !== 'all' ? `(Sec ${esc(this._selectedSection)})` : ''}</strong></div>
+          <div><span style="color: #64748b;">Total Candidates:</span> <strong>${filtered.length}</strong></div>
+          <div><span style="color: #64748b;">Roll Range:</span> <strong>${filtered.length ? `${filtered[0]?.rollNo || 1} — ${filtered[filtered.length - 1]?.rollNo || filtered.length}` : '—'}</strong></div>
+        </div>
+
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.82rem; border: 1px solid #cbd5e1; margin-bottom: 20px;">
+          <thead>
+            <tr style="background: #f1f5f9; color: #0f172a; border-bottom: 1.5px solid #94a3b8;">
+              <th style="padding: 6px 10px; text-align: center; border: 1px solid #cbd5e1; width: 65px;">Desk No</th>
+              <th style="padding: 6px 10px; text-align: center; border: 1px solid #cbd5e1; width: 65px;">Roll No</th>
+              <th style="padding: 6px 10px; text-align: left; border: 1px solid #cbd5e1; width: 120px;">Admission No</th>
+              <th style="padding: 6px 10px; text-align: left; border: 1px solid #cbd5e1;">Candidate Full Name</th>
+              <th style="padding: 6px 10px; text-align: center; border: 1px solid #cbd5e1; width: 80px;">Class</th>
+              <th style="padding: 6px 10px; text-align: center; border: 1px solid #cbd5e1; width: 100px;">Candidate Initial</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filtered.map((s, idx) => `
+              <tr style="border-bottom: 1px solid #e2e8f0; background: ${idx % 2 === 0 ? '#ffffff' : '#fafafa'};">
+                <td style="padding: 5px 8px; text-align: center; border: 1px solid #cbd5e1; font-weight: 800; color: #166534;">${String(idx + 1).padStart(2, '0')}</td>
+                <td style="padding: 5px 8px; text-align: center; border: 1px solid #cbd5e1; font-weight: 700;">${esc(s.rollNo || (idx + 1))}</td>
+                <td style="padding: 5px 8px; border: 1px solid #cbd5e1; font-family: monospace;">${esc(s.admissionNo)}</td>
+                <td style="padding: 5px 8px; border: 1px solid #cbd5e1; font-weight: 600;">${esc(s.fullName)}</td>
+                <td style="padding: 5px 8px; text-align: center; border: 1px solid #cbd5e1;">${esc(s.grade)} ${esc(s.section || 'A')}</td>
+                <td style="padding: 5px 8px; text-align: center; border: 1px solid #cbd5e1; color: #cbd5e1;">________</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+
+        <div style="display: flex; justify-content: space-between; align-items: flex-end; padding-top: 14px; font-size: 0.8rem; text-align: center;">
+          <div style="width: 170px;">
+            <div style="border-bottom: 1.5px solid #0f172a; margin-bottom: 4px; height: 20px;"></div>
+            <strong>Hall Invigilator 1</strong>
+          </div>
+          <div style="width: 170px;">
+            <div style="border-bottom: 1.5px solid #0f172a; margin-bottom: 4px; height: 20px;"></div>
+            <strong>Hall Invigilator 2</strong>
+          </div>
+          <div style="width: 180px;">
+            <div style="border-bottom: 1.5px solid #0f172a; margin-bottom: 4px; height: 20px;"></div>
+            <strong style="color: #166534;">Chief Superintendent</strong>
+          </div>
+        </div>
+      </div>
+    `;
+
+    UIComponents.openModal({
+      title: `Examination Hall Door Chart — ${this._selectedGrade}`,
+      bodyHtml,
+      footerHtml: `
+        <button class="btn btn-secondary" onclick="document.getElementById('global-modal-close').click()">Close</button>
+        <button class="btn btn-primary" onclick="window.print()"><i data-lucide="printer"></i> Print Door Chart (A4)</button>
+      `
+    });
     UIComponents.refreshIcons();
   }
 
