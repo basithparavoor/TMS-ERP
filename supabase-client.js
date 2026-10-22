@@ -34,6 +34,68 @@ class SupabaseDataService {
     this.cleanLegacyDemoData();
     this.initClient();
     this.initNetworkListeners();
+    if (this.isOnline) {
+      setTimeout(() => this.processQueue(), 1500);
+    }
+  }
+
+  getQueue() {
+    try {
+      const raw = localStorage.getItem('tms_offline_queue');
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+
+  setQueue(queue) {
+    try {
+      localStorage.setItem('tms_offline_queue', JSON.stringify(queue));
+      window.dispatchEvent(new CustomEvent('tms_sync_queue_changed', { detail: { count: queue.length } }));
+    } catch (e) { /* ignore */ }
+  }
+
+  addToQueue(action, collection, payload) {
+    const queue = this.getQueue();
+    queue.push({
+      id: 'q-' + Date.now() + '-' + Math.random().toString(36).substr(2, 6),
+      action,
+      collection,
+      payload,
+      timestamp: new Date().toISOString()
+    });
+    this.setQueue(queue);
+  }
+
+  async processQueue() {
+    if (!this.client || !this.isOnline) return;
+    const queue = this.getQueue();
+    if (!queue.length) return;
+
+    console.log(`[Offline Sync] Processing ${queue.length} queued mutation(s)...`);
+    const remaining = [];
+
+    for (const item of queue) {
+      try {
+        if (item.action === 'insert') {
+          await this.client.from(item.collection).insert([rowToDb(item.payload)]);
+        } else if (item.action === 'upsert') {
+          await this.client.from(item.collection).upsert(rowToDb(item.payload));
+        } else if (item.action === 'update') {
+          await this.client.from(item.collection).update(rowToDb(item.payload.updates)).eq('id', item.payload.id);
+        } else if (item.action === 'delete') {
+          await this.client.from(item.collection).delete().eq('id', item.payload.id);
+        }
+      } catch (err) {
+        console.warn(`[Offline Sync] Item ${item.id} retry deferred:`, err.message);
+        remaining.push(item);
+      }
+    }
+
+    this.setQueue(remaining);
+    if (!remaining.length && window.UIComponents) {
+      window.UIComponents.showToast('All offline changes synced with campus server!', 'success');
+    }
   }
 
   cleanLegacyDemoData() {
@@ -68,6 +130,7 @@ class SupabaseDataService {
   initNetworkListeners() {
     window.addEventListener('online', () => {
       this.isOnline = true;
+      this.processQueue();
     });
     window.addEventListener('offline', () => {
       this.isOnline = false;
@@ -138,8 +201,11 @@ class SupabaseDataService {
         if (error) throw error;
       } catch (e) {
         console.error(`Supabase insert FAILED for ${collection}:`, e.message);
-        return { ...enriched, _syncError: e.message };
+        this.addToQueue('insert', collection, enriched);
+        return { ...enriched, _syncError: e.message, _queued: true };
       }
+    } else {
+      this.addToQueue('insert', collection, enriched);
     }
     return enriched;
   }
@@ -161,8 +227,11 @@ class SupabaseDataService {
         if (error) throw error;
       } catch (e) {
         console.error(`Supabase upsert FAILED for ${collection}:`, e.message);
-        return { ...enriched, _syncError: e.message };
+        this.addToQueue('upsert', collection, enriched);
+        return { ...enriched, _syncError: e.message, _queued: true };
       }
+    } else {
+      this.addToQueue('upsert', collection, enriched);
     }
     return enriched;
   }
@@ -183,10 +252,13 @@ class SupabaseDataService {
         if (error) throw error;
       } catch (e) {
         console.error(`Supabase update FAILED for ${collection}:`, e.message);
+        this.addToQueue('update', collection, { id, updates: stamped });
         return index !== -1
-          ? { ...items[index], _syncError: e.message }
-          : { id, ...stamped, _syncError: e.message };
+          ? { ...items[index], _syncError: e.message, _queued: true }
+          : { id, ...stamped, _syncError: e.message, _queued: true };
       }
+    } else {
+      this.addToQueue('update', collection, { id, updates: stamped });
     }
 
     return index !== -1 ? items[index] : { id, ...stamped };
@@ -213,7 +285,14 @@ class SupabaseDataService {
         }
       } catch (e) {
         console.error(`Supabase delete FAILED for ${collection}:`, e.message);
+        for (const singleId of ids) {
+          this.addToQueue('delete', collection, { id: singleId });
+        }
         return false;
+      }
+    } else {
+      for (const singleId of ids) {
+        this.addToQueue('delete', collection, { id: singleId });
       }
     }
     return true;
