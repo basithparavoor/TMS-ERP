@@ -465,35 +465,40 @@ a {
 .search-bar-trigger {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   background: #ffffff;
-  border: 1px solid var(--border-color);
-  padding: 8px 18px;
-  border-radius: var(--radius-full);
+  border: 1.5px solid var(--border-color);
+  padding: 8px 16px;
+  border-radius: 12px;
   color: var(--text-muted);
-  font-size: 0.85rem;
+  font-size: 0.86rem;
+  font-weight: 500;
   cursor: pointer;
-  width: 300px;
+  width: 380px;
+  max-width: 100%;
   transition: all var(--transition-fast);
-  box-shadow: var(--shadow-xs);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.03);
 }
 
 .search-bar-trigger:hover {
-  border-color: #cbd5e1;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  border-color: #16a34a;
+  background: #fcfdfd;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.08), 0 2px 8px rgba(15, 23, 42, 0.04);
+  color: var(--text-main);
   transform: translateY(-1px);
 }
 
 .kbd-shortcut {
   margin-left: auto;
   font-family: var(--font-mono);
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   background: #f1f5f9;
   border: 1px solid #e2e8f0;
   padding: 2px 7px;
-  border-radius: 4px;
-  color: #475569;
+  border-radius: 6px;
+  color: #64748b;
   font-weight: 700;
+  letter-spacing: 0.03em;
 }
 
 .topbar-right {
@@ -773,39 +778,43 @@ a {
 }
 
 /* ==========================================================================
-   INTERACTIVE DATA TABLES (Clean High-Contrast Roster)
+   INTERACTIVE DATA TABLES (Clean High-Contrast Compact Roster)
    ========================================================================== */
 .table-responsive {
   width: 100%;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--radius-md);
+  position: relative;
 }
 
 .tms-table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
-  font-size: 0.88rem;
+  font-size: 0.82rem;
 }
 
 .tms-table th {
   background: #f8fafc;
   color: #475569;
-  font-size: 0.74rem;
+  font-size: 0.72rem;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  padding: 13px 16px;
+  letter-spacing: 0.05em;
+  padding: 10px 12px;
   text-align: left;
   border-bottom: 2px solid var(--border-color);
   white-space: nowrap;
 }
 
 .tms-table td {
-  padding: 14px 16px;
+  padding: 10px 12px;
   border-bottom: 1px solid #f1f5f9;
   color: #1e293b;
   vertical-align: middle;
   transition: background var(--transition-fast);
+  font-size: 0.82rem;
 }
 
 .tms-table tr:hover td {
@@ -814,6 +823,181 @@ a {
 
 .tms-table tr:last-child td {
   border-bottom: none;
+}
+
+/* ==========================================================================
+   PREMIUM SEGMENTED PILL TABS & SUB-TABS (Mobile App & Reels Showcase)
+   ========================================================================== */
+.tms-tab-rail-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  padding: 2px 0 10px 0;
+  margin-bottom: 16px;
+}
+.tms-tab-rail-wrapper::-webkit-scrollbar {
+  display: none;
+}
+
+.tms-segmented-tabs {
+  display: inline-flex;
+  align-items: center;
+  background: #f1f5f9;
+  padding: 4px;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  gap: 4px;
+  box-shadow: inset 0 2px 4px rgba(15, 23, 42, 0.03);
+  max-width: 100%;
+  white-space: nowrap;
+}
+
+.tms-tab-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  font-family: var(--font-sans);
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #64748b;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  text-decoration: none;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.tms-tab-pill:hover {
+  color: #0f172a;
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.tms-tab-pill.active {
+  background: #ffffff;
+  color: #16a34a;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.08), 0 1px 3px rgba(15, 23, 42, 0.04);
+  transform: translateY(-1px);
+}
+
+.tms-tab-pill i, .tms-tab-pill svg {
+  width: 16px;
+  height: 16px;
+}
+
+.tms-tab-pill .tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  background: #e2e8f0;
+  color: #475569;
+  line-height: 1;
+  transition: all 0.2s ease;
+}
+
+.tms-tab-pill.active .tab-badge {
+  background: rgba(22, 163, 74, 0.12);
+  color: #16a34a;
+}
+
+/* Sub-tabs Segmented Row */
+.tms-subtab-rail {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 4px 0 14px 0;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--border-color);
+}
+.tms-subtab-rail::-webkit-scrollbar {
+  display: none;
+}
+
+.tms-subtab-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #64748b;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.tms-subtab-pill:hover {
+  background: #ffffff;
+  color: #1e293b;
+  border-color: #cbd5e1;
+}
+
+.tms-subtab-pill.active {
+  background: rgba(22, 163, 74, 0.08);
+  color: #16a34a;
+  border-color: rgba(22, 163, 74, 0.3);
+  font-weight: 700;
+}
+
+/* ==========================================================================
+   ANIMATED LOGO LOADER & SPINNER HALO
+   ========================================================================== */
+.tms-animated-loader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.tms-loader-emblem-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tms-loader-aura {
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  border: 3px solid transparent;
+  border-top-color: #16a34a;
+  border-right-color: #86efac;
+  animation: tmsSpinnerRing 1.1s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+}
+
+.tms-loader-img {
+  animation: tmsLogoBreathing 2s ease-in-out infinite;
+  filter: drop-shadow(0 4px 12px rgba(22, 163, 74, 0.22));
+}
+
+@keyframes tmsSpinnerRing {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes tmsLogoBreathing {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 4px 10px rgba(22, 163, 74, 0.2)); }
+  50% { transform: scale(1.07); filter: drop-shadow(0 8px 22px rgba(22, 163, 74, 0.38)); }
+}
+
+@keyframes tmsTextPulse {
+  0%, 100% { opacity: 0.75; transform: scale(0.99); }
+  50% { opacity: 1; transform: scale(1); }
 }
 
 /* ==========================================================================
@@ -1076,14 +1260,80 @@ a {
   }
 }
 
-/* Responsive */
+/* ==========================================================================
+   MOBILE NATIVE APP EXPERIENCE & RESPONSIVE LAYOUTS
+   ========================================================================== */
+.mobile-bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid var(--border-color);
+  z-index: 50;
+  align-items: center;
+  justify-content: space-around;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.04);
+}
+
+.mobile-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  text-decoration: none;
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 6px 10px;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  flex: 1;
+  min-width: 0;
+}
+
+.mobile-nav-item i, .mobile-nav-item svg {
+  width: 20px;
+  height: 20px;
+  transition: transform 0.15s ease;
+}
+
+.mobile-nav-item.active {
+  color: #16a34a;
+}
+
+.mobile-nav-item.active i, .mobile-nav-item.active svg {
+  transform: scale(1.12);
+  color: #16a34a;
+}
+
+@media (min-width: 993px) {
+  .mobile-only {
+    display: none !important;
+  }
+}
+
 @media (max-width: 992px) {
+  .mobile-only {
+    display: inline-flex !important;
+  }
+
   .app-sidebar {
     position: fixed;
     top: 0;
     bottom: 0;
     left: 0;
     transform: translateX(-100%);
+    box-shadow: var(--shadow-2xl);
   }
 
   .app-sidebar.open {
@@ -1107,5 +1357,92 @@ a {
     width: 100%;
     min-height: auto;
     padding: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .mobile-bottom-nav {
+    display: flex !important;
+  }
+
+  .app-viewport {
+    padding: 14px 12px 84px 12px !important;
+  }
+
+  .app-topbar {
+    padding: 0 14px !important;
+    height: 56px !important;
+  }
+
+  .ticker-badge {
+    display: none !important;
+  }
+
+  .search-bar-trigger {
+    width: auto !important;
+    padding: 6px 10px !important;
+  }
+  .search-bar-trigger span {
+    display: none !important;
+  }
+  .search-bar-trigger::after {
+    content: "Search...";
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+  .kbd-shortcut {
+    display: none !important;
+  }
+
+  .card {
+    padding: 16px 14px !important;
+    border-radius: 14px !important;
+    margin-bottom: 14px !important;
+  }
+
+  .kpi-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 8px !important;
+  }
+
+  .kpi-card {
+    padding: 12px 10px !important;
+  }
+
+  .kpi-card h3 {
+    font-size: 1.25rem !important;
+  }
+
+  /* Bottom sheet modal on mobile */
+  .modal-overlay {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+
+  .tms-modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 20px 20px 0 0 !important;
+    max-height: 88vh !important;
+    margin: 0 !important;
+    animation: mobileModalSheet 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  }
+
+  @keyframes mobileModalSheet {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+
+  .tms-segmented-tabs {
+    border-radius: 10px;
+    padding: 3px;
+  }
+  .tms-tab-pill {
+    padding: 6px 12px;
+    font-size: 0.78rem;
+  }
+
+  .form-input, .form-select, .btn {
+    min-height: 42px;
   }
 }
