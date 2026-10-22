@@ -90,6 +90,55 @@ export const DEFAULT_INSTRUCTIONS = [
   'Original documents must be brought to the school office on the date of verification / admission test.'
 ];
 
+export function getEmbedVideoUrl(rawUrl) {
+  if (!rawUrl || typeof rawUrl !== 'string') return null;
+  const str = rawUrl.trim();
+  if (!str) return null;
+
+  // YouTube watch, short, embed links
+  const ytMatch = str.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/|v\/)|youtu\.be\/)([\w-]{11})/i);
+  if (ytMatch && ytMatch[1]) {
+    return `https://www.youtube-nocookie.com/embed/${ytMatch[1]}?rel=0&modestbranding=1`;
+  }
+
+  // Vimeo
+  const vimeoMatch = str.match(/vimeo\.com\/(?:channels\/(?:\w+\/)?|groups\/([^\/]*)\/videos\/|album\/(\d+)\/video\/|)(\d+)(?:$|\/|\?)/);
+  if (vimeoMatch && vimeoMatch[3]) {
+    return `https://player.vimeo.com/video/${vimeoMatch[3]}`;
+  }
+
+  return str;
+}
+
+export function renderVideoPlayerHtml(url, title = 'Admission Process Video Walkthrough') {
+  if (!url) return '';
+  const embedUrl = getEmbedVideoUrl(url);
+  if (!embedUrl) return '';
+
+  const isDirectFile = /\.(mp4|webm|ogg|mov)($|\?)/i.test(embedUrl);
+
+  return `
+    <div class="instruction-video-wrapper" style="margin-bottom: 20px; border-radius: 12px; overflow: hidden; border: 1px solid var(--border-color, #e2e8f0); background: #000; box-shadow: 0 4px 16px rgba(0,0,0,0.08);">
+      <div style="background: #0f172a; color: #fff; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 0.86rem; font-weight: 700;">
+          <span style="color: #ef4444; display: inline-flex;"><i data-lucide="play-circle" style="width: 18px; height: 18px;"></i></span>
+          <span>${title || 'Admission Process Video Walkthrough'}</span>
+        </div>
+        <a href="${embedUrl}" target="_blank" rel="noopener noreferrer" style="font-size: 0.74rem; color: #94a3b8; text-decoration: none; display: flex; align-items: center; gap: 4px;">
+          <span>Open Fullscreen</span> <i data-lucide="external-link" style="width: 12px; height: 12px;"></i>
+        </a>
+      </div>
+      <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; background: #000;">
+        ${isDirectFile ? `
+          <video src="${embedUrl}" controls playsinline style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; object-fit: contain;"></video>
+        ` : `
+          <iframe src="${embedUrl}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen loading="lazy"></iframe>
+        `}
+      </div>
+    </div>
+  `;
+}
+
 export const DEFAULT_POPUP_INSTRUCTIONS = [
   'Please note down or take a screenshot of your unique Application ID for future reference.',
   'Print or save your Application Form & Admit Card using the button below.',
@@ -115,6 +164,9 @@ class AdmissionService {
       formFee: Number(existing.formFee || 0),
       showFeeStructure: existing.showFeeStructure === true,
       showGuidelines: existing.showGuidelines !== false, // default enabled
+      instructionVideoUrl: existing.instructionVideoUrl || '',
+      instructionVideoTitle: existing.instructionVideoTitle || 'How to Fill Admission Application Form',
+      showInstructionVideo: existing.showInstructionVideo !== false,
       paymentRequired: !!existing.paymentRequired,
       upiId: existing.upiId || '',
       upiPayeeName: existing.upiPayeeName || TMS_CONFIG.institution.name,
