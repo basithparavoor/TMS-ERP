@@ -10,7 +10,7 @@ import { authService } from './auth-service.js';
 import { auditService } from './audit-service.js';
 import { UIComponents } from './ui-components.js';
 import { TMS_LOGO } from './logo.js';
-import { admissionService, DEFAULT_INSTRUCTIONS, DEFAULT_POPUP_INSTRUCTIONS } from './admission-service.js';
+import { admissionService, DEFAULT_INSTRUCTIONS, DEFAULT_POPUP_INSTRUCTIONS, getEmbedVideoUrl, renderVideoPlayerHtml } from './admission-service.js';
 import { notificationService } from './notification-service.js';
 import { brandingService } from './branding-service.js';
 import { downloadCsv, exportPdf, kvTable } from './export-utils.js';
@@ -1724,6 +1724,17 @@ export class AdminModule {
                 <span class="slider" style="position:absolute; cursor:pointer; inset:0; background-color:#cbd5e1; border-radius:26px; transition:.3s;"></span>
               </label>
             </div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 14px; background:var(--bg-subtle, #f8fafc); border:1px solid var(--border-color); border-radius:var(--radius-md);">
+              <div style="padding-right:12px;">
+                <strong style="font-size:0.92rem; display:block; margin-bottom:2px;">Show Instruction Video</strong>
+                <span style="font-size:0.78rem; color:var(--text-muted);">Embeds the instructional video in the Guidelines modal &amp; adds "Watch Video Guide" button on the portal.</span>
+              </div>
+              <label class="switch" style="position:relative; display:inline-block; width:50px; height:26px; flex-shrink:0;">
+                <input type="checkbox" id="set-show-video" ${s.showInstructionVideo ? 'checked' : ''} style="opacity:0; width:0; height:0;">
+                <span class="slider" style="position:absolute; cursor:pointer; inset:0; background-color:#cbd5e1; border-radius:26px; transition:.3s;"></span>
+              </label>
+            </div>
           </div>
 
           <!-- SUBMISSION POPUP INSTRUCTIONS EDITOR -->
@@ -1754,7 +1765,46 @@ export class AdminModule {
           </div>
         </div>
 
-        <!-- CARD 3: GENERAL GUIDELINES MODAL INSTRUCTIONS -->
+        <!-- CARD 3: INSTRUCTION & GUIDELINES VIDEO TUTORIAL -->
+        <div class="card" style="border-left: 4px solid #ef4444; grid-column: 1 / -1;">
+          <div class="card-header" style="flex-wrap:wrap; gap:10px;">
+            <div>
+              <h3 class="card-title" style="display:flex; align-items:center; gap:8px;">
+                <span style="color:#ef4444;"><i data-lucide="video"></i></span>
+                Instructional &amp; Guidelines Video Walkthrough
+              </h3>
+              <p class="card-desc">Applicants can watch this video tutorial directly when viewing admission guidelines or clicking the video button.</p>
+            </div>
+            <span class="badge ${s.instructionVideoUrl ? 'badge-success' : 'badge-info'}" id="badge-video-status">
+              ${s.instructionVideoUrl ? 'Video Configured' : 'No Video Set'}
+            </span>
+          </div>
+
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:14px; margin-bottom:14px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label" style="font-weight:600;">Instruction Video URL (YouTube, Vimeo, or MP4) *</label>
+              <div style="display:flex; gap:8px;">
+                <input type="url" class="form-input" id="set-video-url" value="${esc(s.instructionVideoUrl || '')}" placeholder="e.g. https://www.youtube.com/watch?v=... or https://youtu.be/..." style="flex:1; font-size:0.85rem;">
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-preview-video"><i data-lucide="play"></i> Test Video</button>
+              </div>
+              <small style="color:var(--text-muted); font-size:0.75rem; margin-top:4px; display:block;">
+                Paste any standard YouTube video URL, YouTube Shorts, Vimeo link, or MP4 video URL. It is automatically converted into a responsive player.
+              </small>
+            </div>
+
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label" style="font-weight:600;">Video Title / Heading</label>
+              <input type="text" class="form-input" id="set-video-title" value="${esc(s.instructionVideoTitle || 'How to Fill Admission Application Form')}" placeholder="e.g. Step-by-Step Admission Form Guide" style="font-size:0.85rem;">
+            </div>
+          </div>
+
+          <!-- Live Video Preview Section -->
+          <div id="video-preview-wrapper" style="margin-top:14px;">
+            ${s.instructionVideoUrl ? renderVideoPlayerHtml(s.instructionVideoUrl, s.instructionVideoTitle) : '<p style="color:var(--text-muted); font-size:0.82rem; margin:0; padding:12px; background:var(--bg-subtle, #f8fafc); border:1px dashed var(--border-color); border-radius:8px; text-align:center;">Enter a video URL above and click "Test Video" to preview the video player.</p>'}
+          </div>
+        </div>
+
+        <!-- CARD 4: GENERAL GUIDELINES MODAL INSTRUCTIONS -->
         <div class="card" style="border-left: 4px solid #3b82f6; grid-column: 1 / -1;">
           <div class="card-header" style="flex-wrap:wrap; gap:10px;">
             <div>
@@ -1875,9 +1925,44 @@ export class AdminModule {
       });
     }
 
+    // Video preview test button
+    const previewVideoBtn = document.getElementById('btn-preview-video');
+    if (previewVideoBtn) {
+      previewVideoBtn.addEventListener('click', () => {
+        const url = (document.getElementById('set-video-url').value || '').trim();
+        const title = (document.getElementById('set-video-title').value || '').trim() || 'Instruction Video';
+        const wrapper = document.getElementById('video-preview-wrapper');
+        const badge = document.getElementById('badge-video-status');
+        if (!url) {
+          wrapper.innerHTML = '<p style="color:#ef4444; font-size:0.82rem; margin:0; padding:12px; background:rgba(239,68,68,0.08); border:1px dashed #ef4444; border-radius:8px; text-align:center;">Please enter a video URL first.</p>';
+          if (badge) {
+            badge.className = 'badge badge-info';
+            badge.innerText = 'No Video Set';
+          }
+          return;
+        }
+
+        const embedHtml = renderVideoPlayerHtml(url, title);
+        if (embedHtml) {
+          wrapper.innerHTML = embedHtml;
+          if (badge) {
+            badge.className = 'badge badge-success';
+            badge.innerText = 'Video Configured';
+          }
+          UIComponents.refreshIcons();
+          UIComponents.showToast('Video player preview loaded!', 'success');
+        } else {
+          wrapper.innerHTML = '<p style="color:#ef4444; font-size:0.82rem; margin:0; padding:12px; background:rgba(239,68,68,0.08); border:1px dashed #ef4444; border-radius:8px; text-align:center;">Invalid video URL format. Please enter a valid YouTube, Vimeo, or MP4 link.</p>';
+        }
+      });
+    }
+
     document.getElementById('btn-save-settings').addEventListener('click', async () => {
       const showFeeStructure = document.getElementById('set-show-fee-structure').checked;
       const showGuidelines = document.getElementById('set-show-guidelines').checked;
+      const showInstructionVideo = document.getElementById('set-show-video').checked;
+      const instructionVideoUrl = document.getElementById('set-video-url').value.trim();
+      const instructionVideoTitle = document.getElementById('set-video-title').value.trim();
       const formTitle = document.getElementById('set-form-title').value.trim();
       const formSubtitle = document.getElementById('set-form-subtitle').value.trim();
       const session = document.getElementById('set-session').value.trim();
@@ -1889,6 +1974,9 @@ export class AdminModule {
       const saveRes = await admissionService.saveSettings({
         showFeeStructure,
         showGuidelines,
+        showInstructionVideo,
+        instructionVideoUrl,
+        instructionVideoTitle,
         formTitle,
         formSubtitle,
         session,
@@ -1903,6 +1991,8 @@ export class AdminModule {
       await auditService.log('ADMISSION_SETTINGS_UPDATED', 'GOVERNANCE', {
         showFeeStructure,
         showGuidelines,
+        showInstructionVideo,
+        hasVideoUrl: !!instructionVideoUrl,
         formTitle,
         session
       });
