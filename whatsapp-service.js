@@ -55,6 +55,11 @@ This is a gentle reminder regarding the school fee invoice for your ward:
 • *Due Date:* ${due}
 • *Session:* ${year}
 
+*Instant UPI QR / App Payment:*
+• UPI ID: \`thaibaheritage@sbi\`
+• Pay directly in GPay / PhonePe / Paytm:
+https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=upi%3A%2F%2Fpay%3Fpa%3Dthaibaheritage%40sbi%26pn%3DThaiba%2520Model%2520School%26am%3D${encodeURIComponent(inv.balance || inv.amount || 0)}%26tr%3D${encodeURIComponent(invoiceNo)}%26cu%3DINR
+
 *Bank Account Details for Online Transfer:*
 • Bank: State Bank of India
 • A/C Name: THAIBA MODEL SCHOOL
@@ -67,6 +72,58 @@ Kindly clear the pending dues by the due date to ensure uninterrupted academic s
 _Bursar Office, ${schoolName}_`;
 
     this.openChat(inv.phone || inv.parentPhone, message);
+  }
+
+  /**
+   * 1-Click WhatsApp Academic Early Warning & Remedial Notice
+   */
+  static sendRemedialAcademicAlert(student, reasons = []) {
+    const schoolName = TMS_CONFIG.institution.name;
+    const studentName = student.fullName || student.name || 'Student';
+    const grade = student.grade || '';
+    const reasonsText = reasons.length ? reasons.map(r => `• ${r}`).join('\n') : '• Academic score requires attention';
+
+    const message = 
+`*${schoolName} • Academic Progress Notice*
+━━━━━━━━━━━━━━━━━━━━━━
+Dear Parent / Guardian,
+
+This is a supportive update from the Academic Coordinator regarding *${studentName}* (Class: ${grade}):
+
+*Areas Requiring Attention:*
+${reasonsText}
+
+We would like to invite you for a brief conference with our faculty to establish a personalized remedial learning plan for your ward.
+
+Please contact the academic office or reply to this message to coordinate suitable timings.
+
+_Academic Coordinator & Principal Office_
+_${schoolName}_`;
+
+    this.openChat(student.phone || student.parentPhone || student.guardianPhone, message);
+  }
+
+  /**
+   * 1-Click WhatsApp Homework Broadcast
+   */
+  static sendHomeworkBroadcast(grade, section, subject, title, desc, dueDate, parentPhone) {
+    const schoolName = TMS_CONFIG.institution.name;
+    const message = 
+`*${schoolName} • Daily Homework Diary*
+━━━━━━━━━━━━━━━━━━━━━━
+*Class:* ${grade} (${section || 'A'})
+*Subject:* ${subject}
+*Topic / Task:* ${title}
+*Due Date:* ${dueDate || 'Tomorrow'}
+
+*Details:*
+${desc || 'Complete exercises assigned in textbook.'}
+
+Kindly ensure your ward completes the homework before school hours.
+
+_Faculty Desk, ${schoolName}_`;
+
+    this.openChat(parentPhone, message);
   }
 
   /**
