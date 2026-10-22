@@ -88,4 +88,30 @@ export function kvTable(pairs) {
     .join('')}</table>`;
 }
 
-export default { downloadCsv, exportPdf, kvTable };
+/**
+ * Universal Native Web Share API helper with clipboard fallback
+ */
+export async function shareContent({ title, text, url }) {
+  if (typeof navigator !== 'undefined' && navigator.share) {
+    try {
+      await navigator.share({
+        title: title || 'Thaiba Model School',
+        text: text || '',
+        url: url || window.location.href
+      });
+      return true;
+    } catch (err) {
+      if (err.name === 'AbortError') return false;
+    }
+  }
+  const sharePayload = `${title ? '*' + title + '*\n' : ''}${text || ''}${url ? '\n' + url : ''}`;
+  try {
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      await navigator.clipboard.writeText(sharePayload);
+      return true;
+    }
+  } catch (e) { /* ignore */ }
+  return false;
+}
+
+export default { downloadCsv, exportPdf, kvTable, shareContent };
