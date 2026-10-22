@@ -58,6 +58,16 @@ class AppController {
       return;
     }
 
+    const currentUser = authService.getCurrentUser() || {};
+    if (currentUser.role === TMS_CONFIG.roles.PARENT) {
+      window.location.href = 'parent-portal.html';
+      return;
+    }
+    if (currentUser.role === TMS_CONFIG.roles.STUDENT) {
+      window.location.href = 'student-portal.html';
+      return;
+    }
+
     // Load the institute logo (cached value already applied at import time).
     brandingService.refresh().then(() => {
       const logoHost = document.getElementById('shell-logo');
@@ -208,7 +218,6 @@ class AppController {
       { id: 'certificates', label: 'Certificates (TC & Merit)', icon: 'file-check', module: 'certificates' },
       { id: 'finance', label: 'Finance & Accounts', icon: 'credit-card', module: 'finance' },
       { id: 'staff', label: 'Staff & HR', icon: 'users', module: 'staff' },
-      { id: 'operations', label: 'Library & Logistics', icon: 'box', module: 'operations' },
       { id: 'communication', label: 'Notice & Bulletins', icon: 'message-square', module: 'communication' },
       { id: 'reports', label: 'School Analytics', icon: 'bar-chart-3', module: 'reports' },
       { id: 'institution', label: 'Campus Facilities', icon: 'building', module: 'institution' },
