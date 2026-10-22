@@ -11,6 +11,7 @@ import { downloadCsv } from './export-utils.js';
 import { notificationService } from './notification-service.js';
 import { TMS_LOGO } from './logo.js';
 import { WhatsAppService } from './whatsapp-service.js';
+import { QRCodeGenerator } from './qr-generator.js';
 
 export class FinanceModule {
   static async render(container) {
@@ -117,7 +118,10 @@ export class FinanceModule {
                         <i data-lucide="layers"></i> Challan
                       </button>
                       ${inv.balance > 0 ? `
-                        <button class="btn btn-primary btn-sm btn-pay-balance" data-id="${esc(inv.id)}" data-name="${esc(inv.studentName)}" data-balance="${esc(inv.balance)}">
+                        <button class="btn btn-primary btn-sm btn-upi-pay" data-id="${esc(inv.id)}" data-inv="${esc(inv.invoiceNo)}" data-name="${esc(inv.studentName)}" data-bal="${esc(inv.balance)}" style="background:#16a34a; border-color:#16a34a;" title="Scan & Pay with GPay/PhonePe/Paytm">
+                          <i data-lucide="qr-code"></i> UPI
+                        </button>
+                        <button class="btn btn-secondary btn-sm btn-pay-balance" data-id="${esc(inv.id)}" data-name="${esc(inv.studentName)}" data-balance="${esc(inv.balance)}">
                           <i data-lucide="check"></i> Pay
                         </button>
                         <button class="btn btn-secondary btn-sm btn-wa-remind" data-inv="${esc(inv.invoiceNo)}" data-name="${esc(inv.studentName)}" data-bal="${esc(inv.balance)}" data-due="${esc(inv.dueDate || '')}" title="Send 1-Click WhatsApp Fee Reminder" style="color:#16a34a;">
@@ -315,6 +319,15 @@ export class FinanceModule {
         });
       });
     }
+
+    // Individual UPI QR pay button
+    container.querySelectorAll('.btn-upi-pay').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const id = e.currentTarget.dataset.id;
+        const inv = (this._invoices || []).find(i => String(i.id) === String(id));
+        if (inv) this.openUpiPaymentModal(inv, container);
+      });
+    });
 
     // Individual pay button
     container.querySelectorAll('.btn-pay-balance').forEach(btn => {
@@ -535,10 +548,18 @@ export class FinanceModule {
             </tbody>
           </table>
 
-          <!-- Payment Mode -->
-          <div style="font-size: 0.62rem; color: #475569; margin-bottom: 12px; line-height: 1.3;">
-            <div>Mode: [ ] Cash &nbsp; [ ] Cheque &nbsp; [ ] DD &nbsp; [ ] UPI/NEFT</div>
-            <div>Ref / UTR No: _______________________</div>
+          <!-- Payment Mode & Dynamic UPI -->
+          <div style="font-size: 0.62rem; color: #475569; margin-bottom: 8px; line-height: 1.3; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 4px; padding: 4px 6px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <div><strong>Scan &amp; Pay via UPI</strong> (GPay / PhonePe / Paytm):</div>
+                <div style="font-size: 0.58rem; color: #166534; font-weight: 700;">UPI ID: thaibaheritage@sbi</div>
+                <div style="font-size: 0.58rem; color: #64748b; margin-top: 2px;">Ref / UTR: ___________________</div>
+              </div>
+              <div style="width: 38px; height: 38px; background: #fff; border: 1px solid #cbd5e1; border-radius: 3px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+                <img src="${QRCodeGenerator.getQrUrl(`upi://pay?pa=thaibaheritage@sbi&pn=Thaiba%20Model%20School&am=${amount}&tr=${esc(data.invoiceNo || 'INV')}&cu=INR`, 100)}" alt="UPI QR" style="width: 36px; height: 36px; display: block;">
+              </div>
+            </div>
           </div>
         </div>
 
@@ -850,6 +871,129 @@ export class FinanceModule {
       UIComponents.closeModal();
       await FinanceModule.render(container);
     });
+    UIComponents.refreshIcons();
+  }
+
+  static openUpiPaymentModal(invoice, container) {
+    const esc = (v) => UIComponents.escapeHtml(v);
+    const inv = invoice || {};
+    const bal = inv.balance != null ? inv.balance : (inv.amount || 0);
+    const upiUri = `upi://pay?pa=thaibaheritage@sbi&pn=Thaiba%20Model%20School&am=${bal}&tr=${inv.invoiceNo}&cu=INR&tn=Fee%20Payment%20${inv.invoiceNo}`;
+
+    const bodyHtml = `
+      <div style="text-align: center; padding: 10px 0;">
+        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px; margin-bottom: 16px;">
+          <h3 style="font-size: 1.1rem; color: #166534; margin-bottom: 4px;">Dynamic UPI QR Payment Gateway</h3>
+          <p style="font-size: 0.8rem; color: #15803d;">Instant contactless fee clearance with real-time settlement</p>
+        </div>
+
+        <div style="display: flex; justify-content: center; margin-bottom: 14px;">
+          <div id="upi-modal-qr-target" style="padding: 12px; background: #fff; border: 2px solid #16a34a; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); display: inline-block;"></div>
+        </div>
+
+        <div style="display: flex; justify-content: center; gap: 8px; margin-bottom: 14px; flex-wrap: wrap;">
+          <span style="background: #f1f5f9; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; color: #334155;">Google Pay</span>
+          <span style="background: #f1f5f9; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; color: #5b21b6;">PhonePe</span>
+          <span style="background: #f1f5f9; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; color: #0284c7;">Paytm</span>
+          <span style="background: #f1f5f9; padding: 4px 10px; border-radius: 6px; font-size: 0.75rem; font-weight: 700; color: #166534;">BHIM UPI</span>
+        </div>
+
+        <div style="background: var(--bg-subtle, #f8fafc); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 16px; text-align: left; font-size: 0.82rem; line-height: 1.5;">
+          <div><strong>Student:</strong> ${esc(inv.studentName)}</div>
+          <div><strong>Invoice No:</strong> <span class="font-mono">${esc(inv.invoiceNo)}</span></div>
+          <div><strong>Billed Total:</strong> ₹ ${(inv.amount || 0).toLocaleString()}</div>
+          <div style="color: #dc2626; font-size: 0.95rem;"><strong>Pending Balance:</strong> ₹ ${bal.toLocaleString()}</div>
+          <div style="color: #166534;"><strong>UPI VPA:</strong> <span class="font-mono" style="font-weight: 700;">thaibaheritage@sbi</span></div>
+        </div>
+
+        <div style="margin-bottom: 14px;">
+          <a href="${upiUri}" class="btn btn-secondary" style="width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none;">
+            <i data-lucide="smartphone"></i> Open Directly in Phone UPI App
+          </a>
+        </div>
+
+        <div style="border-top: 1px dashed var(--border-color); padding-top: 14px; text-align: left;">
+          <h4 style="font-size: 0.85rem; margin-bottom: 6px; color: var(--text-color);">Clear Payment via UPI Reference</h4>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div class="form-group">
+              <label class="form-label" style="font-size: 0.75rem;">Amount Received (₹) *</label>
+              <input type="number" class="form-input" id="upi-paid-amt" value="${bal}">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="font-size: 0.75rem;">12-Digit UTR / Bank Ref No *</label>
+              <input class="form-input font-mono" id="upi-utr-no" placeholder="e.g. 423985172631" maxlength="24">
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const footerHtml = `
+      <button class="btn btn-secondary" id="btn-upi-modal-close">Close</button>
+      <button class="btn btn-primary" id="btn-upi-verify-save" style="background: #16a34a; border-color: #16a34a;">
+        <i data-lucide="check-circle-2"></i> Verify &amp; Record Payment
+      </button>
+    `;
+
+    UIComponents.openModal({
+      title: `UPI Payment — ${inv.invoiceNo}`,
+      bodyHtml,
+      footerHtml
+    });
+
+    // Render the crisp QR Code
+    const qrTarget = document.getElementById('upi-modal-qr-target');
+    if (qrTarget) {
+      QRCodeGenerator.render(qrTarget, upiUri, { width: 160, height: 160 });
+    }
+
+    document.getElementById('btn-upi-modal-close').addEventListener('click', () => UIComponents.closeModal());
+
+    document.getElementById('btn-upi-verify-save').addEventListener('click', async () => {
+      const utr = document.getElementById('upi-utr-no').value.trim();
+      const paidNow = parseFloat(document.getElementById('upi-paid-amt').value) || 0;
+
+      if (!utr) {
+        UIComponents.showToast('Please enter the 12-digit UPI UTR / Bank Reference Number.', 'warning');
+        return;
+      }
+      if (paidNow <= 0) {
+        UIComponents.showToast('Please enter a valid payment amount.', 'warning');
+        return;
+      }
+
+      const prevPaid = parseFloat(inv.paid) || 0;
+      const newPaid = prevPaid + paidNow;
+      const newBalance = Math.max(0, (inv.amount || 0) - newPaid);
+      const newStatus = newBalance <= 0 ? 'Paid' : 'Partial';
+
+      const updatePayload = {
+        paid: newPaid,
+        balance: newBalance,
+        status: newStatus,
+        paymentMode: 'UPI QR',
+        notes: `UPI UTR: ${utr} (${new Date().toLocaleDateString('en-GB')})`
+      };
+
+      const res = await dbService.update('invoices', inv.id, updatePayload);
+      if (res && res._syncError) {
+        UIComponents.showToast(`Error updating invoice: ${res._syncError}`, 'danger');
+        return;
+      }
+
+      await auditService.log('UPI_FEE_COLLECTION', 'FINANCE', {
+        invoiceNo: inv.invoiceNo,
+        studentName: inv.studentName,
+        paidNow,
+        utr,
+        newBalance
+      });
+
+      UIComponents.showToast(`Payment of ₹ ${paidNow.toLocaleString()} verified via UPI UTR: ${utr}!`, 'success');
+      UIComponents.closeModal();
+      await FinanceModule.render(container);
+    });
+
     UIComponents.refreshIcons();
   }
 
