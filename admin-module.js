@@ -115,6 +115,7 @@ export class AdminModule {
         <button class="btn btn-secondary admin-tab-btn" data-tab="users">Users &amp; Roles</button>
         <button class="btn btn-secondary admin-tab-btn" data-tab="branding">Branding &amp; Logo</button>
         <button class="btn btn-secondary admin-tab-btn" data-tab="audit">Audit Trail</button>
+        <button class="btn btn-secondary admin-tab-btn" data-tab="backup"><i data-lucide="database"></i> Backup &amp; Recovery</button>
       </div>
 
       <div id="admin-tab-content"></div>
@@ -154,6 +155,7 @@ export class AdminModule {
       else if (tabKey === 'users') await this.renderUsersTab(tabContent);
       else if (tabKey === 'branding') await this.renderBrandingTab(tabContent);
       else if (tabKey === 'audit') await this.renderAuditTab(tabContent);
+      else if (tabKey === 'backup') await this.renderBackupTab(tabContent);
     } catch (e) {
       console.error('Admin tab failed:', e);
       tabContent.innerHTML = `<div class="card"><p style="color:#dc2626;">Failed to load this section: ${esc(e.message)}</p></div>`;
@@ -2545,6 +2547,181 @@ export class AdminModule {
         </div>
       </div>
     `;
+    UIComponents.refreshIcons();
+  }
+
+  /* ================================================================== */
+  /* Institutional Backup & Disaster Recovery                           */
+  /* ================================================================== */
+
+  static async renderBackupTab(tabContent) {
+    const esc = (v) => UIComponents.escapeHtml(v);
+
+    const [
+      students, staff, invoices, apps, exams, att, timetables, certs, settings
+    ] = await Promise.all([
+      dbService.select('students'),
+      dbService.select('staff_directory'),
+      dbService.select('invoices'),
+      dbService.select('admissions_applications'),
+      dbService.select('exam_assessments'),
+      dbService.select('attendance_records'),
+      dbService.select('timetables'),
+      dbService.select('certificates'),
+      dbService.select('admission_settings')
+    ]);
+
+    const stats = [
+      { name: 'Enrolled Students', count: students.length, icon: 'graduation-cap', color: 'emerald' },
+      { name: 'Staff & Faculty', count: staff.length, icon: 'users', color: 'blue' },
+      { name: 'Financial Invoices', count: invoices.length, icon: 'credit-card', color: 'amber' },
+      { name: 'Admission Applications', count: apps.length, icon: 'file-text', color: 'rose' },
+      { name: 'Exam Assessments', count: exams.length, icon: 'award', color: 'blue' },
+      { name: 'Daily Attendance Punches', count: att.length, icon: 'check-square', color: 'emerald' },
+      { name: 'Class Timetables', count: timetables.length, icon: 'calendar-days', color: 'amber' },
+      { name: 'Issued Certificates (TC & Merit)', count: certs.length, icon: 'file-check', color: 'rose' }
+    ];
+
+    tabContent.innerHTML = `
+      <div class="card" style="border-left: 4px solid #16a34a; margin-bottom: 24px;">
+        <div class="card-header" style="flex-wrap: wrap; gap: 12px;">
+          <div>
+            <h2 style="font-size: 1.35rem; font-weight: 800; margin: 0 0 4px; display: flex; align-items: center; gap: 8px;">
+              <span style="color: #16a34a;"><i data-lucide="database"></i></span>
+              Institutional Data Snapshot &amp; Disaster Recovery
+            </h2>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin: 0;">
+              One-click consolidated JSON and CSV data exports ensuring data permanence, offline backups, and zero data loss.
+            </p>
+          </div>
+          <button class="btn btn-primary" id="btn-download-full-json">
+            <i data-lucide="download"></i> Download Full JSON Backup
+          </button>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin: 16px 0;">
+          ${stats.map(s => `
+            <div style="background: var(--bg-subtle, #f8fafc); border: 1px solid var(--border-color); border-radius: 10px; padding: 14px; display: flex; align-items: center; gap: 12px;">
+              <div style="width: 40px; height: 40px; border-radius: 8px; background: rgba(22, 163, 74, 0.1); color: #16a34a; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                <i data-lucide="${s.icon}"></i>
+              </div>
+              <div>
+                <div style="font-size: 1.3rem; font-weight: 800; color: var(--text-main); line-height: 1.1;">${s.count}</div>
+                <div style="font-size: 0.74rem; color: var(--text-muted);">${esc(s.name)}</div>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+
+        <div style="border-top: 1px solid var(--border-color); padding-top: 18px; margin-top: 8px; display: flex; gap: 10px; flex-wrap: wrap;">
+          <button class="btn btn-secondary" id="btn-export-students-csv">
+            <i data-lucide="file-spreadsheet"></i> Export Students Directory (CSV)
+          </button>
+          <button class="btn btn-secondary" id="btn-export-finance-csv">
+            <i data-lucide="file-spreadsheet"></i> Export Invoices Ledger (CSV)
+          </button>
+          <button class="btn btn-secondary" id="btn-export-exams-csv">
+            <i data-lucide="file-spreadsheet"></i> Export Examination Ledger (CSV)
+          </button>
+        </div>
+      </div>
+    `;
+
+    // Download full JSON backup
+    document.getElementById('btn-download-full-json').addEventListener('click', async () => {
+      const backupPayload = {
+        metadata: {
+          institution: TMS_CONFIG.institution.name,
+          campus: TMS_CONFIG.institution.address.campus,
+          academicYear: TMS_CONFIG.academic.currentYear,
+          timestamp: new Date().toISOString(),
+          version: '2.0.0-PROD'
+        },
+        data: {
+          students,
+          staffDirectory: staff,
+          invoices,
+          admissionsApplications: apps,
+          examAssessments: exams,
+          attendanceRecords: att,
+          timetables,
+          certificates: certs,
+          admissionSettings: settings
+        }
+      };
+
+      const blob = new Blob([JSON.stringify(backupPayload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `TMS_ERP_FULL_BACKUP_${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      await auditService.log('DISASTER_RECOVERY_BACKUP_DOWNLOADED', 'GOVERNANCE', {
+        timestamp: new Date().toISOString(),
+        totalStudents: students.length,
+        totalInvoices: invoices.length
+      });
+
+      UIComponents.showToast('Full institutional JSON backup downloaded successfully!', 'success');
+    });
+
+    // Students CSV
+    document.getElementById('btn-export-students-csv').addEventListener('click', () => {
+      const header = ['Admission No', 'Roll No', 'Full Name', 'Grade', 'Section', 'DOB', 'Parent Name', 'Phone', 'Address'];
+      const rows = students.map(s => [
+        s.admissionNo || '',
+        s.rollNo || '',
+        s.fullName || '',
+        s.grade || '',
+        s.section || '',
+        s.dob || '',
+        s.parentName || s.guardianName || '',
+        s.phone || '',
+        s.address || s.village || ''
+      ]);
+      downloadCsv(`TMS_Students_Directory_${new Date().toISOString().slice(0, 10)}`, [header, ...rows]);
+      UIComponents.showToast('Students directory exported to CSV.', 'success');
+    });
+
+    // Invoices CSV
+    document.getElementById('btn-export-finance-csv').addEventListener('click', () => {
+      const header = ['Invoice No', 'Student Name', 'Grade', 'Term', 'Amount', 'Paid', 'Balance', 'Status', 'Due Date'];
+      const rows = invoices.map(i => [
+        i.invoiceNo || '',
+        i.studentName || '',
+        i.grade || '',
+        i.term || '',
+        i.amount || 0,
+        i.paid || 0,
+        i.balance || 0,
+        i.status || '',
+        i.dueDate || ''
+      ]);
+      downloadCsv(`TMS_Finance_Invoices_${new Date().toISOString().slice(0, 10)}`, [header, ...rows]);
+      UIComponents.showToast('Invoices ledger exported to CSV.', 'success');
+    });
+
+    // Exams CSV
+    document.getElementById('btn-export-exams-csv').addEventListener('click', () => {
+      const header = ['Admission No', 'Student Name', 'Grade', 'Term', 'Total Scored', 'Max Total', 'Percentage', 'Overall Grade'];
+      const rows = exams.map(e => [
+        e.admissionNo || '',
+        e.studentName || '',
+        e.grade || '',
+        e.term || '',
+        e.totalScored || 0,
+        e.totalMax || 700,
+        e.percentage || 0,
+        e.overallGrade || ''
+      ]);
+      downloadCsv(`TMS_Exam_Assessments_${new Date().toISOString().slice(0, 10)}`, [header, ...rows]);
+      UIComponents.showToast('Exam assessments exported to CSV.', 'success');
+    });
+
     UIComponents.refreshIcons();
   }
 }
