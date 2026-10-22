@@ -132,13 +132,18 @@ export class ExaminationModule {
       </div>
 
       <!-- Tabs Navigation -->
-      <div style="display: flex; gap: 8px; margin-bottom: 16px;">
-        <button class="btn ${this._examViewTab === 'ledger' ? 'btn-primary' : 'btn-secondary'} btn-sm" id="tab-exam-ledger">
-          <i data-lucide="table"></i> Marks Ledger &amp; Report Cards
-        </button>
-        <button class="btn ${this._examViewTab === 'warning' ? 'btn-primary' : 'btn-secondary'} btn-sm" id="tab-exam-warning">
-          <i data-lucide="alert-triangle" style="color: #f59e0b;"></i> Academic Early Warning &amp; Remedial Radar (${remedialCount} At-Risk)
-        </button>
+      <div class="tms-tab-rail-wrapper">
+        <div class="tms-segmented-tabs">
+          <button class="tms-tab-pill ${this._examViewTab === 'ledger' ? 'active' : ''}" id="tab-exam-ledger">
+            <i data-lucide="table"></i>
+            <span>Marks Ledger &amp; Report Cards</span>
+          </button>
+          <button class="tms-tab-pill ${this._examViewTab === 'warning' ? 'active' : ''}" id="tab-exam-warning">
+            <i data-lucide="alert-triangle" style="color: #f59e0b;"></i>
+            <span>Early Warning &amp; Remedial Radar</span>
+            <span class="tab-badge" style="background: rgba(245, 158, 11, 0.15); color: #d97706;">${remedialCount}</span>
+          </button>
+        </div>
       </div>
 
       ${this._examViewTab === 'ledger' ? `
