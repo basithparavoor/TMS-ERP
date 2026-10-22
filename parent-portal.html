@@ -28,7 +28,6 @@
           <i data-lucide="bell"></i>
           <span id="notification-badge" class="badge badge-danger" style="display: none; position: absolute; top: -4px; right: -4px; font-size: 0.58rem; padding: 1px 5px; line-height: 1.4;">0</span>
         </button>
-        <button class="icon-btn" id="theme-toggle-btn"><i data-lucide="moon"></i></button>
         <button class="icon-btn" id="btn-logout" title="Sign Out"><i data-lucide="log-out"></i></button>
       </div>
     </header>
@@ -136,8 +135,6 @@
 
       UIComponents.initTheme();
       brandingService.refresh();
-      const themeBtn = document.getElementById('theme-toggle-btn');
-      if (themeBtn) themeBtn.addEventListener('click', () => UIComponents.toggleTheme());
       const logoutBtn = document.getElementById('btn-logout');
       if (logoutBtn) logoutBtn.addEventListener('click', () => authService.logout());
 
