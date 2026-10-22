@@ -9,31 +9,41 @@
 
 const LOGO_CACHE_KEY = 'tms_brand_logo';
 
-let customLogoUrl = null;
+let customLogoUrl = './tms-logo.png';
 try {
-  customLogoUrl = localStorage.getItem(LOGO_CACHE_KEY) || null;
+  customLogoUrl = localStorage.getItem(LOGO_CACHE_KEY) || './tms-logo.png';
 } catch (e) {
-  customLogoUrl = null;
+  customLogoUrl = './tms-logo.png';
 }
 
 const attrEsc = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
 
 function customLogoImg(size) {
-  return `<img src="${attrEsc(customLogoUrl)}" alt="Institute Logo" `
+  return `<img src="${attrEsc(customLogoUrl || './tms-logo.png')}" alt="Institute Logo" `
     + `style="width:${size}px; height:${size}px; object-fit:contain; flex-shrink:0;">`;
 }
 
 export const TMS_LOGO = {
   /** Set (or clear) the institute logo used across the whole application. */
   setCustomLogo: (url) => {
-    customLogoUrl = url || null;
+    customLogoUrl = url || './tms-logo.png';
     try {
-      if (customLogoUrl) localStorage.setItem(LOGO_CACHE_KEY, customLogoUrl);
-      else localStorage.removeItem(LOGO_CACHE_KEY);
+      if (url) localStorage.setItem(LOGO_CACHE_KEY, url);
+      else localStorage.setItem(LOGO_CACHE_KEY, './tms-logo.png');
     } catch (e) { /* storage unavailable */ }
   },
 
-  getCustomLogo: () => customLogoUrl,
+  getCustomLogo: () => customLogoUrl || './tms-logo.png',
+
+  animatedLoader: (size = 72, text = 'Loading Thaiba ERP...') => `
+    <div class="tms-animated-loader" style="padding: 32px 16px; text-align: center;">
+      <div class="tms-loader-emblem-wrap" style="position: relative; width: ${size}px; height: ${size}px; margin: 0 auto 14px;">
+        <div class="tms-loader-aura"></div>
+        <img src="${attrEsc(customLogoUrl || './tms-logo.png')}" alt="Thaiba Model School" class="tms-loader-img" style="width: ${size * 0.82}px; height: ${size * 0.82}px; object-fit: contain; position: relative; z-index: 2;">
+      </div>
+      ${text ? `<div class="tms-loader-text" style="font-family: 'Outfit', sans-serif; font-weight: 700; color: #16a34a; font-size: 0.92rem;">${text}</div>` : ''}
+    </div>
+  `,
 
   // Geometric Leaf / Diamond Shield Emblem (Emerald / Green)
   emblemSvg: (size = 48) => {
