@@ -28,6 +28,9 @@ import { AdmissionsEntryModule } from './admissions-entry-module.js';
 import { NotificationCenter } from './notification-center.js';
 import { TimetableModule } from './timetable-module.js';
 import { CertificatesModule } from './certificates-module.js';
+import { IdCardsModule } from './id-cards-module.js';
+import { CalendarModule } from './calendar-module.js';
+import { HomeworkModule } from './homework-module.js';
 import { WhatsAppService } from './whatsapp-service.js';
 import { admissionService } from './admission-service.js';
 import { brandingService } from './branding-service.js';
@@ -203,9 +206,12 @@ class AppController {
       { id: 'my-work', label: 'Staff Workspace', icon: 'briefcase', module: 'my-work' },
       { id: 'admissions-entry', label: 'Admission Entry', icon: 'clipboard-pen', module: 'admissions-entry' },
       { id: 'students', label: 'Student Directory', icon: 'graduation-cap', module: 'students' },
+      { id: 'id-cards', label: 'ID Cards & Badges', icon: 'contact-2', module: 'id-cards' },
       { id: 'attendance', label: 'Attendance & Radar', icon: 'user-check', module: 'attendance' },
       { id: 'academics', label: 'Academic & Timetable', icon: 'book-open', module: 'academics' },
       { id: 'timetable', label: 'Class Timetables', icon: 'calendar-days', module: 'timetable' },
+      { id: 'homework', label: 'Homework Diary', icon: 'book-check', module: 'homework' },
+      { id: 'calendar', label: 'Academic Calendar', icon: 'calendar', module: 'calendar' },
       { id: 'examinations', label: 'Exams & Reports', icon: 'award', module: 'examinations' },
       { id: 'certificates', label: 'Certificates (TC & Merit)', icon: 'file-check', module: 'certificates' },
       { id: 'finance', label: 'Finance & Accounts', icon: 'credit-card', module: 'finance' },
@@ -357,6 +363,18 @@ class AppController {
               <i data-lucide="award" style="color: #16a34a;"></i>
               <div><strong>Exam Gradebook</strong><div style="font-size: 0.7rem; color: var(--text-muted);">CBSE Progress Reports</div></div>
             </button>
+            <button class="btn btn-secondary btn-sm cmd-action-btn" data-action="id-cards" style="justify-content: flex-start; padding: 10px; text-align: left;">
+              <i data-lucide="contact-2" style="color: #16a34a;"></i>
+              <div><strong>ID Cards Studio</strong><div style="font-size: 0.7rem; color: var(--text-muted);">Batch A4 Badges</div></div>
+            </button>
+            <button class="btn btn-secondary btn-sm cmd-action-btn" data-action="homework" style="justify-content: flex-start; padding: 10px; text-align: left;">
+              <i data-lucide="book-check" style="color: #2563eb;"></i>
+              <div><strong>Homework Diary</strong><div style="font-size: 0.7rem; color: var(--text-muted);">Daily Tasks &amp; Broadcast</div></div>
+            </button>
+            <button class="btn btn-secondary btn-sm cmd-action-btn" data-action="calendar" style="justify-content: flex-start; padding: 10px; text-align: left;">
+              <i data-lucide="calendar" style="color: #9333ea;"></i>
+              <div><strong>Academic Calendar</strong><div style="font-size: 0.7rem; color: var(--text-muted);">Holidays &amp; .ics Sync</div></div>
+            </button>
             <button class="btn btn-secondary btn-sm cmd-action-btn" data-action="backup" style="justify-content: flex-start; padding: 10px; text-align: left;">
               <i data-lucide="database" style="color: #6366f1;"></i>
               <div><strong>Data Backup</strong><div style="font-size: 0.7rem; color: var(--text-muted);">Download Full JSON</div></div>
@@ -380,6 +398,12 @@ class AppController {
             } else if (act === 'tc') {
               window.location.hash = '#/certificates';
               setTimeout(() => document.getElementById('btn-new-tc')?.click(), 250);
+            } else if (act === 'id-cards') {
+              window.location.hash = '#/id-cards';
+            } else if (act === 'homework') {
+              window.location.hash = '#/homework';
+            } else if (act === 'calendar') {
+              window.location.hash = '#/calendar';
             } else if (act === 'reports') {
               window.location.hash = '#/examinations';
             } else if (act === 'backup') {
@@ -536,7 +560,6 @@ class AppController {
         openCommandPalette();
       }
     });
-    });
   }
 
   /** Self-service profile editor available to every signed-in user. */
@@ -672,6 +695,9 @@ class AppController {
       case 'students':
         await StudentModule.render(viewport);
         break;
+      case 'id-cards':
+        await IdCardsModule.render(viewport);
+        break;
       case 'attendance':
         await AttendanceModule.render(viewport);
         break;
@@ -680,6 +706,12 @@ class AppController {
         break;
       case 'timetable':
         await TimetableModule.render(viewport);
+        break;
+      case 'homework':
+        await HomeworkModule.render(viewport);
+        break;
+      case 'calendar':
+        await CalendarModule.render(viewport);
         break;
       case 'examinations':
         await ExaminationModule.render(viewport);
@@ -770,8 +802,17 @@ class AppController {
             <a href="#/examinations" class="btn btn-secondary" style="justify-content: flex-start; padding: 14px;">
               <i data-lucide="file-check"></i> Report Cards
             </a>
+            <a href="#/id-cards" class="btn btn-secondary" style="justify-content: flex-start; padding: 14px;">
+              <i data-lucide="contact-2" style="color: #16a34a;"></i> ID Cards &amp; Badges Studio
+            </a>
+            <a href="#/homework" class="btn btn-secondary" style="justify-content: flex-start; padding: 14px;">
+              <i data-lucide="book-check" style="color: #2563eb;"></i> Homework Diary
+            </a>
+            <a href="#/calendar" class="btn btn-secondary" style="justify-content: flex-start; padding: 14px;">
+              <i data-lucide="calendar" style="color: #9333ea;"></i> Academic Calendar (.ics)
+            </a>
             <a href="#/administration" class="btn btn-secondary" style="justify-content: flex-start; padding: 14px;">
-              <i data-lucide="sliders"></i> Fee & Form Builder
+              <i data-lucide="sliders"></i> Fee &amp; Form Builder
             </a>
           </div>
         </div>
