@@ -36,15 +36,20 @@ export class TimetableModule {
 
     this._selectedGrade = this._selectedGrade || (TMS_CONFIG.academic.classes[0] || 'Grade 1');
     this._selectedSection = this._selectedSection || 'A';
+    this._activeView = this._activeView || 'matrix'; // 'matrix' | 'substitution'
+    this._subDate = this._subDate || new Date().toISOString().slice(0, 10);
+    this._absentTeacher = this._absentTeacher || '';
 
-    // Fetch timetables and staff directory
-    const [allTimetables, allStaff] = await Promise.all([
+    // Fetch timetables, staff directory, and substitutions
+    const [allTimetables, allStaff, allSubs] = await Promise.all([
       dbService.select('timetables'),
-      dbService.select('staff_directory')
+      dbService.select('staff_directory'),
+      dbService.select('teacher_substitutions')
     ]);
 
     this._timetables = allTimetables || [];
     this._staff = allStaff || [];
+    this._substitutions = allSubs || [];
 
     const recordId = `tt_${this._selectedGrade}_${this._selectedSection}`.replace(/\s+/g, '_');
     const existing = this._timetables.find(t => 
@@ -57,19 +62,34 @@ export class TimetableModule {
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
           <div>
             <h1 style="font-size: 1.8rem; display: flex; align-items: center; gap: 10px;">
-              <span style="color: #2563eb;"><i data-lucide="calendar-days"></i></span> Class Timetable &amp; Schedule Matrix
+              <span style="color: #2563eb;"><i data-lucide="calendar-days"></i></span> Timetable &amp; Teacher Substitution Matrix
             </h1>
             <p style="color: var(--text-muted); font-size: 0.9rem;">
-              Weekly period schedule, teacher allocations, recess timings, and printable official classroom timetable posters.
+              Weekly period routine, teacher schedule allocations, and automated daily teacher absence &amp; substitution engine.
             </p>
           </div>
           <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-            <button class="btn btn-secondary" id="btn-print-timetable"><i data-lucide="printer"></i> Print Class Timetable (A4)</button>
-            <button class="btn btn-primary" id="btn-save-timetable"><i data-lucide="save"></i> Save Schedule</button>
+            ${this._activeView === 'matrix' ? `
+              <button class="btn btn-secondary" id="btn-print-timetable"><i data-lucide="printer"></i> Print Class Timetable (A4)</button>
+              <button class="btn btn-primary" id="btn-save-timetable"><i data-lucide="save"></i> Save Schedule</button>
+            ` : `
+              <button class="btn btn-primary" id="btn-print-substitution-slips"><i data-lucide="printer"></i> Print Daily Proxy Slips (A4)</button>
+            `}
           </div>
         </div>
       </div>
 
+      <!-- Module View Tabs -->
+      <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+        <button class="btn ${this._activeView === 'matrix' ? 'btn-primary' : 'btn-secondary'} btn-sm" id="tab-tt-matrix">
+          <i data-lucide="grid"></i> Class Timetable Matrix
+        </button>
+        <button class="btn ${this._activeView === 'substitution' ? 'btn-primary' : 'btn-secondary'} btn-sm" id="tab-tt-sub">
+          <i data-lucide="refresh-cw" style="color: #6366f1;"></i> Daily Teacher Absence &amp; Proxy Engine
+        </button>
+      </div>
+
+      ${this._activeView === 'matrix' ? `
       <!-- Filters & Class Picker -->
       <div class="card" style="margin-bottom: 20px;">
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; align-items: flex-end;">
@@ -159,6 +179,216 @@ export class TimetableModule {
           </table>
         </div>
       </div>
+      ` : `
+      <!-- Daily Substitution & Proxy Engine View -->
+      ${(() => {
+        const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const dayIdx = new Date(this._subDate).getDay();
+        const dayName = days[dayIdx];
+
+        // Find classes where absent teacher was scheduled on this day
+        const assignedPeriods = [];
+        if (this._absentTeacher && dayName !== 'Sunday') {
+          this._timetables.forEach(t => {
+            const sched = t.schedule || {};
+            PERIODS.filter(p => !p.isBreak).forEach(p => {
+              const slot = sched[`${dayName}_${p.id}`];
+              if (slot && slot.teacher === this._absentTeacher) {
+                assignedPeriods.push({
+                  grade: t.grade,
+                  section: t.section || 'A',
+                  periodId: p.id,
+                  periodName: p.name,
+                  time: p.time,
+                  subject: slot.subject || 'Class',
+                  room: slot.room || ''
+                });
+              }
+            });
+          });
+        }
+
+        const dateSubs = this._substitutions.filter(s => s.date === this._subDate);
+
+        return `
+          <!-- Toolbar Card -->
+          <div class="card" style="margin-bottom: 20px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; align-items: flex-end;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" style="font-weight: 600;">Date of Absence</label>
+                <input type="date" class="form-input" id="sub-date-input" value="${esc(this._subDate)}">
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" style="font-weight: 600;">Day of Week</label>
+                <input type="text" class="form-input" disabled value="${esc(dayName)}">
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" style="font-weight: 600;">Select Absent Faculty Member *</label>
+                <select class="form-select" id="sub-teacher-select">
+                  <option value="">— Select Teacher on Leave —</option>
+                  ${this._staff.map(st => `
+                    <option value="${esc(st.name)}" ${this._absentTeacher === st.name ? 'selected' : ''}>
+                      ${esc(st.name)} (${esc(st.department || 'Academics')})
+                    </option>
+                  `).join('')}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Periods Scanner Matrix -->
+          <div class="card" style="margin-bottom: 20px;">
+            <div class="card-header" style="flex-wrap: wrap; gap: 10px;">
+              <div>
+                <h3 class="card-title" style="color: #6366f1; display: flex; align-items: center; gap: 8px;">
+                  <i data-lucide="zap"></i> Automated Timetable Substitution Scanner
+                </h3>
+                <p class="card-desc">
+                  ${this._absentTeacher 
+                    ? `Showing ${assignedPeriods.length} scheduled periods for <strong>${esc(this._absentTeacher)}</strong> on ${esc(dayName)}.`
+                    : 'Select a teacher on leave above to scan their scheduled classes and discover available free substitutes.'}
+                </p>
+              </div>
+            </div>
+
+            ${this._absentTeacher ? (assignedPeriods.length ? `
+              <div class="table-responsive">
+                <table class="tms-table">
+                  <thead>
+                    <tr>
+                      <th>Period &amp; Time</th>
+                      <th>Class &amp; Section</th>
+                      <th>Subject</th>
+                      <th>Classroom</th>
+                      <th>Available Free Teachers</th>
+                      <th style="text-align: right;">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${assignedPeriods.map((ap, idx) => {
+                      const freeTeachers = this._staff.filter(st => {
+                        if (st.name === this._absentTeacher) return false;
+                        const isOccupied = this._timetables.some(t => {
+                          const s = t.schedule && t.schedule[`${dayName}_${ap.periodId}`];
+                          return s && s.teacher === st.name;
+                        });
+                        return !isOccupied;
+                      });
+
+                      const existingSub = dateSubs.find(s => 
+                        s.grade === ap.grade && s.section === ap.section && s.period === ap.periodId && s.absentTeacherName === this._absentTeacher
+                      );
+
+                      return `
+                        <tr>
+                          <td>
+                            <strong>${esc(ap.periodName)}</strong>
+                            <div style="font-size: 0.72rem; color: var(--text-muted);">${esc(ap.time)}</div>
+                          </td>
+                          <td><span class="badge badge-info" style="font-weight: 700;">${esc(ap.grade)} (${esc(ap.section)})</span></td>
+                          <td><strong>${esc(ap.subject)}</strong></td>
+                          <td>${esc(ap.room || 'Main Room')}</td>
+                          <td>
+                            ${existingSub ? `
+                              <span class="badge badge-success" style="font-size: 0.8rem; padding: 4px 8px;">
+                                <i data-lucide="check" style="width: 12px; height: 12px; display: inline;"></i> Assigned: <strong>${esc(existingSub.substituteTeacherName)}</strong>
+                              </span>
+                            ` : `
+                              <select class="form-select form-select-sm select-sub-candidate" id="sel-sub-${idx}" style="font-size: 0.82rem; max-width: 280px;">
+                                <option value="">— Select from ${freeTeachers.length} Free Teachers —</option>
+                                ${freeTeachers.map(ft => `<option value="${esc(ft.name)}">${esc(ft.name)} (Free in this period)</option>`).join('')}
+                              </select>
+                            `}
+                          </td>
+                          <td style="text-align: right;">
+                            ${existingSub ? `
+                              <button class="btn btn-secondary btn-sm btn-delete-sub" data-id="${esc(existingSub.id)}" style="color: #ef4444;" title="Cancel Substitution">
+                                <i data-lucide="x-circle"></i>
+                              </button>
+                            ` : `
+                              <button class="btn btn-primary btn-sm btn-assign-sub" 
+                                data-idx="${idx}"
+                                data-date="${esc(this._subDate)}"
+                                data-absent-name="${esc(this._absentTeacher)}"
+                                data-grade="${esc(ap.grade)}"
+                                data-section="${esc(ap.section)}"
+                                data-period="${esc(ap.periodId)}"
+                                data-subject="${esc(ap.subject)}">
+                                <i data-lucide="check"></i> Assign Proxy
+                              </button>
+                            `}
+                          </td>
+                        </tr>
+                      `;
+                    }).join('')}
+                  </tbody>
+                </table>
+              </div>
+            ` : `
+              <div style="padding: 36px; text-align: center; color: var(--text-muted);">
+                <strong>${esc(this._absentTeacher)}</strong> has no classes scheduled on ${esc(dayName)} in the school timetable.
+              </div>
+            `) : `
+              <div style="padding: 40px; text-align: center; color: var(--text-muted);">
+                <i data-lucide="user-x" style="width: 32px; height: 32px; margin-bottom: 8px; color: #94a3b8;"></i>
+                <p>Please select an absent teacher from the dropdown above to calculate their schedule and match available faculty.</p>
+              </div>
+            `}
+          </div>
+
+          <!-- Daily Assigned Substitutions Ledger Card -->
+          <div class="card">
+            <div class="card-header" style="flex-wrap: wrap; gap: 10px;">
+              <div>
+                <h3 class="card-title">Daily Proxy &amp; Substitution Ledger — ${esc(this._subDate)}</h3>
+                <p class="card-desc">Permanent record of assigned faculty substitutions for today's morning bulletin.</p>
+              </div>
+            </div>
+
+            <div class="table-responsive">
+              <table class="tms-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Period</th>
+                    <th>Class</th>
+                    <th>Subject</th>
+                    <th>Teacher on Leave</th>
+                    <th>Assigned Substitute</th>
+                    <th>Status</th>
+                    <th style="text-align: right;">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${dateSubs.length ? dateSubs.map(s => `
+                    <tr>
+                      <td><span class="font-mono">${esc(s.date)}</span></td>
+                      <td><strong>Period ${esc(s.period)}</strong></td>
+                      <td>${esc(s.grade)} (${esc(s.section)})</td>
+                      <td><strong>${esc(s.subject)}</strong></td>
+                      <td><span style="color: #ef4444; font-weight: 600;">${esc(s.absentTeacherName)}</span></td>
+                      <td><span style="color: #16a34a; font-weight: 700;">${esc(s.substituteTeacherName)}</span></td>
+                      <td><span class="badge badge-success">Assigned</span></td>
+                      <td style="text-align: right;">
+                        <button class="btn btn-secondary btn-sm btn-delete-sub" data-id="${esc(s.id)}" style="color: #ef4444;" title="Cancel">
+                          <i data-lucide="trash-2"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  `).join('') : `
+                    <tr>
+                      <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 30px;">
+                        No substitutions assigned yet for ${esc(this._subDate)}.
+                      </td>
+                    </tr>
+                  `}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `;
+      })()}
+      `}
     `;
 
     this.bindEvents(container);
@@ -167,6 +397,100 @@ export class TimetableModule {
 
   static bindEvents(container) {
     const esc = (v) => UIComponents.escapeHtml(v);
+
+    // View Switching Tabs
+    const tabMatrix = container.querySelector('#tab-tt-matrix');
+    const tabSub = container.querySelector('#tab-tt-sub');
+    if (tabMatrix) {
+      tabMatrix.addEventListener('click', () => {
+        this._activeView = 'matrix';
+        this.render(container);
+      });
+    }
+    if (tabSub) {
+      tabSub.addEventListener('click', () => {
+        this._activeView = 'substitution';
+        this.render(container);
+      });
+    }
+
+    // Substitution controls
+    const subDate = container.querySelector('#sub-date-input');
+    if (subDate) {
+      subDate.addEventListener('change', (e) => {
+        this._subDate = e.target.value;
+        this.render(container);
+      });
+    }
+
+    const subTeacher = container.querySelector('#sub-teacher-select');
+    if (subTeacher) {
+      subTeacher.addEventListener('change', (e) => {
+        this._absentTeacher = e.target.value;
+        this.render(container);
+      });
+    }
+
+    // Assign Substitution button
+    container.querySelectorAll('.btn-assign-sub').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const idx = e.currentTarget.dataset.idx;
+        const sel = container.querySelector(`#sel-sub-${idx}`);
+        const subName = sel ? sel.value : '';
+
+        if (!subName) {
+          UIComponents.showToast('Please select an available substitute teacher.', 'warning');
+          return;
+        }
+
+        const date = e.currentTarget.dataset.date;
+        const absentName = e.currentTarget.dataset.absentName;
+        const grade = e.currentTarget.dataset.grade;
+        const section = e.currentTarget.dataset.section;
+        const period = parseInt(e.currentTarget.dataset.period) || 1;
+        const subject = e.currentTarget.dataset.subject;
+
+        const record = {
+          id: `sub_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          date: date,
+          absent_teacher_name: absentName,
+          substitute_teacher_name: subName,
+          period: period,
+          grade: grade,
+          section: section,
+          subject: subject,
+          status: 'assigned'
+        };
+
+        const res = await dbService.insert('teacher_substitutions', record);
+        if (res && res._syncError) {
+          UIComponents.showToast(`Error assigning proxy: ${res._syncError}`, 'danger');
+          return;
+        }
+
+        UIComponents.showToast(`Proxy assigned: ${subName} will cover Period ${period} (${grade})!`, 'success');
+        await this.render(container);
+      });
+    });
+
+    // Delete Substitution button
+    container.querySelectorAll('.btn-delete-sub').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = e.currentTarget.dataset.id;
+        if (!confirm('Cancel this assigned substitution?')) return;
+        await dbService.delete('teacher_substitutions', id);
+        UIComponents.showToast('Substitution removed.', 'info');
+        await this.render(container);
+      });
+    });
+
+    // Print Substitution Slips
+    const printSlipsBtn = container.querySelector('#btn-print-substitution-slips');
+    if (printSlipsBtn) {
+      printSlipsBtn.addEventListener('click', () => {
+        this.openSubstitutionSlipsModal();
+      });
+    }
 
     // Class / Section dropdowns
     const gradeSelect = container.querySelector('#tt-grade-select');
@@ -467,6 +791,71 @@ export class TimetableModule {
       footerHtml: `
         <button class="btn btn-secondary" onclick="document.getElementById('global-modal-close').click()">Close</button>
         <button class="btn btn-primary" onclick="window.print()"><i data-lucide="printer"></i> Print Official Schedule (A4)</button>
+      `
+    });
+
+    UIComponents.refreshIcons();
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Daily Faculty Substitution Slips (A4 Printable)                    */
+  /* ------------------------------------------------------------------ */
+  static openSubstitutionSlipsModal() {
+    const esc = (v) => UIComponents.escapeHtml(v);
+    const dateSubs = this._substitutions.filter(s => s.date === this._subDate);
+    const emblem = TMS_LOGO.emblemSvg(40);
+
+    if (!dateSubs.length) {
+      UIComponents.showToast(`No substitutions have been assigned yet for ${this._subDate}.`, 'warning');
+      return;
+    }
+
+    const bodyHtml = `
+      <style>
+        @media print {
+          @page { size: A4 portrait; margin: 10mm; }
+          body * { visibility: hidden; }
+          #substitution-slips-print, #substitution-slips-print * { visibility: visible; }
+          #substitution-slips-print { position: fixed; left: 0; top: 0; width: 100%; border: none !important; }
+        }
+      </style>
+
+      <div id="substitution-slips-print" style="background:#fff; color:#0f172a; padding:16px; font-family:'Plus Jakarta Sans', sans-serif;">
+        <div style="text-align:center; border-bottom:2px solid #6366f1; padding-bottom:10px; margin-bottom:16px;">
+          <h2 style="font-size:1.25rem; font-weight:800; color:#3730a3; text-transform:uppercase; margin:0;">${esc(TMS_CONFIG.institution.name)}</h2>
+          <div style="font-size:0.75rem; color:#475569; font-weight:600;">DAILY FACULTY PROXY &amp; CLASSROOM SUBSTITUTION NOTICE</div>
+          <div style="font-size:0.72rem; color:#6366f1; font-weight:700; margin-top:2px;">Date: ${esc(this._subDate)} • Morning Assembly Bulletin</div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+          ${dateSubs.map((sub, i) => `
+            <div style="border:1.5px dashed #4f46e5; border-radius:8px; padding:12px; background:#f8fafc; font-size:0.75rem; line-height:1.4; page-break-inside:avoid;">
+              <div style="display:flex; justify-content:space-between; border-bottom:1px solid #cbd5e1; padding-bottom:4px; margin-bottom:6px;">
+                <span style="font-weight:800; color:#4f46e5;">SLIP #${i + 1} • Period ${esc(sub.period)}</span>
+                <span style="font-weight:700; color:#0f172a;">${esc(sub.grade)} (${esc(sub.section)})</span>
+              </div>
+              <div><strong>Assigned Substitute:</strong> <span style="color:#16a34a; font-weight:700;">${esc(sub.substituteTeacherName)}</span></div>
+              <div><strong>Faculty on Leave:</strong> <span style="color:#ef4444;">${esc(sub.absentTeacherName)}</span></div>
+              <div><strong>Subject / Activity:</strong> ${esc(sub.subject)}</div>
+              <div style="margin-top:8px; font-size:0.68rem; color:#64748b;">
+                Please report to the assigned classroom promptly at the bell. Supervise ongoing class assignments.
+              </div>
+              <div style="display:flex; justify-content:space-between; margin-top:14px; font-size:0.65rem; border-top:1px solid #cbd5e1; padding-top:4px;">
+                <span>Coordinator Sign</span>
+                <span>Faculty Acknowledgment</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+
+    UIComponents.openModal({
+      title: `Daily Substitution Slips — ${this._subDate}`,
+      bodyHtml,
+      footerHtml: `
+        <button class="btn btn-secondary" onclick="document.getElementById('global-modal-close').click()">Close</button>
+        <button class="btn btn-primary" onclick="window.print()"><i data-lucide="printer"></i> Print All Slips (A4)</button>
       `
     });
 
