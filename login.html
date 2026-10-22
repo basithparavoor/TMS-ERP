@@ -154,9 +154,17 @@
       const res = await authService.login(email, pass);
       if (res && res.success) {
         UIComponents.showToast(`Welcome back, ${res.user.name}!`, 'success');
-        const isParent = res.user.role === TMS_CONFIG.roles.PARENT;
+        let redirectUrl = 'index.html#/dashboard';
+        if (res.user.role === TMS_CONFIG.roles.PARENT) {
+          redirectUrl = 'parent-portal.html';
+        } else if (res.user.role === TMS_CONFIG.roles.STUDENT) {
+          redirectUrl = 'student-portal.html';
+        } else if (res.user.role === TMS_CONFIG.roles.OFFICE_BOY) {
+          redirectUrl = 'index.html#/admissions-entry';
+        }
+
         setTimeout(() => {
-          window.location.href = isParent ? 'parent-portal.html' : 'index.html#/dashboard';
+          window.location.href = redirectUrl;
         }, 400);
       } else {
         errBox.innerText = res.error || 'Authentication failed. Please verify credentials.';
