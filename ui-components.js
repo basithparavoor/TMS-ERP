@@ -19,12 +19,43 @@ export class UIComponents {
 
   static initTheme() {
     const savedTheme = localStorage.getItem('tms_theme') || 'light';
+    const savedColor = localStorage.getItem('tms_color_theme') || 'emerald';
+
     if (savedTheme === 'dark') {
       document.body.classList.add('dark');
     } else {
       document.body.classList.remove('dark');
     }
+
+    document.documentElement.setAttribute('data-theme', savedColor);
+    document.body.setAttribute('data-theme', savedColor);
     this.updateThemeButton();
+  }
+
+  static setColorTheme(themeName) {
+    const valid = ['emerald', 'sapphire', 'burgundy', 'oled'];
+    const chosen = valid.includes(themeName) ? themeName : 'emerald';
+    
+    if (chosen === 'oled') {
+      document.body.classList.add('dark');
+      localStorage.setItem('tms_theme', 'dark');
+      document.documentElement.setAttribute('data-theme', 'oled');
+      document.body.setAttribute('data-theme', 'oled');
+      localStorage.setItem('tms_color_theme', 'oled');
+    } else {
+      document.documentElement.setAttribute('data-theme', chosen);
+      document.body.setAttribute('data-theme', chosen);
+      localStorage.setItem('tms_color_theme', chosen);
+    }
+
+    this.updateThemeButton();
+    const names = {
+      emerald: 'Thaiba Emerald Theme',
+      sapphire: 'Royal Sapphire Blue Theme',
+      burgundy: 'Noble Burgundy Crimson Theme',
+      oled: 'OLED Midnight Dark Theme'
+    };
+    this.showToast(`${names[chosen]} applied!`, 'info');
   }
 
   static toggleTheme() {
