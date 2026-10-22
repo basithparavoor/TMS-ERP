@@ -26,6 +26,7 @@
       </div>
       <div class="topbar-right">
         <a href="index.html#/dashboard" class="btn btn-secondary btn-sm"><i data-lucide="layout-dashboard"></i> Main ERP</a>
+        <button class="icon-btn" id="btn-logout" title="Sign Out"><i data-lucide="log-out"></i></button>
       </div>
     </header>
 
@@ -55,6 +56,9 @@
       }
 
       UIComponents.initTheme();
+
+      const logoutBtn = document.getElementById('btn-logout');
+      if (logoutBtn) logoutBtn.addEventListener('click', () => authService.logout());
 
       const viewport = document.getElementById('admin-portal-viewport');
       AdminModule.render(viewport);
