@@ -20,8 +20,28 @@ const BUCKET = 'avatars';
 class BrandingService {
   constructor() {
     this.data = this.readCache();
-    if (this.data && this.data.logoUrl) TMS_LOGO.setCustomLogo(this.data.logoUrl);
+    if (this.data && this.data.logoUrl) {
+      TMS_LOGO.setCustomLogo(this.data.logoUrl);
+    }
+    this.updateFavicon();
     this._loaded = false;
+  }
+
+  updateFavicon() {
+    try {
+      const url = this.getLogoUrl();
+      let icon = document.querySelector("link[rel*='icon']");
+      if (!icon) {
+        icon = document.createElement('link');
+        icon.rel = 'icon';
+        document.head.appendChild(icon);
+      }
+      if (url) {
+        icon.href = url;
+        const appleIcon = document.querySelector("link[rel='apple-touch-icon']");
+        if (appleIcon) appleIcon.href = url;
+      }
+    } catch (e) { /* ignore */ }
   }
 
   readCache() {
@@ -51,6 +71,7 @@ class BrandingService {
       this.data = { ...value };
       this.writeCache(this.data);
       TMS_LOGO.setCustomLogo(this.data.logoUrl || null);
+      this.updateFavicon();
       this._loaded = true;
       window.dispatchEvent(new CustomEvent('tms_branding_changed', { detail: this.data }));
     } catch (e) {
@@ -66,6 +87,7 @@ class BrandingService {
     this.data = next;
     this.writeCache(next);
     TMS_LOGO.setCustomLogo(next.logoUrl || null);
+    this.updateFavicon();
     window.dispatchEvent(new CustomEvent('tms_branding_changed', { detail: next }));
     return { data: next };
   }
