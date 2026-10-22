@@ -8,6 +8,8 @@ import { dbService } from './supabase-client.js';
 import { UIComponents } from './ui-components.js';
 import { auditService } from './audit-service.js';
 
+const esc = (v) => UIComponents.escapeHtml(v);
+
 export class MyWorkModule {
   static async render(container) {
     const user = authService.getCurrentUser() || {};
@@ -40,15 +42,38 @@ export class MyWorkModule {
         ${UIComponents.renderKpiCard({ title: 'Pending Tasks', value: `${tasks.filter(t => t.status !== 'Completed').length} Pending`, icon: 'check-square', color: 'rose', subtitle: 'Kanban Action Items' })}
       </div>
 
-      <!-- Navigation Tabs -->
-      <div style="display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 1px solid var(--border-color); overflow-x: auto; padding-bottom: 6px;">
-        <button class="btn btn-primary staff-tab" data-tab="overview"><i data-lucide="layout-dashboard"></i> Overview Hub</button>
-        <button class="btn btn-secondary staff-tab" data-tab="geofence"><i data-lucide="navigation"></i> GPS & Geofence</button>
-        <button class="btn btn-secondary staff-tab" data-tab="register"><i data-lucide="user-check"></i> Class Register (9A)</button>
-        <button class="btn btn-secondary staff-tab" data-tab="tasks"><i data-lucide="kanban"></i> Action Board</button>
-        <button class="btn btn-secondary staff-tab" data-tab="timetable"><i data-lucide="calendar"></i> My Timetable</button>
-        <button class="btn btn-secondary staff-tab" data-tab="leaves"><i data-lucide="umbrella"></i> Leaves & Balances</button>
-        <button class="btn btn-secondary staff-tab" data-tab="payslips"><i data-lucide="receipt"></i> Payslips & CTC</button>
+      <!-- Segmented Pill Tabs Rail -->
+      <div class="tms-tab-rail-wrapper">
+        <div class="tms-segmented-tabs" id="mywork-tab-pills">
+          <button class="tms-tab-pill active staff-tab" data-tab="overview">
+            <i data-lucide="layout-dashboard"></i>
+            <span>Overview Hub</span>
+          </button>
+          <button class="tms-tab-pill staff-tab" data-tab="geofence">
+            <i data-lucide="navigation"></i>
+            <span>GPS &amp; Geofence</span>
+          </button>
+          <button class="tms-tab-pill staff-tab" data-tab="register">
+            <i data-lucide="user-check"></i>
+            <span>Class Register</span>
+          </button>
+          <button class="tms-tab-pill staff-tab" data-tab="tasks">
+            <i data-lucide="kanban"></i>
+            <span>Action Board</span>
+          </button>
+          <button class="tms-tab-pill staff-tab" data-tab="timetable">
+            <i data-lucide="calendar"></i>
+            <span>My Timetable</span>
+          </button>
+          <button class="tms-tab-pill staff-tab" data-tab="leaves">
+            <i data-lucide="umbrella"></i>
+            <span>Leave Balances</span>
+          </button>
+          <button class="tms-tab-pill staff-tab" data-tab="payslips">
+            <i data-lucide="receipt"></i>
+            <span>Salary &amp; CTC</span>
+          </button>
+        </div>
       </div>
 
       <div id="my-work-tab-content"></div>
@@ -472,12 +497,8 @@ export class MyWorkModule {
   static bindEvents(container) {
     container.querySelectorAll('.staff-tab').forEach(btn => {
       btn.addEventListener('click', (e) => {
-        container.querySelectorAll('.staff-tab').forEach(b => {
-          b.classList.remove('btn-primary');
-          b.classList.add('btn-secondary');
-        });
-        e.currentTarget.classList.remove('btn-secondary');
-        e.currentTarget.classList.add('btn-primary');
+        container.querySelectorAll('.staff-tab').forEach(b => b.classList.remove('active'));
+        e.currentTarget.classList.add('active');
         this.renderTab(e.currentTarget.dataset.tab, container);
       });
     });
