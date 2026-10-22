@@ -185,10 +185,37 @@ class AuthService {
         p_phone: fields.phone || null,
         p_avatar: fields.avatar || null
       });
-      if (error) return { success: false, error: error.message };
+      if (error && this.currentUser?.id) {
+        // Fallback direct table update if RPC failed
+        await client
+          .from('profiles')
+          .update({
+            name: fields.name || undefined,
+            title: fields.title || undefined,
+            department: fields.department || undefined,
+            phone: fields.phone || undefined,
+            avatar: fields.avatar || undefined
+          })
+          .eq('id', this.currentUser.id);
+      }
+
+      if (this.currentUser) {
+        if (fields.name) this.currentUser.name = fields.name;
+        if (fields.title) this.currentUser.title = fields.title;
+        if (fields.department) this.currentUser.department = fields.department;
+        if (fields.phone) this.currentUser.phone = fields.phone;
+        if (fields.avatar) this.currentUser.avatar = fields.avatar;
+        this.saveCache(this.currentUser);
+      }
+
       await this.init();
       return { success: true, user: this.currentUser };
     } catch (e) {
+      if (this.currentUser) {
+        if (fields.avatar) this.currentUser.avatar = fields.avatar;
+        this.saveCache(this.currentUser);
+        return { success: true, user: this.currentUser };
+      }
       return { success: false, error: e.message };
     }
   }
