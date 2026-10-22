@@ -10,10 +10,15 @@ import { PermissionEngine, CAPABILITIES } from './permission-engine.js';
 import { downloadCsv } from './export-utils.js';
 import { notificationService } from './notification-service.js';
 import { TMS_LOGO } from './logo.js';
+import { WhatsAppService } from './whatsapp-service.js';
 
 export class FinanceModule {
   static async render(container) {
-    const invoices = await dbService.select('invoices');
+    const [invoices, students] = await Promise.all([
+      dbService.select('invoices'),
+      dbService.select('students')
+    ]);
+    this._students = students || [];
     const esc = (v) => UIComponents.escapeHtml(v);
     const canManage = PermissionEngine.can(CAPABILITIES.MANAGE_FINANCE);
 
@@ -114,6 +119,9 @@ export class FinanceModule {
                       ${inv.balance > 0 ? `
                         <button class="btn btn-primary btn-sm btn-pay-balance" data-id="${esc(inv.id)}" data-name="${esc(inv.studentName)}" data-balance="${esc(inv.balance)}">
                           <i data-lucide="check"></i> Pay
+                        </button>
+                        <button class="btn btn-secondary btn-sm btn-wa-remind" data-inv="${esc(inv.invoiceNo)}" data-name="${esc(inv.studentName)}" data-bal="${esc(inv.balance)}" data-due="${esc(inv.dueDate || '')}" title="Send 1-Click WhatsApp Fee Reminder" style="color:#16a34a;">
+                          <i data-lucide="message-circle"></i> WhatsApp
                         </button>
                       ` : ''}
                       ${canManage ? `
@@ -314,6 +322,24 @@ export class FinanceModule {
         const name = e.currentTarget.dataset.name;
         const bal = e.currentTarget.dataset.balance;
         container.querySelector('#btn-open-cash-counter').click();
+      });
+    });
+
+    // Individual WhatsApp Reminder button
+    container.querySelectorAll('.btn-wa-remind').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const inv = e.currentTarget.dataset.inv;
+        const name = e.currentTarget.dataset.name;
+        const bal = e.currentTarget.dataset.bal;
+        const due = e.currentTarget.dataset.due;
+        const student = (this._students || []).find(s => s.fullName === name || s.name === name);
+        WhatsAppService.sendFeeReminder({
+          studentName: name,
+          invoiceNo: inv,
+          balance: parseFloat(bal) || 0,
+          dueDate: due,
+          parentPhone: student ? (student.phone || student.parentPhone) : ''
+        });
       });
     });
 
