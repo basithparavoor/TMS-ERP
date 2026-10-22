@@ -8,6 +8,7 @@ import { dbService } from './supabase-client.js';
 import { UIComponents } from './ui-components.js';
 import { auditService } from './audit-service.js';
 import { TMS_LOGO } from './logo.js';
+import { WhatsAppService } from './whatsapp-service.js';
 
 export const STANDARD_SUBJECTS = [
   { code: 'ENG', name: 'English Language & Literature', maxTheory: 80, maxPractical: 20 },
@@ -46,6 +47,7 @@ export class ExaminationModule {
     this._selectedGrade = this._selectedGrade || (TMS_CONFIG.academic.classes[0] || 'Grade 1');
     this._selectedSection = this._selectedSection || 'all';
     this._selectedTerm = this._selectedTerm || 'Term 1 Exam';
+    this._examViewTab = this._examViewTab || 'ledger'; // 'ledger' | 'warning'
 
     // Filter students
     let filteredStudents = this._students.filter(s => {
@@ -129,6 +131,17 @@ export class ExaminationModule {
         </div>
       </div>
 
+      <!-- Tabs Navigation -->
+      <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+        <button class="btn ${this._examViewTab === 'ledger' ? 'btn-primary' : 'btn-secondary'} btn-sm" id="tab-exam-ledger">
+          <i data-lucide="table"></i> Marks Ledger &amp; Report Cards
+        </button>
+        <button class="btn ${this._examViewTab === 'warning' ? 'btn-primary' : 'btn-secondary'} btn-sm" id="tab-exam-warning">
+          <i data-lucide="alert-triangle" style="color: #f59e0b;"></i> Academic Early Warning &amp; Remedial Radar (${remedialCount} At-Risk)
+        </button>
+      </div>
+
+      ${this._examViewTab === 'ledger' ? `
       <!-- Result Cards / Roster -->
       <div class="card">
         <div class="card-header" style="flex-wrap: wrap; gap: 10px;">
@@ -231,6 +244,108 @@ export class ExaminationModule {
           </table>
         </div>
       </div>
+      ` : `
+      <!-- Academic Early Warning & Remedial Intervention Radar -->
+      <div class="card">
+        <div class="card-header" style="flex-wrap: wrap; gap: 10px;">
+          <div>
+            <h3 class="card-title" style="color: #d97706; display: flex; align-items: center; gap: 8px;">
+              <i data-lucide="shield-alert"></i> Academic Early Warning &amp; At-Risk Radar
+            </h3>
+            <p class="card-desc">Diagnostic radar identifying students requiring targeted academic intervention, remediation, and parent conferences.</p>
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="tms-table" id="exam-warning-table">
+            <thead>
+              <tr>
+                <th style="width: 50px;">Roll</th>
+                <th>Admission No</th>
+                <th>Student Name</th>
+                <th>Score %</th>
+                <th>Grade</th>
+                <th>Academic Risk Factors</th>
+                <th>Intervention Status</th>
+                <th style="text-align: right;">Action Tools</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filteredStudents.length ? filteredStudents.map(s => {
+                const assess = assessMap[s.id] || assessMap[s.admissionNo];
+                const pct = assess ? (assess.percentage || 0) : null;
+                const subjects = (assess && assess.subjectMarks) || [];
+                const failedSubjects = subjects.filter(sb => ((sb.theory || 0) + (sb.practical || 0)) < 33).map(sb => sb.name || sb.code);
+                
+                let riskLevel = 'none';
+                let riskLabel = 'On Track';
+                let riskBadge = 'badge-success';
+
+                if (pct === null) {
+                  riskLevel = 'unknown';
+                  riskLabel = 'Not Assessed';
+                  riskBadge = 'badge-info';
+                } else if (pct < 33 || failedSubjects.length >= 2) {
+                  riskLevel = 'critical';
+                  riskLabel = 'Critical Risk';
+                  riskBadge = 'badge-danger';
+                } else if (pct < 50 || failedSubjects.length === 1) {
+                  riskLevel = 'moderate';
+                  riskLabel = 'Moderate Concern';
+                  riskBadge = 'badge-warning';
+                }
+
+                const reasons = [];
+                if (pct !== null && pct < 40) reasons.push(`Low aggregate score (${pct}%)`);
+                if (failedSubjects.length) reasons.push(`Failing in: ${failedSubjects.join(', ')}`);
+                if (!reasons.length && pct !== null) reasons.push('Overall progress satisfactory');
+
+                return `
+                  <tr style="${riskLevel === 'critical' ? 'background: rgba(239, 68, 68, 0.05);' : riskLevel === 'moderate' ? 'background: rgba(245, 158, 11, 0.04);' : ''}">
+                    <td><span class="font-mono">${esc(s.rollNo || '—')}</span></td>
+                    <td><span class="font-mono">${esc(s.admissionNo || '—')}</span></td>
+                    <td>
+                      <strong>${esc(s.fullName)}</strong>
+                      <div style="font-size: 0.72rem; color: var(--text-muted);">${esc(s.phone || s.guardianPhone || 'No phone')}</div>
+                    </td>
+                    <td><strong>${pct !== null ? `${pct}%` : '—'}</strong></td>
+                    <td><span class="badge ${riskBadge}">${pct !== null ? calculateGrade(pct).grade : '—'}</span></td>
+                    <td>
+                      <div style="font-size: 0.78rem; line-height: 1.3;">
+                        ${reasons.map(r => `<div style="color: ${riskLevel === 'critical' ? '#dc2626' : riskLevel === 'moderate' ? '#d97706' : '#16a34a'}; font-weight: 600;">• ${esc(r)}</div>`).join('')}
+                      </div>
+                    </td>
+                    <td>
+                      <span class="badge ${riskBadge}" style="font-weight: 700;">${riskLabel}</span>
+                    </td>
+                    <td style="text-align: right;">
+                      <div style="display: inline-flex; gap: 6px;">
+                        ${riskLevel !== 'none' ? `
+                          <button class="btn btn-secondary btn-sm btn-remedial-wa" data-student-id="${esc(s.id)}" data-name="${esc(s.fullName)}" data-phone="${esc(s.phone || s.guardianPhone || '')}" data-grade="${esc(s.grade || '')}" data-reasons="${esc(reasons.join(' | '))}" title="Send Remedial WhatsApp Notice" style="color: #16a34a;">
+                            <i data-lucide="message-circle"></i> WhatsApp
+                          </button>
+                          <button class="btn btn-primary btn-sm btn-remedial-plan" data-student-id="${esc(s.id)}" data-name="${esc(s.fullName)}" data-adm="${esc(s.admissionNo || '')}" data-grade="${esc(s.grade || '')}" data-pct="${esc(pct || '0')}" data-reasons="${esc(reasons.join(', '))}" title="Generate Academic Intervention Plan">
+                            <i data-lucide="file-check"></i> Plan
+                          </button>
+                        ` : `
+                          <span style="font-size: 0.75rem; color: var(--text-muted);">Good Standing</span>
+                        `}
+                      </div>
+                    </td>
+                  </tr>
+                `;
+              }).join('') : `
+                <tr>
+                  <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 36px;">
+                    No pupils to evaluate.
+                  </td>
+                </tr>
+              `}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      `}
     `;
 
     this.bindEvents(container);
@@ -239,6 +354,52 @@ export class ExaminationModule {
 
   static bindEvents(container) {
     const esc = (v) => UIComponents.escapeHtml(v);
+
+    // Tab switching
+    const tabLedger = container.querySelector('#tab-exam-ledger');
+    const tabWarning = container.querySelector('#tab-exam-warning');
+    if (tabLedger) {
+      tabLedger.addEventListener('click', () => {
+        this._examViewTab = 'ledger';
+        this.render(container);
+      });
+    }
+    if (tabWarning) {
+      tabWarning.addEventListener('click', () => {
+        this._examViewTab = 'warning';
+        this.render(container);
+      });
+    }
+
+    // Remedial WhatsApp Button
+    container.querySelectorAll('.btn-remedial-wa').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const name = e.currentTarget.dataset.name;
+        const phone = e.currentTarget.dataset.phone;
+        const grade = e.currentTarget.dataset.grade;
+        const rawReasons = e.currentTarget.dataset.reasons || '';
+        const reasons = rawReasons.split(' | ').filter(Boolean);
+
+        WhatsAppService.sendRemedialAcademicAlert({
+          fullName: name,
+          grade: grade,
+          phone: phone
+        }, reasons);
+      });
+    });
+
+    // Remedial Plan A4 Generator
+    container.querySelectorAll('.btn-remedial-plan').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const name = e.currentTarget.dataset.name;
+        const adm = e.currentTarget.dataset.adm;
+        const grade = e.currentTarget.dataset.grade;
+        const pct = e.currentTarget.dataset.pct;
+        const reasons = e.currentTarget.dataset.reasons;
+
+        this.openRemedialPlanModal(name, adm, grade, pct, reasons);
+      });
+    });
 
     // Filter changes
     const gradeSelect = container.querySelector('#exam-filter-grade');
@@ -977,6 +1138,123 @@ export class ExaminationModule {
       footerHtml: `
         <button class="btn btn-secondary" onclick="document.getElementById('global-modal-close').click()">Close</button>
         <button class="btn btn-primary" onclick="window.print()"><i data-lucide="printer"></i> Print Official Report Card (A4)</button>
+      `
+    });
+
+    UIComponents.refreshIcons();
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Official Academic Intervention & Remediation Plan (A4 Printable)   */
+  /* ------------------------------------------------------------------ */
+  static openRemedialPlanModal(studentName, admNo, grade, pct, reasons) {
+    const esc = (v) => UIComponents.escapeHtml(v);
+    const emblem = TMS_LOGO.emblemSvg(50);
+    const dateStr = new Date().toLocaleDateString('en-GB');
+
+    const printStyles = `
+      <style>
+        @media print {
+          @page { size: A4 portrait; margin: 10mm; }
+          body * { visibility: hidden; }
+          #remedial-plan-print, #remedial-plan-print * { visibility: visible; }
+          #remedial-plan-print { position: fixed; left: 0; top: 0; width: 100%; border: none !important; }
+        }
+      </style>
+    `;
+
+    const planHtml = `
+      <div id="remedial-plan-print" style="background: #ffffff; color: #0f172a; padding: 24px; border: 2px solid #064e3b; border-radius: 8px; font-family: 'Plus Jakarta Sans', sans-serif;">
+        <!-- Header -->
+        <div style="text-align: center; border-bottom: 2px solid #16a34a; padding-bottom: 12px; margin-bottom: 16px;">
+          <div style="display: flex; justify-content: center; margin-bottom: 6px;">${emblem}</div>
+          <h2 style="font-size: 1.35rem; font-weight: 800; color: #166534; text-transform: uppercase; margin: 0;">${esc(TMS_CONFIG.institution.name)}</h2>
+          <div style="font-size: 0.8rem; font-weight: 600; color: #15803d;">Run by : Thaiba Heritage, Kolkata • Academic Session: ${TMS_CONFIG.academic.currentYear}</div>
+          <div style="font-size: 0.72rem; color: #64748b; margin-top: 2px;">DEPARTMENT OF ACADEMIC MONITORING &amp; REMEDIAL EDUCATION</div>
+          <div style="display: inline-block; margin-top: 8px; background: #fef2f2; border: 1.5px solid #ef4444; color: #991b1b; padding: 4px 14px; border-radius: 6px; font-weight: 800; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.05em;">
+            Individualized Academic Intervention &amp; Remedial Roadmap
+          </div>
+        </div>
+
+        <!-- Student Meta -->
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 10px 14px; border-radius: 6px; font-size: 0.82rem; margin-bottom: 16px;">
+          <div><span style="color: #64748b;">Student:</span><br><strong>${esc(studentName)}</strong></div>
+          <div><span style="color: #64748b;">Admission No:</span><br><span class="font-mono" style="font-weight: 700;">${esc(admNo || '—')}</span></div>
+          <div><span style="color: #64748b;">Grade / Class:</span><br><strong>Class ${esc(grade || '—')}</strong></div>
+          <div><span style="color: #64748b;">Current Aggregate:</span><br><strong style="color: #dc2626;">${esc(pct)}%</strong></div>
+        </div>
+
+        <!-- Diagnostic Summary -->
+        <div style="margin-bottom: 16px; border: 1px solid #fee2e2; background: #fff5f5; border-radius: 6px; padding: 12px;">
+          <h4 style="font-size: 0.88rem; color: #991b1b; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+            Identified Academic Weaknesses &amp; Focus Areas:
+          </h4>
+          <p style="font-size: 0.8rem; color: #7f1d1d; margin: 0; line-height: 1.4;">
+            ${esc(reasons || 'Aggregate academic performance has fallen below institutional benchmark.')}
+          </p>
+        </div>
+
+        <!-- Corrective Action Measures -->
+        <div style="margin-bottom: 20px;">
+          <h4 style="font-size: 0.88rem; color: #166534; margin-bottom: 8px; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px;">
+            Target Remedial Measures &amp; Action Plan:
+          </h4>
+          <table style="width: 100%; border-collapse: collapse; font-size: 0.78rem; border: 1px solid #cbd5e1;">
+            <thead>
+              <tr style="background: #f1f5f9; text-align: left;">
+                <th style="padding: 6px 10px; border: 1px solid #cbd5e1;">Intervention Action</th>
+                <th style="padding: 6px 10px; border: 1px solid #cbd5e1;">Frequency</th>
+                <th style="padding: 6px 10px; border: 1px solid #cbd5e1;">Assigned Faculty Mentor</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">After-School Remedial Practice &amp; Concept Re-teaching</td>
+                <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">Mon, Wed, Fri (3:30 PM - 4:30 PM)</td>
+                <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">Subject Specialist</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">Weekly Progress Diagnostic Worksheets &amp; Feedback</td>
+                <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">Every Saturday Morning</td>
+                <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">Class Teacher</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">Structured Textbook Problem Sets &amp; Guided Exercises</td>
+                <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">Daily Home Study (45 mins)</td>
+                <td style="padding: 6px 10px; border: 1px solid #cbd5e1;">Parent / Guardian Supervised</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Signatures & Commitments -->
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 30px; text-align: center; font-size: 0.75rem;">
+          <div>
+            <div style="border-bottom: 1.5px solid #0f172a; margin-bottom: 4px; padding-bottom: 24px;"></div>
+            <strong>Class Teacher</strong>
+          </div>
+          <div>
+            <div style="border-bottom: 1.5px solid #0f172a; margin-bottom: 4px; padding-bottom: 24px;"></div>
+            <strong>Academic Coordinator</strong>
+          </div>
+          <div>
+            <div style="border-bottom: 1.5px solid #0f172a; margin-bottom: 4px; padding-bottom: 24px;"></div>
+            <strong>Parent / Guardian Acknowledgment</strong>
+          </div>
+        </div>
+
+        <div style="text-align: center; font-size: 0.68rem; color: #94a3b8; margin-top: 20px; border-top: 1px dashed #cbd5e1; padding-top: 6px;">
+          Generated on ${dateStr} • Thaiba Model School Academic ERP Diagnostic System
+        </div>
+      </div>
+    `;
+
+    UIComponents.openModal({
+      title: `Academic Intervention Plan — ${studentName}`,
+      bodyHtml: printStyles + planHtml,
+      footerHtml: `
+        <button class="btn btn-secondary" onclick="document.getElementById('global-modal-close').click()">Close</button>
+        <button class="btn btn-primary" onclick="window.print()"><i data-lucide="printer"></i> Print Official Remedial Plan (A4)</button>
       `
     });
 
