@@ -119,12 +119,17 @@ class AppController {
           </nav>
 
           <div class="sidebar-footer">
-            <div class="user-mini-card" id="user-mini-card" role="button" tabindex="0" title="Edit my profile" style="cursor:pointer;">
-              <img id="user-mini-avatar" src="${esc(user.avatar || DEFAULT_AVATAR)}" alt="Avatar">
-              <div class="user-details-mini">
-                <div class="name" id="user-mini-name">${esc(user.name || 'TMS Authorized')}</div>
-                <div class="role" id="user-mini-role">${esc(user.isSuperAdmin ? 'Super Admin' : (user.title || user.role))}</div>
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%;">
+              <div class="user-mini-card" id="user-mini-card" role="button" tabindex="0" title="Edit my profile" style="cursor:pointer; flex: 1; min-width: 0;">
+                <img id="user-mini-avatar" src="${esc(user.avatar || DEFAULT_AVATAR)}" alt="Avatar">
+                <div class="user-details-mini" style="min-width: 0;">
+                  <div class="name" id="user-mini-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${esc(user.name || 'TMS Authorized')}</div>
+                  <div class="role" id="user-mini-role" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${esc(user.isSuperAdmin ? 'Super Admin' : (user.title || user.role))}</div>
+                </div>
               </div>
+              <button class="icon-btn" id="btn-logout" title="Sign Out" style="flex-shrink: 0; color: #ef4444; width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                <i data-lucide="log-out" style="width: 18px; height: 18px;"></i>
+              </button>
             </div>
           </div>
         </aside>
@@ -134,7 +139,7 @@ class AppController {
           <!-- Topbar -->
           <header class="app-topbar">
             <div class="topbar-left">
-              <button class="icon-btn" id="btn-toggle-sidebar" title="Toggle Navigation">
+              <button class="icon-btn mobile-only" id="btn-toggle-sidebar" title="Open Navigation Menu">
                 <i data-lucide="menu"></i>
               </button>
 
@@ -155,35 +160,6 @@ class AppController {
                 <i data-lucide="bell"></i>
                 <span id="notification-badge" class="badge badge-danger" style="display: none; position: absolute; top: -4px; right: -4px; font-size: 0.58rem; padding: 1px 5px; line-height: 1.4;">0</span>
               </button>
-
-              <button class="icon-btn" id="btn-my-profile" title="My Profile">
-                <i data-lucide="user-cog"></i>
-              </button>
-
-              <div class="dropdown" style="position: relative; display: inline-block;">
-                <button class="icon-btn" id="btn-theme-picker" title="Choose Institutional Color Theme">
-                  <i data-lucide="palette"></i>
-                </button>
-                <div id="theme-dropdown-menu" style="display: none; position: absolute; right: 0; top: calc(100% + 8px); background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; box-shadow: var(--shadow-lg); padding: 8px; width: 200px; z-index: 1000;">
-                  <div style="font-size: 0.72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; padding: 4px 8px; letter-spacing: 0.5px;">Theme Palette</div>
-                  <button type="button" class="theme-opt-btn" data-theme="emerald" style="display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; background: transparent; border: none; border-radius: 6px; cursor: pointer; color: var(--text-main); font-size: 0.82rem; text-align: left;">
-                    <span style="width: 14px; height: 14px; border-radius: 50%; background: #16a34a; flex-shrink: 0;"></span>
-                    <span>Thaiba Emerald</span>
-                  </button>
-                  <button type="button" class="theme-opt-btn" data-theme="sapphire" style="display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; background: transparent; border: none; border-radius: 6px; cursor: pointer; color: var(--text-main); font-size: 0.82rem; text-align: left;">
-                    <span style="width: 14px; height: 14px; border-radius: 50%; background: #2563eb; flex-shrink: 0;"></span>
-                    <span>Royal Sapphire</span>
-                  </button>
-                  <button type="button" class="theme-opt-btn" data-theme="burgundy" style="display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; background: transparent; border: none; border-radius: 6px; cursor: pointer; color: var(--text-main); font-size: 0.82rem; text-align: left;">
-                    <span style="width: 14px; height: 14px; border-radius: 50%; background: #991b1b; flex-shrink: 0;"></span>
-                    <span>Noble Burgundy</span>
-                  </button>
-                </div>
-              </div>
-
-              <button class="icon-btn" id="btn-logout" title="Sign Out">
-                <i data-lucide="log-out"></i>
-              </button>
             </div>
           </header>
 
@@ -191,6 +167,30 @@ class AppController {
           <div class="app-viewport" id="app-viewport">
             <!-- Dynamic module content injected here -->
           </div>
+
+          <!-- Mobile App Bottom Navigation Bar -->
+          <nav class="mobile-bottom-nav no-print" id="mobile-bottom-nav">
+            <a href="#/dashboard" class="mobile-nav-item" data-module="dashboard">
+              <i data-lucide="layout-dashboard"></i>
+              <span>Dashboard</span>
+            </a>
+            <a href="#/students" class="mobile-nav-item" data-module="students">
+              <i data-lucide="graduation-cap"></i>
+              <span>Students</span>
+            </a>
+            <a href="#/attendance" class="mobile-nav-item" data-module="attendance">
+              <i data-lucide="user-check"></i>
+              <span>Attendance</span>
+            </a>
+            <a href="#/finance" class="mobile-nav-item" data-module="finance">
+              <i data-lucide="credit-card"></i>
+              <span>Fees</span>
+            </a>
+            <button type="button" class="mobile-nav-item" id="mobile-menu-trigger">
+              <i data-lucide="menu"></i>
+              <span>Menu</span>
+            </button>
+          </nav>
         </main>
       </div>
     `;
@@ -273,24 +273,11 @@ class AppController {
       });
     }
 
-    // Institutional Color Theme Picker
-    const themePickerBtn = document.getElementById('btn-theme-picker');
-    const themeMenu = document.getElementById('theme-dropdown-menu');
-    if (themePickerBtn && themeMenu) {
-      themePickerBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        themeMenu.style.display = themeMenu.style.display === 'block' ? 'none' : 'block';
-      });
-      document.addEventListener('click', () => {
-        themeMenu.style.display = 'none';
-      });
-      themeMenu.querySelectorAll('.theme-opt-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const theme = btn.dataset.theme;
-          UIComponents.setColorTheme(theme);
-          themeMenu.style.display = 'none';
-        });
+    const mobileMenuTrigger = document.getElementById('mobile-menu-trigger');
+    if (mobileMenuTrigger && sidebar && backdrop) {
+      mobileMenuTrigger.addEventListener('click', () => {
+        sidebar.classList.toggle('open');
+        backdrop.classList.toggle('active');
       });
     }
 
@@ -303,8 +290,6 @@ class AppController {
       });
     }
 
-    const profileBtn = document.getElementById('btn-my-profile');
-    if (profileBtn) profileBtn.addEventListener('click', () => this.openMyProfile());
     const miniCard = document.getElementById('user-mini-card');
     if (miniCard) {
       miniCard.addEventListener('click', () => this.openMyProfile());
@@ -662,6 +647,22 @@ class AppController {
         item.classList.remove('active');
       }
     });
+
+    document.querySelectorAll('.mobile-nav-item').forEach(item => {
+      if (item.dataset.module === moduleName) {
+        item.classList.add('active');
+      } else {
+        item.classList.remove('active');
+      }
+    });
+
+    // Close mobile drawer when navigating
+    const sidebarEl = document.getElementById('app-sidebar');
+    const backdropEl = document.getElementById('sidebar-backdrop');
+    if (sidebarEl && backdropEl && sidebarEl.classList.contains('open')) {
+      sidebarEl.classList.remove('open');
+      backdropEl.classList.remove('active');
+    }
 
     if (!PermissionEngine.canAccessModule(moduleName)) {
       viewport.innerHTML = `
