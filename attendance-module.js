@@ -408,52 +408,52 @@ export class AttendanceModule {
     const today = new Date().toISOString().split('T')[0];
 
     const bodyHtml = `
-      <div style="background: #0f172a; color: #f8fafc; border-radius: 12px; padding: 24px; text-align: center;">
+      <div style="background: #ffffff; color: var(--text-main); border-radius: 12px; padding: 20px; text-align: center; border: 1px solid var(--border-color);">
         <!-- Kiosk Header -->
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; padding-bottom: 14px; margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 14px; margin-bottom: 20px;">
           <div style="text-align: left;">
-            <div style="font-size: 0.75rem; text-transform: uppercase; color: #22c55e; font-weight: 700; letter-spacing: 1px; display: flex; align-items: center; gap: 6px;">
-              <span style="width: 8px; height: 8px; border-radius: 50%; background: #22c55e; display: inline-block; animation: pulse 1.5s infinite;"></span>
+            <div style="font-size: 0.75rem; text-transform: uppercase; color: #16a34a; font-weight: 700; letter-spacing: 1px; display: flex; align-items: center; gap: 6px;">
+              <span style="width: 8px; height: 8px; border-radius: 50%; background: #16a34a; display: inline-block; animation: pulse 1.5s infinite;"></span>
               GATE 01 • MAIN ENTRY TERMINAL ONLINE
             </div>
-            <div style="font-size: 1.1rem; font-weight: 700; color: #fff;">${esc(TMS_CONFIG.institution.name)}</div>
+            <div style="font-size: 1.1rem; font-weight: 700; color: var(--text-main);">${esc(TMS_CONFIG.institution.name)}</div>
           </div>
           <div style="text-align: right;">
-            <div id="kiosk-live-clock" style="font-size: 1.25rem; font-weight: 800; font-family: monospace; color: #38bdf8;">--:--:--</div>
-            <div style="font-size: 0.75rem; color: #94a3b8;">${new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</div>
+            <div id="kiosk-live-clock" style="font-size: 1.25rem; font-weight: 800; font-family: monospace; color: #16a34a;">--:--:--</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">${new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })}</div>
           </div>
         </div>
 
         <!-- Scanner / Input Zone -->
         <div style="max-width: 480px; margin: 0 auto 24px;">
-          <div style="width: 140px; height: 140px; border: 3px solid #22c55e; border-radius: 16px; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; background: rgba(34, 197, 94, 0.08); position: relative;">
-            <i data-lucide="scan" style="width: 70px; height: 70px; color: #22c55e;"></i>
+          <div style="width: 140px; height: 140px; border: 3px solid #16a34a; border-radius: 16px; margin: 0 auto 16px; display: flex; align-items: center; justify-content: center; background: rgba(22, 163, 74, 0.08); position: relative;">
+            <i data-lucide="scan" style="width: 70px; height: 70px; color: #16a34a;"></i>
           </div>
 
-          <label style="display: block; font-size: 0.85rem; color: #cbd5e1; margin-bottom: 8px; font-weight: 600;">
+          <label style="display: block; font-size: 0.85rem; color: var(--text-main); margin-bottom: 8px; font-weight: 600;">
             Scan Student QR / Barcode Card or Enter Admission No:
           </label>
           <div style="display: flex; gap: 8px;">
-            <input type="text" id="kiosk-scan-input" class="form-input font-mono" placeholder="Scan or enter Admission No (e.g. TMS/2027/001)" autofocus style="font-size: 1.05rem; padding: 10px 14px; text-align: center; background: #1e293b; color: #fff; border-color: #475569;">
+            <input type="text" id="kiosk-scan-input" class="form-input font-mono" placeholder="Scan or enter Admission No (e.g. TMS/2027/001)" autofocus style="font-size: 1.05rem; padding: 10px 14px; text-align: center; background: #ffffff; color: var(--text-main); border: 1.5px solid var(--border-color);">
             <button class="btn btn-primary" id="kiosk-punch-btn" style="padding: 0 20px;"><i data-lucide="corner-down-left"></i> Punch</button>
           </div>
-          <div style="font-size: 0.74rem; color: #94a3b8; margin-top: 6px;">
+          <div style="font-size: 0.74rem; color: var(--text-muted); margin-top: 6px;">
             Supports USB Barcode Guns, 2D QR Scanners, and instant keyboard inputs.
           </div>
         </div>
 
         <!-- Live Punch Result Display Box -->
-        <div id="kiosk-punch-feedback" style="min-height: 110px; background: #1e293b; border: 1px dashed #475569; border-radius: 10px; padding: 16px; margin-bottom: 20px; display: flex; align-items: center; justify-content: center;">
-          <span style="color: #64748b; font-size: 0.9rem;">Awaiting student scan or badge swipe...</span>
+        <div id="kiosk-punch-feedback" style="min-height: 100px; background: #f8fafc; border: 1px dashed var(--border-color); border-radius: 10px; padding: 16px; margin-bottom: 20px; display: flex; align-items: center; justify-content: center;">
+          <span style="color: var(--text-muted); font-size: 0.9rem;">Awaiting student scan or badge swipe...</span>
         </div>
 
         <!-- Recent Punches Roster -->
         <div style="text-align: left;">
-          <div style="font-size: 0.8rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px;">
+          <div style="font-size: 0.8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px;">
             Recent Terminal Punches Today:
           </div>
-          <div id="kiosk-recent-punches" style="max-height: 160px; overflow-y: auto; background: #1e293b; border-radius: 8px; padding: 8px;">
-            <div style="text-align: center; color: #64748b; font-size: 0.8rem; padding: 12px;">No check-ins recorded in this session yet.</div>
+          <div id="kiosk-recent-punches" style="max-height: 160px; overflow-y: auto; background: #f8fafc; border: 1px solid var(--border-color); border-radius: 8px; padding: 8px;">
+            <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 12px;">No check-ins recorded in this session yet.</div>
           </div>
         </div>
       </div>
@@ -574,13 +574,13 @@ export class AttendanceModule {
       });
 
       recentBox.innerHTML = recentList.slice(0, 8).map(item => `
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-bottom: 1px solid #334155; font-size: 0.82rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--border-color); font-size: 0.82rem;">
           <div>
             <strong>${esc(item.name)}</strong>
-            <span style="color: #94a3b8; font-size: 0.75rem; margin-left: 6px;">(${esc(item.adm)} • ${esc(item.grade)})</span>
+            <span style="color: var(--text-muted); font-size: 0.75rem; margin-left: 6px;">(${esc(item.adm)} • ${esc(item.grade)})</span>
           </div>
           <div style="display: flex; align-items: center; gap: 8px;">
-            <span class="font-mono" style="color: #38bdf8;">${esc(item.time)}</span>
+            <span class="font-mono" style="color: #16a34a; font-weight: 700;">${esc(item.time)}</span>
             <span class="badge ${item.status === 'present' ? 'badge-success' : 'badge-warning'}" style="font-size: 0.7rem;">${item.status.toUpperCase()}</span>
           </div>
         </div>
