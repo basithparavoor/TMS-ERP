@@ -16,6 +16,10 @@ import { brandingService } from './branding-service.js';
 import { downloadCsv, exportPdf, kvTable } from './export-utils.js';
 
 const esc = (v) => UIComponents.escapeHtml(v);
+const safeOn = (id, event, fn) => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener(event, fn);
+};
 
 const STATUS_BADGE = {
   'Submitted': 'badge-info',
@@ -106,35 +110,91 @@ export class AdminModule {
 
       <div id="admin-auth-warning"></div>
 
-      <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; overflow-x: auto;">
-        <button class="btn btn-primary admin-tab-btn" data-tab="applications">Applications (${stats.total})</button>
-        <button class="btn btn-secondary admin-tab-btn" data-tab="form-builder">Admission Form Builder</button>
-        <button class="btn btn-secondary admin-tab-btn" data-tab="fees">Admission Fees</button>
-        <button class="btn btn-secondary admin-tab-btn" data-tab="payment-settings">Admission &amp; Guidelines</button>
-        <button class="btn btn-secondary admin-tab-btn" data-tab="notifications">Notifications</button>
-        <button class="btn btn-secondary admin-tab-btn" data-tab="users">Users &amp; Roles</button>
-        <button class="btn btn-secondary admin-tab-btn" data-tab="branding">Branding &amp; Logo</button>
-        <button class="btn btn-secondary admin-tab-btn" data-tab="audit">Audit Trail</button>
-        <button class="btn btn-secondary admin-tab-btn" data-tab="backup"><i data-lucide="database"></i> Backup &amp; Recovery</button>
+      <!-- Primary Segmented Tabs Rail (Modern Showcase Style) -->
+      <div class="tms-tab-rail-wrapper">
+        <div class="tms-segmented-tabs" id="admin-primary-tabs">
+          <button class="tms-tab-pill active" data-group="admissions">
+            <i data-lucide="clipboard-list"></i>
+            <span>Admissions Hub</span>
+            <span class="tab-badge" id="admin-apps-badge">${stats.total}</span>
+          </button>
+          <button class="tms-tab-pill" data-group="users">
+            <i data-lucide="shield-check"></i>
+            <span>Access & Security</span>
+          </button>
+          <button class="tms-tab-pill" data-group="notices">
+            <i data-lucide="bell"></i>
+            <span>Notifications</span>
+          </button>
+          <button class="tms-tab-pill" data-group="system">
+            <i data-lucide="sliders"></i>
+            <span>Governance & Backup</span>
+          </button>
+        </div>
       </div>
+
+      <!-- Secondary Subtabs Rail -->
+      <div class="tms-subtab-rail" id="admin-subtab-rail"></div>
 
       <div id="admin-tab-content"></div>
     `;
 
     this.bindEvents(container);
-    await this.renderTab('applications');
+    this.switchGroup('admissions', 'applications');
+  }
+
+  static switchGroup(groupKey, targetSubtab = null) {
+    const SUBTABS = {
+      admissions: [
+        { key: 'applications', label: 'Applications Roster', icon: 'file-text' },
+        { key: 'form-builder', label: 'Form Field Builder', icon: 'layout-template' },
+        { key: 'fees', label: 'Fee Structure Master', icon: 'receipt' },
+        { key: 'payment-settings', label: 'Portal Rules & Video', icon: 'settings' }
+      ],
+      users: [
+        { key: 'users', label: 'User Logins & Roles', icon: 'users' },
+        { key: 'audit', label: 'Security Audit Trail', icon: 'shield-alert' }
+      ],
+      notices: [
+        { key: 'notifications', label: 'Broadcast Bulletins', icon: 'bell' }
+      ],
+      system: [
+        { key: 'branding', label: 'Institute Logo & Emblem', icon: 'image' },
+        { key: 'backup', label: 'JSON Disaster Recovery', icon: 'database' }
+      ]
+    };
+
+    const subList = SUBTABS[groupKey] || SUBTABS.admissions;
+    const subRail = document.getElementById('admin-subtab-rail');
+    if (!subRail) return;
+
+    const activeSubKey = targetSubtab || subList[0].key;
+
+    subRail.innerHTML = subList.map(st => `
+      <button class="tms-subtab-pill ${st.key === activeSubKey ? 'active' : ''}" data-tab="${st.key}">
+        <i data-lucide="${st.icon}" style="width: 14px; height: 14px;"></i>
+        <span>${st.label}</span>
+      </button>
+    `).join('');
+
+    subRail.querySelectorAll('.tms-subtab-pill').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        subRail.querySelectorAll('.tms-subtab-pill').forEach(b => b.classList.remove('active'));
+        e.currentTarget.classList.add('active');
+        this.renderTab(e.currentTarget.dataset.tab);
+      });
+    });
+
+    UIComponents.refreshIcons();
+    this.renderTab(activeSubKey);
   }
 
   static bindEvents(container) {
-    container.querySelectorAll('.admin-tab-btn').forEach((btn) => {
+    container.querySelectorAll('#admin-primary-tabs .tms-tab-pill').forEach((btn) => {
       btn.addEventListener('click', (e) => {
-        container.querySelectorAll('.admin-tab-btn').forEach((b) => {
-          b.classList.remove('btn-primary');
-          b.classList.add('btn-secondary');
-        });
-        e.currentTarget.classList.remove('btn-secondary');
-        e.currentTarget.classList.add('btn-primary');
-        this.renderTab(e.currentTarget.dataset.tab);
+        container.querySelectorAll('#admin-primary-tabs .tms-tab-pill').forEach((b) => b.classList.remove('active'));
+        e.currentTarget.classList.add('active');
+        this.switchGroup(e.currentTarget.dataset.group);
       });
     });
 
@@ -237,19 +297,19 @@ export class AdminModule {
 
     this.renderApplicationRows(tabContent);
 
-    document.getElementById('app-search').addEventListener('input', () => this.renderApplicationRows(tabContent));
-    document.getElementById('app-status-filter').addEventListener('change', () => this.renderApplicationRows(tabContent));
-    document.getElementById('btn-view-merit-list').addEventListener('click', () => this.openMeritListModal());
-    document.getElementById('btn-export-csv').addEventListener('click', () => this.exportApplicationsCsv());
-    document.getElementById('btn-export-pdf').addEventListener('click', () => this.exportApplicationsPdf());
-    document.getElementById('btn-delete-pending').addEventListener('click', () => this.deletePendingApplications());
-    document.getElementById('btn-select-visible').addEventListener('click', () => this.toggleSelectAll(true, tabContent));
-    document.getElementById('btn-clear-selection').addEventListener('click', () => this.toggleSelectAll(false, tabContent));
-    document.getElementById('app-select-all').addEventListener('change', (e) => this.toggleSelectAll(e.target.checked, tabContent));
-    document.getElementById('bulk-approve').addEventListener('click', () => this.bulkStatus('Approved'));
-    document.getElementById('bulk-reject').addEventListener('click', () => this.bulkStatus('Rejected'));
-    document.getElementById('bulk-export').addEventListener('click', () => this.exportSelectedCsv());
-    document.getElementById('bulk-delete').addEventListener('click', () => this.bulkDelete());
+    safeOn('app-search', 'input', () => this.renderApplicationRows(tabContent));
+    safeOn('app-status-filter', 'change', () => this.renderApplicationRows(tabContent));
+    safeOn('btn-view-merit-list', 'click', () => this.openMeritListModal());
+    safeOn('btn-export-csv', 'click', () => this.exportApplicationsCsv());
+    safeOn('btn-export-pdf', 'click', () => this.exportApplicationsPdf());
+    safeOn('btn-delete-pending', 'click', () => this.deletePendingApplications());
+    safeOn('btn-select-visible', 'click', () => this.toggleSelectAll(true, tabContent));
+    safeOn('btn-clear-selection', 'click', () => this.toggleSelectAll(false, tabContent));
+    safeOn('app-select-all', 'change', (e) => this.toggleSelectAll(e.target.checked, tabContent));
+    safeOn('bulk-approve', 'click', () => this.bulkStatus('Approved'));
+    safeOn('bulk-reject', 'click', () => this.bulkStatus('Rejected'));
+    safeOn('bulk-export', 'click', () => this.exportSelectedCsv());
+    safeOn('bulk-delete', 'click', () => this.bulkDelete());
   }
 
   static filteredApplications() {
@@ -1314,7 +1374,7 @@ export class AdminModule {
       this.renderTab('form-builder');
     });
 
-    document.getElementById('btn-add-field').addEventListener('click', () => this.openFieldModal(null));
+    safeOn('btn-add-field', 'click', () => this.openFieldModal(null));
     tabContent.querySelectorAll('.btn-edit-field').forEach((b) =>
       b.addEventListener('click', () => this.openFieldModal(list.find((f) => f.fieldKey === b.dataset.key) || null)));
     tabContent.querySelectorAll('.btn-del-field').forEach((b) =>
@@ -1480,7 +1540,7 @@ export class AdminModule {
       this.renderTab('fees');
     });
 
-    document.getElementById('btn-add-fee').addEventListener('click', () => this.openFeeModal(null));
+    safeOn('btn-add-fee', 'click', () => this.openFeeModal(null));
     tabContent.querySelectorAll('.btn-edit-fee').forEach((b) =>
       b.addEventListener('click', () => this.openFeeModal(list.find((f) => f.id === b.dataset.id) || null)));
     tabContent.querySelectorAll('.btn-del-fee').forEach((b) =>
@@ -1858,25 +1918,25 @@ export class AdminModule {
     addSwitchStyles();
 
     // Guidelines listeners
-    document.getElementById('btn-add-guideline').addEventListener('click', () => {
+    safeOn('btn-add-guideline', 'click', () => {
       const inp = document.getElementById('new-guideline-text');
-      const val = (inp.value || '').trim();
+      const val = (inp?.value || '').trim();
       if (!val) return;
       currentInstructions.push(val);
-      inp.value = '';
+      if (inp) inp.value = '';
       renderGuidelinesList();
       const ta = document.getElementById('set-instructions-raw');
       if (ta) ta.value = currentInstructions.join('\n');
     });
 
-    document.getElementById('new-guideline-text').addEventListener('keydown', (e) => {
+    safeOn('new-guideline-text', 'keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
-        document.getElementById('btn-add-guideline').click();
+        document.getElementById('btn-add-guideline')?.click();
       }
     });
 
-    document.getElementById('btn-reset-guidelines').addEventListener('click', () => {
+    safeOn('btn-reset-guidelines', 'click', () => {
       if (!confirm('Reset all guidelines back to the school default instructions?')) return;
       currentInstructions = (DEFAULT_INSTRUCTIONS || []).slice();
       renderGuidelinesList();
@@ -1893,25 +1953,25 @@ export class AdminModule {
     }
 
     // Popup instructions listeners
-    document.getElementById('btn-add-popup').addEventListener('click', () => {
+    safeOn('btn-add-popup', 'click', () => {
       const inp = document.getElementById('new-popup-text');
-      const val = (inp.value || '').trim();
+      const val = (inp?.value || '').trim();
       if (!val) return;
       currentPopupInstructions.push(val);
-      inp.value = '';
+      if (inp) inp.value = '';
       renderPopupList();
       const ta = document.getElementById('set-popup-raw');
       if (ta) ta.value = currentPopupInstructions.join('\n');
     });
 
-    document.getElementById('new-popup-text').addEventListener('keydown', (e) => {
+    safeOn('new-popup-text', 'keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
-        document.getElementById('btn-add-popup').click();
+        document.getElementById('btn-add-popup')?.click();
       }
     });
 
-    document.getElementById('btn-reset-popup').addEventListener('click', () => {
+    safeOn('btn-reset-popup', 'click', () => {
       if (!confirm('Reset popup instructions back to default?')) return;
       currentPopupInstructions = (DEFAULT_POPUP_INSTRUCTIONS || []).slice();
       renderPopupList();
@@ -1931,12 +1991,12 @@ export class AdminModule {
     const previewVideoBtn = document.getElementById('btn-preview-video');
     if (previewVideoBtn) {
       previewVideoBtn.addEventListener('click', () => {
-        const url = (document.getElementById('set-video-url').value || '').trim();
-        const title = (document.getElementById('set-video-title').value || '').trim() || 'Instruction Video';
+        const url = (document.getElementById('set-video-url')?.value || '').trim();
+        const title = (document.getElementById('set-video-title')?.value || '').trim() || 'Instruction Video';
         const wrapper = document.getElementById('video-preview-wrapper');
         const badge = document.getElementById('badge-video-status');
         if (!url) {
-          wrapper.innerHTML = '<p style="color:#ef4444; font-size:0.82rem; margin:0; padding:12px; background:rgba(239,68,68,0.08); border:1px dashed #ef4444; border-radius:8px; text-align:center;">Please enter a video URL first.</p>';
+          if (wrapper) wrapper.innerHTML = '<p style="color:#ef4444; font-size:0.82rem; margin:0; padding:12px; background:rgba(239,68,68,0.08); border:1px dashed #ef4444; border-radius:8px; text-align:center;">Please enter a video URL first.</p>';
           if (badge) {
             badge.className = 'badge badge-info';
             badge.innerText = 'No Video Set';
@@ -1946,7 +2006,7 @@ export class AdminModule {
 
         const embedHtml = renderVideoPlayerHtml(url, title);
         if (embedHtml) {
-          wrapper.innerHTML = embedHtml;
+          if (wrapper) wrapper.innerHTML = embedHtml;
           if (badge) {
             badge.className = 'badge badge-success';
             badge.innerText = 'Video Configured';
@@ -1954,12 +2014,12 @@ export class AdminModule {
           UIComponents.refreshIcons();
           UIComponents.showToast('Video player preview loaded!', 'success');
         } else {
-          wrapper.innerHTML = '<p style="color:#ef4444; font-size:0.82rem; margin:0; padding:12px; background:rgba(239,68,68,0.08); border:1px dashed #ef4444; border-radius:8px; text-align:center;">Invalid video URL format. Please enter a valid YouTube, Vimeo, or MP4 link.</p>';
+          if (wrapper) wrapper.innerHTML = '<p style="color:#ef4444; font-size:0.82rem; margin:0; padding:12px; background:rgba(239,68,68,0.08); border:1px dashed #ef4444; border-radius:8px; text-align:center;">Invalid video URL format. Please enter a valid YouTube, Vimeo, or MP4 link.</p>';
         }
       });
     }
 
-    document.getElementById('btn-save-settings').addEventListener('click', async () => {
+    safeOn('btn-save-settings', 'click', async () => {
       const showFeeStructure = document.getElementById('set-show-fee-structure').checked;
       const showGuidelines = document.getElementById('set-show-guidelines').checked;
       const showInstructionVideo = document.getElementById('set-show-video').checked;
@@ -2057,19 +2117,19 @@ export class AdminModule {
       if (el) el.innerText = checkedNotices().length;
     };
     tabContent.querySelectorAll('.notif-row-check').forEach((c) => c.addEventListener('change', syncNoticeCount));
-    document.getElementById('notif-select-all').addEventListener('change', (e) => {
+    safeOn('notif-select-all', 'change', (e) => {
       tabContent.querySelectorAll('.notif-row-check').forEach((c) => { c.checked = e.target.checked; });
       syncNoticeCount();
     });
-    document.getElementById('btn-select-all-notices').addEventListener('click', () => {
+    safeOn('btn-select-all-notices', 'click', () => {
       tabContent.querySelectorAll('.notif-row-check').forEach((c) => { c.checked = true; });
       syncNoticeCount();
     });
-    document.getElementById('btn-clear-notices').addEventListener('click', () => {
+    safeOn('btn-clear-notices', 'click', () => {
       tabContent.querySelectorAll('.notif-row-check').forEach((c) => { c.checked = false; });
       syncNoticeCount();
     });
-    document.getElementById('btn-bulk-del-notices').addEventListener('click', async () => {
+    safeOn('btn-bulk-del-notices', 'click', async () => {
       const ids = checkedNotices();
       if (!ids.length) { UIComponents.showToast('Select at least one notification.', 'warning'); return; }
       if (!confirm(`Delete ${ids.length} notification(s)?`)) return;
@@ -2082,7 +2142,7 @@ export class AdminModule {
       this.renderTab('notifications');
     });
 
-    document.getElementById('btn-create-notification').addEventListener('click', () => this.openNotificationModal());
+    safeOn('btn-create-notification', 'click', () => this.openNotificationModal());
     tabContent.querySelectorAll('.btn-del-notice').forEach((b) =>
       b.addEventListener('click', async () => {
         if (!confirm('Delete this notification?')) return;
@@ -2556,6 +2616,10 @@ export class AdminModule {
 
   static async renderBackupTab(tabContent) {
     const esc = (v) => UIComponents.escapeHtml(v);
+const safeOn = (id, event, fn) => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener(event, fn);
+};
 
     const [
       students, staff, invoices, apps, exams, att, timetables, certs, settings
@@ -2628,7 +2692,7 @@ export class AdminModule {
     `;
 
     // Download full JSON backup
-    document.getElementById('btn-download-full-json').addEventListener('click', async () => {
+    safeOn('btn-download-full-json', 'click', async () => {
       const backupPayload = {
         metadata: {
           institution: TMS_CONFIG.institution.name,
@@ -2670,7 +2734,7 @@ export class AdminModule {
     });
 
     // Students CSV
-    document.getElementById('btn-export-students-csv').addEventListener('click', () => {
+    safeOn('btn-export-students-csv', 'click', () => {
       const header = ['Admission No', 'Roll No', 'Full Name', 'Grade', 'Section', 'DOB', 'Parent Name', 'Phone', 'Address'];
       const rows = students.map(s => [
         s.admissionNo || '',
@@ -2688,7 +2752,7 @@ export class AdminModule {
     });
 
     // Invoices CSV
-    document.getElementById('btn-export-finance-csv').addEventListener('click', () => {
+    safeOn('btn-export-finance-csv', 'click', () => {
       const header = ['Invoice No', 'Student Name', 'Grade', 'Term', 'Amount', 'Paid', 'Balance', 'Status', 'Due Date'];
       const rows = invoices.map(i => [
         i.invoiceNo || '',
