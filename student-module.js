@@ -111,6 +111,7 @@ export class StudentModule {
                   <td>
                     <div style="display: flex; gap: 6px; flex-wrap:wrap;">
                       <button class="btn btn-secondary btn-sm btn-print-id" data-id="${esc(s.id)}" title="Print ID Card"><i data-lucide="id-card"></i> ID</button>
+                      <button class="btn btn-secondary btn-sm btn-merit-log" data-id="${esc(s.id)}" title="Merits &amp; Demerits / Conduct" style="color: #16a34a;"><i data-lucide="shield-check"></i> Merit</button>
                       <button class="btn btn-secondary btn-sm btn-view-profile" data-id="${esc(s.id)}" title="View Details"><i data-lucide="eye"></i> View</button>
                       ${canManage ? `
                       <button class="btn btn-secondary btn-sm btn-edit-student" data-id="${esc(s.id)}" title="Edit student"><i data-lucide="pencil"></i></button>
@@ -510,6 +511,310 @@ export class StudentModule {
         if (!s) return;
         await StudentModule.openStudentIdCardModal(s);
       });
+    });
+
+    // Merit & Demerit Log Modal
+    container.querySelectorAll('.btn-merit-log').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = e.currentTarget.dataset.id;
+        const students = await dbService.select('students');
+        const s = students.find(item => item.id === id);
+        if (!s) return;
+        await StudentModule.openMeritModal(s, container);
+      });
+    });
+
+    // Comprehensive Student Profile Modal
+    container.querySelectorAll('.btn-view-profile').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = e.currentTarget.dataset.id;
+        const students = await dbService.select('students');
+        const s = students.find(item => item.id === id);
+        if (!s) return;
+        await StudentModule.openStudentProfileModal(s, container);
+      });
+    });
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Student Behavioral Merit & Demerit Conduct Ledger                  */
+  /* ------------------------------------------------------------------ */
+  static async openMeritModal(student, container) {
+    const esc = (v) => UIComponents.escapeHtml(v);
+    const allMerits = await dbService.select('student_merits') || [];
+    const studentMerits = allMerits.filter(m => m.studentId === student.id || m.admissionNo === student.admissionNo);
+
+    // Compute Net Points
+    let netScore = 0;
+    studentMerits.forEach(m => {
+      const pts = parseInt(m.points, 10) || 0;
+      if (m.type === 'merit') netScore += pts;
+      else netScore -= Math.abs(pts);
+    });
+
+    const bodyHtml = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+        <!-- Student Header -->
+        <div style="display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px;">
+          <div>
+            <div style="font-size: 1.15rem; font-weight: 800; color: #0f172a;">${esc(student.fullName)}</div>
+            <div style="font-size: 0.8rem; color: #64748b;">Adm: <strong class="font-mono">${esc(student.admissionNo)}</strong> • Roll: <strong>${esc(student.rollNo || '—')}</strong> • Class: <strong>${esc(student.grade)} ${esc(student.section || 'A')}</strong></div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 0.72rem; text-transform: uppercase; color: #64748b; font-weight: 700;">Conduct Score</div>
+            <span class="badge ${netScore >= 20 ? 'badge-success' : netScore >= 0 ? 'badge-info' : 'badge-danger'}" style="font-size: 1.05rem; padding: 4px 12px; margin-top: 2px;">
+              ${netScore > 0 ? '+' : ''}${netScore} Points
+            </span>
+          </div>
+        </div>
+
+        <!-- Add Award / Demerit Form -->
+        <div style="background: #ffffff; border: 1.5px solid #16a34a; border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+          <div style="font-size: 0.88rem; font-weight: 700; color: #166534; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+            <i data-lucide="plus-circle" style="width: 16px; height: 16px;"></i> Award Merit Badge or Record Disciplinary Notice
+          </div>
+          <div style="display: grid; grid-template-columns: 140px 1fr 100px; gap: 10px; margin-bottom: 10px;">
+            <div>
+              <label class="form-label" style="font-size: 0.75rem;">Action Type</label>
+              <select class="form-select" id="inp-merit-type" style="padding: 6px 10px; font-size: 0.82rem;">
+                <option value="merit">🌟 Merit Badge</option>
+                <option value="demerit">⚠️ Demerit / Notice</option>
+              </select>
+            </div>
+            <div>
+              <label class="form-label" style="font-size: 0.75rem;">Category / Recognition</label>
+              <select class="form-select" id="inp-merit-cat" style="padding: 6px 10px; font-size: 0.82rem;">
+                <option value="Quranic Adab & Sunnah Etiquette|10">🌟 Quranic Adab & Sunnah Etiquette (+10 pts)</option>
+                <option value="Academic Excellence & Olympiad|15">📚 Academic Excellence & Olympiad (+15 pts)</option>
+                <option value="100% Punctuality & Perfect Attendance|10">⏰ 100% Punctuality & Attendance (+10 pts)</option>
+                <option value="Peer Assistance & Campus Service|10">🤝 Peer Assistance & Campus Service (+10 pts)</option>
+                <option value="Co-Curricular, Arts & Speech Contest|10">🎨 Co-Curricular & Speech (+10 pts)</option>
+                <option value="Late Arrival to Morning Assembly|5">⚠️ Late Arrival to Morning Assembly (-5 pts)</option>
+                <option value="Homework Incompletion / Neglect|5">⚠️ Homework Incompletion (-5 pts)</option>
+                <option value="Uniform / Dress Code Infraction|5">⚠️ Uniform / Dress Code Infraction (-5 pts)</option>
+                <option value="Classroom Disruptive Behavior|10">⚠️ Classroom Disruptive Behavior (-10 pts)</option>
+              </select>
+            </div>
+            <div>
+              <label class="form-label" style="font-size: 0.75rem;">Points</label>
+              <input type="number" class="form-input font-mono" id="inp-merit-points" value="10" style="padding: 6px 10px; font-size: 0.82rem; text-align: center;">
+            </div>
+          </div>
+          <div style="display: flex; gap: 10px; align-items: flex-end;">
+            <div style="flex: 1;">
+              <label class="form-label" style="font-size: 0.75rem;">Teacher's Note / Context</label>
+              <input type="text" class="form-input" id="inp-merit-notes" placeholder="e.g. Demonstrated exceptional humility and kindness helping Grade 1 students." style="padding: 6px 10px; font-size: 0.82rem;">
+            </div>
+            <button class="btn btn-primary" id="btn-save-merit-entry" style="padding: 6px 16px; font-size: 0.82rem;">
+              <i data-lucide="check"></i> Record Entry
+            </button>
+          </div>
+        </div>
+
+        <!-- History Ledger -->
+        <div>
+          <div style="font-size: 0.82rem; font-weight: 700; color: #475569; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px;">
+            Conduct &amp; Merit History Timeline:
+          </div>
+          <div style="max-height: 240px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px;">
+            ${studentMerits.length ? `
+              <table class="tms-table" style="font-size: 0.8rem;">
+                <thead>
+                  <tr style="background: #f8fafc;">
+                    <th style="width: 80px;">Type</th>
+                    <th>Category</th>
+                    <th>Teacher's Note</th>
+                    <th style="width: 75px; text-align: center;">Points</th>
+                    <th style="width: 90px;">Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${studentMerits.map(m => `
+                    <tr>
+                      <td>
+                        <span class="badge ${m.type === 'merit' ? 'badge-success' : 'badge-danger'}" style="font-size: 0.7rem;">
+                          ${m.type === 'merit' ? 'MERIT' : 'DEMERIT'}
+                        </span>
+                      </td>
+                      <td><strong>${esc(m.category)}</strong></td>
+                      <td style="color: #64748b;">${esc(m.reason || '—')}</td>
+                      <td style="text-align: center; font-weight: 700; color: ${m.type === 'merit' ? '#16a34a' : '#dc2626'};" class="font-mono">
+                        ${m.type === 'merit' ? '+' : '-'}${Math.abs(m.points)}
+                      </td>
+                      <td style="font-size: 0.75rem; color: #64748b;">${esc(m.date || (m.createdAt || '').slice(0, 10))}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            ` : `
+              <div style="text-align: center; color: var(--text-muted); padding: 24px; font-size: 0.85rem;">
+                No merit or discipline events recorded yet for this student. Student is in perfect standing.
+              </div>
+            `}
+          </div>
+        </div>
+      </div>
+    `;
+
+    UIComponents.openModal({
+      title: `Student Behavioral & Merit Log — ${student.fullName}`,
+      bodyHtml,
+      footerHtml: `
+        <button class="btn btn-secondary" onclick="document.getElementById('global-modal-close').click()">Close</button>
+      `
+    });
+
+    UIComponents.refreshIcons();
+
+    // Auto-update points when category changes
+    const catSelect = document.getElementById('inp-merit-cat');
+    const ptsInput = document.getElementById('inp-merit-points');
+    const typeSelect = document.getElementById('inp-merit-type');
+    if (catSelect && ptsInput) {
+      catSelect.addEventListener('change', () => {
+        const parts = catSelect.value.split('|');
+        if (parts[1]) ptsInput.value = parts[1];
+        if (parts[0].startsWith('⚠️')) {
+          typeSelect.value = 'demerit';
+        } else {
+          typeSelect.value = 'merit';
+        }
+      });
+    }
+
+    // Save entry
+    const saveBtn = document.getElementById('btn-save-merit-entry');
+    if (saveBtn) {
+      saveBtn.addEventListener('click', async () => {
+        const catVal = catSelect.value.split('|')[0];
+        const points = parseInt(ptsInput.value, 10) || 10;
+        const notes = document.getElementById('inp-merit-notes').value.trim();
+        const type = typeSelect.value;
+
+        saveBtn.disabled = true;
+        saveBtn.innerText = 'Saving...';
+
+        await dbService.insert('student_merits', {
+          studentId: student.id,
+          studentName: student.fullName,
+          admissionNo: student.admissionNo,
+          grade: student.grade,
+          type,
+          category: catVal,
+          points,
+          reason: notes,
+          date: new Date().toISOString().split('T')[0]
+        });
+
+        await auditService.log('MERIT_AWARDED', 'STUDENTS', {
+          student: student.fullName,
+          admissionNo: student.admissionNo,
+          type,
+          category: catVal,
+          points
+        });
+
+        UIComponents.showToast(`${type === 'merit' ? '🌟 Merit badge' : '⚠️ Disciplinary note'} saved!`, 'success');
+        StudentModule.openMeritModal(student, container);
+      });
+    }
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Comprehensive 360-Degree Student Profile Viewer                    */
+  /* ------------------------------------------------------------------ */
+  static async openStudentProfileModal(student, container) {
+    const esc = (v) => UIComponents.escapeHtml(v);
+    const [allMerits, allInvoices, allAttendance] = await Promise.all([
+      dbService.select('student_merits'),
+      dbService.select('invoices'),
+      dbService.select('attendance_records')
+    ]);
+
+    const merits = (allMerits || []).filter(m => m.studentId === student.id || m.admissionNo === student.admissionNo);
+    const invoices = (allInvoices || []).filter(i => i.studentId === student.id || i.admissionNo === student.admissionNo || (i.studentName && i.studentName.toLowerCase() === (student.fullName || '').toLowerCase()));
+    const attList = (allAttendance || []).filter(a => a.studentId === student.id || a.admissionNo === student.admissionNo);
+
+    const totalDue = invoices.reduce((s, i) => s + (parseFloat(i.balance) || 0), 0);
+    const presentCount = attList.filter(a => a.status === 'present').length;
+    const attRate = attList.length ? `${Math.round((presentCount / attList.length) * 100)}%` : '100%';
+
+    let netMerit = 0;
+    merits.forEach(m => {
+      netMerit += (m.type === 'merit' ? 1 : -1) * (parseInt(m.points, 10) || 0);
+    });
+
+    const bodyHtml = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+        <!-- Header Banner -->
+        <div style="display: flex; gap: 16px; align-items: center; background: linear-gradient(135deg, #064e3b, #0f172a); color: #fff; padding: 18px; border-radius: 12px; margin-bottom: 20px;">
+          <div style="width: 72px; height: 72px; border-radius: 50%; overflow: hidden; background: #e2e8f0; border: 3px solid #16a34a; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
+            ${student.photo ? `<img src="${esc(student.photo)}" style="width: 100%; height: 100%; object-fit: cover;">` : `<span style="font-size: 1.8rem; font-weight: 800; color: #0f172a;">${(student.fullName || 'S').slice(0, 1)}</span>`}
+          </div>
+          <div style="flex: 1;">
+            <div style="font-size: 1.35rem; font-weight: 800; color: #4ade80;">${esc(student.fullName)}</div>
+            <div style="font-size: 0.85rem; color: #cbd5e1; margin-top: 2px;">
+              Admission: <strong class="font-mono" style="color: #fff;">${esc(student.admissionNo)}</strong> • Roll: <strong>${esc(student.rollNo || '—')}</strong> • Class: <strong>${esc(student.grade)} ${esc(student.section || 'A')}</strong>
+            </div>
+            <div style="margin-top: 6px; display: flex; gap: 8px;">
+              <span class="badge badge-success">${esc(student.status || 'Active')}</span>
+              <span class="badge badge-info">Session ${esc(TMS_CONFIG.academic.currentYear)}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Metric KPI Cards -->
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px;">
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; text-align: center;">
+            <div style="font-size: 0.72rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Attendance Rate</div>
+            <div style="font-size: 1.25rem; font-weight: 800; color: #16a34a; margin-top: 2px;">${attRate}</div>
+          </div>
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; text-align: center;">
+            <div style="font-size: 0.72rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Conduct Score</div>
+            <div style="font-size: 1.25rem; font-weight: 800; color: ${netMerit >= 0 ? '#16a34a' : '#dc2626'}; margin-top: 2px;">${netMerit > 0 ? '+' : ''}${netMerit} Pts</div>
+          </div>
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; text-align: center;">
+            <div style="font-size: 0.72rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Outstanding Fee</div>
+            <div style="font-size: 1.25rem; font-weight: 800; color: ${totalDue > 0 ? '#dc2626' : '#16a34a'}; margin-top: 2px;">₹ ${totalDue.toLocaleString()}</div>
+          </div>
+        </div>
+
+        <!-- Particulars & Emergency Details -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; font-size: 0.85rem; margin-bottom: 16px;">
+          <div><strong>Date of Birth:</strong> ${esc(student.dob || student.dateOfBirth || '—')}</div>
+          <div><strong>Gender:</strong> ${esc(student.gender || '—')}</div>
+          <div><strong>Blood Group:</strong> <span class="badge badge-info">${esc(student.bloodGroup || student.blood_group || '—')}</span></div>
+          <div><strong>Father / Guardian:</strong> ${esc(student.guardianName || student.parentName || '—')}</div>
+          <div><strong>Guardian Phone:</strong> <span class="font-mono">${esc(student.guardianPhone || '—')}</span></div>
+          <div><strong>Address:</strong> ${esc(student.address || '—')}</div>
+          <div style="grid-column: 1/-1; border-top: 1px dashed #cbd5e1; padding-top: 8px; margin-top: 4px;">
+            <strong style="color: #dc2626;">Allergies / Medical Notes:</strong>
+            <span style="color: #475569;">${esc(student.allergies || student.medical_conditions || 'None recorded.')}</span>
+          </div>
+        </div>
+      </div>
+    `;
+
+    UIComponents.openModal({
+      title: `Student 360° Profile — ${student.fullName}`,
+      bodyHtml,
+      footerHtml: `
+        <button class="btn btn-secondary" onclick="document.getElementById('global-modal-close').click()">Close</button>
+        <button class="btn btn-secondary" id="btn-profile-open-merit" style="color: #16a34a;"><i data-lucide="shield-check"></i> Merit Ledger</button>
+        <button class="btn btn-primary" id="btn-profile-print-id"><i data-lucide="id-card"></i> Print ID Badge</button>
+      `
+    });
+
+    UIComponents.refreshIcons();
+
+    document.getElementById('btn-profile-open-merit')?.addEventListener('click', () => {
+      UIComponents.closeModal();
+      StudentModule.openMeritModal(student, container);
+    });
+
+    document.getElementById('btn-profile-print-id')?.addEventListener('click', () => {
+      UIComponents.closeModal();
+      StudentModule.openStudentIdCardModal(student);
     });
   }
 
