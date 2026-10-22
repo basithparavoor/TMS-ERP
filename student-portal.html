@@ -25,7 +25,6 @@
       </div>
       <div class="topbar-right">
         <span class="badge badge-info" id="portal-topbar-badge">—</span>
-        <button class="icon-btn" id="theme-toggle-btn"><i data-lucide="moon"></i></button>
       </div>
     </header>
 
@@ -140,8 +139,6 @@
 
       UIComponents.initTheme();
       UIComponents.refreshIcons();
-      const themeBtn = document.getElementById('theme-toggle-btn');
-      if (themeBtn) themeBtn.addEventListener('click', () => UIComponents.toggleTheme());
 
       const esc = (v) => UIComponents.escapeHtml(v);
       const setText = (id, value) => {
