@@ -87,6 +87,52 @@ body.dark {
   --shadow-glow: 0 0 30px rgba(34, 197, 94, 0.3);
 }
 
+/* Institutional Theme Accents */
+[data-theme="sapphire"] {
+  --primary-h: 217;
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
+  --primary-light: #dbeafe;
+  --border-focus: #2563eb;
+  --shadow-glow: 0 0 25px rgba(37, 99, 235, 0.25);
+}
+
+[data-theme="burgundy"] {
+  --primary-h: 350;
+  --primary: #991b1b;
+  --primary-dark: #7f1d1d;
+  --primary-light: #fee2e2;
+  --border-focus: #991b1b;
+  --shadow-glow: 0 0 25px rgba(153, 27, 27, 0.25);
+}
+
+[data-theme="oled"], body.dark {
+  --bg-canvas: #060911;
+  --bg-card: rgba(15, 23, 42, 0.95);
+  --bg-card-hover: rgba(26, 36, 56, 0.95);
+  --bg-sidebar: #020617;
+  --bg-topbar: rgba(15, 23, 42, 0.92);
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-subtle: #64748b;
+  --border-color: rgba(255, 255, 255, 0.1);
+  --border-focus: #22c55e;
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 8px 24px -2px rgba(0, 0, 0, 0.6);
+  --shadow-lg: 0 16px 36px -4px rgba(0, 0, 0, 0.8);
+  --shadow-glow: 0 0 30px rgba(34, 197, 94, 0.3);
+}
+
+body[data-theme="sapphire"].dark, body.dark[data-theme="sapphire"] {
+  --border-focus: #38bdf8;
+  --shadow-glow: 0 0 30px rgba(56, 189, 248, 0.3);
+}
+
+body[data-theme="burgundy"].dark, body.dark[data-theme="burgundy"] {
+  --border-focus: #f87171;
+  --shadow-glow: 0 0 30px rgba(248, 113, 113, 0.3);
+}
+
 /* Base Reset */
 *, *::before, *::after {
   box-sizing: border-box;
