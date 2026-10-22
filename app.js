@@ -168,16 +168,8 @@ class AppController {
                     <span style="width: 14px; height: 14px; border-radius: 50%; background: #991b1b; flex-shrink: 0;"></span>
                     <span>Noble Burgundy</span>
                   </button>
-                  <button type="button" class="theme-opt-btn" data-theme="oled" style="display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px; background: transparent; border: none; border-radius: 6px; cursor: pointer; color: var(--text-main); font-size: 0.82rem; text-align: left;">
-                    <span style="width: 14px; height: 14px; border-radius: 50%; background: #020617; border: 1px solid #475569; flex-shrink: 0;"></span>
-                    <span>OLED Midnight</span>
-                  </button>
                 </div>
               </div>
-
-              <button class="icon-btn" id="theme-toggle-btn" title="Toggle Light/Dark Mode">
-                <i data-lucide="moon"></i>
-              </button>
 
               <button class="icon-btn" id="btn-logout" title="Sign Out">
                 <i data-lucide="log-out"></i>
@@ -270,11 +262,6 @@ class AppController {
         sidebar.classList.remove('open');
         backdrop.classList.remove('active');
       });
-    }
-
-    const themeBtn = document.getElementById('theme-toggle-btn');
-    if (themeBtn) {
-      themeBtn.addEventListener('click', () => UIComponents.toggleTheme());
     }
 
     // Institutional Color Theme Picker
