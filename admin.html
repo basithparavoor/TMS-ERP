@@ -26,7 +26,6 @@
       </div>
       <div class="topbar-right">
         <a href="index.html#/dashboard" class="btn btn-secondary btn-sm"><i data-lucide="layout-dashboard"></i> Main ERP</a>
-        <button class="icon-btn" id="theme-toggle-btn"><i data-lucide="moon"></i></button>
       </div>
     </header>
 
@@ -56,8 +55,6 @@
       }
 
       UIComponents.initTheme();
-      const themeBtn = document.getElementById('theme-toggle-btn');
-      if (themeBtn) themeBtn.addEventListener('click', () => UIComponents.toggleTheme());
 
       const viewport = document.getElementById('admin-portal-viewport');
       AdminModule.render(viewport);
