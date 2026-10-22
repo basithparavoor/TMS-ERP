@@ -32,11 +32,22 @@ export class AcademicModule {
         ${UIComponents.renderKpiCard({ title: 'Timetable Status', value: '—', icon: 'check-circle', color: 'emerald', subtitle: 'No Timetable Published Yet' })}
       </div>
 
-      <!-- Academic Tabs -->
-      <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 6px;">
-        <button class="btn btn-primary acad-tab" data-tab="classes">Classes & Class Teachers</button>
-        <button class="btn btn-secondary acad-tab" data-tab="subjects">Subject Master</button>
-        <button class="btn btn-secondary acad-tab" data-tab="syllabus">Syllabus Progress</button>
+      <!-- Academic Segmented Tabs -->
+      <div class="tms-tab-rail-wrapper">
+        <div class="tms-segmented-tabs">
+          <button class="tms-tab-pill active acad-tab" data-tab="classes">
+            <i data-lucide="layers"></i>
+            <span>Classes &amp; Teachers</span>
+          </button>
+          <button class="tms-tab-pill acad-tab" data-tab="subjects">
+            <i data-lucide="book"></i>
+            <span>Subject Master</span>
+          </button>
+          <button class="tms-tab-pill acad-tab" data-tab="syllabus">
+            <i data-lucide="line-chart"></i>
+            <span>Syllabus Tracker</span>
+          </button>
+        </div>
       </div>
 
       <div id="acad-tab-content"></div>
@@ -133,12 +144,8 @@ export class AcademicModule {
   static bindEvents(container) {
     container.querySelectorAll('.acad-tab').forEach(btn => {
       btn.addEventListener('click', (e) => {
-        container.querySelectorAll('.acad-tab').forEach(b => {
-          b.classList.remove('btn-primary');
-          b.classList.add('btn-secondary');
-        });
-        e.currentTarget.classList.remove('btn-secondary');
-        e.currentTarget.classList.add('btn-primary');
+        container.querySelectorAll('.acad-tab').forEach(b => b.classList.remove('active'));
+        e.currentTarget.classList.add('active');
         this.renderTab(e.currentTarget.dataset.tab, container);
       });
     });
