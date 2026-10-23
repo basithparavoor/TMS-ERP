@@ -173,20 +173,84 @@
       }
     });
 
-    document.getElementById('btn-forgot-password').addEventListener('click', async (e) => {
+    document.getElementById('btn-forgot-password').addEventListener('click', (e) => {
       e.preventDefault();
-      const ident = document.getElementById('login-email').value.trim();
-      if (!ident) {
-        UIComponents.showToast('Enter your email or username first.', 'warning');
-        return;
-      }
-      const email = await resolveLoginEmail(ident);
-      const res = await authService.requestPasswordReset(email);
-      if (res.success) {
-        UIComponents.showToast('Password reset link sent to your email.', 'success');
-      } else {
-        UIComponents.showToast(res.error || 'Unable to send reset email.', 'danger');
-      }
+      const currentIdent = document.getElementById('login-email').value.trim();
+
+      UIComponents.openModal({
+        title: 'Reset Your Account Password',
+        bodyHtml: `
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 14px; line-height: 1.5;">
+              Enter your registered account email address or your staff username. We will immediately dispatch a secure password recovery link to your inbox.
+            </p>
+            <div class="form-group" style="margin-bottom: 14px;">
+              <label class="form-label">Email or Username *</label>
+              <div style="position: relative;">
+                <input type="text" class="form-input" id="inp-forgot-ident" placeholder="e.g. cmbasith786@gmail.com or username" value="${UIComponents.escapeHtml(currentIdent)}" autofocus style="padding-left: 38px;">
+                <i data-lucide="mail" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--text-muted);"></i>
+              </div>
+            </div>
+            <div id="forgot-status-box" style="display: none; padding: 10px 14px; border-radius: 8px; font-size: 0.82rem; margin-top: 10px;"></div>
+          </div>
+        `,
+        footerHtml: `
+          <button class="btn btn-secondary" onclick="document.getElementById('global-modal-close').click()">Cancel</button>
+          <button class="btn btn-primary" id="btn-submit-forgot"><i data-lucide="send"></i> Send Reset Link</button>
+        `
+      });
+
+      UIComponents.refreshIcons();
+
+      const identInput = document.getElementById('inp-forgot-ident');
+      const submitForgotBtn = document.getElementById('btn-submit-forgot');
+      const statusBox = document.getElementById('forgot-status-box');
+
+      submitForgotBtn?.addEventListener('click', async () => {
+        const ident = identInput.value.trim();
+        if (!ident) {
+          statusBox.style.display = 'block';
+          statusBox.style.background = '#fef2f2';
+          statusBox.style.color = '#dc2626';
+          statusBox.style.border = '1px solid #fecaca';
+          statusBox.innerHTML = '<i data-lucide="alert-circle"></i> Please enter your registered email or username.';
+          UIComponents.refreshIcons();
+          identInput.focus();
+          return;
+        }
+
+        submitForgotBtn.disabled = true;
+        submitForgotBtn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Sending link...';
+        UIComponents.refreshIcons();
+        statusBox.style.display = 'none';
+
+        const email = await resolveLoginEmail(ident);
+        const res = await authService.requestPasswordReset(email);
+
+        if (res.success) {
+          statusBox.style.display = 'block';
+          statusBox.style.background = '#f0fdf4';
+          statusBox.style.color = '#166534';
+          statusBox.style.border = '1px solid #86efac';
+          statusBox.innerHTML = `
+            <strong>✓ Reset Link Dispatched!</strong><br>
+            A secure recovery link has been sent to <strong>${UIComponents.escapeHtml(email)}</strong>.<br>
+            Please check your inbox (and spam/junk folder) and click the link to choose your new password.
+          `;
+          submitForgotBtn.innerText = 'Sent ✓';
+          submitForgotBtn.disabled = true;
+          UIComponents.refreshIcons();
+        } else {
+          submitForgotBtn.disabled = false;
+          submitForgotBtn.innerHTML = '<i data-lucide="send"></i> Try Again';
+          statusBox.style.display = 'block';
+          statusBox.style.background = '#fef2f2';
+          statusBox.style.color = '#dc2626';
+          statusBox.style.border = '1px solid #fecaca';
+          statusBox.innerHTML = `<strong>Failed to send email:</strong> ${UIComponents.escapeHtml(res.error || 'Please check your connection and try again.')}`;
+          UIComponents.refreshIcons();
+        }
+      });
     });
 
     // Check if user landed via Supabase Password Recovery link
@@ -199,11 +263,17 @@
           </div>
           <div class="form-group">
             <label class="form-label">New Password (minimum 6 characters) *</label>
-            <input type="password" class="form-input font-mono" id="rec-new-pass" placeholder="••••••••••••" autofocus minlength="6">
+            <div style="position: relative;">
+              <input type="password" class="form-input font-mono" id="rec-new-pass" placeholder="••••••••••••" autofocus minlength="6" style="padding-right: 40px;">
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-toggle-p1" style="position: absolute; right: 6px; top: 50%; transform: translateY(-50%); padding: 3px 8px; border: none; background: transparent;"><i data-lucide="eye"></i></button>
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label">Confirm New Password *</label>
-            <input type="password" class="form-input font-mono" id="rec-confirm-pass" placeholder="••••••••••••" minlength="6">
+            <div style="position: relative;">
+              <input type="password" class="form-input font-mono" id="rec-confirm-pass" placeholder="••••••••••••" minlength="6" style="padding-right: 40px;">
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-toggle-p2" style="position: absolute; right: 6px; top: 50%; transform: translateY(-50%); padding: 3px 8px; border: none; background: transparent;"><i data-lucide="eye"></i></button>
+            </div>
           </div>
         `,
         footerHtml: `
@@ -212,9 +282,19 @@
         `
       });
 
+      const p1Inp = document.getElementById('rec-new-pass');
+      const p2Inp = document.getElementById('rec-confirm-pass');
+
+      document.getElementById('btn-toggle-p1')?.addEventListener('click', () => {
+        p1Inp.type = p1Inp.type === 'password' ? 'text' : 'password';
+      });
+      document.getElementById('btn-toggle-p2')?.addEventListener('click', () => {
+        p2Inp.type = p2Inp.type === 'password' ? 'text' : 'password';
+      });
+
       document.getElementById('btn-save-new-pass')?.addEventListener('click', async () => {
-        const p1 = document.getElementById('rec-new-pass').value;
-        const p2 = document.getElementById('rec-confirm-pass').value;
+        const p1 = p1Inp.value;
+        const p2 = p2Inp.value;
         if (!p1 || p1.length < 6) {
           UIComponents.showToast('Password must be at least 6 characters.', 'warning');
           return;
@@ -224,13 +304,27 @@
           return;
         }
 
+        const saveBtn = document.getElementById('btn-save-new-pass');
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Updating...';
+        UIComponents.refreshIcons();
+
         const res = await authService.changePassword(p1);
         if (res.success) {
           UIComponents.closeModal();
           UIComponents.showToast('Password updated successfully! You can now sign in.', 'success');
           window.history.replaceState(null, '', window.location.pathname);
+          const emailInput = document.getElementById('login-email');
+          const passInput = document.getElementById('login-password');
+          if (emailInput && authService.currentUser?.email) {
+            emailInput.value = authService.currentUser.email;
+          }
+          if (passInput) passInput.focus();
         } else {
+          saveBtn.disabled = false;
+          saveBtn.innerHTML = '<i data-lucide="check"></i> Update Password';
           UIComponents.showToast(res.error || 'Failed to update password.', 'danger');
+          UIComponents.refreshIcons();
         }
       });
       UIComponents.refreshIcons();
