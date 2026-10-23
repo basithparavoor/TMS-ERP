@@ -163,14 +163,15 @@ class AuthService {
     const client = dbService.getClient();
     if (!client) return { success: false, error: 'Service unavailable.' };
     try {
+      const redirectUrl = window.location.origin + window.location.pathname;
       const { error } = await client.auth.resetPasswordForEmail(
         String(email || '').trim().toLowerCase(),
-        { redirectTo: window.location.origin + '/login.html' }
+        { redirectTo: redirectUrl }
       );
       if (error) return { success: false, error: error.message };
       return { success: true };
     } catch (e) {
-      return { success: false, error: 'Unable to send reset email.' };
+      return { success: false, error: e.message || 'Unable to send reset email.' };
     }
   }
 
