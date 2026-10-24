@@ -58,11 +58,30 @@ export const CAPABILITIES = {
   VIEW_NOTICES: 'view_notices',
 
   // Reports
-  VIEW_REPORTS: 'view_reports'
+  VIEW_REPORTS: 'view_reports',
+
+  // Super Admin Exclusive Privileges
+  SUPER_ADMIN_CONSOLE: 'super_admin_console',
+  VIEW_DEVELOPER_OPTIONS: 'view_developer_options',
+  DIAGNOSE_AND_FIX_ERRORS: 'diagnose_and_fix_errors',
+  VIEW_USER_SESSIONS: 'view_user_sessions',
+  DATABASE_EXPLORER: 'database_explorer',
+  MANAGE_SUPER_ADMIN: 'manage_super_admin'
 };
 
+export const SUPER_ADMIN_ONLY_CAPABILITIES = [
+  CAPABILITIES.SUPER_ADMIN_CONSOLE,
+  CAPABILITIES.VIEW_DEVELOPER_OPTIONS,
+  CAPABILITIES.DIAGNOSE_AND_FIX_ERRORS,
+  CAPABILITIES.VIEW_USER_SESSIONS,
+  CAPABILITIES.DATABASE_EXPLORER,
+  CAPABILITIES.MANAGE_SUPER_ADMIN
+];
+
 const ROLE_CAPABILITY_MATRIX = {
-  [TMS_CONFIG.roles.ADMIN]: Object.values(CAPABILITIES),
+  [TMS_CONFIG.roles.SUPER_ADMIN]: Object.values(CAPABILITIES),
+
+  [TMS_CONFIG.roles.ADMIN]: Object.values(CAPABILITIES).filter(c => !SUPER_ADMIN_ONLY_CAPABILITIES.includes(c)),
 
   [TMS_CONFIG.roles.PRINCIPAL]: [
     CAPABILITIES.VIEW_AUDIT_LOGS,
@@ -178,12 +197,27 @@ export class PermissionEngine {
     return !!user && user.isSuperAdmin === true;
   }
 
+  static isSuperAdmin() {
+    return this._isSuperAdmin(this._user());
+  }
+
   static can(capability) {
     const user = this._user();
     if (!user || !user.role) return false;
-    if (this._isSuperAdmin(user) || user.role === TMS_CONFIG.roles.ADMIN) {
-      return true; // Administrator has unrestricted access to all capabilities
+
+    // Super Admin exclusive capabilities: strictly Super Admin only
+    if (SUPER_ADMIN_ONLY_CAPABILITIES.includes(capability)) {
+      return this._isSuperAdmin(user);
     }
+
+    if (this._isSuperAdmin(user)) {
+      return true;
+    }
+
+    if (user.role === TMS_CONFIG.roles.ADMIN) {
+      return true;
+    }
+
     const allowed = ROLE_CAPABILITY_MATRIX[user.role] || [];
     return allowed.includes(capability);
   }
