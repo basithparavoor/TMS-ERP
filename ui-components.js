@@ -28,6 +28,24 @@ export class UIComponents {
     document.documentElement.setAttribute('data-theme', activeColor);
     document.body.setAttribute('data-theme', activeColor);
     localStorage.setItem('tms_color_theme', activeColor);
+
+    this.installGlobalInterceptors();
+  }
+
+  static installGlobalInterceptors() {
+    if (typeof window === 'undefined' || window._tmsPopupsInstalled) return;
+    window._tmsPopupsInstalled = true;
+
+    // Intercept native browser alert with luxury UIComponents modal
+    window.alert = (message) => {
+      this.alert({
+        title: 'Campus Notification',
+        message: String(message || ''),
+        buttonText: 'Got It',
+        type: 'info',
+        icon: 'info'
+      });
+    };
   }
 
   static setColorTheme(themeName) {
@@ -180,6 +198,165 @@ export class UIComponents {
         </div>
       </div>
     `;
+  }
+
+  /**
+   * Premium Asynchronous Confirmation Modal.
+   * Completely replaces native browser-side confirm(...) popups with a luxury UI dialog.
+   * @param {Object} options
+   * @param {string} options.title Modal title
+   * @param {string} options.message Prompt / description
+   * @param {string} [options.confirmText='Confirm'] Action button label
+   * @param {string} [options.cancelText='Cancel'] Cancel button label
+   * @param {string} [options.type='danger'] 'danger' | 'warning' | 'primary' | 'success'
+   * @param {string} [options.icon='alert-triangle'] Lucide icon name
+   * @returns {Promise<boolean>}
+   */
+  static confirm({
+    title = 'Confirm Action',
+    message = 'Are you sure you want to proceed?',
+    confirmText = 'Confirm',
+    cancelText = 'Cancel',
+    type = 'danger',
+    icon = 'alert-triangle'
+  } = {}) {
+    return new Promise((resolve) => {
+      const existing = document.getElementById('tms-confirm-overlay');
+      if (existing) existing.remove();
+
+      const overlay = document.createElement('div');
+      overlay.id = 'tms-confirm-overlay';
+      overlay.className = 'tms-confirm-overlay';
+
+      let iconColor = '#ef4444';
+      let iconBg = 'rgba(239, 68, 68, 0.1)';
+      let iconBorder = 'rgba(239, 68, 68, 0.2)';
+      let confirmBtnClass = 'btn-danger';
+
+      if (type === 'primary' || type === 'info' || type === 'success') {
+        iconColor = '#16a34a';
+        iconBg = 'rgba(22, 163, 74, 0.1)';
+        iconBorder = 'rgba(22, 163, 74, 0.2)';
+        confirmBtnClass = 'btn-primary';
+      } else if (type === 'warning') {
+        iconColor = '#f59e0b';
+        iconBg = 'rgba(245, 158, 11, 0.1)';
+        iconBorder = 'rgba(245, 158, 11, 0.2)';
+        confirmBtnClass = 'btn-warning';
+      }
+
+      overlay.innerHTML = `
+        <div class="tms-confirm-box">
+          <div class="tms-confirm-icon-wrap" style="background: ${iconBg}; border: 1px solid ${iconBorder}; color: ${iconColor};">
+            <i data-lucide="${icon}" style="width: 28px; height: 28px;"></i>
+          </div>
+          <h3 class="tms-confirm-title">${this.escapeHtml(title)}</h3>
+          <p class="tms-confirm-message">${this.escapeHtml(message)}</p>
+          <div class="tms-confirm-actions">
+            <button type="button" class="btn btn-secondary" id="tms-confirm-cancel">${this.escapeHtml(cancelText)}</button>
+            <button type="button" class="btn ${confirmBtnClass}" id="tms-confirm-ok">${this.escapeHtml(confirmText)}</button>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(overlay);
+      this.refreshIcons();
+
+      requestAnimationFrame(() => overlay.classList.add('active'));
+
+      const cleanup = (result) => {
+        overlay.classList.remove('active');
+        window.removeEventListener('keydown', handleKey);
+        setTimeout(() => overlay.remove(), 220);
+        resolve(result);
+      };
+
+      const handleKey = (e) => {
+        if (e.key === 'Escape') cleanup(false);
+        if (e.key === 'Enter') cleanup(true);
+      };
+
+      window.addEventListener('keydown', handleKey);
+
+      overlay.querySelector('#tms-confirm-cancel').addEventListener('click', () => cleanup(false));
+      overlay.querySelector('#tms-confirm-ok').addEventListener('click', () => cleanup(true));
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) cleanup(false);
+      });
+
+      setTimeout(() => {
+        overlay.querySelector('#tms-confirm-ok')?.focus();
+      }, 50);
+    });
+  }
+
+  /**
+   * Premium Asynchronous Alert Modal.
+   */
+  static alert({
+    title = 'Notification',
+    message = '',
+    buttonText = 'Understood',
+    type = 'info',
+    icon = 'info'
+  } = {}) {
+    return new Promise((resolve) => {
+      const existing = document.getElementById('tms-confirm-overlay');
+      if (existing) existing.remove();
+
+      const overlay = document.createElement('div');
+      overlay.id = 'tms-confirm-overlay';
+      overlay.className = 'tms-confirm-overlay';
+
+      let iconColor = '#16a34a';
+      let iconBg = 'rgba(22, 163, 74, 0.1)';
+      let iconBorder = 'rgba(22, 163, 74, 0.2)';
+
+      if (type === 'danger' || type === 'error') {
+        iconColor = '#ef4444';
+        iconBg = 'rgba(239, 68, 68, 0.1)';
+        iconBorder = 'rgba(239, 68, 68, 0.2)';
+      } else if (type === 'warning') {
+        iconColor = '#f59e0b';
+        iconBg = 'rgba(245, 158, 11, 0.1)';
+        iconBorder = 'rgba(245, 158, 11, 0.2)';
+      }
+
+      overlay.innerHTML = `
+        <div class="tms-confirm-box">
+          <div class="tms-confirm-icon-wrap" style="background: ${iconBg}; border: 1px solid ${iconBorder}; color: ${iconColor};">
+            <i data-lucide="${icon}" style="width: 28px; height: 28px;"></i>
+          </div>
+          <h3 class="tms-confirm-title">${this.escapeHtml(title)}</h3>
+          <p class="tms-confirm-message">${this.escapeHtml(message)}</p>
+          <div class="tms-confirm-actions" style="justify-content: center;">
+            <button type="button" class="btn btn-primary" id="tms-alert-ok" style="min-width: 140px;">${this.escapeHtml(buttonText)}</button>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(overlay);
+      this.refreshIcons();
+
+      requestAnimationFrame(() => overlay.classList.add('active'));
+
+      const cleanup = () => {
+        overlay.classList.remove('active');
+        window.removeEventListener('keydown', handleKey);
+        setTimeout(() => overlay.remove(), 220);
+        resolve();
+      };
+
+      const handleKey = (e) => {
+        if (e.key === 'Escape' || e.key === 'Enter') cleanup();
+      };
+
+      window.addEventListener('keydown', handleKey);
+      overlay.querySelector('#tms-alert-ok').addEventListener('click', cleanup);
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) cleanup();
+      });
+    });
   }
 }
 
