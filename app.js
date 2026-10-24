@@ -107,11 +107,16 @@ class AppController {
         <!-- Sidebar Navigation -->
         <aside class="app-sidebar" id="app-sidebar">
           <div class="sidebar-header">
-            <span id="shell-logo" style="display:inline-flex;">${TMS_LOGO.emblemSvg(42)}</span>
-            <div class="brand-info">
-              <h2>${TMS_CONFIG.institution.name}</h2>
-              <p>Thaiba Heritage, Kolkata</p>
+            <div class="sidebar-brand-box" id="sidebar-brand-box">
+              <span id="shell-logo" style="display:inline-flex; flex-shrink:0;">${TMS_LOGO.emblemSvg(42)}</span>
+              <div class="brand-info">
+                <h2>${TMS_CONFIG.institution.name}</h2>
+                <p>Thaiba Heritage, Kolkata</p>
+              </div>
             </div>
+            <button class="sidebar-collapse-btn desktop-only" id="sidebar-collapse-btn" title="Toggle Sidebar (Ctrl+B)">
+              <i data-lucide="chevron-left"></i>
+            </button>
           </div>
 
           <nav class="sidebar-nav" id="sidebar-nav-items">
@@ -119,7 +124,7 @@ class AppController {
           </nav>
 
           <div class="sidebar-footer">
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%;">
+            <div class="user-footer-wrap">
               <div class="user-mini-card" id="user-mini-card" role="button" tabindex="0" title="Edit my profile" style="cursor:pointer; flex: 1; min-width: 0;">
                 <img id="user-mini-avatar" src="${esc(user.avatar || DEFAULT_AVATAR)}" alt="Avatar">
                 <div class="user-details-mini" style="min-width: 0;">
@@ -139,6 +144,9 @@ class AppController {
           <!-- Topbar -->
           <header class="app-topbar">
             <div class="topbar-left">
+              <button class="icon-btn desktop-only" id="topbar-sidebar-toggle" title="Toggle Sidebar (Ctrl+B)" style="margin-right: 8px;">
+                <i data-lucide="panel-left"></i>
+              </button>
               <div class="search-bar-trigger" id="global-search-trigger">
                 <i data-lucide="search" style="width: 16px; height: 16px;"></i>
                 <span>Search students, staff, records...</span>
@@ -192,6 +200,39 @@ class AppController {
     `;
 
     this.populateSidebarNav();
+
+    // Restore collapsed sidebar state on desktop
+    const savedCollapsed = localStorage.getItem('tms_sidebar_collapsed') === 'true';
+    if (savedCollapsed && window.innerWidth >= 993) {
+      const sb = document.getElementById('app-sidebar');
+      if (sb) sb.classList.add('collapsed');
+      const collapseBtn = document.getElementById('sidebar-collapse-btn');
+      if (collapseBtn) {
+        collapseBtn.innerHTML = '<i data-lucide="chevron-right"></i>';
+        collapseBtn.title = 'Expand Sidebar (Ctrl+B)';
+      }
+    }
+
+    UIComponents.refreshIcons();
+  }
+
+  toggleDesktopSidebar(force = null) {
+    const sidebar = document.getElementById('app-sidebar');
+    if (!sidebar) return;
+    const isCollapsed = force !== null ? force : !sidebar.classList.contains('collapsed');
+    if (isCollapsed) {
+      sidebar.classList.add('collapsed');
+      localStorage.setItem('tms_sidebar_collapsed', 'true');
+    } else {
+      sidebar.classList.remove('collapsed');
+      localStorage.setItem('tms_sidebar_collapsed', 'false');
+    }
+
+    const collapseBtn = document.getElementById('sidebar-collapse-btn');
+    if (collapseBtn) {
+      collapseBtn.innerHTML = isCollapsed ? '<i data-lucide="chevron-right"></i>' : '<i data-lucide="chevron-left"></i>';
+      collapseBtn.title = isCollapsed ? 'Expand Sidebar (Ctrl+B)' : 'Collapse Sidebar (Ctrl+B)';
+    }
     UIComponents.refreshIcons();
   }
 
@@ -225,26 +266,26 @@ class AppController {
     nav.innerHTML = `
       <div class="sidebar-group-title">Campus Operations</div>
       ${authorizedItems.map(item => `
-        <a class="nav-item" href="#/${item.module}" data-module="${item.module}">
+        <a class="nav-item" href="#/${item.module}" data-module="${item.module}" data-tooltip="${esc(item.label)}">
           <i data-lucide="${item.icon}"></i>
           <span>${item.label}</span>
         </a>
       `).join('')}
       
       <div class="sidebar-group-title" style="margin-top: 14px;">Dedicated Portals</div>
-      <a class="nav-item" href="student-admission-portal.html" target="_blank">
+      <a class="nav-item" href="student-admission-portal.html" target="_blank" data-tooltip="Admission Form (A4)">
         <i data-lucide="file-text" style="color: #16a34a;"></i>
         <span>Admission Form (A4)</span>
       </a>
-      <a class="nav-item" href="teacher-portal.html" target="_blank">
+      <a class="nav-item" href="teacher-portal.html" target="_blank" data-tooltip="Faculty Portal">
         <i data-lucide="external-link"></i>
         <span>Faculty Portal</span>
       </a>
-      <a class="nav-item" href="student-portal.html" target="_blank">
+      <a class="nav-item" href="student-portal.html" target="_blank" data-tooltip="Student Portal">
         <i data-lucide="external-link"></i>
         <span>Student Portal</span>
       </a>
-      <a class="nav-item" href="parent-portal.html" target="_blank">
+      <a class="nav-item" href="parent-portal.html" target="_blank" data-tooltip="Parent Portal">
         <i data-lucide="external-link"></i>
         <span>Parent Portal</span>
       </a>
@@ -257,6 +298,28 @@ class AppController {
     const sidebar = document.getElementById('app-sidebar');
     const backdrop = document.getElementById('sidebar-backdrop');
     const mobileMenuTrigger = document.getElementById('mobile-menu-trigger');
+
+    // Desktop sidebar toggles
+    const collapseBtn = document.getElementById('sidebar-collapse-btn');
+    if (collapseBtn) {
+      collapseBtn.addEventListener('click', () => this.toggleDesktopSidebar());
+    }
+
+    const topbarToggle = document.getElementById('topbar-sidebar-toggle');
+    if (topbarToggle) {
+      topbarToggle.addEventListener('click', () => this.toggleDesktopSidebar());
+    }
+
+    // Ctrl+B shortcut to toggle sidebar
+    window.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+        const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+        if (activeTag !== 'input' && activeTag !== 'textarea') {
+          e.preventDefault();
+          this.toggleDesktopSidebar();
+        }
+      }
+    });
 
     if (sidebar && backdrop) {
       if (mobileMenuTrigger) {
