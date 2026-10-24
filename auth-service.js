@@ -70,18 +70,61 @@ class AuthService {
     const client = dbService.getClient();
     if (!client || !authUser) return null;
 
-    const { data, error } = await client
+    const email = (authUser.email || '').toLowerCase().trim();
+
+    // 1. Try finding profile by auth ID
+    let { data, error } = await client
       .from('profiles')
       .select('*')
       .eq('id', authUser.id)
-      .single();
+      .maybeSingle();
 
-    if (error || !data) {
-      console.warn('TMS profile lookup failed:', error?.message);
-      return null;
+    // 2. If not found by ID, look up by email (e.g. initial Google login or migrated account)
+    if (!data && email) {
+      const { data: profileByEmail } = await client
+        .from('profiles')
+        .select('*')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (profileByEmail) {
+        data = profileByEmail;
+        // Link the auth ID to the profile
+        try {
+          await client.from('profiles').update({ id: authUser.id }).eq('email', email);
+          data.id = authUser.id;
+        } catch (e) {
+          // If id update restricted, retain current data
+        }
+      }
     }
 
-    if (data.is_active === false) return null;
+    // 3. Auto-provision Super Admin if cmbasith786@gmail.com logs in
+    if (!data && email && email === (TMS_CONFIG.superAdminEmail || '').toLowerCase().trim()) {
+      const superAdminProfile = {
+        id: authUser.id,
+        email: email,
+        name: authUser.user_metadata?.full_name || 'Executive Director',
+        role: TMS_CONFIG.roles.SUPER_ADMIN,
+        title: 'Executive Director & Super Admin',
+        scope: TMS_CONFIG.scopes.SCHOOL_WIDE,
+        department: 'Executive Governance',
+        phone: '+91 97480 00000',
+        is_active: true,
+        is_super_admin: true
+      };
+      try {
+        await client.from('profiles').upsert(superAdminProfile);
+        data = superAdminProfile;
+      } catch (e) {
+        console.warn('Super Admin auto-provision error:', e);
+      }
+    }
+
+    if (!data || data.is_active === false) {
+      console.warn('TMS profile lookup failed for user:', authUser.id, email);
+      return null;
+    }
 
     return this.normalizeProfile(data);
   }
@@ -192,6 +235,38 @@ class AuthService {
       return { success: true, user: profile };
     } catch (err) {
       return { success: false, error: 'Sign-in failed. Please try again.' };
+    }
+  }
+
+  /**
+   * Google OAuth Authentication
+   */
+  async loginWithGoogle() {
+    const client = dbService.getClient();
+    if (!client) {
+      return { success: false, error: 'Authentication service is unavailable. Please retry.' };
+    }
+
+    try {
+      const redirectUrl = window.location.href.split('#')[0].split('?')[0];
+      const { data, error } = await client.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: redirectUrl,
+          queryParams: {
+            access_type: 'offline',
+            prompt: 'select_account'
+          }
+        }
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: true, data };
+    } catch (err) {
+      return { success: false, error: err.message || 'Google sign-in initiation failed.' };
     }
   }
 
