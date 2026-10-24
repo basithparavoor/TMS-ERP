@@ -309,8 +309,16 @@ class AppController {
 
     const logoutBtn = document.getElementById('btn-logout');
     if (logoutBtn) {
-      logoutBtn.addEventListener('click', () => {
-        if (confirm('Sign out from THAIBA MODEL SCHOOL ERP?')) {
+      logoutBtn.addEventListener('click', async () => {
+        const confirmed = await UIComponents.confirm({
+          title: 'Sign Out of TMS ERP?',
+          message: 'Are you sure you want to end your current session? You will be safely signed out of Thaiba Model School Campus Gateway.',
+          confirmText: 'Sign Out',
+          cancelText: 'Stay Signed In',
+          type: 'danger',
+          icon: 'log-out'
+        });
+        if (confirmed) {
           authService.logout();
         }
       });
