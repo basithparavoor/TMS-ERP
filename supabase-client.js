@@ -33,7 +33,7 @@ class SupabaseDataService {
     this.isOnline = navigator.onLine;
     this._memCache = new Map();
     this._memCacheTime = new Map();
-    this._cacheTTL = 25000; // 25 seconds high-speed memory cache for ultra-fast navigation
+    this._cacheTTL = 60000; // 60 seconds memory cache
     this.cleanLegacyDemoData();
     this.initClient();
     this.initNetworkListeners();
@@ -177,6 +177,8 @@ class SupabaseDataService {
 
   async select(collection, filterFn = null, forceRefresh = false) {
     const now = Date.now();
+
+    // 1. In-Memory RAM Cache (Instant 0ms)
     if (!forceRefresh && this._memCache.has(collection)) {
       const cachedTime = this._memCacheTime.get(collection) || 0;
       if (now - cachedTime < this._cacheTTL) {
@@ -185,7 +187,28 @@ class SupabaseDataService {
       }
     }
 
-    // 1. Fetch from Supabase if online
+    // 2. LocalStorage Instant Cache (0ms response - eliminates tab shifting latency)
+    const localData = this.getLocal(collection);
+    if (!forceRefresh && Array.isArray(localData) && localData.length > 0) {
+      this._memCache.set(collection, localData);
+      this._memCacheTime.set(collection, now);
+
+      // Background silent revalidation (non-blocking)
+      if (this.client && this.isOnline) {
+        this.client.from(collection).select('*').then(({ data, error }) => {
+          if (!error && Array.isArray(data)) {
+            const mapped = data.map(rowFromDb);
+            this._memCache.set(collection, mapped);
+            this._memCacheTime.set(collection, Date.now());
+            this.setLocal(collection, mapped);
+          }
+        }).catch(() => {});
+      }
+
+      return filterFn ? localData.filter(filterFn) : [...localData];
+    }
+
+    // 3. Fetch from Supabase if online (when forced or first time on empty cache)
     if (this.client && this.isOnline) {
       try {
         const { data, error } = await this.client.from(collection).select('*');
@@ -195,16 +218,16 @@ class SupabaseDataService {
           this._memCache.set(collection, mapped);
           this._memCacheTime.set(collection, now);
           this.setLocal(collection, mapped);
-          return filterFn ? mapped.filter(filterFn) : mapped;
+          return filterFn ? mapped.filter(filterFn) : [...mapped];
         }
       } catch (err) {
         console.warn(`Supabase select failed for ${collection}, using local cache:`, err.message);
       }
     }
-    const localData = this.getLocal(collection);
+
     this._memCache.set(collection, localData);
     this._memCacheTime.set(collection, now);
-    return filterFn ? localData.filter(filterFn) : localData;
+    return filterFn ? localData.filter(filterFn) : [...localData];
   }
 
   async insert(collection, record) {
