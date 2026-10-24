@@ -89,18 +89,22 @@ class AuthService {
   normalizeProfile(profile) {
     if (!profile || !profile.role) return null;
 
+    const email = (profile.email || '').toLowerCase().trim();
     const isSuperAdmin =
-      profile.role === TMS_CONFIG.roles.ADMIN &&
-      profile.scope === TMS_CONFIG.scopes.SCHOOL_WIDE;
+      email === (TMS_CONFIG.superAdminEmail || '').toLowerCase().trim() ||
+      profile.role === TMS_CONFIG.roles.SUPER_ADMIN ||
+      profile.role === 'super_admin' ||
+      profile.is_super_admin === true ||
+      profile.isSuperAdmin === true;
 
     return {
       id: profile.id,
-      email: (profile.email || '').toLowerCase(),
-      name: profile.name || (profile.email ? profile.email.split('@')[0] : 'TMS User'),
-      role: profile.role,
+      email: email,
+      name: profile.name || (email ? email.split('@')[0] : 'TMS User'),
+      role: isSuperAdmin ? TMS_CONFIG.roles.SUPER_ADMIN : profile.role,
       isSuperAdmin,
-      title: profile.title || 'Staff Member',
-      scope: profile.scope || TMS_CONFIG.scopes.OWN_RECORDS,
+      title: isSuperAdmin ? (profile.title || 'Executive Director & Super Admin') : (profile.title || 'Staff Member'),
+      scope: isSuperAdmin ? TMS_CONFIG.scopes.SCHOOL_WIDE : (profile.scope || TMS_CONFIG.scopes.OWN_RECORDS),
       department: profile.department || '—',
       assignedClass: profile.assigned_class || null,
       assignedSection: profile.assigned_section || null,
@@ -153,6 +157,38 @@ class AuthService {
 
       this.currentUser = profile;
       this.saveCache(profile);
+
+      // Create tracking session in user_sessions
+      const sessionId = 'sess_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 6);
+      const sessionRecord = {
+        id: sessionId,
+        userId: profile.id,
+        userEmail: profile.email,
+        userName: profile.name,
+        userRole: profile.role,
+        loginAt: new Date().toISOString(),
+        lastActiveAt: new Date().toISOString(),
+        logoutAt: null,
+        status: 'active',
+        clientAgent: navigator.userAgent
+      };
+      try {
+        localStorage.setItem('tms_current_session_id', sessionId);
+        dbService.insert('user_sessions', sessionRecord).catch(() => {});
+      } catch (e) { /* ignore */ }
+
+      // Dynamic import to prevent circular dependency
+      import('./audit-service.js').then(({ auditService }) => {
+        auditService.log('USER_LOGIN', 'AUTH', {
+          email: profile.email,
+          name: profile.name,
+          role: profile.role,
+          isSuperAdmin: profile.isSuperAdmin,
+          sessionId,
+          device: navigator.userAgent
+        }, profile.id).catch(() => {});
+      }).catch(() => {});
+
       return { success: true, user: profile };
     } catch (err) {
       return { success: false, error: 'Sign-in failed. Please try again.' };
@@ -284,7 +320,41 @@ class AuthService {
     localStorage.removeItem(this.sessionKey);
   }
 
+  async touchSession() {
+    const sid = localStorage.getItem('tms_current_session_id');
+    if (sid && this.currentUser) {
+      try {
+        await dbService.update('user_sessions', sid, {
+          lastActiveAt: new Date().toISOString()
+        });
+      } catch (e) { /* ignore */ }
+    }
+  }
+
   async logout() {
+    const currentSessionId = localStorage.getItem('tms_current_session_id');
+    if (currentSessionId) {
+      try {
+        await dbService.update('user_sessions', currentSessionId, {
+          logoutAt: new Date().toISOString(),
+          status: 'logged_out'
+        });
+      } catch (e) { /* ignore */ }
+      localStorage.removeItem('tms_current_session_id');
+    }
+
+    if (this.currentUser) {
+      const userToLog = { ...this.currentUser };
+      import('./audit-service.js').then(({ auditService }) => {
+        auditService.log('USER_LOGOUT', 'AUTH', {
+          email: userToLog.email,
+          name: userToLog.name,
+          role: userToLog.role,
+          logoutTime: new Date().toISOString()
+        }, userToLog.id).catch(() => {});
+      }).catch(() => {});
+    }
+
     const client = dbService.getClient();
     if (client) {
       try {
