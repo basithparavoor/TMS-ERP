@@ -339,8 +339,16 @@ export class StudentModule {
   }
 
   static async deleteStudents(rows, container) {
-    const label = rows.length === 1 ? `Delete ${rows[0].fullName}?` : `Delete ${rows.length} students?`;
-    if (!confirm(`${label}\n\nThis removes their student record permanently. This cannot be undone.`)) return;
+    const label = rows.length === 1 ? `Delete ${rows[0].fullName}?` : `Delete ${rows.length} selected students?`;
+    const ok = await UIComponents.confirm({
+      title: 'Delete Student Record(s)',
+      message: `Are you sure you want to proceed? ${label} This removes student records, guardian links, and credentials permanently.`,
+      confirmText: 'Delete Permanently',
+      cancelText: 'Cancel',
+      type: 'danger',
+      icon: 'trash-2'
+    });
+    if (!ok) return;
     for (const s of rows) {
       // eslint-disable-next-line no-await-in-loop
       await dbService.delete('students', s.id);
