@@ -3526,9 +3526,6 @@ export class AdminModule {
         runScan();
       });
     }
-
-    // Auto-run first scan on open
-    setTimeout(() => runScan(), 200);
   }
 
   /* ================================================================== */
