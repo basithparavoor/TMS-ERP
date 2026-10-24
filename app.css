@@ -1269,51 +1269,118 @@ a {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 60px;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-top: 1px solid var(--border-color);
-  z-index: 50;
-  align-items: center;
+  height: 64px;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-top: 1px solid rgba(226, 232, 240, 0.9);
+  z-index: 100;
+  align-items: stretch;
   justify-content: space-around;
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-  box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.04);
+  padding: 4px 6px calc(4px + env(safe-area-inset-bottom, 0px)) 6px;
+  box-shadow: 0 -4px 20px rgba(15, 23, 42, 0.07);
 }
 
 .mobile-nav-item {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 2px;
   text-decoration: none;
   color: #64748b;
-  font-size: 0.68rem;
+  font-size: 0.69rem;
   font-weight: 600;
-  padding: 6px 10px;
-  border-radius: 8px;
-  transition: all 0.15s ease;
+  padding: 4px 8px;
+  border-radius: 12px;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
   background: transparent;
   border: none;
   cursor: pointer;
   flex: 1;
   min-width: 0;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.mobile-nav-item::before {
+  content: '';
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  transform: translateX(-50%) scaleX(0);
+  width: 24px;
+  height: 3px;
+  background: #16a34a;
+  border-radius: 0 0 4px 4px;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .mobile-nav-item i, .mobile-nav-item svg {
   width: 20px;
   height: 20px;
-  transition: transform 0.15s ease;
+  transition: transform 0.18s cubic-bezier(0.4, 0, 0.2, 1), color 0.18s ease;
+}
+
+.mobile-nav-item:active {
+  transform: scale(0.93);
 }
 
 .mobile-nav-item.active {
   color: #16a34a;
+  background: rgba(22, 163, 74, 0.08);
+}
+
+.mobile-nav-item.active::before {
+  transform: translateX(-50%) scaleX(1);
 }
 
 .mobile-nav-item.active i, .mobile-nav-item.active svg {
-  transform: scale(1.12);
+  transform: translateY(-1px) scale(1.08);
   color: #16a34a;
+}
+
+/* ==========================================================================
+   ADMISSION & GENERAL GUIDELINES VIDEO EMBED
+   ========================================================================== */
+.instruction-video-wrapper {
+  transition: max-height 0.25s ease;
+}
+
+.instruction-video-wrapper .video-aspect-box {
+  position: relative;
+  width: 100%;
+  height: 0;
+  overflow: hidden;
+  background: #000;
+  transition: padding-bottom 0.25s ease, max-height 0.25s ease;
+}
+
+.instruction-video-wrapper.ratio-landscape .video-aspect-box {
+  padding-bottom: 56.25% !important;
+  max-height: none !important;
+}
+
+.instruction-video-wrapper.ratio-portrait .video-aspect-box {
+  padding-bottom: 177.77% !important;
+  max-height: min(76vh, 600px) !important;
+}
+
+.instruction-video-wrapper.ratio-auto .video-aspect-box {
+  padding-bottom: 56.25%;
+}
+
+@media (max-width: 640px) {
+  .instruction-video-wrapper.ratio-auto .video-aspect-box {
+    padding-bottom: 160% !important;
+    max-height: 72vh !important;
+  }
+
+  .instruction-video-wrapper.ratio-portrait .video-aspect-box {
+    padding-bottom: 177.77% !important;
+    max-height: 75vh !important;
+  }
 }
 
 @media (min-width: 993px) {
