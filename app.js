@@ -144,9 +144,6 @@ class AppController {
           <!-- Topbar -->
           <header class="app-topbar">
             <div class="topbar-left">
-              <button class="icon-btn desktop-only" id="topbar-sidebar-toggle" title="Toggle Sidebar (Ctrl+B)" style="margin-right: 8px;">
-                <i data-lucide="panel-left"></i>
-              </button>
               <div class="search-bar-trigger" id="global-search-trigger">
                 <i data-lucide="search" style="width: 16px; height: 16px;"></i>
                 <span>Search students, staff, records...</span>
@@ -299,15 +296,10 @@ class AppController {
     const backdrop = document.getElementById('sidebar-backdrop');
     const mobileMenuTrigger = document.getElementById('mobile-menu-trigger');
 
-    // Desktop sidebar toggles
+    // Desktop sidebar toggle
     const collapseBtn = document.getElementById('sidebar-collapse-btn');
     if (collapseBtn) {
       collapseBtn.addEventListener('click', () => this.toggleDesktopSidebar());
-    }
-
-    const topbarToggle = document.getElementById('topbar-sidebar-toggle');
-    if (topbarToggle) {
-      topbarToggle.addEventListener('click', () => this.toggleDesktopSidebar());
     }
 
     // Ctrl+B shortcut to toggle sidebar
