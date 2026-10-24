@@ -29,6 +29,7 @@ const STATUS_BADGE = {
 };
 
 const ROLE_LABELS = {
+  super_admin: '👑 Super Administrator',
   admin: 'Administrator',
   principal: 'Principal',
   coordinator: 'Coordinator',
@@ -42,6 +43,24 @@ const ROLE_LABELS = {
   parent: 'Parent / Guardian',
   pending: 'Pending Assignment'
 };
+
+function parseUserAgent(ua) {
+  if (!ua) return 'Web Client';
+  let browser = 'Browser';
+  if (/edg/i.test(ua)) browser = 'Edge';
+  else if (/chrome/i.test(ua)) browser = 'Chrome';
+  else if (/safari/i.test(ua) && !/chrome/i.test(ua)) browser = 'Safari';
+  else if (/firefox/i.test(ua)) browser = 'Firefox';
+
+  let os = 'Device';
+  if (/windows/i.test(ua)) os = 'Windows PC';
+  else if (/android/i.test(ua)) os = 'Android';
+  else if (/iphone|ipad|ipod/i.test(ua)) os = 'iPhone / iOS';
+  else if (/macintosh|mac os x/i.test(ua)) os = 'Mac';
+  else if (/linux/i.test(ua)) os = 'Linux';
+
+  return `${browser} on ${os}`;
+}
 
 function statusBadge(status) {
   return `<span class="badge ${STATUS_BADGE[status] || 'badge-info'}">${esc(status || '—')}</span>`;
@@ -69,6 +88,8 @@ export class AdminModule {
 
   static async render(container) {
     const stats = await admissionService.getStats();
+    const currentUser = authService.getCurrentUser();
+    const isSuperAdmin = currentUser?.isSuperAdmin === true || (currentUser?.email || '').toLowerCase() === (TMS_CONFIG.superAdminEmail || '').toLowerCase();
 
     container.innerHTML = `
       <div style="margin-bottom: 24px;">
@@ -130,6 +151,12 @@ export class AdminModule {
             <i data-lucide="sliders"></i>
             <span>Governance & Backup</span>
           </button>
+          ${isSuperAdmin ? `
+          <button class="tms-tab-pill super-admin-pill" data-group="superadmin" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.14), rgba(239, 68, 68, 0.12)); border: 1.5px solid rgba(245, 158, 11, 0.45); color: #b45309; font-weight: 800;">
+            <i data-lucide="crown" style="color: #f59e0b;"></i>
+            <span>Super Admin &amp; Dev</span>
+          </button>
+          ` : ''}
         </div>
       </div>
 
@@ -144,6 +171,9 @@ export class AdminModule {
   }
 
   static switchGroup(groupKey, targetSubtab = null) {
+    const currentUser = authService.getCurrentUser();
+    const isSuperAdmin = currentUser?.isSuperAdmin === true || (currentUser?.email || '').toLowerCase() === (TMS_CONFIG.superAdminEmail || '').toLowerCase();
+
     const SUBTABS = {
       admissions: [
         { key: 'applications', label: 'Applications Roster', icon: 'file-text' },
@@ -153,6 +183,7 @@ export class AdminModule {
       ],
       users: [
         { key: 'users', label: 'User Logins & Roles', icon: 'users' },
+        ...(isSuperAdmin ? [{ key: 'user-sessions', label: 'Login & Logout Sessions', icon: 'history' }] : []),
         { key: 'audit', label: 'Security Audit Trail', icon: 'shield-alert' }
       ],
       notices: [
@@ -161,6 +192,12 @@ export class AdminModule {
       system: [
         { key: 'branding', label: 'Institute Logo & Emblem', icon: 'image' },
         { key: 'backup', label: 'JSON Disaster Recovery', icon: 'database' }
+      ],
+      superadmin: [
+        { key: 'system-doctor', label: '🩺 System Doctor (Find & Fix)', icon: 'wrench' },
+        { key: 'user-sessions', label: '👤 User Login / Logout Sessions', icon: 'history' },
+        { key: 'audit', label: '🛡️ Security Audit Logs', icon: 'shield-alert' },
+        { key: 'developer-tools', label: '⚡ Developer DB Explorer', icon: 'terminal' }
       ]
     };
 
@@ -216,6 +253,9 @@ export class AdminModule {
       else if (tabKey === 'branding') await this.renderBrandingTab(tabContent);
       else if (tabKey === 'audit') await this.renderAuditTab(tabContent);
       else if (tabKey === 'backup') await this.renderBackupTab(tabContent);
+      else if (tabKey === 'user-sessions') await this.renderUserSessionsTab(tabContent);
+      else if (tabKey === 'system-doctor') await this.renderSystemDoctorTab(tabContent);
+      else if (tabKey === 'developer-tools') await this.renderDeveloperToolsTab(tabContent);
     } catch (e) {
       console.error('Admin tab failed:', e);
       tabContent.innerHTML = `<div class="card"><p style="color:#dc2626;">Failed to load this section: ${esc(e.message)}</p></div>`;
@@ -2237,6 +2277,9 @@ export class AdminModule {
   /* ================================================================== */
 
   static async renderUsersTab(tabContent) {
+    const currentUser = authService.getCurrentUser();
+    const isSuperAdmin = currentUser?.isSuperAdmin === true || (currentUser?.email || '').toLowerCase() === (TMS_CONFIG.superAdminEmail || '').toLowerCase();
+
     let profiles = [];
     try {
       profiles = await dbService.select('profiles');
@@ -2252,7 +2295,8 @@ export class AdminModule {
     creds.forEach((c) => { if (c.userId) loginByUser[c.userId] = c; });
     this._loginByUser = loginByUser;
 
-    const roles = Object.values(TMS_CONFIG.roles).filter((r) => r !== 'super_admin');
+    // Only super admin can grant or see super_admin role
+    const roles = Object.values(TMS_CONFIG.roles).filter((r) => isSuperAdmin ? true : r !== 'super_admin');
     const scopes = Object.values(TMS_CONFIG.scopes);
 
     tabContent.innerHTML = `
@@ -2269,10 +2313,14 @@ export class AdminModule {
             <tbody>
               ${profiles.map((p) => {
                 const login = loginByUser[p.id];
+                const isTargetSuper = (p.email || '').toLowerCase() === (TMS_CONFIG.superAdminEmail || '').toLowerCase() || p.role === 'super_admin' || p.is_super_admin === true || p.isSuperAdmin === true;
+                const canModifyThisUser = isSuperAdmin || !isTargetSuper;
+
                 return `<tr data-id="${esc(p.id)}">
                 <td style="font-weight:600; display:flex; align-items:center; gap:8px;">
                   <img src="${esc(p.avatar || '')}" alt="" style="width:28px;height:28px;border-radius:50%;object-fit:cover;border:1px solid var(--border-color);background:#f1f5f9;">
                   <span>${esc(p.name || '—')}</span>
+                  ${isTargetSuper ? '<span class="badge" style="background:#fef3c7; color:#b45309; border:1px solid #fde68a; font-weight:800; font-size:0.68rem; padding:2px 6px;">👑 SUPER ADMIN</span>' : ''}
                 </td>
                 <td class="font-mono" style="font-size:0.78rem;">${esc(p.email || '—')}</td>
                 <td style="font-size:0.78rem;">
@@ -2283,21 +2331,24 @@ export class AdminModule {
                     : '<span style="color:var(--text-muted);">—</span>'}
                 </td>
                 <td>
-                  <select class="form-select user-role" style="min-width:150px;">
-                    ${roles.map((r) => `<option value="${esc(r)}" ${p.role === r ? 'selected' : ''}>${esc(ROLE_LABELS[r] || r)}</option>`).join('')}
-                    ${p.role === 'pending' ? '<option value="pending" selected>Pending</option>' : ''}
-                  </select>
+                  ${isTargetSuper && !isSuperAdmin ? `<span class="badge" style="background:#fef3c7; color:#b45309; font-weight:700;">👑 Super Admin (Protected)</span>`
+                    : `<select class="form-select user-role" style="min-width:150px;">
+                        ${roles.map((r) => `<option value="${esc(r)}" ${(p.role === r || (isTargetSuper && r === 'super_admin')) ? 'selected' : ''}>${esc(ROLE_LABELS[r] || r)}</option>`).join('')}
+                        ${p.role === 'pending' ? '<option value="pending" selected>Pending</option>' : ''}
+                      </select>`}
                 </td>
                 <td>
-                  <select class="form-select user-scope" style="min-width:150px;">
-                    ${scopes.map((s) => `<option value="${esc(s)}" ${p.scope === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}
-                  </select>
+                  ${isTargetSuper && !isSuperAdmin ? `<span class="badge badge-success">school_wide</span>`
+                    : `<select class="form-select user-scope" style="min-width:150px;">
+                        ${scopes.map((s) => `<option value="${esc(s)}" ${(p.scope === s || (isTargetSuper && s === 'school_wide')) ? 'selected' : ''}>${esc(s)}</option>`).join('')}
+                      </select>`}
                 </td>
                 <td style="font-size:0.78rem;">${esc([p.assignedClass, p.assignedSection].filter(Boolean).join(' / ') || '—')}</td>
-                <td><input type="checkbox" class="user-active" ${p.isActive === false ? '' : 'checked'}></td>
+                <td><input type="checkbox" class="user-active" ${p.isActive === false ? '' : 'checked'} ${!canModifyThisUser ? 'disabled' : ''}></td>
                 <td style="white-space:nowrap;">
-                  <button class="btn btn-secondary btn-sm btn-edit-user"><i data-lucide="user-cog"></i> Edit Details</button>
-                  <button class="btn btn-primary btn-sm btn-save-user"><i data-lucide="save"></i> Save</button>
+                  ${!canModifyThisUser ? '<span style="font-size:0.72rem; color:var(--text-muted); font-style:italic;">Root Protected</span>'
+                    : `<button class="btn btn-secondary btn-sm btn-edit-user"><i data-lucide="user-cog"></i> Edit Details</button>
+                       <button class="btn btn-primary btn-sm btn-save-user"><i data-lucide="save"></i> Save</button>`}
                 </td>
               </tr>`; }).join('') || '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:26px;">No user profiles visible.</td></tr>'}
             </tbody>
@@ -2338,8 +2389,17 @@ export class AdminModule {
 
   /** Full user editor: identity, assignment, avatar upload and password reset. */
   static openUserEditModal(p) {
+    const currentUser = authService.getCurrentUser();
+    const isSuperAdmin = currentUser?.isSuperAdmin === true || (currentUser?.email || '').toLowerCase() === (TMS_CONFIG.superAdminEmail || '').toLowerCase();
+    const isTargetSuper = (p.email || '').toLowerCase() === (TMS_CONFIG.superAdminEmail || '').toLowerCase() || p.role === 'super_admin' || p.isSuperAdmin === true || p.is_super_admin === true;
+
+    if (isTargetSuper && !isSuperAdmin) {
+      UIComponents.showToast('Root Super Administrator account is protected and cannot be modified.', 'warning');
+      return;
+    }
+
     let pendingAvatar = null;
-    const roleList = Object.values(TMS_CONFIG.roles).filter((r) => r !== 'super_admin');
+    const roleList = Object.values(TMS_CONFIG.roles).filter((r) => isSuperAdmin ? true : r !== 'super_admin');
     if (p.role === 'pending' && !roleList.includes('pending')) roleList.unshift('pending');
     const scopeList = Object.values(TMS_CONFIG.scopes);
     const classList = ['', ...(TMS_CONFIG.academic && TMS_CONFIG.academic.classes ? TMS_CONFIG.academic.classes : [])];
@@ -2367,7 +2427,7 @@ export class AdminModule {
           <select class="form-select" id="ue-role">${roleList.map((r) => `<option value="${esc(r)}" ${p.role === r ? 'selected' : ''}>${esc(ROLE_LABELS[r] || r)}</option>`).join('')}</select></div>
         <div class="form-group"><label class="form-label">Scope</label>
           <select class="form-select" id="ue-scope">${scopeList.map((s) => `<option value="${esc(s)}" ${p.scope === s ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select></div>
-        <label style="display:flex;gap:8px;align-items:center;grid-column:1/-1;"><input type="checkbox" id="ue-active" ${p.isActive === false ? '' : 'checked'}> Account active</label>
+        <label style="display:flex;gap:8px;align-items:center;grid-column:1/-1;"><input type="checkbox" id="ue-active" ${p.isActive === false ? '' : 'checked'} ${isTargetSuper ? 'disabled' : ''}> Account active</label>
         <div class="form-group" style="grid-column:1/-1; border-top:1px solid var(--border-color); padding-top:12px;">
           <label class="form-label">Set New Password (optional, min 6 characters)</label>
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -2380,7 +2440,7 @@ export class AdminModule {
     `;
     const footerHtml = `
       <button class="btn btn-secondary" id="ue-cancel">Cancel</button>
-      <button class="btn btn-secondary" id="ue-delete" style="color:#ef4444;"><i data-lucide="trash-2"></i> Delete User</button>
+      ${isTargetSuper ? '' : '<button class="btn btn-secondary" id="ue-delete" style="color:#ef4444;"><i data-lucide="trash-2"></i> Delete User</button>'}
       <button class="btn btn-primary" id="ue-save"><i data-lucide="save"></i> Save Changes</button>
     `;
     UIComponents.openModal({ title: `Edit User — ${p.name || p.email}`, bodyHtml, footerHtml });
@@ -2595,35 +2655,1140 @@ export class AdminModule {
   }
 
   /* ================================================================== */
-  /* Audit Trail                                                        */
+  /* Audit Trail (Interactive Security & Governance Log)                */
   /* ================================================================== */
 
   static async renderAuditTab(tabContent) {
-    const logs = await auditService.getLogs();
+    let allLogs = [];
+    try {
+      allLogs = await auditService.getLogs();
+      if (!allLogs || !allLogs.length) {
+        allLogs = dbService.getLocal('audit_logs') || [];
+      }
+    } catch (e) {
+      allLogs = dbService.getLocal('audit_logs') || [];
+    }
+
+    let currentFilter = 'all';
+    let searchQuery = '';
+
+    const renderLogsTable = () => {
+      let filtered = [...allLogs];
+      if (currentFilter !== 'all') {
+        filtered = filtered.filter(l => (l.category || '').toLowerCase() === currentFilter.toLowerCase());
+      }
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        filtered = filtered.filter(l => 
+          (l.userName || '').toLowerCase().includes(q) ||
+          (l.action || '').toLowerCase().includes(q) ||
+          (l.entityRef || '').toLowerCase().includes(q) ||
+          (l.id || '').toLowerCase().includes(q) ||
+          (l.details || '').toLowerCase().includes(q)
+        );
+      }
+
+      const tbody = document.getElementById('audit-table-body');
+      const countEl = document.getElementById('audit-count-badge');
+      if (countEl) countEl.innerText = `${filtered.length} Events Filtered (${allLogs.length} Total Recorded)`;
+
+      if (!tbody) return;
+
+      if (!filtered.length) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:36px; color:var(--text-muted);"><i data-lucide="inbox" style="width:32px;height:32px;display:block;margin:0 auto 8px;opacity:0.4;"></i>No audit events matched your search filter.</td></tr>`;
+        UIComponents.refreshIcons();
+        return;
+      }
+
+      tbody.innerHTML = filtered.slice(0, 150).map(l => {
+        const act = l.action || 'ACTION';
+        let badgeColor = 'badge-info';
+        if (act.includes('LOGIN')) badgeColor = 'badge-success';
+        else if (act.includes('LOGOUT')) badgeColor = 'badge-secondary';
+        else if (act.includes('DELETE')) badgeColor = 'badge-danger';
+        else if (act.includes('UPDATE') || act.includes('SAVE')) badgeColor = 'badge-warning';
+        else if (act.includes('APPROVED')) badgeColor = 'badge-success';
+
+        return `
+          <tr data-log-id="${esc(l.id)}">
+            <td><span class="font-mono" style="font-weight:700; font-size:0.75rem;">${esc(l.id)}</span></td>
+            <td style="white-space:nowrap; font-size:0.78rem;">${fmtDate(l.timestamp)}</td>
+            <td>
+              <div style="font-weight:600; font-size:0.84rem;">${esc(l.userName || 'System')}</div>
+              <div style="font-size:0.72rem; color:var(--text-muted);">${esc(l.userRole || 'system')} • ${esc(l.userScope || 'school_wide')}</div>
+            </td>
+            <td>
+              <span class="badge ${badgeColor}" style="font-size:0.72rem;">${esc(act)}</span>
+              <div style="font-size:0.7rem; color:var(--text-muted); margin-top:2px;">${esc(l.category || 'GENERAL')}</div>
+            </td>
+            <td class="font-mono" style="font-size:0.78rem;">${esc(l.entityRef || '—')}</td>
+            <td style="text-align:right;">
+              <button type="button" class="btn btn-secondary btn-sm btn-view-log-payload" data-id="${esc(l.id)}" style="padding:3px 8px; font-size:0.74rem;">
+                <i data-lucide="eye" style="width:13px;height:13px;"></i> View Payload
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      tbody.querySelectorAll('.btn-view-log-payload').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const logId = btn.dataset.id;
+          const log = allLogs.find(x => x.id === logId);
+          if (!log) return;
+          let parsedDetails = log.details;
+          try {
+            if (typeof log.details === 'string') parsedDetails = JSON.parse(log.details);
+          } catch(e) {}
+
+          UIComponents.openModal({
+            title: `Audit Event: ${log.action} (${log.id})`,
+            bodyHtml: `
+              <div style="display:flex; flex-direction:column; gap:12px;">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:0.83rem; background:var(--bg-subtle, #f8fafc); padding:12px; border-radius:8px;">
+                  <div><strong>Operator:</strong> ${esc(log.userName)} (${esc(log.userRole)})</div>
+                  <div><strong>Timestamp:</strong> ${fmtDate(log.timestamp)}</div>
+                  <div><strong>Category:</strong> <span class="badge badge-info">${esc(log.category)}</span></div>
+                  <div><strong>Entity Ref:</strong> ${esc(log.entityRef || 'None')}</div>
+                  <div style="grid-column: span 2;"><strong>Client Agent:</strong> <span style="font-size:0.75rem; color:var(--text-muted);">${esc(log.clientAgent || 'Unknown')}</span></div>
+                </div>
+                <div style="font-weight:700; font-size:0.86rem; margin-top:4px;">Event Details (JSON):</div>
+                <pre style="background:#0f172a; color:#38bdf8; padding:12px; border-radius:8px; font-size:0.78rem; max-height:280px; overflow:auto; margin:0; line-height:1.4;">${esc(JSON.stringify(parsedDetails, null, 2))}</pre>
+              </div>
+            `,
+            footerHtml: ''
+          });
+          UIComponents.refreshIcons();
+        });
+      });
+
+      UIComponents.refreshIcons();
+    };
+
     tabContent.innerHTML = `
       <div class="card">
-        <div class="card-header">
-          <h3 class="card-title">Immutable Audit Trail</h3>
-          <span class="badge badge-info">${logs.length} Logged Events</span>
+        <div class="card-header" style="flex-wrap:wrap; gap:12px; justify-content:space-between; align-items:center;">
+          <div>
+            <h3 class="card-title" style="display:flex; align-items:center; gap:8px;">
+              <span style="color:#ef4444;"><i data-lucide="shield-alert"></i></span>
+              Immutable System &amp; Security Audit Trail
+            </h3>
+            <p class="card-desc">Chronological cryptographic activity ledger recording administrative actions, role assignments, student modifications, and auth sessions.</p>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-export-audit-csv">
+              <i data-lucide="download"></i> Export CSV
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-export-audit-json">
+              <i data-lucide="file-json"></i> Export JSON
+            </button>
+            <button type="button" class="btn btn-primary btn-sm" id="btn-refresh-audit">
+              <i data-lucide="refresh-cw"></i> Refresh
+            </button>
+          </div>
         </div>
+
+        <!-- Filter Controls -->
+        <div style="padding:12px 16px; background:var(--bg-subtle, #f8fafc); border-bottom:1px solid var(--border-color); display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between;">
+          <div style="display:flex; gap:6px; flex-wrap:wrap;" id="audit-category-pills">
+            <button class="btn btn-sm btn-primary audit-cat-btn" data-cat="all">All Events</button>
+            <button class="btn btn-sm btn-secondary audit-cat-btn" data-cat="AUTH">🔐 Auth &amp; Sessions</button>
+            <button class="btn btn-sm btn-secondary audit-cat-btn" data-cat="GOVERNANCE">🏛️ Governance</button>
+            <button class="btn btn-sm btn-secondary audit-cat-btn" data-cat="ADMISSIONS">📝 Admissions</button>
+            <button class="btn btn-sm btn-secondary audit-cat-btn" data-cat="FINANCE">💳 Finance</button>
+            <button class="btn btn-sm btn-secondary audit-cat-btn" data-cat="ACADEMIC">🎓 Academic</button>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; flex:1; max-width:320px; min-width:200px;">
+            <input type="text" id="audit-search-input" class="form-control form-control-sm" placeholder="Search by operator, action, ref..." style="width:100%;">
+          </div>
+        </div>
+
+        <div style="padding:8px 16px; background:#f1f5f9; font-size:0.75rem; color:var(--text-muted); display:flex; justify-content:space-between;">
+          <span id="audit-count-badge">${allLogs.length} Logged Events</span>
+          <span>Showing latest entries (auto-indexed)</span>
+        </div>
+
         <div class="table-responsive">
-          <table class="tms-table font-mono" style="font-size:0.82rem;">
-            <thead><tr><th>Audit ID</th><th>Timestamp</th><th>Operator</th><th>Action</th><th>Entity Reference</th></tr></thead>
-            <tbody>
-              ${logs.length === 0 ? '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:30px;">No audit events recorded yet.</td></tr>'
-                : logs.map((l) => `<tr>
-                    <td><strong>${esc(l.id)}</strong></td>
-                    <td>${fmtDate(l.timestamp)}</td>
-                    <td>${esc(l.userName)} (${esc(l.userRole)})</td>
-                    <td><span class="badge badge-warning">${esc(l.action)}</span></td>
-                    <td>${esc(l.entityRef || '—')}</td>
-                  </tr>`).join('')}
+          <table class="tms-table" style="font-size:0.83rem;">
+            <thead>
+              <tr>
+                <th style="width:140px;">Audit ID</th>
+                <th style="width:160px;">Timestamp</th>
+                <th>Operator</th>
+                <th>Action &amp; Category</th>
+                <th>Entity Reference</th>
+                <th style="text-align:right;">Payload</th>
+              </tr>
+            </thead>
+            <tbody id="audit-table-body">
+              <!-- Rendered dynamically -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+
+    renderLogsTable();
+
+    tabContent.querySelectorAll('.audit-cat-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        tabContent.querySelectorAll('.audit-cat-btn').forEach(b => {
+          b.classList.remove('btn-primary');
+          b.classList.add('btn-secondary');
+        });
+        btn.classList.remove('btn-secondary');
+        btn.classList.add('btn-primary');
+        currentFilter = btn.dataset.cat;
+        renderLogsTable();
+      });
+    });
+
+    const searchInput = document.getElementById('audit-search-input');
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        searchQuery = e.target.value;
+        renderLogsTable();
+      });
+    }
+
+    const refreshBtn = document.getElementById('btn-refresh-audit');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', async () => {
+        refreshBtn.disabled = true;
+        refreshBtn.innerHTML = '<i data-lucide="loader" class="animate-spin"></i> Refreshing...';
+        UIComponents.refreshIcons();
+        allLogs = await auditService.getLogs();
+        refreshBtn.disabled = false;
+        refreshBtn.innerHTML = '<i data-lucide="refresh-cw"></i> Refresh';
+        renderLogsTable();
+        UIComponents.showToast('Audit log updated from server.', 'info');
+      });
+    }
+
+    const exportCsvBtn = document.getElementById('btn-export-audit-csv');
+    if (exportCsvBtn) {
+      exportCsvBtn.addEventListener('click', () => {
+        const rows = allLogs.map(l => [
+          l.id,
+          l.timestamp,
+          `"${(l.userName || '').replace(/"/g, '""')}"`,
+          l.userRole,
+          l.action,
+          l.category,
+          l.entityRef || '',
+          `"${(l.details || '').replace(/"/g, '""')}"`
+        ]);
+        const csv = 'Audit ID,Timestamp,Operator,Role,Action,Category,Entity Ref,Details\n' + rows.map(r => r.join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `TMS-Audit-Trail-${new Date().toISOString().slice(0, 10)}.csv`;
+        a.click();
+      });
+    }
+
+    const exportJsonBtn = document.getElementById('btn-export-audit-json');
+    if (exportJsonBtn) {
+      exportJsonBtn.addEventListener('click', () => {
+        const blob = new Blob([JSON.stringify(allLogs, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `TMS-Audit-Trail-${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+      });
+    }
+  }
+
+  /* ================================================================== */
+  /* User Sessions (Live Presence & Login / Logout History Tracker)     */
+  /* ================================================================== */
+
+  static async renderUserSessionsTab(tabContent) {
+    const isSuperAdmin = authService.getCurrentUser()?.isSuperAdmin === true;
+    tabContent.innerHTML = `
+      <div class="card" style="margin-bottom:24px;">
+        <div class="card-header" style="flex-wrap:wrap; gap:12px; justify-content:space-between; align-items:center;">
+          <div>
+            <h3 class="card-title" style="display:flex; align-items:center; gap:8px;">
+              <span style="color:#0284c7;"><i data-lucide="history"></i></span>
+              User Login &amp; Logout Session Tracker
+            </h3>
+            <p class="card-desc">Real-time presence tracking, authenticated sessions, device platforms, and historical login/logout times across all accounts.</p>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            <button type="button" class="btn btn-primary btn-sm" id="btn-refresh-sessions">
+              <i data-lucide="refresh-cw"></i> Refresh Sessions
+            </button>
+          </div>
+        </div>
+
+        <div class="kpi-grid" style="margin:16px 0 20px;">
+          <div class="card" style="padding:14px; text-align:center; border-left:3px solid #16a34a;">
+            <div style="font-size:0.75rem; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Active Online Now</div>
+            <div style="font-size:1.8rem; font-weight:800; color:#16a34a;" id="kpi-online-count">—</div>
+          </div>
+          <div class="card" style="padding:14px; text-align:center; border-left:3px solid #2563eb;">
+            <div style="font-size:0.75rem; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Total Sessions Logged</div>
+            <div style="font-size:1.8rem; font-weight:800; color:#2563eb;" id="kpi-total-sessions">—</div>
+          </div>
+          <div class="card" style="padding:14px; text-align:center; border-left:3px solid #f59e0b;">
+            <div style="font-size:0.75rem; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Admin &amp; Staff Sessions</div>
+            <div style="font-size:1.8rem; font-weight:800; color:#f59e0b;" id="kpi-staff-sessions">—</div>
+          </div>
+          <div class="card" style="padding:14px; text-align:center; border-left:3px solid #8b5cf6;">
+            <div style="font-size:0.75rem; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Parent Portal Sessions</div>
+            <div style="font-size:1.8rem; font-weight:800; color:#8b5cf6;" id="kpi-parent-sessions">—</div>
+          </div>
+        </div>
+
+        <div style="padding:12px 16px; background:var(--bg-subtle, #f8fafc); border-top:1px solid var(--border-color); border-bottom:1px solid var(--border-color); display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between;">
+          <div style="display:flex; gap:6px; flex-wrap:wrap;" id="session-filter-pills">
+            <button class="btn btn-sm btn-primary session-filter-btn" data-filter="all">All Sessions</button>
+            <button class="btn btn-sm btn-secondary session-filter-btn" data-filter="active">● Active Online</button>
+            <button class="btn btn-sm btn-secondary session-filter-btn" data-filter="staff">Staff &amp; Admins</button>
+            <button class="btn btn-sm btn-secondary session-filter-btn" data-filter="parent">Parent Logins</button>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px; flex:1; max-width:300px;">
+            <input type="text" id="session-search-input" class="form-control form-control-sm" placeholder="Search by name, email, role..." style="width:100%;">
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="tms-table" style="font-size:0.83rem;">
+            <thead>
+              <tr>
+                <th>User / Account</th>
+                <th>Role &amp; Scope</th>
+                <th>Login Time</th>
+                <th>Logout / Status</th>
+                <th>Duration / Last Active</th>
+                <th>Device / Browser</th>
+                <th style="text-align:right;">Control</th>
+              </tr>
+            </thead>
+            <tbody id="sessions-table-body">
+              <tr><td colspan="7" style="text-align:center; padding:30px;"><i data-lucide="loader" class="animate-spin" style="margin:0 auto 8px;"></i> Loading active sessions...</td></tr>
             </tbody>
           </table>
         </div>
       </div>
     `;
     UIComponents.refreshIcons();
+
+    const loadAndRenderSessions = async () => {
+      let sessions = [];
+      try {
+        sessions = await dbService.select('user_sessions', null, true);
+      } catch (e) {
+        sessions = dbService.getLocal('user_sessions') || [];
+      }
+
+      if (!sessions || !sessions.length) {
+        const auditLogs = await auditService.getLogs();
+        const loginLogs = auditLogs.filter(l => l.action === 'USER_LOGIN' || l.action === 'USER_LOGOUT');
+        if (loginLogs.length) {
+          sessions = loginLogs.map(l => {
+            let details = {};
+            try { details = typeof l.details === 'string' ? JSON.parse(l.details) : l.details; } catch(e) {}
+            return {
+              id: l.id,
+              userId: l.userId,
+              userEmail: details.email || l.userId,
+              userName: l.userName,
+              userRole: l.userRole,
+              loginAt: l.action === 'USER_LOGIN' ? l.timestamp : null,
+              logoutAt: l.action === 'USER_LOGOUT' ? l.timestamp : null,
+              lastActiveAt: l.timestamp,
+              status: l.action === 'USER_LOGOUT' ? 'logged_out' : 'active',
+              clientAgent: l.clientAgent || details.device || ''
+            };
+          });
+        }
+      }
+
+      sessions.sort((a, b) => new Date(b.loginAt || b.lastActiveAt || 0) - new Date(a.loginAt || a.lastActiveAt || 0));
+
+      const now = Date.now();
+      let activeOnlineCount = 0;
+      let staffCount = 0;
+      let parentCount = 0;
+
+      sessions.forEach(s => {
+        const lastActiveTime = new Date(s.lastActiveAt || s.loginAt || 0).getTime();
+        const isRecent = (now - lastActiveTime) < 15 * 60 * 1000;
+        const isOnline = isRecent && s.status !== 'logged_out' && !s.logoutAt;
+        if (isOnline) activeOnlineCount++;
+        if (s.userRole === 'admin' || s.userRole === 'super_admin' || s.userRole === 'teacher' || s.userRole === 'hr' || s.userRole === 'finance') staffCount++;
+        if (s.userRole === 'parent') parentCount++;
+      });
+
+      const kpiOnline = document.getElementById('kpi-online-count');
+      const kpiTotal = document.getElementById('kpi-total-sessions');
+      const kpiStaff = document.getElementById('kpi-staff-sessions');
+      const kpiParent = document.getElementById('kpi-parent-sessions');
+
+      if (kpiOnline) kpiOnline.innerText = activeOnlineCount;
+      if (kpiTotal) kpiTotal.innerText = sessions.length;
+      if (kpiStaff) kpiStaff.innerText = staffCount;
+      if (kpiParent) kpiParent.innerText = parentCount;
+
+      let currentSessionFilter = 'all';
+      let currentSessionSearch = '';
+
+      const renderRows = () => {
+        const tbody = document.getElementById('sessions-table-body');
+        if (!tbody) return;
+
+        let filtered = [...sessions];
+        if (currentSessionFilter === 'active') {
+          filtered = filtered.filter(s => {
+            const lastActiveTime = new Date(s.lastActiveAt || s.loginAt || 0).getTime();
+            return (now - lastActiveTime) < 15 * 60 * 1000 && s.status !== 'logged_out' && !s.logoutAt;
+          });
+        } else if (currentSessionFilter === 'staff') {
+          filtered = filtered.filter(s => s.userRole !== 'parent' && s.userRole !== 'student');
+        } else if (currentSessionFilter === 'parent') {
+          filtered = filtered.filter(s => s.userRole === 'parent');
+        }
+
+        if (currentSessionSearch.trim()) {
+          const q = currentSessionSearch.toLowerCase().trim();
+          filtered = filtered.filter(s => 
+            (s.userName || '').toLowerCase().includes(q) ||
+            (s.userEmail || '').toLowerCase().includes(q) ||
+            (s.userRole || '').toLowerCase().includes(q)
+          );
+        }
+
+        if (!filtered.length) {
+          tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:32px; color:var(--text-muted);">No user sessions found matching criteria.</td></tr>`;
+          UIComponents.refreshIcons();
+          return;
+        }
+
+        tbody.innerHTML = filtered.slice(0, 100).map(s => {
+          const lastActiveTime = new Date(s.lastActiveAt || s.loginAt || 0).getTime();
+          const isOnline = (now - lastActiveTime) < 15 * 60 * 1000 && s.status !== 'logged_out' && !s.logoutAt;
+          
+          let durationStr = '—';
+          if (s.loginAt) {
+            const start = new Date(s.loginAt).getTime();
+            const end = s.logoutAt ? new Date(s.logoutAt).getTime() : now;
+            const diffMin = Math.round((end - start) / 60000);
+            if (diffMin < 60) durationStr = `${diffMin} min`;
+            else durationStr = `${Math.floor(diffMin / 60)}h ${diffMin % 60}m`;
+          }
+
+          const deviceStr = parseUserAgent(s.clientAgent);
+
+          return `
+            <tr data-session-id="${esc(s.id)}">
+              <td>
+                <div style="font-weight:700; font-size:0.86rem; display:flex; align-items:center; gap:6px;">
+                  ${isOnline ? '<span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#16a34a; box-shadow:0 0 8px #16a34a;"></span>' : ''}
+                  ${esc(s.userName || 'TMS User')}
+                </div>
+                <div class="font-mono" style="font-size:0.75rem; color:var(--text-muted);">${esc(s.userEmail || '—')}</div>
+              </td>
+              <td>
+                ${s.userRole === 'super_admin' ? '<span class="badge" style="background:#fef3c7; color:#b45309; border:1px solid #fde68a; font-weight:700;">👑 Super Admin</span>'
+                  : `<span class="badge badge-info">${esc(s.userRole || 'user')}</span>`}
+              </td>
+              <td style="font-size:0.78rem; white-space:nowrap;">
+                ${s.loginAt ? fmtDate(s.loginAt) : '—'}
+              </td>
+              <td>
+                ${isOnline ? '<span class="badge badge-success" style="font-weight:700;">● Online Now</span>'
+                  : s.logoutAt ? `<span style="font-size:0.78rem;">${fmtDate(s.logoutAt)}</span>`
+                  : '<span class="badge badge-secondary">Session Closed</span>'}
+              </td>
+              <td style="font-size:0.78rem;">
+                <strong>${durationStr}</strong>
+                ${s.lastActiveAt ? `<div style="font-size:0.7rem; color:var(--text-muted);">Active: ${new Date(s.lastActiveAt).toLocaleTimeString()}</div>` : ''}
+              </td>
+              <td style="font-size:0.78rem; color:var(--text-muted);">
+                <i data-lucide="laptop" style="width:13px;height:13px;vertical-align:middle;margin-right:3px;"></i>
+                ${esc(deviceStr)}
+              </td>
+              <td style="text-align:right;">
+                ${isOnline && isSuperAdmin ? `
+                  <button type="button" class="btn btn-secondary btn-sm btn-terminate-session" data-id="${esc(s.id)}" data-user="${esc(s.userName)}" style="padding:2px 8px; font-size:0.72rem; color:#ef4444; border-color:#fca5a5;">
+                    <i data-lucide="power" style="width:12px;height:12px;"></i> Force Logout
+                  </button>
+                ` : '—'}
+              </td>
+            </tr>
+          `;
+        }).join('');
+
+        tbody.querySelectorAll('.btn-terminate-session').forEach(btn => {
+          btn.addEventListener('click', async () => {
+            const sid = btn.dataset.id;
+            const uName = btn.dataset.user;
+            if (!confirm(`Force logout session for ${uName}?`)) return;
+            try {
+              await dbService.update('user_sessions', sid, {
+                logoutAt: new Date().toISOString(),
+                status: 'terminated'
+              });
+              await auditService.log('SESSION_TERMINATED_BY_SUPER_ADMIN', 'SECURITY', { sessionId: sid, user: uName });
+              UIComponents.showToast(`Terminated session for ${uName}.`, 'warning');
+              loadAndRenderSessions();
+            } catch (err) {
+              UIComponents.showToast(`Failed: ${err.message}`, 'danger');
+            }
+          });
+        });
+
+        UIComponents.refreshIcons();
+      };
+
+      renderRows();
+
+      tabContent.querySelectorAll('.session-filter-btn').forEach(b => {
+        b.addEventListener('click', () => {
+          tabContent.querySelectorAll('.session-filter-btn').forEach(btn => {
+            btn.classList.remove('btn-primary');
+            btn.classList.add('btn-secondary');
+          });
+          b.classList.remove('btn-secondary');
+          b.classList.add('btn-primary');
+          currentSessionFilter = b.dataset.filter;
+          renderRows();
+        });
+      });
+
+      const sSearch = document.getElementById('session-search-input');
+      if (sSearch) {
+        sSearch.addEventListener('input', (e) => {
+          currentSessionSearch = e.target.value;
+          renderRows();
+        });
+      }
+    };
+
+    loadAndRenderSessions();
+
+    const rBtn = document.getElementById('btn-refresh-sessions');
+    if (rBtn) {
+      rBtn.addEventListener('click', () => {
+        rBtn.innerHTML = '<i data-lucide="loader" class="animate-spin"></i> Refreshing...';
+        loadAndRenderSessions().finally(() => {
+          rBtn.innerHTML = '<i data-lucide="refresh-cw"></i> Refresh Sessions';
+          UIComponents.refreshIcons();
+          UIComponents.showToast('User session tracker refreshed.', 'info');
+        });
+      });
+    }
+  }
+
+  /* ================================================================== */
+  /* System Doctor (Find & Fix Errors — Automated Integrity Engine)     */
+  /* ================================================================== */
+
+  static async renderSystemDoctorTab(tabContent) {
+    tabContent.innerHTML = `
+      <div class="card" style="margin-bottom:24px;">
+        <div class="card-header" style="flex-wrap:wrap; gap:12px; justify-content:space-between; align-items:center;">
+          <div>
+            <h3 class="card-title" style="display:flex; align-items:center; gap:8px;">
+              <span style="color:#16a34a;"><i data-lucide="wrench"></i></span>
+              System Doctor — Automated Error Diagnosis &amp; Self-Repair
+            </h3>
+            <p class="card-desc">Deep diagnostic scanner that identifies database inconsistencies, orphaned student records, missing IDs, corrupted finance items, and offline queue drift, with 1-click automatic fixes.</p>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-run-full-scan">
+              <i data-lucide="stethoscope"></i> Run Deep System Scan
+            </button>
+            <button type="button" class="btn btn-primary btn-sm" id="btn-auto-repair-all" disabled>
+              <i data-lucide="sparkles"></i> Auto-Repair All Detected Issues
+            </button>
+          </div>
+        </div>
+
+        <div id="doctor-summary-bar" style="margin:16px 0; padding:14px; background:var(--bg-subtle, #f8fafc); border-radius:10px; border:1px solid var(--border-color); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <div id="doctor-status-badge" class="badge badge-info" style="font-size:0.82rem; padding:4px 10px;">Ready for Diagnosis</div>
+            <span id="doctor-status-text" style="font-size:0.85rem; color:var(--text-muted);">Click "Run Deep System Scan" to analyze database health.</span>
+          </div>
+          <div id="doctor-issue-count" style="font-weight:700; font-size:0.9rem; color:#16a34a;">0 Issues Detected</div>
+        </div>
+
+        <div style="font-weight:700; font-size:0.92rem; margin:16px 0 10px; display:flex; align-items:center; gap:6px;">
+          <i data-lucide="activity" style="width:16px;height:16px;color:#2563eb;"></i> Diagnostic Scan Results:
+        </div>
+        <div id="doctor-issues-container" style="display:flex; flex-direction:column; gap:10px; margin-bottom:20px;">
+          <div style="padding:28px; text-align:center; background:#f8fafc; border:1.5px dashed var(--border-color); border-radius:10px; color:var(--text-muted); font-size:0.85rem;">
+            Click <strong>"Run Deep System Scan"</strong> above to launch full automated health checks across all campus data stores.
+          </div>
+        </div>
+
+        <div style="font-weight:700; font-size:0.85rem; margin:14px 0 8px; color:var(--text-muted); display:flex; align-items:center; gap:6px;">
+          <i data-lucide="terminal" style="width:14px;height:14px;"></i> Live Diagnostic Engine Console:
+        </div>
+        <div id="doctor-console-log" style="background:#090d16; color:#10b981; font-family:monospace; font-size:0.76rem; padding:14px; border-radius:8px; max-height:220px; overflow-y:auto; line-height:1.6; border:1px solid #1e293b;">
+          [TMS SYSTEM DOCTOR] Engine Initialized. Ready for diagnostics.
+        </div>
+      </div>
+    `;
+    UIComponents.refreshIcons();
+
+    let detectedIssues = [];
+
+    const logConsole = (msg, type = 'info') => {
+      const c = document.getElementById('doctor-console-log');
+      if (!c) return;
+      const time = new Date().toLocaleTimeString();
+      let color = '#10b981';
+      if (type === 'warn') color = '#f59e0b';
+      if (type === 'err') color = '#ef4444';
+      if (type === 'dim') color = '#64748b';
+      c.innerHTML += `<div style="color:${color};"><span style="color:#64748b;">[${time}]</span> ${esc(msg)}</div>`;
+      c.scrollTop = c.scrollHeight;
+    };
+
+    const runScan = async () => {
+      detectedIssues = [];
+      const scanBtn = document.getElementById('btn-run-full-scan');
+      const repairBtn = document.getElementById('btn-auto-repair-all');
+      const statusBadge = document.getElementById('doctor-status-badge');
+      const statusText = document.getElementById('doctor-status-text');
+      const container = document.getElementById('doctor-issues-container');
+
+      scanBtn.disabled = true;
+      scanBtn.innerHTML = '<i data-lucide="loader" class="animate-spin"></i> Scanning System...';
+      UIComponents.refreshIcons();
+
+      logConsole('Initiating comprehensive health scan across all data collections...', 'info');
+
+      // Check 1: Super Admin Root Profile Check
+      logConsole('Validating Super Administrator account (cmbasith786@gmail.com)...', 'dim');
+      try {
+        const profiles = await dbService.select('profiles');
+        const basith = profiles.find(p => (p.email || '').toLowerCase() === (TMS_CONFIG.superAdminEmail || '').toLowerCase());
+        if (!basith) {
+          detectedIssues.push({
+            id: 'ISSUE-SUPERADMIN-MISSING',
+            category: 'SECURITY',
+            title: 'Super Admin Profile Missing in Database',
+            description: `No profile record found matching ${TMS_CONFIG.superAdminEmail}.`,
+            severity: 'high',
+            fix: async () => {
+              await dbService.insert('profiles', {
+                email: TMS_CONFIG.superAdminEmail,
+                name: 'C. M. Basith',
+                role: 'super_admin',
+                scope: 'school_wide',
+                is_super_admin: true,
+                title: 'Executive Director & Super Admin'
+              });
+            }
+          });
+          logConsole('WARNING: Super Admin profile record not found in profiles collection!', 'warn');
+        } else if (basith.role !== 'super_admin' || !basith.is_super_admin) {
+          detectedIssues.push({
+            id: 'ISSUE-SUPERADMIN-ROLE-DRIFT',
+            category: 'SECURITY',
+            title: 'Super Admin Role Flag Drift',
+            description: `Super Admin account has role "${basith.role}" instead of "super_admin".`,
+            severity: 'high',
+            fix: async () => {
+              await dbService.update('profiles', basith.id, {
+                role: 'super_admin',
+                is_super_admin: true,
+                scope: 'school_wide'
+              });
+            }
+          });
+          logConsole(`Found role flag drift on Super Admin account: current role is "${basith.role}".`, 'warn');
+        } else {
+          logConsole('✓ Super Admin account is verified, active, and holds root super_admin role.', 'info');
+        }
+      } catch (e) {
+        logConsole(`Error inspecting profiles: ${e.message}`, 'err');
+      }
+
+      // Check 2: Admission Applications Integrity
+      logConsole('Inspecting admissions_applications collection...', 'dim');
+      try {
+        const apps = await dbService.select('admissions_applications');
+        let brokenApps = [];
+        apps.forEach(a => {
+          if (!a.appId || !a.status || !a.session) {
+            brokenApps.push(a);
+          }
+        });
+        if (brokenApps.length) {
+          detectedIssues.push({
+            id: 'ISSUE-ADMISSION-RECORDS',
+            category: 'ADMISSIONS',
+            title: `${brokenApps.length} Admission Applications With Incomplete Fields`,
+            description: `Found ${brokenApps.length} applications missing Form No (appId), status, or session headers.`,
+            severity: 'medium',
+            fix: async () => {
+              for (const b of brokenApps) {
+                const patch = {};
+                if (!b.appId) patch.appId = `TMS-APP-${Date.now().toString(36).toUpperCase()}`;
+                if (!b.status) patch.status = 'Submitted';
+                if (!b.session) patch.session = TMS_CONFIG.academic?.currentYear || '2027 - 2028';
+                await dbService.update('admissions_applications', b.id, patch);
+              }
+            }
+          });
+          logConsole(`WARNING: ${brokenApps.length} admission applications have missing critical metadata.`, 'warn');
+        } else {
+          logConsole(`✓ All ${apps.length} admission applications have valid identifiers and schemas.`, 'info');
+        }
+      } catch (e) {
+        logConsole(`Error checking applications: ${e.message}`, 'err');
+      }
+
+      // Check 3: Finance & Invoices Sanity
+      logConsole('Inspecting invoices and financial ledger...', 'dim');
+      try {
+        const invoices = await dbService.select('invoices');
+        let brokenInvoices = invoices.filter(inv => isNaN(Number(inv.total)) || isNaN(Number(inv.paidAmount || 0)));
+        if (brokenInvoices.length) {
+          detectedIssues.push({
+            id: 'ISSUE-INVOICES-CORRUPT',
+            category: 'FINANCE',
+            title: `${brokenInvoices.length} Invoices With Corrupted Numeric Totals`,
+            description: `Detected invoices containing NaN or unparseable financial totals.`,
+            severity: 'high',
+            fix: async () => {
+              for (const inv of brokenInvoices) {
+                await dbService.update('invoices', inv.id, {
+                  total: Number(inv.total) || 0,
+                  paidAmount: Number(inv.paidAmount) || 0
+                });
+              }
+            }
+          });
+          logConsole(`WARNING: ${brokenInvoices.length} invoices contain corrupted financial calculations.`, 'warn');
+        } else {
+          logConsole(`✓ All ${invoices.length} fee invoices have valid numbers and balances.`, 'info');
+        }
+      } catch (e) {
+        logConsole(`Invoices check note: ${e.message}`, 'dim');
+      }
+
+      // Check 4: Attendance Records Sanity
+      logConsole('Inspecting attendance registers...', 'dim');
+      try {
+        const attendance = await dbService.select('attendance_records');
+        let unlinkedAttendance = attendance.filter(att => !att.date || !att.classId);
+        if (unlinkedAttendance.length) {
+          detectedIssues.push({
+            id: 'ISSUE-ATTENDANCE-DRIFT',
+            category: 'ATTENDANCE',
+            title: `${unlinkedAttendance.length} Attendance Records Missing Date / Class`,
+            description: `Found ${unlinkedAttendance.length} records missing timestamps or classroom links.`,
+            severity: 'low',
+            fix: async () => {
+              const idsToDelete = unlinkedAttendance.map(x => x.id);
+              await dbService.delete('attendance_records', idsToDelete);
+            }
+          });
+          logConsole(`WARNING: ${unlinkedAttendance.length} attendance records missing classroom / date references.`, 'warn');
+        } else {
+          logConsole(`✓ All ${attendance.length} attendance punch records have valid timestamps.`, 'info');
+        }
+      } catch (e) {
+        logConsole(`Attendance check note: ${e.message}`, 'dim');
+      }
+
+      // Check 5: Offline Mutation Queue Drift
+      logConsole('Checking browser offline queue (tms_offline_queue)...', 'dim');
+      try {
+        const rawQueue = localStorage.getItem('tms_offline_queue');
+        const queue = rawQueue ? JSON.parse(rawQueue) : [];
+        if (queue.length > 0) {
+          detectedIssues.push({
+            id: 'ISSUE-OFFLINE-QUEUE',
+            category: 'SYNC',
+            title: `${queue.length} Pending Mutations In Offline Queue`,
+            description: `There are mutations awaiting synchronization with the Supabase database.`,
+            severity: 'medium',
+            fix: async () => {
+              await dbService.processQueue();
+            }
+          });
+          logConsole(`Found ${queue.length} uncommitted offline mutation(s) in queue.`, 'warn');
+        } else {
+          logConsole('✓ Offline queue is completely clear and in sync with Supabase cloud.', 'info');
+        }
+      } catch (e) {
+        logConsole(`Queue check: ${e.message}`, 'dim');
+      }
+
+      // Check 6: Memory Cache Health
+      logConsole('Checking in-memory RAM cache state...', 'dim');
+      const cacheSize = dbService._memCache ? dbService._memCache.size : 0;
+      logConsole(`✓ In-Memory RAM Cache is active: ${cacheSize} collections cached.`, 'info');
+
+      // Finalize UI
+      scanBtn.disabled = false;
+      scanBtn.innerHTML = '<i data-lucide="stethoscope"></i> Run Deep System Scan';
+
+      const issueCountEl = document.getElementById('doctor-issue-count');
+      if (detectedIssues.length === 0) {
+        statusBadge.className = 'badge badge-success';
+        statusBadge.innerText = 'System 100% Healthy';
+        statusText.innerText = 'All database collections, schemas, and accounts verified intact.';
+        if (issueCountEl) {
+          issueCountEl.innerText = '0 Issues Detected';
+          issueCountEl.style.color = '#16a34a';
+        }
+        repairBtn.disabled = true;
+
+        container.innerHTML = `
+          <div style="padding:24px; text-align:center; background:rgba(22,163,74,0.06); border:1.5px solid #86efac; border-radius:10px; color:#15803d;">
+            <i data-lucide="check-circle-2" style="width:36px;height:36px;display:block;margin:0 auto 8px;color:#16a34a;"></i>
+            <div style="font-weight:700; font-size:1.05rem;">All Core Subsystems Operating Correctly</div>
+            <div style="font-size:0.84rem; color:var(--text-muted); margin-top:4px;">No data corruption, schema drift, or broken relationships detected across any campus table.</div>
+          </div>
+        `;
+        logConsole('Diagnosis complete: No errors or inconsistencies detected.', 'info');
+      } else {
+        statusBadge.className = 'badge badge-warning';
+        statusBadge.innerText = `${detectedIssues.length} Inconsistencies Found`;
+        statusText.innerText = 'Review detected issues below and click "Auto-Repair All Detected Issues".';
+        if (issueCountEl) {
+          issueCountEl.innerText = `${detectedIssues.length} Issues Found`;
+          issueCountEl.style.color = '#ef4444';
+        }
+        repairBtn.disabled = false;
+
+        container.innerHTML = detectedIssues.map((iss, idx) => `
+          <div class="card" style="padding:14px; border-left:4px solid ${iss.severity === 'high' ? '#ef4444' : '#f59e0b'}; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+            <div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span class="badge ${iss.severity === 'high' ? 'badge-danger' : 'badge-warning'}">${iss.category}</span>
+                <span style="font-weight:700; font-size:0.92rem;">${esc(iss.title)}</span>
+              </div>
+              <div style="font-size:0.82rem; color:var(--text-muted); margin-top:4px;">${esc(iss.description)}</div>
+            </div>
+            <div>
+              <button type="button" class="btn btn-secondary btn-sm btn-fix-single" data-idx="${idx}">
+                <i data-lucide="wrench"></i> Fix This
+              </button>
+            </div>
+          </div>
+        `).join('');
+
+        container.querySelectorAll('.btn-fix-single').forEach(b => {
+          b.addEventListener('click', async () => {
+            const idx = Number(b.dataset.idx);
+            const iss = detectedIssues[idx];
+            if (!iss) return;
+            b.disabled = true;
+            b.innerHTML = '<i data-lucide="loader" class="animate-spin"></i> Fixing...';
+            try {
+              await iss.fix();
+              await auditService.log('SYSTEM_DOCTOR_FIX_APPLIED', 'GOVERNANCE', { issueId: iss.id, title: iss.title });
+              logConsole(`Repaired issue: ${iss.title}`, 'info');
+              UIComponents.showToast(`Fixed: ${iss.title}`, 'success');
+              runScan();
+            } catch (err) {
+              logConsole(`Repair failed: ${err.message}`, 'err');
+              UIComponents.showToast(`Repair failed: ${err.message}`, 'danger');
+            }
+          });
+        });
+      }
+
+      UIComponents.refreshIcons();
+    };
+
+    const runScanBtn = document.getElementById('btn-run-full-scan');
+    if (runScanBtn) runScanBtn.addEventListener('click', runScan);
+
+    const autoRepairBtn = document.getElementById('btn-auto-repair-all');
+    if (autoRepairBtn) {
+      autoRepairBtn.addEventListener('click', async () => {
+        if (!detectedIssues.length) return;
+        if (!confirm(`Apply automated self-repair to all ${detectedIssues.length} detected system issue(s)?`)) return;
+        autoRepairBtn.disabled = true;
+        autoRepairBtn.innerHTML = '<i data-lucide="loader" class="animate-spin"></i> Repairing all...';
+        logConsole('Initiating automated repair sequence across all flagged issues...', 'warn');
+
+        for (const iss of detectedIssues) {
+          try {
+            await iss.fix();
+            logConsole(`Successfully resolved: ${iss.title}`, 'info');
+          } catch (e) {
+            logConsole(`Failed repairing ${iss.title}: ${e.message}`, 'err');
+          }
+        }
+        await auditService.log('SYSTEM_DOCTOR_BULK_REPAIR_COMPLETED', 'GOVERNANCE', { count: detectedIssues.length });
+        UIComponents.showToast('Automated self-repair routine completed.', 'success');
+        runScan();
+      });
+    }
+
+    // Auto-run first scan on open
+    setTimeout(() => runScan(), 200);
+  }
+
+  /* ================================================================== */
+  /* Developer Tools & Direct Supabase Table Explorer                   */
+  /* ================================================================== */
+
+  static async renderDeveloperToolsTab(tabContent) {
+    const TABLES = [
+      'profiles',
+      'user_sessions',
+      'audit_logs',
+      'admissions_applications',
+      'students',
+      'invoices',
+      'attendance_records',
+      'timetables',
+      'certificates',
+      'notices',
+      'admission_settings',
+      'admission_form_fields',
+      'admission_fees'
+    ];
+
+    tabContent.innerHTML = `
+      <div class="card" style="margin-bottom:24px;">
+        <div class="card-header" style="flex-wrap:wrap; gap:12px; justify-content:space-between; align-items:center;">
+          <div>
+            <h3 class="card-title" style="display:flex; align-items:center; gap:8px;">
+              <span style="color:#f59e0b;"><i data-lucide="terminal"></i></span>
+              Developer Console &amp; Direct Database Explorer
+            </h3>
+            <p class="card-desc">Super Administrator privileged diagnostics: inspect raw tables, measure cloud latency, analyze RAM caches, and force local state purges.</p>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-purge-ram-cache">
+              <i data-lucide="zap"></i> Flush RAM Cache
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-ping-supabase">
+              <i data-lucide="activity"></i> Test Cloud Latency
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-flush-local-storage" style="color:#ef4444;">
+              <i data-lucide="trash-2"></i> Hard Reset Storage
+            </button>
+          </div>
+        </div>
+
+        <!-- System Diagnostic KPIs -->
+        <div class="kpi-grid" style="margin:16px 0 20px;">
+          <div class="card" style="padding:14px; text-align:center;">
+            <div style="font-size:0.75rem; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Supabase Status</div>
+            <div style="font-size:1.1rem; font-weight:800; color:#16a34a; margin-top:4px;" id="dev-kpi-status">Connected</div>
+          </div>
+          <div class="card" style="padding:14px; text-align:center;">
+            <div style="font-size:0.75rem; color:var(--text-muted); font-weight:600; text-transform:uppercase;">Roundtrip Ping</div>
+            <div style="font-size:1.1rem; font-weight:800; color:#2563eb; margin-top:4px;" id="dev-kpi-ping">— ms</div>
+          </div>
+          <div class="card" style="padding:14px; text-align:center;">
+            <div style="font-size:0.75rem; color:var(--text-muted); font-weight:600; text-transform:uppercase;">RAM Cache Entries</div>
+            <div style="font-size:1.1rem; font-weight:800; color:#f59e0b; margin-top:4px;" id="dev-kpi-cache">${dbService._memCache ? dbService._memCache.size : 0} Collections</div>
+          </div>
+          <div class="card" style="padding:14px; text-align:center;">
+            <div style="font-size:0.75rem; color:var(--text-muted); font-weight:600; text-transform:uppercase;">LocalStorage Used</div>
+            <div style="font-size:1.1rem; font-weight:800; color:#8b5cf6; margin-top:4px;" id="dev-kpi-storage">— KB</div>
+          </div>
+        </div>
+
+        <!-- Table Explorer Select -->
+        <div style="padding:14px 16px; background:var(--bg-subtle, #f8fafc); border-top:1px solid var(--border-color); border-bottom:1px solid var(--border-color); display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between;">
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <label style="font-weight:700; font-size:0.86rem;">Select Data Collection:</label>
+            <select class="form-select form-select-sm" id="dev-table-select" style="min-width:220px; font-weight:600;">
+              ${TABLES.map(t => `<option value="${t}">${t}</option>`).join('')}
+            </select>
+            <button type="button" class="btn btn-primary btn-sm" id="btn-load-table-data">
+              <i data-lucide="database"></i> Query Records
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-download-table-json">
+              <i data-lucide="download"></i> Download JSON
+            </button>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <input type="text" id="dev-table-filter" class="form-control form-control-sm" placeholder="Filter table rows..." style="max-width:240px;">
+          </div>
+        </div>
+
+        <div style="padding:8px 16px; background:#f1f5f9; font-size:0.75rem; color:var(--text-muted); display:flex; justify-content:space-between; align-items:center;">
+          <span id="dev-row-count-badge">0 Records Loaded</span>
+          <label style="margin:0; font-size:0.75rem; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+            <input type="checkbox" id="dev-toggle-raw-json"> Raw JSON Format
+          </label>
+        </div>
+
+        <div class="table-responsive" id="dev-table-view-container" style="max-height:460px; overflow:auto;">
+          <div style="padding:36px; text-align:center; color:var(--text-muted); font-size:0.85rem;">
+            Select a table and click <strong>"Query Records"</strong> to inspect raw database rows.
+          </div>
+        </div>
+      </div>
+    `;
+    UIComponents.refreshIcons();
+
+    // Calculate localStorage size
+    let totalBytes = 0;
+    try {
+      for (let x in localStorage) {
+        if (localStorage.hasOwnProperty(x)) {
+          totalBytes += (localStorage[x].length + x.length) * 2;
+        }
+      }
+    } catch (e) {}
+    const kbUsed = (totalBytes / 1024).toFixed(1);
+    const storageEl = document.getElementById('dev-kpi-storage');
+    if (storageEl) storageEl.innerText = `${kbUsed} KB`;
+
+    // Latency Ping test
+    const runPing = async () => {
+      const pingEl = document.getElementById('dev-kpi-ping');
+      if (pingEl) pingEl.innerText = 'Testing...';
+      const start = performance.now();
+      try {
+        await fetch(`${TMS_CONFIG.supabase.url}/rest/v1/profiles?select=id&limit=1`, {
+          headers: {
+            'apikey': TMS_CONFIG.supabase.anonKey,
+            'Authorization': `Bearer ${TMS_CONFIG.supabase.anonKey}`
+          }
+        });
+        const elapsed = Math.round(performance.now() - start);
+        if (pingEl) {
+          pingEl.innerText = `${elapsed} ms`;
+          pingEl.style.color = elapsed < 300 ? '#16a34a' : '#f59e0b';
+        }
+      } catch (err) {
+        if (pingEl) {
+          pingEl.innerText = 'Offline';
+          pingEl.style.color = '#ef4444';
+        }
+      }
+    };
+    runPing();
+
+    const pingBtn = document.getElementById('btn-ping-supabase');
+    if (pingBtn) pingBtn.addEventListener('click', runPing);
+
+    // RAM Cache Purge
+    const purgeRamBtn = document.getElementById('btn-purge-ram-cache');
+    if (purgeRamBtn) {
+      purgeRamBtn.addEventListener('click', () => {
+        dbService.invalidateCache();
+        const cacheEl = document.getElementById('dev-kpi-cache');
+        if (cacheEl) cacheEl.innerText = '0 Collections';
+        UIComponents.showToast('RAM Memory Cache purged completely.', 'success');
+      });
+    }
+
+    // Hard reset localStorage
+    const flushStorageBtn = document.getElementById('btn-flush-local-storage');
+    if (flushStorageBtn) {
+      flushStorageBtn.addEventListener('click', () => {
+        if (!confirm('Clear local client cache and force reload from Supabase cloud? (Your cloud records are completely safe).')) return;
+        Object.keys(localStorage).forEach(k => {
+          if (k.startsWith('tms_')) localStorage.removeItem(k);
+        });
+        dbService.invalidateCache();
+        UIComponents.showToast('Local cache wiped. Reloading application...', 'info');
+        setTimeout(() => window.location.reload(), 600);
+      });
+    }
+
+    // Query Table Data
+    let currentTableData = [];
+    const loadTable = async () => {
+      const tableSelect = document.getElementById('dev-table-select');
+      const tableName = tableSelect ? tableSelect.value : 'profiles';
+      const container = document.getElementById('dev-table-view-container');
+      const countBadge = document.getElementById('dev-row-count-badge');
+      const isRawJson = document.getElementById('dev-toggle-raw-json')?.checked;
+
+      container.innerHTML = `<div style="padding:30px; text-align:center;"><i data-lucide="loader" class="animate-spin" style="margin:0 auto 8px;"></i> Querying ${tableName}...</div>`;
+      UIComponents.refreshIcons();
+
+      try {
+        currentTableData = await dbService.select(tableName, null, true);
+        if (countBadge) countBadge.innerText = `${currentTableData.length} Records in "${tableName}"`;
+
+        if (!currentTableData.length) {
+          container.innerHTML = `<div style="padding:30px; text-align:center; color:var(--text-muted);">Table "${tableName}" is currently empty.</div>`;
+          return;
+        }
+
+        renderTableContent();
+      } catch (err) {
+        container.innerHTML = `<div style="padding:20px; color:#ef4444;">Query error: ${esc(err.message)}</div>`;
+      }
+    };
+
+    const renderTableContent = () => {
+      const container = document.getElementById('dev-table-view-container');
+      const isRawJson = document.getElementById('dev-toggle-raw-json')?.checked;
+      const filterText = (document.getElementById('dev-table-filter')?.value || '').toLowerCase().trim();
+
+      let displayData = currentTableData;
+      if (filterText) {
+        displayData = displayData.filter(row => JSON.stringify(row).toLowerCase().includes(filterText));
+      }
+
+      if (isRawJson) {
+        container.innerHTML = `
+          <pre style="background:#090d16; color:#38bdf8; font-family:monospace; font-size:0.75rem; padding:16px; margin:0; line-height:1.5;">${esc(JSON.stringify(displayData, null, 2))}</pre>
+        `;
+        return;
+      }
+
+      const sample = displayData[0] || {};
+      const cols = Object.keys(sample).slice(0, 8);
+
+      container.innerHTML = `
+        <table class="tms-table font-mono" style="font-size:0.76rem;">
+          <thead>
+            <tr>${cols.map(c => `<th>${esc(c)}</th>`).join('')}</tr>
+          </thead>
+          <tbody>
+            ${displayData.map(row => `
+              <tr>
+                ${cols.map(c => {
+                  let val = row[c];
+                  if (typeof val === 'object') val = JSON.stringify(val);
+                  return `<td style="max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(String(val ?? '—'))}</td>`;
+                }).join('')}
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+      UIComponents.refreshIcons();
+    };
+
+    const loadBtn = document.getElementById('btn-load-table-data');
+    if (loadBtn) loadBtn.addEventListener('click', loadTable);
+
+    const toggleJson = document.getElementById('dev-toggle-raw-json');
+    if (toggleJson) toggleJson.addEventListener('change', renderTableContent);
+
+    const filterInp = document.getElementById('dev-table-filter');
+    if (filterInp) filterInp.addEventListener('input', renderTableContent);
+
+    const downloadBtn = document.getElementById('btn-download-table-json');
+    if (downloadBtn) {
+      downloadBtn.addEventListener('click', () => {
+        const tableSelect = document.getElementById('dev-table-select');
+        const tableName = tableSelect ? tableSelect.value : 'table';
+        const blob = new Blob([JSON.stringify(currentTableData, null, 2)], { type: 'application/json' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `TMS-${tableName}-${new Date().toISOString().slice(0, 10)}.json`;
+        a.click();
+      });
+    }
+
+    // Auto-load first table
+    loadTable();
   }
 
   /* ================================================================== */
