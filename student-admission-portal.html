@@ -31,9 +31,6 @@
       </a>
       <div style="display: flex; gap: 10px; align-items: center;">
         <span id="entry-by-badge" class="badge badge-success" style="display: none;"></span>
-        <button class="btn btn-secondary btn-sm" id="btn-show-video" style="display: none; background: rgba(239, 68, 68, 0.08); border-color: #fca5a5; color: #dc2626;">
-          <i data-lucide="play-circle"></i> Video Guide
-        </button>
         <button class="btn btn-secondary btn-sm" id="btn-show-guidelines" style="display: none;">
           <i data-lucide="book-open"></i> General Guidelines
         </button>
@@ -461,12 +458,6 @@
       if (btnFees) {
         btnFees.style.display = settings.showFeeStructure ? 'inline-flex' : 'none';
       }
-
-      const btnVideo = document.getElementById('btn-show-video');
-      if (btnVideo) {
-        const hasVideo = settings.showInstructionVideo !== false && !!(settings.instructionVideoUrl && settings.instructionVideoUrl.trim());
-        btnVideo.style.display = hasVideo ? 'inline-flex' : 'none';
-      }
     }
 
     function openFeeStructureModal() {
@@ -529,11 +520,8 @@
       UIComponents.openModal({
         title: `Admission Fee Schedule — Session ${settings.session || ''}`,
         bodyHtml,
-        footerHtml: `<button class="btn btn-secondary" id="btn-close-fee-modal">Close</button>`
+        footerHtml: ''
       });
-
-      const closeBtn = document.getElementById('btn-close-fee-modal');
-      if (closeBtn) closeBtn.addEventListener('click', () => UIComponents.closeModal());
       UIComponents.refreshIcons();
     }
 
@@ -543,7 +531,7 @@
         : DEFAULT_INSTRUCTIONS;
 
       const hasVideo = settings.showInstructionVideo !== false && !!(settings.instructionVideoUrl && settings.instructionVideoUrl.trim());
-      const videoHtml = hasVideo ? renderVideoPlayerHtml(settings.instructionVideoUrl, settings.instructionVideoTitle || 'Admission Process Video Walkthrough') : '';
+      const videoHtml = hasVideo ? renderVideoPlayerHtml(settings.instructionVideoUrl, settings.instructionVideoTitle || 'Admission Process Video Walkthrough', settings.instructionVideoRatio || 'auto') : '';
 
       const items = instructions.map((item, idx) => `
         <li style="display:flex; gap:12px; align-items:flex-start; margin-bottom:12px; font-size:0.88rem; line-height:1.5;">
@@ -574,43 +562,8 @@
       UIComponents.openModal({
         title: 'General Guidelines & Admission Instructions',
         bodyHtml,
-        footerHtml: `<button class="btn btn-secondary" id="btn-close-guidelines-modal">Close</button>`
+        footerHtml: ''
       });
-
-      const closeBtn = document.getElementById('btn-close-guidelines-modal');
-      if (closeBtn) closeBtn.addEventListener('click', () => UIComponents.closeModal());
-      UIComponents.refreshIcons();
-    }
-
-    function openVideoModal() {
-      const url = settings.instructionVideoUrl;
-      const title = settings.instructionVideoTitle || 'Admission Process Video Walkthrough';
-      const playerHtml = renderVideoPlayerHtml(url, title);
-
-      UIComponents.openModal({
-        title: title,
-        bodyHtml: `
-          <div>
-            ${playerHtml}
-            <div style="text-align:center; margin-top:12px;">
-              <button class="btn btn-primary btn-sm" id="btn-view-guidelines-from-video">
-                <i data-lucide="book-open"></i> Read Full Text Guidelines
-              </button>
-            </div>
-          </div>
-        `,
-        footerHtml: `<button class="btn btn-secondary" id="btn-close-video-modal">Close</button>`
-      });
-
-      const closeBtn = document.getElementById('btn-close-video-modal');
-      if (closeBtn) closeBtn.addEventListener('click', () => UIComponents.closeModal());
-      const gBtn = document.getElementById('btn-view-guidelines-from-video');
-      if (gBtn) {
-        gBtn.addEventListener('click', () => {
-          UIComponents.closeModal();
-          openGuidelinesModal();
-        });
-      }
       UIComponents.refreshIcons();
     }
 
@@ -1000,10 +953,6 @@
 
       document.getElementById('tms-admission-form').addEventListener('submit', handleSubmit);
       
-      const btnVideo = document.getElementById('btn-show-video');
-      if (btnVideo) {
-        btnVideo.addEventListener('click', openVideoModal);
-      }
       const btnGuidelines = document.getElementById('btn-show-guidelines');
       if (btnGuidelines) {
         btnGuidelines.addEventListener('click', openGuidelinesModal);
