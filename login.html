@@ -252,35 +252,300 @@
       });
     }
 
+    // Enhanced Account Recovery & Password Reset Gateway
     document.getElementById('btn-forgot-password').addEventListener('click', (e) => {
       e.preventDefault();
       const currentIdent = document.getElementById('login-email').value.trim();
 
       UIComponents.openModal({
-        title: 'Reset Your Account Password',
+        title: 'Account Recovery & Password Reset',
         bodyHtml: `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-            <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 14px; line-height: 1.5;">
-              Enter your registered account email address or your staff username. We will immediately dispatch a secure password recovery link to your inbox.
-            </p>
-            <div class="form-group" style="margin-bottom: 14px;">
-              <label class="form-label">Email or Username *</label>
-              <div style="position: relative;">
-                <input type="text" class="form-input" id="inp-forgot-ident" placeholder="e.g. cmbasith786@gmail.com or username" value="${UIComponents.escapeHtml(currentIdent)}" autofocus style="padding-left: 38px;">
-                <i data-lucide="mail" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--text-muted);"></i>
+            <!-- Segmented Recovery Channel Switcher -->
+            <div class="tms-view-toggle" id="recovery-tab-toggle" style="display:flex; width:100%; margin-bottom:18px; border-radius:10px; background:var(--bg-hover); padding:3px;">
+              <button type="button" class="view-btn active" data-tab="parent" style="flex:1; justify-content:center; padding:8px 12px; font-size:0.85rem;">
+                <i data-lucide="graduation-cap"></i> Parent / Student
+              </button>
+              <button type="button" class="view-btn" data-tab="staff" style="flex:1; justify-content:center; padding:8px 12px; font-size:0.85rem;">
+                <i data-lucide="mail"></i> Staff / Admin (Email)
+              </button>
+              <button type="button" class="view-btn" data-tab="help" style="flex:1; justify-content:center; padding:8px 12px; font-size:0.85rem;">
+                <i data-lucide="message-circle"></i> Help Desk
+              </button>
+            </div>
+
+            <!-- Tab 1: Parent & Student Self-Service Verification -->
+            <div id="rec-tab-parent" class="rec-tab-content">
+              <div style="padding:10px 14px; background:rgba(22,163,74,0.06); border-left:4px solid #16a34a; border-radius:6px; margin-bottom:14px; font-size:0.82rem; color:var(--text-main);">
+                <strong>Instant Self-Service Reset for Parents:</strong><br>
+                Verify with your student's Admission No or Application ID and registered mobile number to reset your password immediately.
+              </div>
+
+              <div id="parent-step-1">
+                <div class="form-group" style="margin-bottom:12px;">
+                  <label class="form-label">Admission No, Application ID, or Username *</label>
+                  <div style="position:relative;">
+                    <input type="text" class="form-input" id="inp-rec-parent-id" placeholder="e.g. TMS/2026/ADM-705611 or par70561103" value="${UIComponents.escapeHtml(currentIdent)}" style="padding-left:38px;">
+                    <i data-lucide="id-card" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); width:16px; height:16px; color:var(--text-muted);"></i>
+                  </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom:14px;">
+                  <label class="form-label">Registered Guardian Mobile Number *</label>
+                  <div style="position:relative;">
+                    <input type="tel" class="form-input font-mono" id="inp-rec-parent-phone" placeholder="e.g. 7994531823" style="padding-left:38px;">
+                    <i data-lucide="phone" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); width:16px; height:16px; color:var(--text-muted);"></i>
+                  </div>
+                </div>
+
+                <div id="parent-verify-msg" style="display:none; padding:10px 14px; border-radius:8px; font-size:0.82rem; margin-bottom:12px;"></div>
+
+                <button type="button" class="btn btn-primary" id="btn-parent-verify" style="width:100%; padding:10px;">
+                  <i data-lucide="shield-check"></i> Verify Student Details
+                </button>
+              </div>
+
+              <div id="parent-step-2" style="display:none;">
+                <div id="verified-student-card" style="padding:12px 14px; background:rgba(22,163,74,0.08); border:1px solid rgba(22,163,74,0.25); border-radius:10px; margin-bottom:14px;">
+                  <!-- Injected upon successful verification -->
+                </div>
+
+                <div class="form-group" style="margin-bottom:12px;">
+                  <label class="form-label">Set New Secure Password (min 6 characters) *</label>
+                  <div style="position:relative;">
+                    <input type="password" class="form-input font-mono" id="inp-parent-new-pass" placeholder="••••••••••••" minlength="6" style="padding-right:40px;">
+                    <button type="button" class="btn btn-secondary btn-sm" id="btn-toggle-parent-p1" style="position:absolute; right:6px; top:50%; transform:translateY(-50%); padding:3px 8px; border:none; background:transparent;"><i data-lucide="eye"></i></button>
+                  </div>
+                </div>
+
+                <div class="form-group" style="margin-bottom:14px;">
+                  <label class="form-label">Confirm New Password *</label>
+                  <div style="position:relative;">
+                    <input type="password" class="form-input font-mono" id="inp-parent-conf-pass" placeholder="••••••••••••" minlength="6" style="padding-right:40px;">
+                    <button type="button" class="btn btn-secondary btn-sm" id="btn-toggle-parent-p2" style="position:absolute; right:6px; top:50%; transform:translateY(-50%); padding:3px 8px; border:none; background:transparent;"><i data-lucide="eye"></i></button>
+                  </div>
+                </div>
+
+                <div id="parent-reset-msg" style="display:none; padding:10px 14px; border-radius:8px; font-size:0.82rem; margin-bottom:12px;"></div>
+
+                <button type="button" class="btn btn-primary" id="btn-parent-submit-reset" style="width:100%; padding:11px;">
+                  <i data-lucide="check-circle-2"></i> Update Password &amp; Ready to Login
+                </button>
               </div>
             </div>
-            <div id="forgot-status-box" style="display: none; padding: 10px 14px; border-radius: 8px; font-size: 0.82rem; margin-top: 10px;"></div>
+
+            <!-- Tab 2: Staff & Faculty Email Recovery -->
+            <div id="rec-tab-staff" class="rec-tab-content" style="display:none;">
+              <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:14px; line-height:1.5;">
+                Enter your registered institutional email or staff username. We will dispatch a secure password recovery link to your inbox.
+              </p>
+              <div class="form-group" style="margin-bottom:14px;">
+                <label class="form-label">Institutional Email or Staff Username *</label>
+                <div style="position:relative;">
+                  <input type="text" class="form-input" id="inp-forgot-ident" placeholder="e.g. cmbasith786@gmail.com or username" value="${UIComponents.escapeHtml(currentIdent)}" style="padding-left:38px;">
+                  <i data-lucide="mail" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); width:16px; height:16px; color:var(--text-muted);"></i>
+                </div>
+              </div>
+
+              <div id="forgot-status-box" style="display:none; padding:10px 14px; border-radius:8px; font-size:0.82rem; margin-bottom:14px;"></div>
+
+              <button type="button" class="btn btn-primary" id="btn-submit-forgot" style="width:100%; padding:10px;">
+                <i data-lucide="send"></i> Send Email Recovery Link
+              </button>
+            </div>
+
+            <!-- Tab 3: Help Desk / WhatsApp Assistance -->
+            <div id="rec-tab-help" class="rec-tab-content" style="display:none; text-align:center; padding:10px 4px;">
+              <div style="width:52px; height:52px; border-radius:50%; background:rgba(37,211,102,0.1); color:#25D366; display:flex; align-items:center; justify-content:center; margin:0 auto 12px auto;">
+                <i data-lucide="message-circle" style="width:26px; height:26px;"></i>
+              </div>
+              <h4 style="margin:0 0 6px 0; color:var(--text-main); font-size:1.05rem;">Direct Campus Helpline</h4>
+              <p style="font-size:0.85rem; color:var(--text-muted); line-height:1.5; margin-bottom:16px;">
+                Need help recovering your portal credentials? Connect directly with the Thaiba Model School administration desk on WhatsApp.
+              </p>
+              <a href="https://wa.me/917994531823?text=${encodeURIComponent('Hello Thaiba Model School Administration, I need assistance recovering my portal password.')}" target="_blank" class="btn btn-primary" style="background:#25D366; border-color:#25D366; width:100%; padding:11px; display:inline-flex; align-items:center; justify-content:center; gap:8px; text-decoration:none;">
+                <i data-lucide="send"></i> Message Admin on WhatsApp
+              </a>
+            </div>
           </div>
         `,
         footerHtml: `
-          <button class="btn btn-secondary" onclick="document.getElementById('global-modal-close').click()">Cancel</button>
-          <button class="btn btn-primary" id="btn-submit-forgot"><i data-lucide="send"></i> Send Reset Link</button>
+          <button class="btn btn-secondary" onclick="document.getElementById('global-modal-close').click()">Close</button>
         `
       });
 
       UIComponents.refreshIcons();
 
+      // Tab switcher wiring
+      const tabToggle = document.getElementById('recovery-tab-toggle');
+      if (tabToggle) {
+        tabToggle.querySelectorAll('.view-btn').forEach(btn => {
+          btn.addEventListener('click', () => {
+            tabToggle.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            const tab = btn.dataset.tab;
+            document.getElementById('rec-tab-parent').style.display = tab === 'parent' ? 'block' : 'none';
+            document.getElementById('rec-tab-staff').style.display = tab === 'staff' ? 'block' : 'none';
+            document.getElementById('rec-tab-help').style.display = tab === 'help' ? 'block' : 'none';
+          });
+        });
+      }
+
+      // --- Parent Self-Service Recovery Wiring ---
+      let verifiedParentData = null;
+      const parentVerifyBtn = document.getElementById('btn-parent-verify');
+      const parentVerifyMsg = document.getElementById('parent-verify-msg');
+      const parentStep1 = document.getElementById('parent-step-1');
+      const parentStep2 = document.getElementById('parent-step-2');
+
+      if (parentVerifyBtn) {
+        parentVerifyBtn.addEventListener('click', async () => {
+          const ident = document.getElementById('inp-rec-parent-id')?.value?.trim();
+          const phone = document.getElementById('inp-rec-parent-phone')?.value?.trim();
+
+          if (!ident || !phone) {
+            parentVerifyMsg.style.display = 'block';
+            parentVerifyMsg.style.background = '#fef2f2';
+            parentVerifyMsg.style.color = '#dc2626';
+            parentVerifyMsg.style.border = '1px solid #fecaca';
+            parentVerifyMsg.innerText = 'Please enter both your Admission/Application ID and phone number.';
+            return;
+          }
+
+          parentVerifyBtn.disabled = true;
+          parentVerifyBtn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Verifying records...';
+          UIComponents.refreshIcons();
+          parentVerifyMsg.style.display = 'none';
+
+          const client = dbService.getClient();
+          try {
+            const { data, error } = await client.rpc('tms_verify_parent_identity', {
+              p_identifier: ident,
+              p_phone: phone
+            });
+
+            if (error || !data || !data.success) {
+              parentVerifyBtn.disabled = false;
+              parentVerifyBtn.innerHTML = '<i data-lucide="shield-check"></i> Verify Student Details';
+              UIComponents.refreshIcons();
+              parentVerifyMsg.style.display = 'block';
+              parentVerifyMsg.style.background = '#fef2f2';
+              parentVerifyMsg.style.color = '#dc2626';
+              parentVerifyMsg.style.border = '1px solid #fecaca';
+              parentVerifyMsg.innerText = (data && data.error) || error?.message || 'Verification failed. Please check details.';
+              return;
+            }
+
+            verifiedParentData = data;
+            parentStep1.style.display = 'none';
+            parentStep2.style.display = 'block';
+
+            const card = document.getElementById('verified-student-card');
+            if (card) {
+              card.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                  <div>
+                    <span style="font-size:0.72rem; text-transform:uppercase; color:#166534; font-weight:700;">Verified Student Record</span>
+                    <h4 style="margin:2px 0; font-size:1rem; color:#14532d;">${UIComponents.escapeHtml(data.student_name)}</h4>
+                    <span style="font-size:0.78rem; color:var(--text-muted);">Grade: <strong>${UIComponents.escapeHtml(data.grade)}</strong> • Username: <code style="font-weight:700;">${UIComponents.escapeHtml(data.username)}</code></span>
+                  </div>
+                  <div style="width:34px; height:34px; border-radius:50%; background:#16a34a; color:white; display:flex; align-items:center; justify-content:center;">
+                    <i data-lucide="check" style="width:18px; height:18px;"></i>
+                  </div>
+                </div>
+              `;
+            }
+            UIComponents.refreshIcons();
+          } catch (err) {
+            parentVerifyBtn.disabled = false;
+            parentVerifyBtn.innerHTML = '<i data-lucide="shield-check"></i> Verify Student Details';
+            UIComponents.refreshIcons();
+            parentVerifyMsg.style.display = 'block';
+            parentVerifyMsg.style.background = '#fef2f2';
+            parentVerifyMsg.style.color = '#dc2626';
+            parentVerifyMsg.innerText = err.message || 'Verification error.';
+          }
+        });
+      }
+
+      // Password toggle buttons in step 2
+      const pp1 = document.getElementById('inp-parent-new-pass');
+      const pp2 = document.getElementById('inp-parent-conf-pass');
+      document.getElementById('btn-toggle-parent-p1')?.addEventListener('click', () => { pp1.type = pp1.type === 'password' ? 'text' : 'password'; });
+      document.getElementById('btn-toggle-parent-p2')?.addEventListener('click', () => { pp2.type = pp2.type === 'password' ? 'text' : 'password'; });
+
+      const parentSubmitReset = document.getElementById('btn-parent-submit-reset');
+      const parentResetMsg = document.getElementById('parent-reset-msg');
+
+      if (parentSubmitReset) {
+        parentSubmitReset.addEventListener('click', async () => {
+          const p1 = pp1?.value;
+          const p2 = pp2?.value;
+
+          if (!p1 || p1.length < 6) {
+            parentResetMsg.style.display = 'block';
+            parentResetMsg.style.background = '#fef2f2';
+            parentResetMsg.style.color = '#dc2626';
+            parentResetMsg.style.border = '1px solid #fecaca';
+            parentResetMsg.innerText = 'Password must be at least 6 characters.';
+            return;
+          }
+
+          if (p1 !== p2) {
+            parentResetMsg.style.display = 'block';
+            parentResetMsg.style.background = '#fef2f2';
+            parentResetMsg.style.color = '#dc2626';
+            parentResetMsg.style.border = '1px solid #fecaca';
+            parentResetMsg.innerText = 'Passwords do not match.';
+            return;
+          }
+
+          parentSubmitReset.disabled = true;
+          parentSubmitReset.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Updating password...';
+          UIComponents.refreshIcons();
+
+          const client = dbService.getClient();
+          try {
+            const { data, error } = await client.rpc('tms_self_reset_password', {
+              p_email: verifiedParentData.email,
+              p_new_password: p1
+            });
+
+            if (error) {
+              parentSubmitReset.disabled = false;
+              parentSubmitReset.innerHTML = '<i data-lucide="check-circle-2"></i> Update Password &amp; Ready to Login';
+              UIComponents.refreshIcons();
+              parentResetMsg.style.display = 'block';
+              parentResetMsg.style.background = '#fef2f2';
+              parentResetMsg.style.color = '#dc2626';
+              parentResetMsg.innerText = error.message || 'Failed to update password.';
+              return;
+            }
+
+            UIComponents.closeModal();
+            UIComponents.showToast('Password updated successfully! You can now log in.', 'success');
+
+            // Pre-fill login email/username and focus password
+            const loginEmailInput = document.getElementById('login-email');
+            const loginPassInput = document.getElementById('login-password');
+            if (loginEmailInput) loginEmailInput.value = verifiedParentData.username;
+            if (loginPassInput) {
+              loginPassInput.value = p1;
+              loginPassInput.focus();
+            }
+          } catch (err) {
+            parentSubmitReset.disabled = false;
+            parentSubmitReset.innerHTML = '<i data-lucide="check-circle-2"></i> Update Password &amp; Ready to Login';
+            UIComponents.refreshIcons();
+            parentResetMsg.style.display = 'block';
+            parentResetMsg.style.background = '#fef2f2';
+            parentResetMsg.style.color = '#dc2626';
+            parentResetMsg.innerText = err.message || 'Error updating password.';
+          }
+        });
+      }
+
+      // --- Staff Email Recovery Wiring with Countdown Timer ---
       const identInput = document.getElementById('inp-forgot-ident');
       const submitForgotBtn = document.getElementById('btn-submit-forgot');
       const statusBox = document.getElementById('forgot-status-box');
@@ -299,7 +564,7 @@
         }
 
         submitForgotBtn.disabled = true;
-        submitForgotBtn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Sending link...';
+        submitForgotBtn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Dispatching secure link...';
         UIComponents.refreshIcons();
         statusBox.style.display = 'none';
 
@@ -316,9 +581,20 @@
             A secure recovery link has been sent to <strong>${UIComponents.escapeHtml(email)}</strong>.<br>
             Please check your inbox (and spam/junk folder) and click the link to choose your new password.
           `;
-          submitForgotBtn.innerText = 'Sent ✓';
+          
+          let cooldown = 60;
           submitForgotBtn.disabled = true;
-          UIComponents.refreshIcons();
+          const interval = setInterval(() => {
+            cooldown -= 1;
+            if (cooldown > 0) {
+              submitForgotBtn.innerText = `Resend in ${cooldown}s`;
+            } else {
+              clearInterval(interval);
+              submitForgotBtn.disabled = false;
+              submitForgotBtn.innerHTML = '<i data-lucide="send"></i> Resend Email Link';
+              UIComponents.refreshIcons();
+            }
+          }, 1000);
         } else {
           submitForgotBtn.disabled = false;
           submitForgotBtn.innerHTML = '<i data-lucide="send"></i> Try Again';
@@ -326,7 +602,7 @@
           statusBox.style.background = '#fef2f2';
           statusBox.style.color = '#dc2626';
           statusBox.style.border = '1px solid #fecaca';
-          statusBox.innerHTML = `<strong>Failed to send email:</strong> ${UIComponents.escapeHtml(res.error || 'Please check your connection and try again.')}`;
+          statusBox.innerHTML = `<strong>Notice:</strong> ${UIComponents.escapeHtml(res.error || 'Please check your connection and try again.')}`;
           UIComponents.refreshIcons();
         }
       });
@@ -346,13 +622,20 @@
               <input type="password" class="form-input font-mono" id="rec-new-pass" placeholder="••••••••••••" autofocus minlength="6" style="padding-right: 40px;">
               <button type="button" class="btn btn-secondary btn-sm" id="btn-toggle-p1" style="position: absolute; right: 6px; top: 50%; transform: translateY(-50%); padding: 3px 8px; border: none; background: transparent;"><i data-lucide="eye"></i></button>
             </div>
+            <div style="margin-top:6px; display:flex; align-items:center; gap:8px;">
+              <div style="flex:1; height:4px; background:#e2e8f0; border-radius:2px; overflow:hidden;">
+                <div id="pass-strength-bar" style="width:0%; height:100%; transition:all 0.3s ease; background:#ef4444;"></div>
+              </div>
+              <span id="pass-strength-label" style="font-size:0.72rem; font-weight:600; color:var(--text-muted);">Enter password</span>
+            </div>
           </div>
-          <div class="form-group">
+          <div class="form-group" style="margin-top:10px;">
             <label class="form-label">Confirm New Password *</label>
             <div style="position: relative;">
               <input type="password" class="form-input font-mono" id="rec-confirm-pass" placeholder="••••••••••••" minlength="6" style="padding-right: 40px;">
               <button type="button" class="btn btn-secondary btn-sm" id="btn-toggle-p2" style="position: absolute; right: 6px; top: 50%; transform: translateY(-50%); padding: 3px 8px; border: none; background: transparent;"><i data-lucide="eye"></i></button>
             </div>
+            <div id="pass-match-indicator" style="font-size:0.75rem; margin-top:4px; display:none;"></div>
           </div>
         `,
         footerHtml: `
@@ -363,6 +646,54 @@
 
       const p1Inp = document.getElementById('rec-new-pass');
       const p2Inp = document.getElementById('rec-confirm-pass');
+      const bar = document.getElementById('pass-strength-bar');
+      const label = document.getElementById('pass-strength-label');
+      const matchInd = document.getElementById('pass-match-indicator');
+
+      const updateStrength = () => {
+        const val = p1Inp.value;
+        if (!val) {
+          bar.style.width = '0%';
+          label.innerText = 'Enter password';
+          label.style.color = 'var(--text-muted)';
+          return;
+        }
+        let score = 0;
+        if (val.length >= 6) score += 1;
+        if (val.length >= 8) score += 1;
+        if (/[0-9]/.test(val) && /[A-Z]/.test(val)) score += 1;
+        if (/[^a-zA-Z0-9]/.test(val)) score += 1;
+
+        if (score <= 1) {
+          bar.style.width = '30%';
+          bar.style.background = '#ef4444';
+          label.innerText = 'Weak';
+          label.style.color = '#ef4444';
+        } else if (score <= 2) {
+          bar.style.width = '65%';
+          bar.style.background = '#f59e0b';
+          label.innerText = 'Good';
+          label.style.color = '#f59e0b';
+        } else {
+          bar.style.width = '100%';
+          bar.style.background = '#16a34a';
+          label.innerText = 'Strong';
+          label.style.color = '#16a34a';
+        }
+
+        if (p2Inp.value) {
+          matchInd.style.display = 'block';
+          if (val === p2Inp.value) {
+            matchInd.innerHTML = '<span style="color:#16a34a;"><i data-lucide="check"></i> Passwords match</span>';
+          } else {
+            matchInd.innerHTML = '<span style="color:#ef4444;">Passwords do not match</span>';
+          }
+          UIComponents.refreshIcons();
+        }
+      };
+
+      p1Inp?.addEventListener('input', updateStrength);
+      p2Inp?.addEventListener('input', updateStrength);
 
       document.getElementById('btn-toggle-p1')?.addEventListener('click', () => {
         p1Inp.type = p1Inp.type === 'password' ? 'text' : 'password';
