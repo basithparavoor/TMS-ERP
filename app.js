@@ -644,6 +644,7 @@ class AppController {
   }
 
   async handleRoute() {
+    authService.touchSession().catch(() => {});
     const hash = window.location.hash.slice(2) || 'dashboard';
     const [moduleName] = hash.split('/');
     const viewport = document.getElementById('app-viewport');
