@@ -321,6 +321,9 @@ class AuthService {
   }
 
   async touchSession() {
+    const now = Date.now();
+    if (this._lastTouch && (now - this._lastTouch < 180000)) return;
+    this._lastTouch = now;
     const sid = localStorage.getItem('tms_current_session_id');
     if (sid && this.currentUser) {
       try {
