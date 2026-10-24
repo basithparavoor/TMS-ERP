@@ -833,7 +833,15 @@ export class AcademicModule {
   static async deleteClass(classId) {
     const cls = this._classes.find(c => c.id === classId);
     if (!cls) return;
-    if (!confirm(`Are you sure you want to delete ${cls.grade} - Section ${cls.section}?`)) return;
+    const ok = await UIComponents.confirm({
+      title: 'Delete Class Division',
+      message: `Are you sure you want to permanently delete ${cls.grade} - Section ${cls.section}? This will remove all division allocations.`,
+      confirmText: 'Delete Class',
+      cancelText: 'Cancel',
+      type: 'danger',
+      icon: 'trash-2'
+    });
+    if (!ok) return;
 
     try {
       await dbService.delete('academic_classes', classId);
@@ -963,7 +971,15 @@ export class AcademicModule {
   static async deletePeriod(periodId) {
     const prd = this._periods.find(p => p.id === periodId);
     if (!prd) return;
-    if (!confirm(`Are you sure you want to delete "${prd.name}"?`)) return;
+    const ok = await UIComponents.confirm({
+      title: 'Delete Bell Schedule Slot',
+      message: `Are you sure you want to delete period slot "${prd.name}" (${prd.startTime} - ${prd.endTime})?`,
+      confirmText: 'Delete Slot',
+      cancelText: 'Cancel',
+      type: 'danger',
+      icon: 'trash-2'
+    });
+    if (!ok) return;
 
     try {
       await dbService.delete('academic_periods', periodId);
@@ -1086,7 +1102,15 @@ export class AcademicModule {
   static async setActiveSession(sessionId) {
     const s = this._sessions.find(x => x.id === sessionId);
     if (!s) return;
-    if (!confirm(`Switch active school session to "${s.sessionName}"?`)) return;
+    const ok = await UIComponents.confirm({
+      title: 'Switch Active Campus Session',
+      message: `Are you sure you want to switch the active campus academic year to "${s.sessionName}"? All class terms and rosters will align with this session.`,
+      confirmText: 'Set Active Session',
+      cancelText: 'Cancel',
+      type: 'primary',
+      icon: 'calendar'
+    });
+    if (!ok) return;
 
     try {
       for (const item of this._sessions) {
@@ -1110,7 +1134,15 @@ export class AcademicModule {
       UIComponents.showToast('Cannot delete the currently active session!', 'error');
       return;
     }
-    if (!confirm(`Are you sure you want to delete session "${s.sessionName}"?`)) return;
+    const ok = await UIComponents.confirm({
+      title: 'Delete Academic Session',
+      message: `Are you sure you want to delete session "${s.sessionName}"?`,
+      confirmText: 'Delete Session',
+      cancelText: 'Cancel',
+      type: 'danger',
+      icon: 'trash-2'
+    });
+    if (!ok) return;
 
     try {
       await dbService.delete('academic_sessions', sessionId);
@@ -1236,7 +1268,15 @@ export class AcademicModule {
   static async deleteSubject(subjectId) {
     const s = this._subjects.find(x => x.id === subjectId);
     if (!s) return;
-    if (!confirm(`Are you sure you want to delete "${s.name}"?`)) return;
+    const ok = await UIComponents.confirm({
+      title: 'Delete Curriculum Subject',
+      message: `Are you sure you want to permanently delete "${s.name}" (${s.code}) from the curriculum master?`,
+      confirmText: 'Delete Subject',
+      cancelText: 'Cancel',
+      type: 'danger',
+      icon: 'trash-2'
+    });
+    if (!ok) return;
 
     try {
       await dbService.delete('academic_subjects', subjectId);
