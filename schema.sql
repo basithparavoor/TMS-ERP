@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS profiles (
     assigned_section TEXT,
     phone TEXT,
     is_active BOOLEAN NOT NULL DEFAULT true,
+    is_super_admin BOOLEAN NOT NULL DEFAULT false,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
