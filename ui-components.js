@@ -61,7 +61,10 @@ export class UIComponents {
 
   static refreshIcons() {
     if (window.lucide && typeof window.lucide.createIcons === 'function') {
-      window.lucide.createIcons();
+      if (this._iconRaf) cancelAnimationFrame(this._iconRaf);
+      this._iconRaf = requestAnimationFrame(() => {
+        try { window.lucide.createIcons(); } catch (e) { /* ignore */ }
+      });
     }
   }
 
@@ -127,7 +130,17 @@ export class UIComponents {
 
     document.getElementById('global-modal-title').innerText = title;
     document.getElementById('global-modal-body').innerHTML = bodyHtml;
-    document.getElementById('global-modal-footer').innerHTML = footerHtml;
+    
+    const footerEl = document.getElementById('global-modal-footer');
+    if (footerEl) {
+      if (footerHtml && footerHtml.trim()) {
+        footerEl.innerHTML = footerHtml;
+        footerEl.style.display = 'flex';
+      } else {
+        footerEl.innerHTML = '';
+        footerEl.style.display = 'none';
+      }
+    }
 
     overlay.classList.add('active');
     this.refreshIcons();
