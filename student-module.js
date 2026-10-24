@@ -53,9 +53,20 @@ export class StudentModule {
       <div class="card">
         <div class="card-header">
           <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; width: 100%;">
-            <h3 class="card-title">Enrolled Students Roster</h3>
-            <div style="margin-left: auto; display: flex; gap: 10px;">
-              <input type="text" class="form-input" id="search-student-input" placeholder="Search by name or admission no..." style="width: 260px; padding: 6px 12px;">
+            <div>
+              <h3 class="card-title">Enrolled Students Roster</h3>
+              <p class="card-desc" style="margin-top: 2px;">Comprehensive student profiles with zero horizontal scrolling.</p>
+            </div>
+            <div style="margin-left: auto; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+              <div class="tms-view-toggle" id="student-view-toggle">
+                <button type="button" class="view-btn" data-view="cards" title="Switch to Cards View">
+                  <i data-lucide="layout-grid"></i> Cards
+                </button>
+                <button type="button" class="view-btn" data-view="table" title="Switch to Table View">
+                  <i data-lucide="table"></i> Table
+                </button>
+              </div>
+              <input type="text" class="form-input" id="search-student-input" placeholder="Search by name or admission no..." style="width: 250px; padding: 6px 12px;">
             </div>
           </div>
         </div>
@@ -69,7 +80,62 @@ export class StudentModule {
           <button class="btn btn-secondary btn-sm" id="btn-students-bulk-delete" style="color:#ef4444;"><i data-lucide="trash-2"></i> Delete Selected (<span id="students-selected-count">0</span>)</button>
         </div>` : ''}
 
-        <div class="table-responsive">
+        <!-- Cards View (Default on Mobile, zero side scroll) -->
+        <div id="students-cards-view-container" class="tms-cards-grid">
+          ${students.length ? students.map(s => `
+            <div class="tms-data-card student-card" data-student-card="${esc(s.id)}">
+              <div class="tms-data-card-header">
+                <div style="display: flex; gap: 10px; align-items: center;">
+                  ${canManage ? `<input type="checkbox" class="student-row-check" value="${esc(s.id)}">` : ''}
+                  <div>
+                    <div class="tms-data-card-title">${esc(s.fullName)}</div>
+                    <div class="tms-data-card-subtitle font-mono">${esc(s.admissionNo)} • Roll: ${esc(s.rollNo || '—')}</div>
+                  </div>
+                </div>
+                <span class="badge ${s.status === 'Active' ? 'badge-success' : 'badge-warning'}">${esc(s.status)}</span>
+              </div>
+              <div class="tms-data-card-body">
+                <div class="tms-data-card-row">
+                  <span class="tms-data-card-label">Class & Section</span>
+                  <span class="tms-data-card-value">${esc(s.grade)} - ${esc(s.section)}</span>
+                </div>
+                <div class="tms-data-card-row">
+                  <span class="tms-data-card-label">Blood Group</span>
+                  <span class="tms-data-card-value">${esc(s.bloodGroup || s.blood_group || '—')}</span>
+                </div>
+                <div class="tms-data-card-row">
+                  <span class="tms-data-card-label">Guardian</span>
+                  <span class="tms-data-card-value">${esc(s.guardianName || '—')}</span>
+                </div>
+                <div class="tms-data-card-row">
+                  <span class="tms-data-card-label">Contact</span>
+                  <span class="tms-data-card-value">
+                    ${s.guardianPhone ? `<a href="tel:${esc(s.guardianPhone)}" style="color: #16a34a; text-decoration: none; font-family: var(--font-mono);">${esc(s.guardianPhone)}</a>` : '—'}
+                  </span>
+                </div>
+                ${(s.allergies || s.medical_conditions) ? `
+                  <div class="tms-data-card-row full-width">
+                    <span class="badge badge-danger" style="font-size: 0.72rem; align-self: flex-start;">
+                      <i data-lucide="alert-circle" style="width: 12px; height: 12px; display: inline;"></i> ${esc(s.allergies ? `Allergy: ${s.allergies}` : s.medical_conditions)}
+                    </span>
+                  </div>
+                ` : ''}
+              </div>
+              <div class="tms-data-card-actions">
+                <button class="btn btn-secondary btn-sm btn-print-id" data-id="${esc(s.id)}" title="Print ID Card"><i data-lucide="id-card"></i> ID</button>
+                <button class="btn btn-secondary btn-sm btn-merit-log" data-id="${esc(s.id)}" title="Merits &amp; Conduct" style="color: #16a34a;"><i data-lucide="shield-check"></i> Merit</button>
+                <button class="btn btn-secondary btn-sm btn-view-profile" data-id="${esc(s.id)}" title="View Details"><i data-lucide="eye"></i> View</button>
+                ${canManage ? `
+                  <button class="btn btn-secondary btn-sm btn-edit-student" data-id="${esc(s.id)}" title="Edit student"><i data-lucide="pencil"></i></button>
+                  <button class="btn btn-secondary btn-sm btn-del-student" data-id="${esc(s.id)}" title="Delete student" style="color:#ef4444;"><i data-lucide="trash-2"></i></button>
+                ` : ''}
+              </div>
+            </div>
+          `).join('') : '<p style="text-align:center; color:var(--text-muted); padding:30px; grid-column: 1 / -1;">No students enrolled yet.</p>'}
+        </div>
+
+        <!-- Table View -->
+        <div class="table-responsive" id="students-table-view-container" style="display: none; margin-top: 14px;">
           <table class="tms-table" id="students-table">
             <thead>
               <tr>
@@ -286,14 +352,45 @@ export class StudentModule {
   }
 
   static bindEvents(container) {
+    // View Switcher (Cards vs Table)
+    const viewToggle = container.querySelector('#student-view-toggle');
+    const cardsContainer = container.querySelector('#students-cards-view-container');
+    const tableContainer = container.querySelector('#students-table-view-container');
+    const savedView = localStorage.getItem('tms_student_view_mode') || (window.innerWidth <= 768 ? 'cards' : 'cards');
+
+    const setView = (mode) => {
+      localStorage.setItem('tms_student_view_mode', mode);
+      if (viewToggle) {
+        viewToggle.querySelectorAll('.view-btn').forEach((b) => {
+          b.classList.toggle('active', b.dataset.view === mode);
+        });
+      }
+      if (cardsContainer) cardsContainer.style.display = mode === 'cards' ? 'grid' : 'none';
+      if (tableContainer) tableContainer.style.display = mode === 'table' ? 'block' : 'none';
+    };
+
+    if (viewToggle) {
+      viewToggle.querySelectorAll('.view-btn').forEach((b) => {
+        b.addEventListener('click', () => setView(b.dataset.view));
+      });
+    }
+    setView(savedView);
+
     const searchInput = container.querySelector('#search-student-input');
     if (searchInput) {
       searchInput.addEventListener('input', (e) => {
-        const query = e.target.value.toLowerCase();
+        const query = e.target.value.toLowerCase().trim();
+        // Filter table rows
         const rows = container.querySelectorAll('#students-table tbody tr');
         rows.forEach(row => {
           const text = row.innerText.toLowerCase();
           row.style.display = text.includes(query) ? '' : 'none';
+        });
+        // Filter cards
+        const cards = container.querySelectorAll('.student-card');
+        cards.forEach(card => {
+          const text = card.innerText.toLowerCase();
+          card.style.display = text.includes(query) ? 'flex' : 'none';
         });
       });
     }
