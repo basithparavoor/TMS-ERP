@@ -144,6 +144,9 @@ class AppController {
           <!-- Topbar -->
           <header class="app-topbar">
             <div class="topbar-left">
+              <button class="mobile-header-menu-btn" id="mobile-header-menu-btn" title="Navigation Menu" aria-label="Open Navigation Menu">
+                <i data-lucide="menu"></i>
+              </button>
               <div class="search-bar-trigger" id="global-search-trigger">
                 <i data-lucide="search" style="width: 16px; height: 16px;"></i>
                 <span>Search students, staff, records...</span>
@@ -157,9 +160,9 @@ class AppController {
                 <span>Session ${TMS_CONFIG.academic.currentYear} Active</span>
               </div>
 
-              <button class="icon-btn" id="notification-bell" title="Notifications" style="position: relative;">
+              <button class="icon-btn notification-bell-btn" id="notification-bell" title="Notifications & Announcements" style="position: relative;">
                 <i data-lucide="bell"></i>
-                <span id="notification-badge" class="badge badge-danger" style="display: none; position: absolute; top: -4px; right: -4px; font-size: 0.58rem; padding: 1px 5px; line-height: 1.4;">0</span>
+                <span id="notification-badge" class="tms-notif-badge" style="display: none;">0</span>
               </button>
             </div>
           </header>
@@ -168,30 +171,6 @@ class AppController {
           <div class="app-viewport" id="app-viewport">
             <!-- Dynamic module content injected here -->
           </div>
-
-          <!-- Mobile App Bottom Navigation Bar -->
-          <nav class="mobile-bottom-nav no-print" id="mobile-bottom-nav">
-            <a href="#/dashboard" class="mobile-nav-item" data-module="dashboard">
-              <i data-lucide="layout-dashboard"></i>
-              <span>Dashboard</span>
-            </a>
-            <a href="#/students" class="mobile-nav-item" data-module="students">
-              <i data-lucide="graduation-cap"></i>
-              <span>Students</span>
-            </a>
-            <a href="#/attendance" class="mobile-nav-item" data-module="attendance">
-              <i data-lucide="user-check"></i>
-              <span>Attendance</span>
-            </a>
-            <a href="#/finance" class="mobile-nav-item" data-module="finance">
-              <i data-lucide="credit-card"></i>
-              <span>Fees</span>
-            </a>
-            <button type="button" class="mobile-nav-item" id="mobile-menu-trigger">
-              <i data-lucide="menu"></i>
-              <span>Menu</span>
-            </button>
-          </nav>
         </main>
       </div>
     `;
@@ -294,12 +273,20 @@ class AppController {
   bindGlobalEvents() {
     const sidebar = document.getElementById('app-sidebar');
     const backdrop = document.getElementById('sidebar-backdrop');
-    const mobileMenuTrigger = document.getElementById('mobile-menu-trigger');
+    const mobileHeaderBtn = document.getElementById('mobile-header-menu-btn');
 
     // Desktop sidebar toggle
     const collapseBtn = document.getElementById('sidebar-collapse-btn');
     if (collapseBtn) {
       collapseBtn.addEventListener('click', () => this.toggleDesktopSidebar());
+    }
+
+    // Mobile header menu button to toggle sidebar
+    if (mobileHeaderBtn && sidebar && backdrop) {
+      mobileHeaderBtn.addEventListener('click', () => {
+        sidebar.classList.toggle('open');
+        backdrop.classList.toggle('active');
+      });
     }
 
     // Ctrl+B shortcut to toggle sidebar
@@ -314,12 +301,6 @@ class AppController {
     });
 
     if (sidebar && backdrop) {
-      if (mobileMenuTrigger) {
-        mobileMenuTrigger.addEventListener('click', () => {
-          sidebar.classList.toggle('open');
-          backdrop.classList.toggle('active');
-        });
-      }
       backdrop.addEventListener('click', () => {
         sidebar.classList.remove('open');
         backdrop.classList.remove('active');
