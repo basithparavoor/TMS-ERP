@@ -110,25 +110,58 @@ export function getEmbedVideoUrl(rawUrl) {
   return str;
 }
 
-export function renderVideoPlayerHtml(url, title = 'Admission Process Video Walkthrough') {
+export function renderVideoPlayerHtml(url, title = 'Admission Process Video Walkthrough', ratio = 'auto') {
   if (!url) return '';
   const embedUrl = getEmbedVideoUrl(url);
   if (!embedUrl) return '';
 
   const isDirectFile = /\.(mp4|webm|ogg|mov)($|\?)/i.test(embedUrl);
+  const isShorts = /shorts|reel/i.test(url) || ratio === '9:16' || ratio === 'portrait';
+  const playerId = 'tms-player-' + Math.random().toString(36).substr(2, 6);
 
   return `
-    <div class="instruction-video-wrapper" style="margin-bottom: 20px; border-radius: 12px; overflow: hidden; border: 1px solid var(--border-color, #e2e8f0); background: #000; box-shadow: 0 4px 16px rgba(0,0,0,0.08);">
-      <div style="background: #0f172a; color: #fff; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-        <div style="display: flex; align-items: center; gap: 8px; font-size: 0.86rem; font-weight: 700;">
+    <div class="instruction-video-wrapper ${isShorts ? 'ratio-portrait' : 'ratio-auto'}" id="${playerId}" style="margin-bottom: 20px; border-radius: 12px; overflow: hidden; border: 1.5px solid var(--border-color, #e2e8f0); background: #000; box-shadow: 0 4px 16px rgba(0,0,0,0.12);">
+      <div style="background: #0f172a; color: #fff; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+        <div style="display: flex; align-items: center; gap: 8px; font-size: 0.86rem; font-weight: 700; min-width: 0;">
           <span style="color: #ef4444; display: inline-flex;"><i data-lucide="play-circle" style="width: 18px; height: 18px;"></i></span>
-          <span>${title || 'Admission Process Video Walkthrough'}</span>
+          <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${title || 'Admission Form Video Guide'}</span>
         </div>
-        <a href="${embedUrl}" target="_blank" rel="noopener noreferrer" style="font-size: 0.74rem; color: #94a3b8; text-decoration: none; display: flex; align-items: center; gap: 4px;">
-          <span>Open Fullscreen</span> <i data-lucide="external-link" style="width: 12px; height: 12px;"></i>
-        </a>
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="
+            const wrap = document.getElementById('${playerId}');
+            const box = wrap.querySelector('.video-aspect-box');
+            if (wrap.classList.contains('ratio-portrait')) {
+              wrap.classList.remove('ratio-portrait');
+              wrap.classList.add('ratio-landscape');
+              box.style.paddingBottom = '56.25%';
+              box.style.maxHeight = 'none';
+              this.querySelector('span').innerText = 'Phone (9:16)';
+            } else {
+              wrap.classList.remove('ratio-landscape');
+              wrap.classList.remove('ratio-auto');
+              wrap.classList.add('ratio-portrait');
+              box.style.paddingBottom = '177.77%';
+              box.style.maxHeight = 'min(78vh, 620px)';
+              this.querySelector('span').innerText = 'Wide (16:9)';
+            }
+          " style="padding: 3px 8px; font-size: 0.72rem; background: rgba(255,255,255,0.12); color: #fff; border-color: rgba(255,255,255,0.2); display: inline-flex; align-items: center; gap: 4px;" title="Switch aspect ratio">
+            <i data-lucide="smartphone" style="width: 13px; height: 13px;"></i>
+            <span>${isShorts ? 'Wide (16:9)' : 'Phone (9:16)'}</span>
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm" onclick="
+            const wrap = document.getElementById('${playerId}');
+            const frame = wrap.querySelector('iframe, video');
+            if (frame) {
+              if (frame.requestFullscreen) frame.requestFullscreen();
+              else if (frame.webkitRequestFullscreen) frame.webkitRequestFullscreen();
+            }
+          " style="padding: 3px 8px; font-size: 0.72rem; background: rgba(255,255,255,0.12); color: #fff; border-color: rgba(255,255,255,0.2); display: inline-flex; align-items: center; gap: 4px;" title="Fullscreen">
+            <i data-lucide="maximize-2" style="width: 13px; height: 13px;"></i>
+            <span>Full</span>
+          </button>
+        </div>
       </div>
-      <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; background: #000;">
+      <div class="video-aspect-box" style="position: relative; width: 100%; height: 0; overflow: hidden; background: #000; transition: padding-bottom 0.25s ease, max-height 0.25s ease;">
         ${isDirectFile ? `
           <video src="${embedUrl}" controls playsinline style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: 0; object-fit: contain;"></video>
         ` : `
@@ -166,6 +199,7 @@ class AdmissionService {
       showGuidelines: existing.showGuidelines !== false, // default enabled
       instructionVideoUrl: existing.instructionVideoUrl || '',
       instructionVideoTitle: existing.instructionVideoTitle || 'How to Fill Admission Application Form',
+      instructionVideoRatio: existing.instructionVideoRatio || 'auto',
       showInstructionVideo: existing.showInstructionVideo !== false,
       paymentRequired: !!existing.paymentRequired,
       upiId: existing.upiId || '',
