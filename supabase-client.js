@@ -31,6 +31,9 @@ class SupabaseDataService {
     this.key = TMS_CONFIG.supabase.anonKey;
     this.client = null;
     this.isOnline = navigator.onLine;
+    this._memCache = new Map();
+    this._memCacheTime = new Map();
+    this._cacheTTL = 25000; // 25 seconds high-speed memory cache for ultra-fast navigation
     this.cleanLegacyDemoData();
     this.initClient();
     this.initNetworkListeners();
@@ -162,7 +165,26 @@ class SupabaseDataService {
     }
   }
 
-  async select(collection, filterFn = null) {
+  invalidateCache(collection = null) {
+    if (collection) {
+      this._memCache.delete(collection);
+      this._memCacheTime.delete(collection);
+    } else {
+      this._memCache.clear();
+      this._memCacheTime.clear();
+    }
+  }
+
+  async select(collection, filterFn = null, forceRefresh = false) {
+    const now = Date.now();
+    if (!forceRefresh && this._memCache.has(collection)) {
+      const cachedTime = this._memCacheTime.get(collection) || 0;
+      if (now - cachedTime < this._cacheTTL) {
+        const cached = this._memCache.get(collection);
+        return filterFn ? cached.filter(filterFn) : [...cached];
+      }
+    }
+
     // 1. Fetch from Supabase if online
     if (this.client && this.isOnline) {
       try {
@@ -170,6 +192,8 @@ class SupabaseDataService {
         if (error) throw error;
         if (Array.isArray(data)) {
           const mapped = data.map(rowFromDb);
+          this._memCache.set(collection, mapped);
+          this._memCacheTime.set(collection, now);
           this.setLocal(collection, mapped);
           return filterFn ? mapped.filter(filterFn) : mapped;
         }
@@ -178,10 +202,13 @@ class SupabaseDataService {
       }
     }
     const localData = this.getLocal(collection);
+    this._memCache.set(collection, localData);
+    this._memCacheTime.set(collection, now);
     return filterFn ? localData.filter(filterFn) : localData;
   }
 
   async insert(collection, record) {
+    this.invalidateCache(collection);
     const enriched = {
       id: record.id || 'TMS-' + Math.random().toString(36).substr(2, 9).toUpperCase(),
       created_at: new Date().toISOString(),
@@ -211,6 +238,7 @@ class SupabaseDataService {
   }
 
   async upsert(collection, record, onConflict = 'id') {
+    this.invalidateCache(collection);
     const enriched = { ...record, updated_at: new Date().toISOString() };
 
     const items = this.getLocal(collection);
@@ -237,6 +265,7 @@ class SupabaseDataService {
   }
 
   async update(collection, id, updates) {
+    this.invalidateCache(collection);
     const items = this.getLocal(collection);
     const index = items.findIndex(item => item.id === id);
     const stamped = { ...updates, updated_at: new Date().toISOString() };
@@ -265,6 +294,7 @@ class SupabaseDataService {
   }
 
   async delete(collection, id) {
+    this.invalidateCache(collection);
     const ids = Array.isArray(id) ? id : [id];
     const idSet = new Set(ids);
     let items = this.getLocal(collection);
