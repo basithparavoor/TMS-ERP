@@ -1858,11 +1858,23 @@ export class AdminModule {
               <label class="form-label" style="font-weight:600;">Video Title / Heading</label>
               <input type="text" class="form-input" id="set-video-title" value="${esc(s.instructionVideoTitle || 'How to Fill Admission Application Form')}" placeholder="e.g. Step-by-Step Admission Form Guide" style="font-size:0.85rem;">
             </div>
+
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label" style="font-weight:600;">Video Aspect Ratio / Mobile Presentation</label>
+              <select class="form-select" id="set-video-ratio" style="font-size:0.85rem;">
+                <option value="auto" ${(!s.instructionVideoRatio || s.instructionVideoRatio === 'auto') ? 'selected' : ''}>Auto-Adaptive (Smart Phone &amp; Desktop)</option>
+                <option value="9:16" ${s.instructionVideoRatio === '9:16' ? 'selected' : ''}>📱 Mobile / Phone Portrait (9:16 - Best for Screen Recordings)</option>
+                <option value="16:9" ${s.instructionVideoRatio === '16:9' ? 'selected' : ''}>🖥️ Widescreen Landscape (16:9)</option>
+              </select>
+              <small style="color:var(--text-muted); font-size:0.75rem; margin-top:4px; display:block;">
+                Select "Mobile / Phone Portrait (9:16)" if your tutorial was recorded on a smartphone.
+              </small>
+            </div>
           </div>
 
           <!-- Live Video Preview Section -->
           <div id="video-preview-wrapper" style="margin-top:14px;">
-            ${s.instructionVideoUrl ? renderVideoPlayerHtml(s.instructionVideoUrl, s.instructionVideoTitle) : '<p style="color:var(--text-muted); font-size:0.82rem; margin:0; padding:12px; background:var(--bg-subtle, #f8fafc); border:1px dashed var(--border-color); border-radius:8px; text-align:center;">Enter a video URL above and click "Test Video" to preview the video player.</p>'}
+            ${s.instructionVideoUrl ? renderVideoPlayerHtml(s.instructionVideoUrl, s.instructionVideoTitle, s.instructionVideoRatio || 'auto') : '<p style="color:var(--text-muted); font-size:0.82rem; margin:0; padding:12px; background:var(--bg-subtle, #f8fafc); border:1px dashed var(--border-color); border-radius:8px; text-align:center;">Enter a video URL above and click "Test Video" to preview the video player.</p>'}
           </div>
         </div>
 
@@ -2004,7 +2016,8 @@ export class AdminModule {
           return;
         }
 
-        const embedHtml = renderVideoPlayerHtml(url, title);
+        const ratio = (document.getElementById('set-video-ratio')?.value || 'auto').trim();
+        const embedHtml = renderVideoPlayerHtml(url, title, ratio);
         if (embedHtml) {
           if (wrapper) wrapper.innerHTML = embedHtml;
           if (badge) {
@@ -2025,6 +2038,7 @@ export class AdminModule {
       const showInstructionVideo = document.getElementById('set-show-video').checked;
       const instructionVideoUrl = document.getElementById('set-video-url').value.trim();
       const instructionVideoTitle = document.getElementById('set-video-title').value.trim();
+      const instructionVideoRatio = (document.getElementById('set-video-ratio')?.value || 'auto').trim();
       const formTitle = document.getElementById('set-form-title').value.trim();
       const formSubtitle = document.getElementById('set-form-subtitle').value.trim();
       const session = document.getElementById('set-session').value.trim();
@@ -2039,6 +2053,7 @@ export class AdminModule {
         showInstructionVideo,
         instructionVideoUrl,
         instructionVideoTitle,
+        instructionVideoRatio,
         formTitle,
         formSubtitle,
         session,
@@ -2054,6 +2069,7 @@ export class AdminModule {
         showFeeStructure,
         showGuidelines,
         showInstructionVideo,
+        instructionVideoRatio,
         hasVideoUrl: !!instructionVideoUrl,
         formTitle,
         session
