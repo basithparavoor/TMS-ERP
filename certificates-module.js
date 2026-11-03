@@ -8,6 +8,7 @@ import { dbService } from './supabase-client.js';
 import { UIComponents } from './ui-components.js';
 import { auditService } from './audit-service.js';
 import { TMS_LOGO } from './logo.js';
+import { exportPdf, formatPdfFilename } from './export-utils.js';
 
 export class CertificatesModule {
   static async render(container) {
@@ -424,7 +425,7 @@ export class CertificatesModule {
       bodyHtml,
       footerHtml: `
         <button class="btn btn-secondary" onclick="document.getElementById('global-modal-close').click()">Close</button>
-        <button class="btn btn-primary" onclick="window.print()"><i data-lucide="printer"></i> Print Official TC (A4)</button>
+        <button class="btn btn-primary" id="btn-print-tc-pdf"><i data-lucide="printer"></i> Print / Save PDF TC</button>
       `
     });
 
@@ -519,7 +520,7 @@ export class CertificatesModule {
       bodyHtml,
       footerHtml: `
         <button class="btn btn-secondary" onclick="document.getElementById('global-modal-close').click()">Close</button>
-        <button class="btn btn-primary" onclick="window.print()"><i data-lucide="printer"></i> Print Official Certificate (A4)</button>
+        <button class="btn btn-primary" id="btn-print-char-cert-pdf"><i data-lucide="printer"></i> Print / Save PDF Certificate</button>
       `
     });
 

@@ -66,7 +66,7 @@ export class AdmissionsEntryModule {
           </div>
           <div class="table-responsive">
             <table class="tms-table" style="font-size:0.85rem;">
-              <thead><tr><th>Form No</th><th>Candidate</th><th>Class</th><th>Phone</th><th>Fees</th><th>Status</th><th>Date</th></tr></thead>
+              <thead><tr><th>Form No</th><th>Candidate</th><th>Class</th><th>Phone</th><th>Fees</th><th>Status</th><th>Date</th><th style="text-align:right;">Action</th></tr></thead>
               <tbody>
                 ${mine.length ? mine.map((a) => `<tr>
                   <td class="font-mono">${esc(a.appId || a.id)}</td>
@@ -75,8 +75,8 @@ export class AdmissionsEntryModule {
                   <td class="font-mono">${esc(a.phone || '—')}</td>
                   <td>₹ ${Number(a.feeTotal || 0).toLocaleString('en-IN')}</td>
                   <td><span class="badge badge-info">${esc(a.status || '—')}</span></td>
-                  <td>${fmtDate(a.createdAt)}</td>
-                </tr>`).join('') : '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:30px;">You have not entered any applications yet.</td></tr>'}
+                  <td>${fmtDate(a.createdAt)}</td><td style="text-align:right;"><button class="btn btn-secondary btn-sm btn-print-entry-form" data-id="${esc(a.id)}" title="Print Official Form with Credentials"><i data-lucide="printer"></i> Print</button></td>
+                </tr>`).join('') : '<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:30px;">You have not entered any applications yet.</td></tr>'}
               </tbody>
             </table>
           </div>
@@ -86,7 +86,7 @@ export class AdmissionsEntryModule {
 
     const launchForm = async () => {
       await auditService.log('ADMISSION_ENTRY_OPENED', 'ADMISSIONS', { by: user.name });
-      window.open('student-admission-portal.html', '_blank');
+      window.open('/admission', '_blank');
     };
 
     const btn = document.getElementById('btn-open-admission-form');
@@ -94,6 +94,15 @@ export class AdmissionsEntryModule {
 
     const btnBanner = document.getElementById('btn-open-admission-form-banner');
     if (btnBanner) btnBanner.addEventListener('click', launchForm);
+
+    container.querySelectorAll('.btn-print-entry-form').forEach((b) => {
+      b.addEventListener('click', async (e) => {
+        const id = e.currentTarget.dataset.id;
+        const { AdminModule } = await import('./admin-module.js');
+        AdminModule._apps = await admissionService.listApplications();
+        await AdminModule.showApplicationForm(id, true);
+      });
+    });
 
     UIComponents.refreshIcons();
   }

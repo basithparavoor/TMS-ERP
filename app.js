@@ -54,21 +54,21 @@ class AppController {
 
     // Strict Authentication Guard
     if (!authService.isAuthenticated()) {
-      window.location.href = 'login.html';
+      window.location.href = '/login';
       return;
     }
 
     const currentUser = authService.getCurrentUser() || {};
     if (currentUser.role === 'pending' || currentUser.isPending || currentUser.role === 'rejected' || currentUser.isRejected) {
-      window.location.href = 'login.html';
+      window.location.href = '/login';
       return;
     }
     if (currentUser.role === TMS_CONFIG.roles.PARENT) {
-      window.location.href = 'parent-portal.html';
+      window.location.href = '/parent';
       return;
     }
     if (currentUser.role === TMS_CONFIG.roles.STUDENT) {
-      window.location.href = 'student-portal.html';
+      window.location.href = '/student';
       return;
     }
 
@@ -151,9 +151,6 @@ class AppController {
               <button class="mobile-header-menu-btn" id="mobile-header-menu-btn" title="Navigation Menu" aria-label="Open Navigation Menu">
                 <i data-lucide="menu"></i>
               </button>
-              <div class="topbar-breadcrumbs" id="topbar-breadcrumbs" style="display: flex; align-items: center; gap: 6px; font-size: 0.84rem; font-weight: 500; color: var(--text-secondary);">
-                <span>Dashboard</span>
-              </div>
               <div class="search-bar-trigger" id="global-search-trigger">
                 <i data-lucide="search" style="width: 16px; height: 16px;"></i>
                 <span>Search students, staff, records...</span>
@@ -313,7 +310,7 @@ class AppController {
 
     html += `
       <div class="sidebar-group-title" style="margin-top: 14px;">Dedicated Portals</div>
-      <a class="nav-item" href="student-admission-portal.html" target="_blank" data-tooltip="Admission Form (A4)">
+      <a class="nav-item" href="/admission" target="_blank" data-tooltip="Admission Form (A4)">
         <i data-lucide="file-text" style="color: #16a34a;"></i>
         <span>Admission Form (A4)</span>
       </a>
@@ -771,17 +768,6 @@ class AppController {
 
     const currentLabel = moduleLabels[moduleName] || 'Overview Dashboard';
 
-    // Update Topbar Breadcrumbs
-    const breadcrumbsEl = document.getElementById('topbar-breadcrumbs');
-    if (breadcrumbsEl) {
-      breadcrumbsEl.innerHTML = `
-        <a href="#/dashboard" style="color:var(--text-secondary); text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
-          <i data-lucide="home" style="width:13px; height:13px;"></i> TMS ERP
-        </a>
-        <i data-lucide="chevron-right" style="width:12px; height:12px; opacity:0.4;"></i>
-        <span style="color:var(--text-primary); font-weight:600;">${esc(currentLabel)}</span>
-      `;
-    }
 
     document.querySelectorAll('.nav-item').forEach(item => {
       if (item.dataset.module === moduleName) {
@@ -950,7 +936,7 @@ class AppController {
               <button class="btn btn-secondary" id="btn-print-morning-pulse">
                 <i data-lucide="printer"></i> Executive Pulse (A4)
               </button>
-              <a href="student-admission-portal.html" target="_blank" class="btn btn-secondary">
+              <a href="/admission" target="_blank" class="btn btn-secondary">
                 <i data-lucide="file-plus" style="color: #16a34a;"></i> Admission Portal (A4)
               </a>
               <a href="#/attendance" class="btn btn-primary">
@@ -1206,7 +1192,7 @@ class AppController {
             <span style="font-size:0.8rem; color:var(--text-secondary);">Direct Module Operations</span>
           </div>
           <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px;">
-            <a href="student-admission-portal.html" target="_blank" class="card" style="padding:16px; display:flex; align-items:center; gap:12px; text-decoration:none; color:inherit; cursor:pointer;">
+            <a href="/admission" target="_blank" class="card" style="padding:16px; display:flex; align-items:center; gap:12px; text-decoration:none; color:inherit; cursor:pointer;">
               <div style="width:40px; height:40px; border-radius:10px; background:#ecfdf5; color:#16a34a; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
                 <i data-lucide="file-plus" style="width:20px; height:20px;"></i>
               </div>

@@ -7,7 +7,7 @@ import { dbService } from './supabase-client.js';
 import { UIComponents } from './ui-components.js';
 import { auditService } from './audit-service.js';
 import { PermissionEngine, CAPABILITIES } from './permission-engine.js';
-import { downloadCsv, shareContent } from './export-utils.js';
+import { downloadCsv, exportPdf, formatPdfFilename, shareContent } from './export-utils.js';
 import { notificationService } from './notification-service.js';
 import { TMS_LOGO } from './logo.js';
 import { WhatsAppService } from './whatsapp-service.js';
@@ -624,7 +624,7 @@ export class FinanceModule {
       footerHtml: `
         <button class="btn btn-secondary" onclick="document.getElementById('global-modal-close').click()">Close</button>
         <button class="btn btn-secondary" id="btn-export-aging-csv"><i data-lucide="download"></i> Export Defaulters (CSV)</button>
-        <button class="btn btn-primary" onclick="window.print()"><i data-lucide="printer"></i> Print Aging Report</button>
+        <button class="btn btn-primary" id="btn-print-aging-pdf"><i data-lucide="printer"></i> Print Aging Report</button>
       `
     });
 

@@ -3,12 +3,18 @@
  * Robust Network-First Offline Caching
  */
 
-const CACHE_NAME = 'tms-erp-cache-v2';
+const CACHE_NAME = 'tms-erp-cache-v3';
 const PRECACHE_URLS = [
   './',
   './index.html',
+  './login',
+  './admission',
+  './student',
+  './parent',
+  './teacher',
+  './admin',
   './login.html',
-  './student-admission-portal.html',
+  './admission.html',
   './app.css',
   './manifest.json',
   './icons/icon.svg',
@@ -73,7 +79,7 @@ self.addEventListener('fetch', (event) => {
 
         // If requesting an HTML page while offline, fallback to index or login
         if (event.request.mode === 'navigate' || event.request.headers.get('accept')?.includes('text/html')) {
-          const fallbackHtml = (await caches.match('./index.html')) || (await caches.match('./login.html'));
+          const fallbackHtml = (await caches.match('./')) || (await caches.match('./index.html')) || (await caches.match('./login')) || (await caches.match('./login.html'));
           if (fallbackHtml) return fallbackHtml;
         }
 

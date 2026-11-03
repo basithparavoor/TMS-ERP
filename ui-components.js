@@ -119,7 +119,7 @@ export class UIComponents {
     }, 3500);
   }
 
-  static openModal({ title, bodyHtml, footerHtml = '' }) {
+  static openModal({ title, bodyHtml, footerHtml = '', maxWidth = '' }) {
     let overlay = document.getElementById('global-modal-overlay');
     if (!overlay) {
       overlay = document.createElement('div');
@@ -144,6 +144,11 @@ export class UIComponents {
       overlay.addEventListener('click', (e) => {
         if (e.target === overlay) this.closeModal();
       });
+    }
+
+    const modalWin = overlay.querySelector('.modal-window');
+    if (modalWin) {
+      modalWin.style.maxWidth = maxWidth || '680px';
     }
 
     document.getElementById('global-modal-title').innerText = title;

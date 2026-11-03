@@ -5,6 +5,7 @@
 import { TMS_CONFIG } from './config.js';
 import { dbService } from './supabase-client.js';
 import { UIComponents } from './ui-components.js';
+import { exportPdf, formatPdfFilename } from './export-utils.js';
 
 export class ReportsModule {
   static async render(container) {
@@ -42,7 +43,7 @@ export class ReportsModule {
           badge: 'Verified Data',
           actionsHtml: `
             <button class="btn btn-secondary" id="btn-export-reports-csv"><i data-lucide="file-spreadsheet"></i> Export CSV Summary</button>
-            <button class="btn btn-primary" onclick="window.print()"><i data-lucide="printer"></i> Print Executive Brief</button>
+            <button class="btn btn-primary" id="btn-print-executive-brief"><i data-lucide="printer"></i> Print Executive Brief</button>
           `
         })}
 

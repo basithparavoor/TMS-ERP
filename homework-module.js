@@ -9,6 +9,7 @@ import { UIComponents } from './ui-components.js';
 import { auditService } from './audit-service.js';
 import { WhatsAppService } from './whatsapp-service.js';
 import { TMS_LOGO } from './logo.js';
+import { exportPdf, formatPdfFilename } from './export-utils.js';
 
 export class HomeworkModule {
   static async render(container) {
@@ -18,22 +19,6 @@ export class HomeworkModule {
     this._students = (await dbService.select('students')) || [];
     this._staff = (await dbService.select('staff_directory')) || [];
 
-    // Pre-populate sample assignments if empty
-    if (!this._assignments.length) {
-      const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
-      const nextWeek = new Date(Date.now() + 86400000 * 4).toISOString().slice(0, 10);
-
-      const defaults = [
-        { id: 'hw_1', grade: 'Grade 5', section: 'A', subject: 'Mathematics', title: 'Fractions & Decimals Exercise 4.2', description: 'Complete textbook questions 1 to 15 in homework notebook. Show all intermediate calculation steps.', due_date: tomorrow, assigned_by: 'Mr. Rahman', status: 'active' },
-        { id: 'hw_2', grade: 'Grade 5', section: 'A', subject: 'English', title: 'Poem Comprehension & Vocabulary Drill', description: 'Read Chapter 3: "The Silver Arrow". Answer comprehension questions A and B on page 42.', due_date: tomorrow, assigned_by: 'Ms. Fatima', status: 'active' },
-        { id: 'hw_3', grade: 'Grade 7', section: 'B', subject: 'General Science', title: 'Plant Cell Structure Diagram Project', description: 'Draw and label a neat diagram of a plant cell on A4 chart paper showing chloroplast and cell wall.', due_date: nextWeek, assigned_by: 'Dr. Ali', status: 'active' }
-      ];
-
-      for (const hw of defaults) {
-        await dbService.insert('assignments', hw);
-      }
-      this._assignments = (await dbService.select('assignments')) || [];
-    }
 
     this._selectedGrade = this._selectedGrade || 'all';
     this._selectedSubject = this._selectedSubject || 'all';
@@ -392,7 +377,7 @@ export class HomeworkModule {
       bodyHtml,
       footerHtml: `
         <button class="btn btn-secondary" onclick="document.getElementById('global-modal-close').click()">Close</button>
-        <button class="btn btn-primary" onclick="window.print()"><i data-lucide="printer"></i> Print Homework Sheet (A4)</button>
+        <button class="btn btn-primary" id="btn-print-hw-pdf"><i data-lucide="printer"></i> Print / Save PDF Roster</button>
       `
     });
 

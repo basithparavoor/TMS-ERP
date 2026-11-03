@@ -195,8 +195,17 @@ export class CommunicationModule {
             <p>${esc(n.content)}</p>
             <div style="font-size:11px;">Dispatched by ${esc(n.publishedBy || 'Executive Office')}</div>
           </div>`).join('');
-        const { exportPdf } = await import('./export-utils.js');
-        exportPdf('TMS-Circulars', html);
+        const { exportPdf, formatPdfFilename } = await import('./export-utils.js');
+        const filename = formatPdfFilename('Official_Circulars', new Date().toISOString().slice(0, 10));
+        exportPdf(filename, html, {
+          filename,
+          title: 'Official Institutional Circulars & Notices',
+          subtitle: `Published Circulars & Bulletins • Total: ${rows.length}`,
+          badge: 'Executive Dispatch',
+          showHeader: true,
+          showFooter: true,
+          signatures: ['Notice Coordinator', 'Headmaster / Principal']
+        });
       });
     }
   }

@@ -8,6 +8,7 @@ import { dbService } from './supabase-client.js';
 import { UIComponents } from './ui-components.js';
 import { TMS_LOGO } from './logo.js';
 import { QRCodeGenerator } from './qr-generator.js';
+import { exportPdf, formatPdfFilename } from './export-utils.js';
 
 export class IdCardsModule {
   static async render(container) {

@@ -9,7 +9,7 @@ import { UIComponents } from './ui-components.js';
 import { auditService } from './audit-service.js';
 import { TMS_LOGO } from './logo.js';
 import { WhatsAppService } from './whatsapp-service.js';
-import { shareContent } from './export-utils.js';
+import { exportPdf, formatPdfFilename, shareContent } from './export-utils.js';
 
 export const STANDARD_SUBJECTS = [
   { code: 'ENG', name: 'English Language & Literature', maxTheory: 80, maxPractical: 20 },
@@ -1350,9 +1350,26 @@ export class ExaminationModule {
       footerHtml: `
         <button class="btn btn-secondary" onclick="document.getElementById('global-modal-close').click()">Close</button>
         <button class="btn btn-secondary" id="btn-share-report-card"><i data-lucide="share-2"></i> Share Report</button>
-        <button class="btn btn-primary" onclick="window.print()"><i data-lucide="printer"></i> Print Official Report Card (A4)</button>
+        <button class="btn btn-primary" id="btn-print-report-card-pdf"><i data-lucide="printer"></i> Print / Save PDF Report Card</button>
       `
     });
+
+    const printReportCardBtn = document.getElementById('btn-print-report-card-pdf');
+    if (printReportCardBtn) {
+      printReportCardBtn.addEventListener('click', () => {
+        const filename = formatPdfFilename('Progress_Report', `${student.fullName}_${student.grade}`.replace(/\s+/g, '_'));
+        const reportArea = document.getElementById('print-area-report-card');
+        if (reportArea) {
+          exportPdf(filename, reportArea.outerHTML, {
+            filename,
+            title: `CBSE Cumulative Progress Report — ${student.fullName}`,
+            subtitle: `Class: ${student.grade} • Roll: ${student.rollNo || '—'} • Session: ${TMS_CONFIG.academic?.currentYear || '2027 - 2028'}`,
+            showHeader: false,
+            showFooter: false
+          });
+        }
+      });
+    }
 
     const shareBtn = document.getElementById('btn-share-report-card');
     if (shareBtn) {
@@ -1466,7 +1483,7 @@ export class ExaminationModule {
       bodyHtml,
       footerHtml: `
         <button class="btn btn-secondary" onclick="document.getElementById('global-modal-close').click()">Close</button>
-        <button class="btn btn-primary" onclick="window.print()"><i data-lucide="printer"></i> Print Door Chart (A4)</button>
+        <button class="btn btn-primary" id="btn-print-door-chart-pdf"><i data-lucide="printer"></i> Print / Save PDF Door Chart</button>
       `
     });
     UIComponents.refreshIcons();

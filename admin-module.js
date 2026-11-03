@@ -13,7 +13,7 @@ import { TMS_LOGO } from './logo.js';
 import { admissionService, DEFAULT_INSTRUCTIONS, DEFAULT_POPUP_INSTRUCTIONS, getEmbedVideoUrl, renderVideoPlayerHtml } from './admission-service.js';
 import { notificationService } from './notification-service.js';
 import { brandingService } from './branding-service.js';
-import { downloadCsv, exportPdf, kvTable } from './export-utils.js';
+import { downloadCsv, exportPdf, formatPdfFilename, kvTable } from './export-utils.js';
 
 const esc = (v) => UIComponents.escapeHtml(v);
 const safeOn = (id, event, fn) => {
@@ -100,7 +100,7 @@ export class AdminModule {
           breadcrumbs: [{ label: 'Administration' }],
           badge: isSuperAdmin ? 'Super Admin' : 'Admin Console',
           actionsHtml: `
-            <a href="student-admission-portal.html" target="_blank" class="btn btn-secondary"><i data-lucide="external-link"></i> Public Admission Gateway</a>
+            <a href="/admission" target="_blank" class="btn btn-secondary"><i data-lucide="external-link"></i> Public Admission Gateway</a>
             <button class="btn btn-primary" id="btn-new-notification"><i data-lucide="bell-plus"></i> New Notification</button>
           `
         })}
@@ -320,7 +320,7 @@ export class AdminModule {
             <button class="btn btn-secondary btn-sm" id="btn-export-csv"><i data-lucide="file-spreadsheet"></i> Export CSV</button>
             <button class="btn btn-secondary btn-sm" id="btn-export-pdf"><i data-lucide="file-text"></i> Export PDF</button>
             <button class="btn btn-secondary btn-sm" id="btn-delete-pending" style="color:#ef4444;"><i data-lucide="trash-2"></i> Delete Pending</button>
-            <a href="student-admission-portal.html" target="_blank" class="btn btn-primary btn-sm"><i data-lucide="plus"></i> New Entry</a>
+            <a href="/admission" target="_blank" class="btn btn-primary btn-sm"><i data-lucide="plus"></i> New Entry</a>
           </div>
         </div>
 
@@ -566,161 +566,292 @@ export class AdminModule {
     const fields = await admissionService.listFields();
     const credential = await admissionService.getCredentials(id);
 
-    const detailsRows = fields
-      .map((f) => {
-        const isFile = (f.fieldType || 'text') === 'file';
-        const raw = (app.payload || {})[f.fieldKey];
-        let cell;
-        if (isFile) {
-          const ver = (app.docVerifications || {})[f.fieldKey];
-          const verBadge = ver
-            ? `<span class="badge badge-success" style="font-size:0.68rem; margin-left:6px;"><i data-lucide="shield-check"></i> Verified</span>`
-            : '';
-          const stampBtn = (raw && !ver)
-            ? `<button type="button" class="btn btn-secondary btn-sm btn-verify-doc" data-key="${esc(f.fieldKey)}" style="padding:1px 6px; font-size:0.68rem; margin-left:8px; color:#15803d;"><i data-lucide="check"></i> Verify &amp; Stamp</button>`
-            : '';
-          cell = raw
-            ? `<div style="display:flex; align-items:center; flex-wrap:wrap; gap:4px;"><a href="#" class="doc-link" data-path="${esc(raw)}">${esc(String(raw).split('/').pop())}</a> ${verBadge} ${stampBtn}</div>`
-            : '<span style="color:var(--text-muted);">Not attached</span>';
-        } else {
-          cell = esc(raw || '—');
-        }
-        return `<tr><th style="text-align:left;">${esc(f.label)}</th><td>${cell}</td></tr>`;
-      })
-      .join('');
+    const docFields = fields.filter((f) => (f.fieldType || 'text') === 'file');
+    const textFields = fields.filter((f) => (f.fieldType || 'text') !== 'file');
+
+    const detailsRows = textFields.map((f) => {
+      const raw = (app.payload || {})[f.fieldKey];
+      return `
+        <tr>
+          <th style="width:36%; background:#f8fafc; font-weight:700; color:#475569; font-size:0.75rem; border-bottom:1px solid #f1f5f9; padding:8px 12px; white-space:normal;">${esc(f.label)}</th>
+          <td style="font-size:0.82rem; color:#1e293b; border-bottom:1px solid #f1f5f9; padding:8px 12px;">${esc(raw || '—')}</td>
+        </tr>
+      `;
+    }).join('');
+
+    const docsListHtml = docFields.length ? docFields.map((f) => {
+      const raw = (app.payload || {})[f.fieldKey];
+      const ver = (app.docVerifications || {})[f.fieldKey];
+      const verBadge = ver
+        ? `<span class="badge badge-success" style="font-size:0.7rem; padding:3px 8px; font-weight:700;"><i data-lucide="shield-check" style="width:12px;height:12px;"></i> Verified &amp; Stamped</span>`
+        : `<span class="badge badge-warning" style="font-size:0.7rem; padding:3px 8px;">Pending Verification</span>`;
+      const stampBtn = (raw && !ver)
+        ? `<button type="button" class="btn btn-secondary btn-sm btn-verify-doc" data-key="${esc(f.fieldKey)}" style="padding:2px 8px; font-size:0.72rem; color:#15803d; border-color:#86efac; font-weight:600;"><i data-lucide="check"></i> Verify &amp; Stamp</button>`
+        : '';
+      
+      return `
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; padding:10px 12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;">
+          <div>
+            <div style="font-weight:700; font-size:0.8rem; color:#1e293b;">${esc(f.label)}</div>
+            ${raw ? `<a href="#" class="doc-link" data-path="${esc(raw)}" style="font-size:0.76rem; color:#2563eb; text-decoration:none; display:inline-flex; align-items:center; gap:4px; margin-top:2px;"><i data-lucide="file-text" style="width:12px;height:12px;"></i> View Attached File</a>`
+                   : '<span style="font-size:0.75rem; color:var(--text-muted);">Not attached</span>'}
+          </div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            ${verBadge}
+            ${stampBtn}
+          </div>
+        </div>
+      `;
+    }).join('') : '<p style="font-size:0.8rem; color:var(--text-muted); margin:0;">No document upload requirements defined.</p>';
 
     const photoPath = (app.payload || {}).photo;
-    const photoBlock = photoPath
-      ? `<div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
-           <img id="app-photo-img" alt="Applicant photo" style="width:84px;height:104px;object-fit:cover;border:1px solid var(--border-color);border-radius:6px;background:#f1f5f9;">
-           <div style="font-size:0.78rem;color:var(--text-muted);">Applicant photograph on file.</div>
-         </div>`
-      : '';
-
     const payments = Array.isArray(app.payments) ? app.payments : [];
     const paymentRows = payments.length
       ? payments.map((p) => `<tr>
-          <td>${fmtDate(p.date)}</td>
-          <td>${esc(p.mode)}</td>
-          <td>${esc(p.reference || '—')}</td>
-          <td style="text-align:right;">${fmtMoney(p.amount)}</td>
+          <td style="font-size:0.78rem;">${fmtDate(p.date)}</td>
+          <td style="font-size:0.78rem;"><span class="badge badge-info" style="font-size:0.7rem;">${esc(p.mode)}</span></td>
+          <td style="font-size:0.78rem;" class="font-mono">${esc(p.reference || '—')}</td>
+          <td style="text-align:right; font-weight:700; font-size:0.82rem; color:#16a34a;">${fmtMoney(p.amount)}</td>
         </tr>`).join('')
-      : '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);">No payments recorded.</td></tr>';
+      : '<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:12px; font-size:0.8rem;">No payment transactions recorded.</td></tr>';
 
     const exam = app.entranceExam || {};
     const isEnrolled = app.status === 'Enrolled';
+    const totalPaidCalc = app.paymentStatus === 'Paid' ? (app.feeTotal || 0) : payments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+    const balanceDueCalc = Math.max(0, (app.feeTotal || 0) - totalPaidCalc);
 
     const bodyHtml = `
-      <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px; align-items:center;">
-        ${statusBadge(app.status)} ${payBadge(app.paymentStatus)}
-        ${isEnrolled ? `<span class="badge badge-success" style="font-weight:700;"><i data-lucide="graduation-cap"></i> Enrolled: ${esc(app.enrolledAdmissionNo || 'Student')}</span>` : ''}
-        <span class="badge badge-info">Fees: ${fmtMoney(app.feeTotal)}</span>
-        <span class="badge badge-info">Entered by: ${esc(app.submittedByName || 'Self / Public')}</span>
-      </div>
-
-      ${photoBlock}
-
-      <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-        <div>
-          <h4 style="font-size:0.95rem; margin-bottom:8px; color:#15803d;">Application Details</h4>
-          <table class="tms-table" style="font-size:0.82rem;"><tbody>
-            <tr><th style="text-align:left;">Form No</th><td class="font-mono">${esc(app.appId || app.id)}</td></tr>
-            <tr><th style="text-align:left;">Submitted</th><td>${fmtDate(app.createdAt)}</td></tr>
-            ${detailsRows}
-          </tbody></table>
-        </div>
-        <div>
-          <h4 style="font-size:0.95rem; margin-bottom:8px; color:#15803d;">Fees</h4>
-          <table class="tms-table" style="font-size:0.82rem;"><tbody>
-            ${(app.feeItems || []).map((f) => `<tr><th style="text-align:left;">${esc(f.name)}</th><td style="text-align:right;">${fmtMoney(f.amount)}</td></tr>`).join('') || '<tr><td style="color:var(--text-muted);">No fees.</td></tr>'}
-            <tr><th style="text-align:left;">Total</th><td style="text-align:right; font-weight:800;">${fmtMoney(app.feeTotal)}</td></tr>
-          </tbody></table>
-
-          <h4 style="font-size:0.95rem; margin:16px 0 8px; color:#15803d;">Payments Ledger</h4>
-          <table class="tms-table" style="font-size:0.82rem;">
-            <thead><tr><th>Date</th><th>Mode</th><th>Reference</th><th style="text-align:right;">Amount</th></tr></thead>
-            <tbody>${paymentRows}</tbody>
-          </table>
-
-          <div style="background: var(--bg-subtle); padding:12px; border-radius:8px; margin-top:12px;">
-            <h4 style="font-size:0.9rem; margin-bottom:8px;">Record a Payment</h4>
-            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:flex-end;">
-              <input type="number" class="form-input" id="pay-amount" placeholder="Amount" style="width:110px;">
-              <select class="form-select" id="pay-mode" style="width:120px;">
-                <option>Cash</option><option>UPI</option><option>Cheque</option><option>Card</option><option>Bank Transfer</option>
-              </select>
-              <input class="form-input" id="pay-ref" placeholder="Reference / Note" style="flex:1; min-width:140px;">
-              <button class="btn btn-primary btn-sm" id="btn-record-payment"><i data-lucide="plus"></i> Add</button>
+      <!-- Top Candidate Profile Banner -->
+      <div style="background:linear-gradient(135deg, rgba(22, 163, 74, 0.05), rgba(37, 99, 235, 0.06)); border:1.5px solid var(--border-color); border-radius:12px; padding:16px 20px; margin-bottom:20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:16px;">
+        <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+          ${photoPath
+            ? `<img id="app-photo-img" alt="Applicant photo" style="width:72px; height:88px; object-fit:cover; border-radius:8px; border:2px solid #fff; box-shadow:0 4px 10px rgba(0,0,0,0.06); background:#f1f5f9;">`
+            : `<div style="width:72px; height:88px; border-radius:8px; border:1.5px dashed var(--border-color); display:flex; flex-direction:column; align-items:center; justify-content:center; background:#f8fafc; color:var(--text-muted); font-size:0.68rem; gap:4px;"><i data-lucide="user" style="width:24px;height:24px;opacity:0.35;"></i>No Photo</div>`
+          }
+          <div>
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+              <h3 style="font-size:1.3rem; font-weight:800; color:var(--text-primary); margin:0;">${esc(app.studentName || 'Candidate')}</h3>
+              <span class="badge" style="background:#eff6ff; color:#1d4ed8; font-weight:800; font-size:0.78rem; border:1px solid #bfdbfe;">Class ${esc(app.grade || '—')}</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px; margin:4px 0 8px; font-size:0.8rem; color:var(--text-muted); flex-wrap:wrap;">
+              <span class="font-mono" style="font-weight:700; color:#334155;">${esc(app.appId || app.id)}</span>
+              <span>•</span>
+              <span>Submitted ${fmtDate(app.createdAt)}</span>
+              <span>•</span>
+              <span>Entered by: <strong>${esc(app.submittedByName || 'Self / Public')}</strong></span>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              ${statusBadge(app.status)}
+              ${payBadge(app.paymentStatus)}
+              ${isEnrolled ? `<span class="badge badge-success" style="font-weight:700;"><i data-lucide="graduation-cap"></i> Enrolled: ${esc(app.enrolledAdmissionNo || 'Student')}</span>` : ''}
             </div>
           </div>
+        </div>
 
-          <!-- Entrance Exam Marks Card -->
-          <div style="background: var(--bg-subtle); padding:12px; border-radius:8px; margin-top:14px; border:1px solid var(--border-color);">
-            <h4 style="font-size:0.9rem; margin-bottom:8px; color:#2563eb; display:flex; align-items:center; gap:6px;">
-              <i data-lucide="award" style="width:16px; height:16px;"></i> Entrance Exam &amp; Interview Marks
-            </h4>
-            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
-              <div style="width:95px;">
-                <label style="font-size:0.72rem; color:var(--text-muted); display:block;">Written (50)</label>
-                <input type="number" class="form-input font-mono" id="exam-written" value="${esc(exam.writtenScore ?? '')}" placeholder="0" min="0" max="50">
-              </div>
-              <div style="width:95px;">
-                <label style="font-size:0.72rem; color:var(--text-muted); display:block;">Interview (50)</label>
-                <input type="number" class="form-input font-mono" id="exam-interview" value="${esc(exam.interviewScore ?? '')}" placeholder="0" min="0" max="50">
-              </div>
-              <div style="width:95px;">
-                <label style="font-size:0.72rem; color:var(--text-muted); display:block;">Total (100)</label>
-                <input type="text" class="form-input font-mono" id="exam-total" value="${exam.totalScore != null ? exam.totalScore : ''}" readonly style="background:#f1f5f9; font-weight:700;">
-              </div>
-              <div style="flex:1; min-width:140px;">
-                <label style="font-size:0.72rem; color:var(--text-muted); display:block;">Examiner Remarks</label>
-                <input class="form-input" id="exam-remarks" value="${esc(exam.examinerRemarks || '')}" placeholder="e.g. Recommended">
-              </div>
-              <button class="btn btn-secondary btn-sm" id="btn-save-entrance-score"><i data-lucide="save"></i> Save Marks</button>
-            </div>
+        <!-- KPI Quick Metric Pill -->
+        <div style="display:flex; gap:16px; align-items:center; background:#ffffff; padding:10px 18px; border-radius:10px; border:1px solid var(--border-color); box-shadow:0 2px 5px rgba(0,0,0,0.03);">
+          <div style="text-align:right; padding-right:14px; border-right:1px solid var(--border-color);">
+            <div style="font-size:0.68rem; color:var(--text-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.04em;">Total Fees</div>
+            <div style="font-size:1.15rem; font-weight:800; color:#1e293b;">${fmtMoney(app.feeTotal)}</div>
+          </div>
+          <div style="text-align:right; padding-right:14px; border-right:1px solid var(--border-color);">
+            <div style="font-size:0.68rem; color:var(--text-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.04em;">Paid Amount</div>
+            <div style="font-size:1.15rem; font-weight:800; color:#16a34a;">${fmtMoney(totalPaidCalc)}</div>
+          </div>
+          <div style="text-align:right; padding-right:14px; border-right:1px solid var(--border-color);">
+            <div style="font-size:0.68rem; color:var(--text-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.04em;">Balance Due</div>
+            <div style="font-size:1.15rem; font-weight:800; color:${balanceDueCalc > 0 ? '#ef4444' : '#64748b'};">${fmtMoney(balanceDueCalc)}</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:0.68rem; color:var(--text-muted); font-weight:800; text-transform:uppercase; letter-spacing:0.04em;">Exam Score</div>
+            <div style="font-size:1.15rem; font-weight:800; color:#2563eb;">${exam.totalScore != null ? `${exam.totalScore}/100` : '—'}</div>
           </div>
         </div>
       </div>
 
-      <div style="margin-top:18px; display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
-        <div>
-          <h4 style="font-size:0.95rem; margin-bottom:8px; color:#b45309;">Parent Portal Credentials</h4>
-          ${credential ? `
-            <table class="tms-table" style="font-size:0.82rem;"><tbody>
-              <tr><th style="text-align:left;">Username</th><td><input class="form-input" id="cred-username" value="${esc(credential.username)}"></td></tr>
-              <tr><th style="text-align:left;">Password</th><td><input class="form-input font-mono" id="cred-password" value="${esc(credential.password)}"></td></tr>
-            </tbody></table>
-            <div style="display:flex; gap:8px; margin-top:8px; flex-wrap:wrap;">
-              <button class="btn btn-secondary btn-sm" id="btn-save-credential"><i data-lucide="save"></i> Save</button>
-              <button class="btn btn-secondary btn-sm" id="btn-resend-credential"><i data-lucide="send"></i> Resend</button>
-              ${(credential.userId || app.parentUserId) ? '' : '<button class="btn btn-primary btn-sm" id="btn-activate-credential"><i data-lucide="key-round"></i> Activate Login</button>'}
-              <button class="btn btn-secondary btn-sm" id="btn-delete-credential" style="color:#ef4444;"><i data-lucide="trash-2"></i> Delete</button>
+      <!-- Main Master-Detail 2-Column Grid -->
+      <div style="display:grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap:20px; align-items:start;">
+        
+        <!-- Left Column: Dossier & Documentation -->
+        <div style="display:flex; flex-direction:column; gap:16px;">
+          <!-- Profile Card -->
+          <div class="card" style="padding:16px 18px; border:1px solid var(--border-color); border-radius:10px; background:#fff; margin:0;">
+            <div style="font-weight:800; font-size:0.92rem; color:#15803d; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+              <i data-lucide="user-check" style="width:16px; height:16px;"></i> Applicant &amp; Family Dossier
             </div>
-            ${(credential.userId || app.parentUserId) ? '' : '<p style="font-size:0.74rem;color:#b45309;margin-top:6px;">This parent login has not been activated yet (the account could not be created when the form was submitted). Click <strong>Activate Login</strong> to create it now.</p>'}`
-            : '<p style="font-size:0.82rem;color:var(--text-muted);">No credentials generated for this application.</p>'}
+            <div class="table-responsive" style="max-height:480px; overflow-y:auto; border:1px solid var(--border-color); border-radius:8px;">
+              <table class="tms-table" style="font-size:0.82rem; margin:0;">
+                <tbody>
+                  <tr>
+                    <th style="width:36%; background:#f8fafc; font-weight:700; color:#475569; font-size:0.75rem; border-bottom:1px solid #f1f5f9; padding:8px 12px;">Form Number</th>
+                    <td class="font-mono" style="font-weight:700; color:#1e293b; border-bottom:1px solid #f1f5f9; padding:8px 12px;">${esc(app.appId || app.id)}</td>
+                  </tr>
+                  <tr>
+                    <th style="background:#f8fafc; font-weight:700; color:#475569; font-size:0.75rem; border-bottom:1px solid #f1f5f9; padding:8px 12px;">Submitted Date</th>
+                    <td style="font-size:0.82rem; border-bottom:1px solid #f1f5f9; padding:8px 12px;">${fmtDate(app.createdAt)}</td>
+                  </tr>
+                  ${detailsRows}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Uploaded Documents Card -->
+          <div class="card" style="padding:16px 18px; border:1px solid var(--border-color); border-radius:10px; background:#fff; margin:0;">
+            <div style="font-weight:800; font-size:0.92rem; color:#15803d; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+              <i data-lucide="files" style="width:16px; height:16px;"></i> Attached Documents &amp; Verification
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px;">
+              ${docsListHtml}
+            </div>
+          </div>
         </div>
-        <div>
-          <h4 style="font-size:0.95rem; margin-bottom:8px; color:#15803d;">Verification Remarks</h4>
-          <textarea class="form-textarea" id="app-remarks" rows="3" placeholder="Remarks shown to the applicant…">${esc(app.remarks || '')}</textarea>
+
+        <!-- Right Column: Administrative Workflows, Ledger, Entrance Exam, Parent Login -->
+        <div style="display:flex; flex-direction:column; gap:16px;">
+          <!-- Fee Structure & Payment Ledger Card -->
+          <div class="card" style="padding:16px 18px; border:1px solid var(--border-color); border-radius:10px; background:#fff; margin:0;">
+            <div style="font-weight:800; font-size:0.92rem; color:#15803d; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between;">
+              <span style="display:flex; align-items:center; gap:6px;"><i data-lucide="receipt" style="width:16px;height:16px;"></i> Fee Assessment &amp; Ledger</span>
+              <span style="font-size:0.85rem; font-weight:800; color:#1e293b;">Total: ${fmtMoney(app.feeTotal)}</span>
+            </div>
+            
+            <table class="tms-table" style="font-size:0.8rem; margin-bottom:12px; border:1px solid var(--border-color); border-radius:8px;">
+              <tbody>
+                ${(app.feeItems || []).map((f) => `<tr><th style="background:#f8fafc; font-size:0.75rem; padding:6px 10px;">${esc(f.name)}</th><td style="text-align:right; font-weight:700; padding:6px 10px;">${fmtMoney(f.amount)}</td></tr>`).join('') || '<tr><td style="color:var(--text-muted); padding:8px 10px;">No fees configured.</td></tr>'}
+              </tbody>
+            </table>
+
+            <div style="font-size:0.8rem; font-weight:700; color:var(--text-secondary); margin-bottom:6px;">Payment History</div>
+            <div class="table-responsive" style="max-height:140px; overflow-y:auto; border:1px solid var(--border-color); border-radius:8px; margin-bottom:14px;">
+              <table class="tms-table" style="font-size:0.78rem; margin:0;">
+                <thead><tr><th>Date</th><th>Mode</th><th>Reference</th><th style="text-align:right;">Amount</th></tr></thead>
+                <tbody>${paymentRows}</tbody>
+              </table>
+            </div>
+
+            <!-- Record a Payment Form (Spacious 2-row layout) -->
+            <div style="background:var(--bg-subtle, #f8fafc); padding:12px 14px; border-radius:8px; border:1px solid var(--border-color);">
+              <div style="font-weight:700; font-size:0.82rem; margin-bottom:8px; color:#1e293b; display:flex; align-items:center; gap:5px;">
+                <i data-lucide="plus-circle" style="width:14px; height:14px; color:#16a34a;"></i> Record Payment Transaction
+              </div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:8px;">
+                <div>
+                  <label style="font-size:0.7rem; color:var(--text-muted); display:block; margin-bottom:2px; font-weight:600;">Amount (₹) *</label>
+                  <input type="number" class="form-input form-input-sm" id="pay-amount" placeholder="e.g. 500" style="width:100%;">
+                </div>
+                <div>
+                  <label style="font-size:0.7rem; color:var(--text-muted); display:block; margin-bottom:2px; font-weight:600;">Payment Mode</label>
+                  <select class="form-select form-select-sm" id="pay-mode" style="width:100%;">
+                    <option>Cash</option><option>UPI</option><option>Cheque</option><option>Card</option><option>Bank Transfer</option>
+                  </select>
+                </div>
+              </div>
+              <div style="display:flex; gap:8px; align-items:center;">
+                <input class="form-input form-input-sm" id="pay-ref" placeholder="Reference / Receipt No / Note" style="flex:1;">
+                <button type="button" class="btn btn-primary btn-sm" id="btn-record-payment" style="white-space:nowrap; padding:5px 12px;">
+                  <i data-lucide="plus"></i> Add
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Entrance Exam & Interview Marks Card -->
+          <div class="card" style="padding:16px 18px; border:1.5px solid #bfdbfe; border-radius:10px; background:rgba(37,99,235,0.02); margin:0;">
+            <div style="font-weight:800; font-size:0.92rem; color:#2563eb; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+              <i data-lucide="award" style="width:16px; height:16px;"></i> Entrance Examination &amp; Evaluation
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:10px;">
+              <div style="background:#ffffff; padding:8px 10px; border-radius:8px; border:1px solid var(--border-color);">
+                <label style="font-size:0.7rem; color:var(--text-muted); font-weight:700; display:block; margin-bottom:2px;">Written (50)</label>
+                <input type="number" class="form-input form-input-sm font-mono" id="exam-written" value="${esc(exam.writtenScore ?? '')}" placeholder="0" min="0" max="50" style="font-weight:700; width:100%;">
+              </div>
+              <div style="background:#ffffff; padding:8px 10px; border-radius:8px; border:1px solid var(--border-color);">
+                <label style="font-size:0.7rem; color:var(--text-muted); font-weight:700; display:block; margin-bottom:2px;">Interview (50)</label>
+                <input type="number" class="form-input form-input-sm font-mono" id="exam-interview" value="${esc(exam.interviewScore ?? '')}" placeholder="0" min="0" max="50" style="font-weight:700; width:100%;">
+              </div>
+              <div style="background:#eff6ff; padding:8px 10px; border-radius:8px; border:1.5px solid #bfdbfe; text-align:center;">
+                <label style="font-size:0.7rem; color:#1d4ed8; font-weight:800; display:block; margin-bottom:2px;">Total (100)</label>
+                <input type="text" class="form-input form-input-sm font-mono" id="exam-total" value="${exam.totalScore != null ? exam.totalScore : ''}" readonly style="background:transparent; border:none; font-weight:800; font-size:1.15rem; color:#1d4ed8; text-align:center; padding:0; width:100%;">
+              </div>
+            </div>
+
+            <div style="display:flex; gap:8px; align-items:center;">
+              <input class="form-input form-input-sm" id="exam-remarks" value="${esc(exam.examinerRemarks || '')}" placeholder="Examiner remarks (e.g. Recommended, Strong in Math)" style="flex:1;">
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-save-entrance-score" style="white-space:nowrap; padding:5px 12px;">
+                <i data-lucide="save"></i> Save Scores
+              </button>
+            </div>
+          </div>
+
+          <!-- Parent Portal Account Credentials Card -->
+          <div class="card" style="padding:16px 18px; border:1px solid var(--border-color); border-radius:10px; background:#fff; margin:0;">
+            <div style="font-weight:800; font-size:0.92rem; color:#b45309; margin-bottom:10px; display:flex; align-items:center; gap:8px;">
+              <i data-lucide="key-round" style="width:16px; height:16px;"></i> Parent Portal Access Credentials
+            </div>
+            ${credential ? `
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+                <div>
+                  <label style="font-size:0.7rem; color:var(--text-muted); display:block; margin-bottom:2px; font-weight:600;">Username</label>
+                  <input class="form-input form-input-sm font-mono" id="cred-username" value="${esc(credential.username)}" style="width:100%;">
+                </div>
+                <div>
+                  <label style="font-size:0.7rem; color:var(--text-muted); display:block; margin-bottom:2px; font-weight:600;">Password</label>
+                  <input class="form-input form-input-sm font-mono" id="cred-password" value="${esc(credential.password)}" style="width:100%;">
+                </div>
+              </div>
+              <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-save-credential"><i data-lucide="save"></i> Save</button>
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-resend-credential"><i data-lucide="send"></i> Resend</button>
+                ${(credential.userId || app.parentUserId) ? '' : '<button type="button" class="btn btn-primary btn-sm" id="btn-activate-credential"><i data-lucide="key-round"></i> Activate Login</button>'}
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-delete-credential" style="color:#ef4444; margin-left:auto;"><i data-lucide="trash-2"></i> Delete</button>
+              </div>
+              ${(credential.userId || app.parentUserId) ? '' : '<p style="font-size:0.74rem; color:#b45309; margin-top:8px;">Account awaiting activation. Click <strong>Activate Login</strong> to create cloud auth user.</p>'}
+            ` : '<p style="font-size:0.8rem; color:var(--text-muted); margin:0;">No credentials generated for this application yet.</p>'}
+          </div>
+
+          <!-- Official Verification Remarks Card -->
+          <div class="card" style="padding:16px 18px; border:1px solid var(--border-color); border-radius:10px; background:#fff; margin:0;">
+            <div style="font-weight:800; font-size:0.92rem; color:#475569; margin-bottom:8px; display:flex; align-items:center; gap:8px;">
+              <i data-lucide="message-square" style="width:16px; height:16px;"></i> Administrative Verification Remarks
+            </div>
+            <textarea class="form-textarea" id="app-remarks" rows="2" placeholder="Official remarks visible to applicant (e.g. Original TC required during interview)..." style="font-size:0.82rem;">${esc(app.remarks || '')}</textarea>
+          </div>
         </div>
+
       </div>
     `;
 
     const footerHtml = `
-      <button class="btn btn-secondary" id="btn-app-close">Close</button>
-      <button class="btn btn-secondary" id="btn-app-form"><i data-lucide="file-text"></i> View as Form</button>
-      <button class="btn btn-secondary" id="btn-app-print"><i data-lucide="printer"></i> Print Form</button>
-      <button class="btn btn-secondary" id="btn-app-verifying"><i data-lucide="clock"></i> Mark Under Verification</button>
-      <button class="btn btn-secondary" id="btn-app-reject" style="color:#ef4444;"><i data-lucide="x-circle"></i> Reject</button>
-      <button class="btn btn-primary" id="btn-app-approve"><i data-lucide="check-circle"></i> Approve</button>
-      ${isEnrolled
-        ? `<button class="btn btn-secondary" id="btn-view-enrolled" style="color:#16a34a; font-weight:700;"><i data-lucide="graduation-cap"></i> Enrolled: ${esc(app.enrolledAdmissionNo || 'Student')}</button>`
-        : `<button class="btn btn-success" id="btn-app-enroll" style="background:#16a34a; color:#fff;"><i data-lucide="graduation-cap"></i> Enroll as Official Student</button>`
-      }
-      <button class="btn btn-secondary" id="btn-app-delete-modal" style="color:#ef4444; margin-left:auto;"><i data-lucide="trash-2"></i> Delete</button>
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; width:100%;">
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-app-close">Close</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-app-form"><i data-lucide="file-text"></i> View as Form</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-app-print"><i data-lucide="printer"></i> Print Form</button>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-app-verifying" style="color:#b45309; border-color:#fde68a;">
+            <i data-lucide="clock"></i> Mark Under Verification
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-app-reject" style="color:#ef4444; border-color:#fca5a5;">
+            <i data-lucide="x-circle"></i> Reject
+          </button>
+          <button type="button" class="btn btn-primary btn-sm" id="btn-app-approve">
+            <i data-lucide="check-circle"></i> Approve
+          </button>
+          ${isEnrolled
+            ? `<button type="button" class="btn btn-secondary btn-sm" id="btn-view-enrolled" style="color:#16a34a; font-weight:700;"><i data-lucide="graduation-cap"></i> Enrolled: ${esc(app.enrolledAdmissionNo || 'Student')}</button>`
+            : `<button type="button" class="btn btn-success btn-sm" id="btn-app-enroll" style="background:#16a34a; color:#fff;"><i data-lucide="graduation-cap"></i> Enroll as Official Student</button>`
+          }
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-app-delete-modal" style="color:#ef4444;" title="Delete Application">
+            <i data-lucide="trash-2"></i>
+          </button>
+        </div>
+      </div>
     `;
 
-    UIComponents.openModal({ title: `Application ${app.appId || app.id}`, bodyHtml, footerHtml, maxWidth: '820px' });
+    UIComponents.openModal({ title: `Application ${app.appId || app.id}`, bodyHtml, footerHtml, maxWidth: '1140px' });
 
     document.getElementById('btn-app-close').addEventListener('click', () => UIComponents.closeModal());
     document.getElementById('btn-app-approve').addEventListener('click', () => this.setApplicationStatus(app, 'Approved'));
@@ -812,7 +943,8 @@ export class AdminModule {
     if (printBtn) {
       printBtn.addEventListener('click', async () => {
         const formHtml = await this.buildApplicationFormHtml(app, fields, credential);
-        exportPdf(`Admission-Form-${app.appId || app.id}`, formHtml);
+        const filename = formatPdfFilename('Admission_Form', app.appId || app.id);
+        exportPdf(filename, formHtml, { filename, title: `Admission Application Form — ${app.appId || app.id}`, subtitle: `Candidate: ${app.studentName || 'Student'} • Class: ${app.grade || '—'}`, showHeader: false, showFooter: true });
       });
     }
 
@@ -934,14 +1066,7 @@ export class AdminModule {
   }
 
   static async printApplication(id) {
-    const app = (this._apps || []).find((a) => a.id === id);
-    if (!app) return;
-    const fields = await admissionService.listFields();
-    const body = `
-      <div class="doc-title">${esc(TMS_CONFIG.institution.name)}</div>
-      <div class="doc-sub">Admission Application — ${esc(app.appId || app.id)}</div>
-      ${kvTable(this.applicationPairs(app, fields))}`;
-    exportPdf(`Admission-${app.appId || app.id}`, body);
+    await this.showApplicationForm(id, true);
   }
 
   static async openEnrollmentModal(app) {
@@ -1204,7 +1329,16 @@ export class AdminModule {
           </div>
         `;
 
-        exportPdf(`Merit-List-${selected}`, meritDocHtml);
+        const meritFilename = formatPdfFilename('Merit_List', selected);
+        exportPdf(meritFilename, meritDocHtml, {
+          filename: meritFilename,
+          title: `Official Entrance Merit List — Class ${selected.toUpperCase()}`,
+          subtitle: `Academic Session: ${TMS_CONFIG.academic?.currentYear || '2027 - 2028'}`,
+          badge: 'Merit Verified',
+          showHeader: true,
+          showFooter: true,
+          signatures: ['Admission In-Charge', 'Principal / Controller of Examinations']
+        });
       });
     }
 
@@ -1214,35 +1348,33 @@ export class AdminModule {
   /** Build the application laid out exactly like the printed admission form. */
   static async buildApplicationFormHtml(app, fields, credential) {
     const list = fields || (await admissionService.listFields());
-    const cred = credential === undefined ? await admissionService.getCredentials(app.id) : credential;
+    const cred = credential !== undefined ? credential : await admissionService.getOrCreateCredentials(app);
 
     const photoKey = 'photo';
-
-    // Real photograph (signed URL from the private admission bucket).
     const photoPath = (app.payload || {})[photoKey] || '';
     let photoUrl = '';
     if (photoPath) {
       photoUrl = (await admissionService.getSignedUrl('admission-docs', photoPath, 3600)) || '';
     }
     const photoBox = `
-      <div style="width:100px;height:124px;border:1px solid #000;margin-left:auto;display:flex;align-items:center;justify-content:center;overflow:hidden;text-align:center;font-size:9px;background:#fafafa;">
+      <div style="width:105px;height:128px;border:1.5px solid #0f172a;margin-left:auto;display:flex;align-items:center;justify-content:center;overflow:hidden;text-align:center;font-size:8.5px;background:#fafafa;padding:2px;border-radius:4px;">
         ${photoUrl
           ? `<img src="${esc(photoUrl)}" alt="Applicant photograph" style="width:100%;height:100%;object-fit:cover;display:block;">`
-          : 'Passport size photo'}
+          : 'Affix recent<br>passport-size<br>photograph'}
       </div>`;
 
     const groups = new Map();
     list.forEach((f) => {
       if (f.fieldKey === photoKey) return;
-      const s = f.section || 'General';
+      const s = f.section || 'General Details';
       if (!groups.has(s)) groups.set(s, []);
       groups.get(s).push(f);
     });
 
     let details = '';
     groups.forEach((sectionFields, section) => {
-      details += `<div style="font-size:12px; font-weight:800; text-decoration:underline; margin:10px 0 4px;">${esc(section)}</div>`;
-      details += '<table style="width:100%; border-collapse:collapse; font-size:10.5px; margin-bottom:6px;"><tbody>';
+      details += `<div style="font-size:11.5px; font-weight:800; color:#166534; text-transform:uppercase; letter-spacing:0.5px; margin:12px 0 4px; border-bottom:1px solid #bbf7d0; padding-bottom:2px;">${esc(section)}</div>`;
+      details += '<table style="width:100%; border-collapse:collapse; font-size:10.5px; margin-bottom:8px;"><tbody>';
       sectionFields.forEach((f) => {
         const raw = (app.payload || {})[f.fieldKey];
         const isFile = (f.fieldType || 'text') === 'file';
@@ -1250,63 +1382,212 @@ export class AdminModule {
           ? (raw ? esc(String(raw).split('/').pop()) : 'Not attached')
           : (raw ? esc(raw) : '&#8212;');
         details += `<tr>
-          <td style="width:38%; padding:3px 0;"><strong>${esc(f.label)} :</strong></td>
-          <td style="padding:3px 0;">${shown}</td>
+          <td style="width:36%; padding:4px 6px; background:#f8fafc; font-weight:700; border:1px solid #e2e8f0; color:#334155;">${esc(f.label)}</td>
+          <td style="padding:4px 6px; border:1px solid #e2e8f0; font-weight:500;">${shown}</td>
         </tr>`;
       });
       details += '</tbody></table>';
     });
 
     const feeRows = (app.feeItems || [])
-      .map((f) => `<tr><td style="padding:2px 0;">${esc(f.name)}</td><td style="text-align:right;">${fmtMoney(f.amount)}</td></tr>`)
+      .map((f) => `<tr><td style="padding:3px 6px; border:1px solid #e2e8f0;">${esc(f.name)}</td><td style="text-align:right; padding:3px 6px; border:1px solid #e2e8f0;">${fmtMoney(f.amount)}</td></tr>`)
       .join('');
 
-    const credBlock = cred
-      ? `<div style="border:1.5px dashed #b45309; padding:8px; margin-top:12px;">
-           <div style="font-size:11px; font-weight:800; text-decoration:underline;">Parent Portal Login</div>
-           <div style="font-size:10.5px; margin-top:4px;">
-             Username: <strong>${esc(cred.username)}</strong> &nbsp;&nbsp; Password: <strong>${esc(cred.password)}</strong>
-           </div>
-         </div>`
-      : '';
+    const portalUrl = (typeof window !== 'undefined' && window.location.origin)
+      ? `${window.location.origin}/parent`
+      : 'https://www.thaibagarden.com/parent';
+
+    const credBlock = cred ? `
+      <div style="border:1.5px solid #16a34a; background:#f0fdf4; border-radius:6px; padding:10px 14px; margin:14px 0; page-break-inside:avoid;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #bbf7d0; padding-bottom:4px; margin-bottom:6px;">
+          <div style="font-size:11px; font-weight:800; color:#166534; text-transform:uppercase; letter-spacing:0.5px;">
+            🔐 Parent &amp; Student Portal Login Credentials (Official)
+          </div>
+          <span style="font-size:8.5px; font-weight:700; color:#15803d; background:#dcfce7; padding:2px 8px; border-radius:10px;">Status: Active</span>
+        </div>
+        <table style="width:100%; font-size:10.5px; border-collapse:collapse; margin-bottom:4px; border:none;">
+          <tbody>
+            <tr style="border:none;">
+              <td style="width:18%; padding:3px 0; color:#374151; border:none;"><strong>Tracking Portal:</strong></td>
+              <td style="padding:3px 0; color:#15803d; font-family:monospace; border:none;"><strong>${esc(portalUrl)}</strong></td>
+              <td style="width:18%; padding:3px 0; color:#374151; border:none;"><strong>Authorized Role:</strong></td>
+              <td style="padding:3px 0; border:none;">Parent / Student Tracking</td>
+            </tr>
+            <tr style="border:none;">
+              <td style="padding:3px 0; color:#374151; border:none;"><strong>Username:</strong></td>
+              <td style="padding:3px 0; border:none;"><span class="font-mono" style="font-size:12px; font-weight:800; color:#0f172a; background:#ffffff; padding:2px 8px; border:1px solid #cbd5e1; border-radius:4px;">${esc(cred.username)}</span></td>
+              <td style="padding:3px 0; color:#374151; border:none;"><strong>Password:</strong></td>
+              <td style="padding:3px 0; border:none;"><span class="font-mono" style="font-size:12px; font-weight:800; color:#0f172a; background:#ffffff; padding:2px 8px; border:1px solid #cbd5e1; border-radius:4px;">${esc(cred.password || '******')}</span></td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="font-size:8.5px; color:#475569; margin-top:4px; line-height:1.35;">
+          <strong>Security Notice:</strong> Keep these credentials strictly confidential. Sign in to the school portal to track admission status, download entrance exam admit cards, pay online fees, and access the academic diary.
+        </div>
+      </div>
+    ` : '';
+
+    const payload = app.payload || {};
+    const candName = app.studentName || payload.candidateName || payload.studentName || '—';
+    const guardian = app.guardianName || payload.fatherName || payload.guardianName || '—';
+    const applyingGrade = app.grade || payload.applyingClass || payload.grade || '—';
+    const contactPhone = app.phone || payload.phone || payload.mobile || '—';
+    const addressStr = `${payload.village || payload.address || 'Baghait, Tapan'} ${payload.pin ? '- ' + payload.pin : ''}`.trim();
 
     return `
-      <div class="doc-title">${esc(TMS_CONFIG.institution.name)}</div>
-      <div class="doc-sub">${esc(TMS_CONFIG.institution.tagline || '')} &nbsp;|&nbsp; Admission Application Form</div>
-      <div style="display:flex; align-items:flex-start; gap:16px;">
-        <table style="flex:1; font-size:11px; margin-bottom:10px;"><tbody>
-          <tr>
-            <th style="text-align:left;">Form No</th><td>${esc(app.appId || app.id)}</td>
-          </tr>
-          <tr>
-            <th style="text-align:left;">Status</th><td>${esc(app.status || '')}</td>
-          </tr>
-          <tr>
-            <th style="text-align:left;">Submitted</th><td>${fmtDate(app.createdAt)}</td>
-          </tr>
-          <tr>
-            <th style="text-align:left;">Entered By</th><td>${esc(app.submittedByName || 'Self / Public')}</td>
-          </tr>
-        </tbody></table>
+      <!-- Official Form Header -->
+      <div style="border-bottom: 2px solid #0f172a; padding-bottom: 8px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: flex-start; gap: 14px;">
+        <div style="width: 70px; height: 70px; flex-shrink: 0;">
+          ${TMS_LOGO.emblemSvg(70)}
+        </div>
+        <div style="text-align: center; flex: 1;">
+          <div style="font-size: 10px; font-weight: 700; color: #16a34a; text-transform: uppercase; letter-spacing: 0.8px;">${esc(TMS_CONFIG.institution.tagline || 'Run by : Thaiba Heritage, Kolkata')}</div>
+          <h1 style="font-family: 'Outfit', sans-serif; font-size: 21px; font-weight: 900; color: #0f172a; margin: 1px 0 2px 0; text-transform: uppercase; letter-spacing: 0.5px;">${esc(TMS_CONFIG.institution.name)}</h1>
+          <div style="font-size: 9px; color: #334155;">${esc(TMS_CONFIG.institution.address.campus)}, ${esc(TMS_CONFIG.institution.address.district)} - ${esc(TMS_CONFIG.institution.address.pin)} • Regd. No. : ${esc(TMS_CONFIG.institution.regNo)}</div>
+          <div style="font-size: 8.5px; color: #64748b; margin-top: 1px;">Helpline: ${esc(TMS_CONFIG.institution.contact.phone1)}, ${esc(TMS_CONFIG.institution.contact.phone2)} • Web: www.thaibagarden.com</div>
+        </div>
+        <div style="width: 105px; text-align: right; flex-shrink: 0;">
+          <div style="display: inline-block; padding: 3px 8px; background: #f0fdf4; border: 1.5px solid #16a34a; color: #15803d; border-radius: 4px; font-size: 8.5px; font-weight: 800; text-transform: uppercase;">ADMISSION FORM</div>
+          <div style="font-size: 8.5px; color: #475569; margin-top: 3px;">Session: <strong>${esc(TMS_CONFIG.academic?.currentYear || '2027 - 2028')}</strong></div>
+        </div>
+      </div>
+
+      <!-- Application Summary Row with Photo -->
+      <div style="display:flex; align-items:flex-start; gap:16px; margin-bottom:12px;">
+        <table style="flex:1; font-size:10.5px; border-collapse:collapse;">
+          <tbody>
+            <tr>
+              <th style="width:28%; padding:4px 6px; text-align:left; background:#f8fafc; border:1px solid #e2e8f0;">Form Number</th>
+              <td style="padding:4px 6px; border:1px solid #e2e8f0;"><strong class="font-mono" style="font-size:12px; color:#15803d;">${esc(app.appId || app.id)}</strong></td>
+              <th style="width:24%; padding:4px 6px; text-align:left; background:#f8fafc; border:1px solid #e2e8f0;">Class Applied</th>
+              <td style="padding:4px 6px; border:1px solid #e2e8f0;"><strong>${esc(applyingGrade)}</strong></td>
+            </tr>
+            <tr>
+              <th style="padding:4px 6px; text-align:left; background:#f8fafc; border:1px solid #e2e8f0;">Submission Date</th>
+              <td style="padding:4px 6px; border:1px solid #e2e8f0;">${fmtDate(app.createdAt)}</td>
+              <th style="padding:4px 6px; text-align:left; background:#f8fafc; border:1px solid #e2e8f0;">Application Status</th>
+              <td style="padding:4px 6px; border:1px solid #e2e8f0;"><span class="badge badge-success">${esc(app.status || 'Submitted')}</span></td>
+            </tr>
+            <tr>
+              <th style="padding:4px 6px; text-align:left; background:#f8fafc; border:1px solid #e2e8f0;">Candidate Name</th>
+              <td style="padding:4px 6px; border:1px solid #e2e8f0;"><strong>${esc(candName)}</strong></td>
+              <th style="padding:4px 6px; text-align:left; background:#f8fafc; border:1px solid #e2e8f0;">Entered By</th>
+              <td style="padding:4px 6px; border:1px solid #e2e8f0;">${esc(app.submittedByName || 'Self / Public')}</td>
+            </tr>
+          </tbody>
+        </table>
         ${photoBox}
       </div>
+
+      <!-- Dynamic Sections & Form Details -->
       ${details}
-      <div style="font-size:12px; font-weight:800; text-decoration:underline; margin:12px 0 4px;">Fees &amp; Payment</div>
-      <table style="width:62%; font-size:10.5px; border-collapse:collapse;">
+
+      <!-- Fees & Payment Details -->
+      <div style="font-size:11.5px; font-weight:800; color:#166534; text-transform:uppercase; letter-spacing:0.5px; margin:12px 0 4px; border-bottom:1px solid #bbf7d0; padding-bottom:2px;">Fees &amp; Payment Ledger</div>
+      <table style="width:65%; font-size:10px; border-collapse:collapse; margin-bottom:8px;">
         <tbody>
-          ${feeRows || '<tr><td>No fees configured.</td><td></td></tr>'}
-          <tr>
-            <td style="border-top:1px solid #000; font-weight:800; padding-top:3px;">Total</td>
-            <td style="border-top:1px solid #000; text-align:right; font-weight:800; padding-top:3px;">${fmtMoney(app.feeTotal)}</td>
+          ${feeRows || '<tr><td style="padding:3px 6px; border:1px solid #e2e8f0;">Admission Registration Fee</td><td style="text-align:right; padding:3px 6px; border:1px solid #e2e8f0;">₹ 0</td></tr>'}
+          <tr style="background:#f8fafc;">
+            <td style="border:1px solid #cbd5e1; font-weight:800; padding:4px 6px;">Total Fee Amount</td>
+            <td style="border:1px solid #cbd5e1; text-align:right; font-weight:800; padding:4px 6px; color:#15803d;">${fmtMoney(app.feeTotal)}</td>
           </tr>
-          <tr><td>Payment Status</td><td style="text-align:right;">${esc(app.paymentStatus || 'Pending')}</td></tr>
+          <tr>
+            <td style="border:1px solid #e2e8f0; padding:3px 6px;">Payment Clearance Status</td>
+            <td style="border:1px solid #e2e8f0; text-align:right; font-weight:700; padding:3px 6px;">${esc(app.paymentStatus || 'Pending')}</td>
+          </tr>
         </tbody>
       </table>
-      ${app.remarks ? `<div style="margin-top:12px; font-size:10.5px;"><strong>Remarks:</strong> ${esc(app.remarks)}</div>` : ''}
+
+      ${app.remarks ? `<div style="margin:8px 0; font-size:10px; background:#f8fafc; padding:6px 10px; border-left:3px solid #16a34a; border-radius:3px;"><strong>Official Remarks:</strong> ${esc(app.remarks)}</div>` : ''}
+
+      <!-- User Credentials Block -->
       ${credBlock}
-      <div style="margin-top:24px; display:flex; justify-content:space-between; font-size:10px;">
-        <span>Parent / Guardian Signature</span>
-        <span>Office Use Only</span>
+
+      <!-- Declaration -->
+      <div style="margin:14px 0 16px 0; font-size:9.5px; line-height:1.4; color:#374151;">
+        <div style="font-weight:800; text-decoration:underline; margin-bottom:2px;">Declaration:</div>
+        I hereby solemnly declare that all particulars furnished in this application are true, complete, and authentic to the best of my knowledge. I agree to abide by the rules, code of discipline, and academic guidelines of THAIBA MODEL SCHOOL.
+      </div>
+
+      <div style="display:flex; justify-content:space-between; align-items:flex-end; padding-top:20px; font-size:10px; margin-bottom:18px;">
+        <div style="text-align:center; min-width:180px;">
+          <div style="border-top:1.5px solid #0f172a; margin-bottom:4px;"></div>
+          <strong>Signature of Parent / Guardian</strong>
+        </div>
+        <div style="text-align:center; min-width:180px;">
+          <div style="border-top:1.5px solid #0f172a; margin-bottom:4px;"></div>
+          <strong>Signature of Candidate / Student</strong>
+        </div>
+        <div style="text-align:center; min-width:180px;">
+          <div style="border-top:1.5px solid #0f172a; margin-bottom:4px;"></div>
+          <strong>Authorized Admission Officer</strong>
+        </div>
+      </div>
+
+      <!-- TEAR-OFF ADMIT CARD SLIP -->
+      <div style="border-top:2px dashed #64748b; margin-top:20px; padding-top:14px; position:relative; page-break-inside:avoid;">
+        <div style="text-align:center; font-size:9px; font-weight:800; color:#475569; letter-spacing:1.5px; margin-bottom:8px;">
+          ✂ - - - - - - - - - - - TEAR-OFF ADMISSION TEST ADMIT CARD &amp; ACKNOWLEDGEMENT SLIP - - - - - - - - - - - ✂
+        </div>
+        <div style="border:1.5px solid #0f172a; padding:10px 14px; border-radius:6px; background:#ffffff;">
+          <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1.5px solid #0f172a; padding-bottom:6px; margin-bottom:8px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+              ${TMS_LOGO.emblemSvg(36)}
+              <div>
+                <h3 style="font-family:'Outfit', sans-serif; font-size:13px; font-weight:800; margin:0; text-transform:uppercase;">${esc(TMS_CONFIG.institution.name)}</h3>
+                <div style="font-size:8.5px; color:#64748b;">OFFICE OF ADMISSIONS • ENTRANCE ADMIT CARD</div>
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <span class="badge badge-success" style="font-size:9px; font-weight:800;">SESSION ${esc(TMS_CONFIG.academic?.currentYear || '2027 - 2028')}</span>
+            </div>
+          </div>
+
+          <table style="width:100%; border-collapse:collapse; font-size:10px; margin-bottom:6px;">
+            <tbody>
+              <tr>
+                <td style="width:20%; padding:3px 4px; border:1px solid #cbd5e1; background:#f8fafc;"><strong>Form No. :</strong></td>
+                <td style="width:30%; padding:3px 4px; border:1px solid #cbd5e1;"><strong class="font-mono" style="color:#15803d;">${esc(app.appId || app.id)}</strong></td>
+                <td style="width:20%; padding:3px 4px; border:1px solid #cbd5e1; background:#f8fafc;"><strong>Applying Class :</strong></td>
+                <td style="width:30%; padding:3px 4px; border:1px solid #cbd5e1;"><strong>${esc(applyingGrade)}</strong></td>
+              </tr>
+              <tr>
+                <td style="padding:3px 4px; border:1px solid #cbd5e1; background:#f8fafc;"><strong>Student Name :</strong></td>
+                <td style="padding:3px 4px; border:1px solid #cbd5e1;"><strong>${esc(candName)}</strong></td>
+                <td style="padding:3px 4px; border:1px solid #cbd5e1; background:#f8fafc;"><strong>Father / Guardian :</strong></td>
+                <td style="padding:3px 4px; border:1px solid #cbd5e1;">${esc(guardian)}</td>
+              </tr>
+              <tr>
+                <td style="padding:3px 4px; border:1px solid #cbd5e1; background:#f8fafc;"><strong>Contact Number :</strong></td>
+                <td style="padding:3px 4px; border:1px solid #cbd5e1;">${esc(contactPhone)}</td>
+                <td style="padding:3px 4px; border:1px solid #cbd5e1; background:#f8fafc;"><strong>Address :</strong></td>
+                <td style="padding:3px 4px; border:1px solid #cbd5e1;">${esc(addressStr)}</td>
+              </tr>
+              <tr style="background:#f0fdf4;">
+                <td style="padding:3px 4px; border:1.5px solid #16a34a; font-weight:800; color:#166534;"><strong>Portal Credentials :</strong></td>
+                <td colspan="3" style="padding:3px 4px; border:1.5px solid #16a34a;">
+                  User: <strong class="font-mono" style="color:#0f172a; background:#fff; padding:1px 6px; border:1px solid #86efac; border-radius:3px;">${esc(cred ? cred.username : '—')}</strong> &nbsp;|&nbsp;
+                  Password: <strong class="font-mono" style="color:#0f172a; background:#fff; padding:1px 6px; border:1px solid #86efac; border-radius:3px;">${esc(cred ? (cred.password || '******') : '—')}</strong> &nbsp;|&nbsp;
+                  Portal: <span class="font-mono" style="color:#15803d; font-size:9px;">www.thaibagarden.com</span>
+                </td>
+              </tr>
+              <tr>
+                <td style="padding:3px 4px; border:1px solid #cbd5e1; background:#f8fafc;"><strong>Exam Centre :</strong></td>
+                <td colspan="3" style="padding:3px 4px; border:1px solid #cbd5e1;">THAIBA MODEL SCHOOL, Baghait, Tapan, Dakshin Dinajpur</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div style="display:flex; justify-content:space-between; align-items:flex-end; font-size:9px; padding-top:14px;">
+            <div>
+              Date of Issue: <strong>${fmtDate(app.createdAt)}</strong>
+            </div>
+            <div style="text-align:center;">
+              <div style="border-top:1px solid #0f172a; width:140px; margin-bottom:2px;"></div>
+              <strong>Seal &amp; Signature of Authority</strong>
+            </div>
+          </div>
+        </div>
       </div>
     `;
   }
@@ -1316,10 +1597,17 @@ export class AdminModule {
     const app = (this._apps || []).find((a) => a.id === id);
     if (!app) return;
     const fields = await admissionService.listFields();
-    const credential = await admissionService.getCredentials(app.id);
+    const credential = await admissionService.getOrCreateCredentials(app);
     const formHtml = await this.buildApplicationFormHtml(app, fields, credential);
+    const filename = formatPdfFilename('Admission_Form', app.appId || app.id);
     if (print) {
-      exportPdf(`Admission-Form-${app.appId || app.id}`, formHtml);
+      exportPdf(filename, formHtml, {
+        filename,
+        title: `Admission Application Form — ${app.appId || app.id}`,
+        subtitle: `Candidate: ${app.studentName || 'Student'} • Class: ${app.grade || '—'}`,
+        showHeader: false,
+        showFooter: true
+      });
       return;
     }
     UIComponents.openModal({
@@ -1330,7 +1618,15 @@ export class AdminModule {
         <button class="btn btn-primary" id="btn-form-print"><i data-lucide="printer"></i> Print / Save PDF</button>`
     });
     document.getElementById('btn-form-close').addEventListener('click', () => UIComponents.closeModal());
-    document.getElementById('btn-form-print').addEventListener('click', () => exportPdf(`Admission-Form-${app.appId || app.id}`, formHtml));
+    document.getElementById('btn-form-print').addEventListener('click', () => {
+      exportPdf(filename, formHtml, {
+        filename,
+        title: `Admission Application Form — ${app.appId || app.id}`,
+        subtitle: `Candidate: ${app.studentName || 'Student'} • Class: ${app.grade || '—'}`,
+        showHeader: false,
+        showFooter: true
+      });
+    });
     UIComponents.refreshIcons();
   }
 
@@ -1347,20 +1643,43 @@ export class AdminModule {
 
   static exportApplicationsPdf() {
     const rows = this.filteredApplications();
+    const filename = formatPdfFilename('Admissions_Register', new Date().toISOString().slice(0, 10));
     const body = `
-      <div class="doc-title">${esc(TMS_CONFIG.institution.name)}</div>
-      <div class="doc-sub">Admission Applications Report — Generated ${new Date().toLocaleString('en-GB')}</div>
-      <table>
-        <thead><tr><th>Form No</th><th>Candidate</th><th>Class</th><th>Guardian</th><th>Phone</th><th>Fees</th><th>Payment</th><th>Status</th></tr></thead>
+      <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
+        <thead>
+          <tr style="background: #f1f5f9; color: #0f172a;">
+            <th style="padding: 6px 8px; border: 1px solid #cbd5e1;">Form No</th>
+            <th style="padding: 6px 8px; border: 1px solid #cbd5e1;">Candidate Name</th>
+            <th style="padding: 6px 8px; border: 1px solid #cbd5e1;">Class</th>
+            <th style="padding: 6px 8px; border: 1px solid #cbd5e1;">Guardian</th>
+            <th style="padding: 6px 8px; border: 1px solid #cbd5e1;">Phone</th>
+            <th style="padding: 6px 8px; border: 1px solid #cbd5e1;">Fees</th>
+            <th style="padding: 6px 8px; border: 1px solid #cbd5e1;">Payment</th>
+            <th style="padding: 6px 8px; border: 1px solid #cbd5e1;">Status</th>
+          </tr>
+        </thead>
         <tbody>
           ${rows.map((a) => `<tr>
-            <td>${esc(a.appId || a.id)}</td><td>${esc(a.studentName)}</td><td>${esc(a.grade)}</td>
-            <td>${esc(a.guardianName)}</td><td>${esc(a.phone)}</td><td>${fmtMoney(a.feeTotal)}</td>
-            <td>${esc(a.paymentStatus)}</td><td>${esc(a.status)}</td>
+            <td class="font-mono" style="padding: 5px 8px; border: 1px solid #cbd5e1; font-weight: 700;">${esc(a.appId || a.id)}</td>
+            <td style="padding: 5px 8px; border: 1px solid #cbd5e1; font-weight: 600;">${esc(a.studentName)}</td>
+            <td style="padding: 5px 8px; border: 1px solid #cbd5e1;">${esc(a.grade)}</td>
+            <td style="padding: 5px 8px; border: 1px solid #cbd5e1;">${esc(a.guardianName)}</td>
+            <td class="font-mono" style="padding: 5px 8px; border: 1px solid #cbd5e1;">${esc(a.phone)}</td>
+            <td style="padding: 5px 8px; border: 1px solid #cbd5e1;">${fmtMoney(a.feeTotal)}</td>
+            <td style="padding: 5px 8px; border: 1px solid #cbd5e1;">${esc(a.paymentStatus)}</td>
+            <td style="padding: 5px 8px; border: 1px solid #cbd5e1;"><span class="badge badge-info">${esc(a.status)}</span></td>
           </tr>`).join('')}
         </tbody>
       </table>`;
-    exportPdf('TMS-Admissions-Report', body);
+    exportPdf(filename, body, {
+      filename,
+      title: 'Admissions Applications Master Register',
+      subtitle: `Total Candidate Applications: ${rows.length} • Session ${TMS_CONFIG.academic?.currentYear || '2027 - 2028'}`,
+      badge: 'Official Register',
+      showHeader: true,
+      showFooter: true,
+      signatures: ['Admissions Officer', 'Accounts Officer', 'Principal / Headmaster']
+    });
   }
 
   /* ================================================================== */

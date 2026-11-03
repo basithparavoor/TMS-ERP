@@ -8,6 +8,7 @@ import { dbService } from './supabase-client.js';
 import { UIComponents } from './ui-components.js';
 import { auditService } from './audit-service.js';
 import { TMS_LOGO } from './logo.js';
+import { exportPdf, formatPdfFilename } from './export-utils.js';
 
 export const EVENT_CATEGORIES = [
   { id: 'all', name: 'All Categories', color: '#64748b' },
@@ -25,26 +26,6 @@ export class CalendarModule {
 
     this._events = (await dbService.select('calendar_events')) || [];
 
-    // Pre-populate standard events if empty
-    if (!this._events.length) {
-      const defaultEvents = [
-        { id: 'ev_1', title: 'Session Inauguration & Orientation', category: 'cultural', start_date: '2027-04-05', end_date: '2027-04-05', description: 'Welcome assembly for all students and parents.', target_audience: 'all' },
-        { id: 'ev_2', title: 'Term 1 Tuition Fee Due', category: 'fee', start_date: '2027-04-15', end_date: '2027-04-15', description: 'Last date for clearing Term 1 fees without late fine.', target_audience: 'parents' },
-        { id: 'ev_3', title: 'Summer Vacation Begins', category: 'holiday', start_date: '2027-05-18', end_date: '2027-06-12', description: 'Campus closed for annual summer recess.', target_audience: 'all' },
-        { id: 'ev_4', title: 'Mid-Term Unit Assessments', category: 'exam', start_date: '2027-07-20', end_date: '2027-07-28', description: 'Unit evaluations for Grades 1 through 12.', target_audience: 'students' },
-        { id: 'ev_5', title: 'Term 1 Parent-Teacher Conference (PTM)', category: 'ptm', start_date: '2027-08-07', end_date: '2027-08-07', description: 'Progress review and report card distribution.', target_audience: 'parents' },
-        { id: 'ev_6', title: 'Independence Day Observance', category: 'cultural', start_date: '2027-08-15', end_date: '2027-08-15', description: 'Flag hoisting ceremony and student parade.', target_audience: 'all' },
-        { id: 'ev_7', title: 'Half-Yearly Term 1 Examinations', category: 'exam', start_date: '2027-09-15', end_date: '2027-09-26', description: 'Comprehensive mid-session examinations.', target_audience: 'students' },
-        { id: 'ev_8', title: 'Durga Puja & Autumn Recess', category: 'holiday', start_date: '2027-10-14', end_date: '2027-10-24', description: 'Campus holiday for festival celebrations.', target_audience: 'all' },
-        { id: 'ev_9', title: 'Annual Inter-House Sports Meet', category: 'sports', start_date: '2027-12-10', end_date: '2027-12-11', description: 'Track & field events at campus grounds.', target_audience: 'all' },
-        { id: 'ev_10', title: 'Annual Final Examinations', category: 'exam', start_date: '2028-02-15', end_date: '2028-02-28', description: 'Final session examinations.', target_audience: 'students' }
-      ];
-
-      for (const ev of defaultEvents) {
-        await dbService.insert('calendar_events', ev);
-      }
-      this._events = (await dbService.select('calendar_events')) || [];
-    }
 
     this._currentDate = this._currentDate || new Date();
     this._selectedCategory = this._selectedCategory || 'all';
@@ -468,7 +449,7 @@ export class CalendarModule {
       bodyHtml,
       footerHtml: `
         <button class="btn btn-secondary" onclick="document.getElementById('global-modal-close').click()">Close</button>
-        <button class="btn btn-primary" onclick="window.print()"><i data-lucide="printer"></i> Print Calendar Sheet (A4)</button>
+        <button class="btn btn-primary" id="btn-print-calendar-pdf"><i data-lucide="printer"></i> Print / Save PDF Calendar</button>
       `
     });
 
