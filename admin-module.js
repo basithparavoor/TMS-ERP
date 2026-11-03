@@ -1775,7 +1775,7 @@ export class AdminModule {
   }
 
   /* ================================================================== */
-  /* Form Builder                                                       */
+  /* Section-Based Admission Form Customizer                            */
   /* ================================================================== */
 
   static async renderFormBuilderTab(tabContent) {
@@ -1785,39 +1785,141 @@ export class AdminModule {
       ? (await admissionService.listFields())
       : fields;
 
-    tabContent.innerHTML = `
-      <div class="card">
-        <div class="card-header" style="flex-wrap:wrap; gap:12px;">
-          <div>
-            <h3 class="card-title">Admission Form Builder</h3>
-            <p class="card-desc">Add, edit, reorder and mark fields required. ${usingDefaults ? '<strong style="color:#b45309;">Showing built-in defaults — save to persist.</strong>' : ''}</p>
+    // Group fields by section
+    const sectionMap = new Map();
+    list.forEach((f) => {
+      const s = (f.section || 'General Information').trim();
+      if (!sectionMap.has(s)) sectionMap.set(s, []);
+      sectionMap.get(s).push(f);
+    });
+
+    const totalSections = sectionMap.size;
+    const totalFields = list.length;
+    const activeCount = list.filter((f) => f.isActive !== false).length;
+
+    let sectionsHtml = '';
+    let secIdx = 0;
+
+    sectionMap.forEach((secFields, secName) => {
+      secIdx += 1;
+      const secActiveCount = secFields.filter(f => f.isActive !== false).length;
+
+      sectionsHtml += `
+        <div class="card section-customizer-card" style="margin-bottom:22px; border:1.5px solid var(--border-color); border-radius:14px; overflow:hidden; box-shadow:var(--shadow-sm);">
+          <div class="card-header" style="background:#F8FAFC; border-bottom:1.5px solid var(--border-color); padding:14px 20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+            <div style="display:flex; align-items:center; gap:12px;">
+              <span style="width:34px; height:34px; border-radius:8px; background:#DCFCE7; color:#15803d; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.9rem; font-family:var(--font-mono);">
+                ${String(secIdx).padStart(2, '0')}
+              </span>
+              <div>
+                <h4 style="margin:0 0 2px 0; font-size:1.05rem; font-weight:800; color:var(--text-primary); letter-spacing:-0.01em;">
+                  ${esc(secName)}
+                </h4>
+                <div style="display:flex; gap:8px; align-items:center; font-size:0.75rem; color:var(--text-muted);">
+                  <span>${secFields.length} question(s)</span>
+                  <span>•</span>
+                  <span style="color:#15803d; font-weight:600;">${secActiveCount} active</span>
+                  ${secFields.length - secActiveCount > 0 ? `<span>•</span><span style="color:#b45309;">${secFields.length - secActiveCount} disabled</span>` : ''}
+                </div>
+              </div>
+            </div>
+
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <button class="btn btn-secondary btn-sm btn-rename-section" data-section="${esc(secName)}" title="Rename this section">
+                <i data-lucide="edit-3"></i> Rename Section
+              </button>
+              <button class="btn btn-primary btn-sm btn-add-field-to-sec" data-section="${esc(secName)}">
+                <i data-lucide="plus"></i> Add Question
+              </button>
+              <button class="btn btn-secondary btn-sm btn-del-section" data-section="${esc(secName)}" style="color:#ef4444;" title="Delete Section and all its questions">
+                <i data-lucide="trash-2"></i>
+              </button>
+            </div>
           </div>
-          <div style="display:flex; gap:8px;">
-            ${usingDefaults ? '<button class="btn btn-secondary btn-sm" id="btn-seed-fields"><i data-lucide="download"></i> Load &amp; Save Defaults</button>' : ''}
-            ${usingDefaults ? '' : '<button class="btn btn-secondary btn-sm" id="btn-select-all-fields"><i data-lucide="check-square"></i> Select All</button><button class="btn btn-secondary btn-sm" id="btn-bulk-del-fields" style="color:#ef4444;"><i data-lucide="trash-2"></i> Delete Selected (<span id="field-selected-count">0</span>)</button>'}
-            <button class="btn btn-primary btn-sm" id="btn-add-field"><i data-lucide="plus"></i> Add Field</button>
+
+          <div class="table-responsive">
+            <table class="tms-table" style="font-size:0.85rem; margin:0;">
+              <thead>
+                <tr style="background:#ffffff;">
+                  <th style="width:34px;">${usingDefaults ? '' : '<input type="checkbox" class="section-select-all" data-section="' + esc(secName) + '">'}</th>
+                  <th style="width:50px;">#</th>
+                  <th>Question Label</th>
+                  <th>Field Key</th>
+                  <th>Type</th>
+                  <th>Required</th>
+                  <th>Status</th>
+                  <th style="text-align:right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${secFields.map((f, i) => `
+                  <tr>
+                    <td>${usingDefaults ? '' : `<input type="checkbox" class="field-row-check" data-section="${esc(secName)}" value="${esc(f.id)}">`}</td>
+                    <td class="font-mono" style="font-size:0.8rem; color:var(--text-muted);">${f.displayOrder || i + 1}</td>
+                    <td>
+                      <span style="font-weight:700; color:var(--text-primary);">${esc(f.label)}</span>
+                      ${f.placeholder ? `<br><span style="font-size:0.72rem; color:var(--text-muted);">${esc(f.placeholder)}</span>` : ''}
+                    </td>
+                    <td class="font-mono" style="font-size:0.78rem; color:#475569;">${esc(f.fieldKey)}</td>
+                    <td><span class="badge badge-info" style="font-size:0.72rem;">${esc(f.fieldType)}</span></td>
+                    <td>
+                      <button type="button" class="badge btn-toggle-required ${f.required ? 'badge-success' : ''}" data-key="${esc(f.fieldKey)}" style="cursor:pointer; border:none;" title="Click to toggle required">
+                        ${f.required ? '✓ Required' : 'Optional'}
+                      </button>
+                    </td>
+                    <td>
+                      <button type="button" class="badge btn-toggle-active ${f.isActive === false ? 'badge-warning' : 'badge-success'}" data-key="${esc(f.fieldKey)}" style="cursor:pointer; border:none;" title="Click to toggle active">
+                        ${f.isActive === false ? '⊘ Disabled' : '● Active'}
+                      </button>
+                    </td>
+                    <td style="text-align:right; white-space:nowrap;">
+                      <button class="btn btn-secondary btn-sm btn-edit-field" data-key="${esc(f.fieldKey)}" title="Edit Question"><i data-lucide="pencil"></i></button>
+                      <button class="btn btn-secondary btn-sm btn-del-field" data-id="${esc(f.id)}" style="color:#ef4444;" title="Delete Question"><i data-lucide="trash-2"></i></button>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
           </div>
         </div>
-        <div class="table-responsive">
-          <table class="tms-table" style="font-size:0.85rem;">
-            <thead><tr><th style="width:34px;">${usingDefaults ? '' : '<input type="checkbox" id="field-select-all">'}</th><th>#</th><th>Label</th><th>Key</th><th>Type</th><th>Section</th><th>Required</th><th>Active</th><th>Actions</th></tr></thead>
-            <tbody>
-              ${list.map((f, i) => `<tr>
-                <td>${usingDefaults ? '' : `<input type="checkbox" class="field-row-check" value="${esc(f.id)}">`}</td>
-                <td>${f.displayOrder || i + 1}</td>
-                <td style="font-weight:600;">${esc(f.label)}</td>
-                <td class="font-mono">${esc(f.fieldKey)}</td>
-                <td><span class="badge badge-info">${esc(f.fieldType)}</span></td>
-                <td>${esc(f.section || '—')}</td>
-                <td>${f.required ? '<span class="badge badge-success">Yes</span>' : '<span class="badge">No</span>'}</td>
-                <td>${f.isActive === false ? '<span class="badge badge-warning">Off</span>' : '<span class="badge badge-success">On</span>'}</td>
-                <td>
-                  <button class="btn btn-secondary btn-sm btn-edit-field" data-key="${esc(f.fieldKey)}"><i data-lucide="pencil"></i></button>
-                  <button class="btn btn-secondary btn-sm btn-del-field" data-id="${esc(f.id)}" style="color:#ef4444;"><i data-lucide="trash-2"></i></button>
-                </td>
-              </tr>`).join('') || '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:26px;">No fields configured.</td></tr>'}
-            </tbody>
-          </table>
+      `;
+    });
+
+    tabContent.innerHTML = `
+      <div style="margin-bottom:20px;">
+        <div class="card" style="margin-bottom:20px;">
+          <div class="card-header" style="flex-wrap:wrap; gap:14px;">
+            <div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span class="badge badge-primary" style="font-size:0.75rem;">Section-Based Architecture</span>
+                <span style="font-size:0.78rem; color:var(--text-muted); font-weight:600;">${totalSections} Section(s) • ${totalFields} Total Question(s) (${activeCount} Active)</span>
+              </div>
+              <h3 class="card-title" style="margin-top:4px;">Admission Form Section Customizer</h3>
+              <p class="card-desc" style="margin-top:2px;">
+                Organize your admission portal application into dedicated section steps. Only active questions configured here will be asked to candidates.
+                ${usingDefaults ? '<br><strong style="color:#b45309;">Showing built-in defaults — click "Save &amp; Persist Defaults" to enable live customization.</strong>' : ''}
+              </p>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+              ${usingDefaults ? '<button class="btn btn-secondary btn-sm" id="btn-seed-fields"><i data-lucide="download"></i> Save &amp; Persist Defaults</button>' : ''}
+              ${usingDefaults ? '' : `
+                <button class="btn btn-secondary btn-sm" id="btn-select-all-fields"><i data-lucide="check-square"></i> Select All</button>
+                <button class="btn btn-secondary btn-sm" id="btn-bulk-del-fields" style="color:#ef4444;"><i data-lucide="trash-2"></i> Delete Selected (<span id="field-selected-count">0</span>)</button>
+              `}
+              <button class="btn btn-secondary btn-sm" id="btn-add-section"><i data-lucide="folder-plus"></i> Add New Section</button>
+              <button class="btn btn-primary btn-sm" id="btn-add-field"><i data-lucide="plus"></i> Add Question</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="sections-container">
+          ${sectionsHtml || `
+            <div class="card" style="text-align:center; padding:48px 20px; color:var(--text-muted);">
+              <i data-lucide="layers" style="width:48px; height:48px; margin:0 auto 12px; color:#cbd5e1;"></i>
+              <h4 style="color:var(--text-primary); margin-bottom:6px;">No Sections Configured</h4>
+              <p style="font-size:0.86rem; max-width:400px; margin:0 auto 16px;">Click "Add New Section" or "Save &amp; Persist Defaults" to set up your admission form.</p>
+            </div>
+          `}
         </div>
       </div>
     `;
@@ -1826,7 +1928,7 @@ export class AdminModule {
     if (seedBtn) seedBtn.addEventListener('click', async () => {
       await admissionService.seedDefaultFields();
       await auditService.log('ADMISSION_FORM_FIELDS_SEEDED', 'GOVERNANCE', {});
-      UIComponents.showToast('Default fields saved.', 'success');
+      UIComponents.showToast('Default form sections saved.', 'success');
       this.renderTab('form-builder');
     });
 
@@ -1836,49 +1938,233 @@ export class AdminModule {
       if (el) el.innerText = checkedFields().length;
     };
     tabContent.querySelectorAll('.field-row-check').forEach((c) => c.addEventListener('change', syncFieldCount));
-    const fieldSelAll = document.getElementById('field-select-all');
-    if (fieldSelAll) fieldSelAll.addEventListener('change', (e) => {
-      tabContent.querySelectorAll('.field-row-check').forEach((c) => { c.checked = e.target.checked; });
-      syncFieldCount();
+
+    // Section-level select all
+    tabContent.querySelectorAll('.section-select-all').forEach((sa) => {
+      sa.addEventListener('change', (e) => {
+        const sec = sa.dataset.section;
+        tabContent.querySelectorAll(`.field-row-check[data-section="${sec}"]`).forEach((c) => { c.checked = e.target.checked; });
+        syncFieldCount();
+      });
     });
+
     const fieldSelBtn = document.getElementById('btn-select-all-fields');
     if (fieldSelBtn) fieldSelBtn.addEventListener('click', () => {
       tabContent.querySelectorAll('.field-row-check').forEach((c) => { c.checked = true; });
       syncFieldCount();
     });
+
     const fieldBulkDel = document.getElementById('btn-bulk-del-fields');
     if (fieldBulkDel) fieldBulkDel.addEventListener('click', async () => {
       const ids = checkedFields();
-      if (!ids.length) { UIComponents.showToast('Select at least one field.', 'warning'); return; }
-      if (!confirm(`Delete ${ids.length} form field(s)?`)) return;
+      if (!ids.length) { UIComponents.showToast('Select at least one question.', 'warning'); return; }
+      if (!confirm(`Delete ${ids.length} form question(s)?`)) return;
       for (const id of ids) {
         // eslint-disable-next-line no-await-in-loop
         await admissionService.removeField(id);
       }
       await auditService.log('ADMISSION_FORM_FIELDS_BULK_DELETED', 'GOVERNANCE', { count: ids.length });
-      UIComponents.showToast(`${ids.length} field(s) deleted.`, 'success');
+      UIComponents.showToast(`${ids.length} question(s) deleted.`, 'success');
       this.renderTab('form-builder');
     });
 
+    // Add field global
     safeOn('btn-add-field', 'click', () => this.openFieldModal(null));
+
+    // Add field to specific section
+    tabContent.querySelectorAll('.btn-add-field-to-sec').forEach((b) => {
+      b.addEventListener('click', () => this.openFieldModal(null, b.dataset.section));
+    });
+
+    // Add new section modal
+    safeOn('btn-add-section', 'click', () => this.openAddSectionModal(Array.from(sectionMap.keys())));
+
+    // Rename section
+    tabContent.querySelectorAll('.btn-rename-section').forEach((b) => {
+      b.addEventListener('click', () => this.openRenameSectionModal(b.dataset.section, list));
+    });
+
+    // Delete entire section
+    tabContent.querySelectorAll('.btn-del-section').forEach((b) => {
+      b.addEventListener('click', async () => {
+        const secName = b.dataset.section;
+        const secItems = list.filter(f => (f.section || 'General Information').trim() === secName);
+        if (!confirm(`Are you sure you want to delete section "${secName}" and all its ${secItems.length} question(s)?`)) return;
+        for (const item of secItems) {
+          // eslint-disable-next-line no-await-in-loop
+          await admissionService.removeField(item.id);
+        }
+        await auditService.log('ADMISSION_SECTION_DELETED', 'GOVERNANCE', { section: secName, count: secItems.length });
+        UIComponents.showToast(`Section "${secName}" deleted.`, 'success');
+        this.renderTab('form-builder');
+      });
+    });
+
+    // Quick toggle required
+    tabContent.querySelectorAll('.btn-toggle-required').forEach((b) => {
+      b.addEventListener('click', async () => {
+        const field = list.find(f => f.fieldKey === b.dataset.key);
+        if (!field) return;
+        field.required = !field.required;
+        await admissionService.saveField(field);
+        UIComponents.showToast(`"${field.label}" marked ${field.required ? 'Required' : 'Optional'}.`, 'info');
+        this.renderTab('form-builder');
+      });
+    });
+
+    // Quick toggle active
+    tabContent.querySelectorAll('.btn-toggle-active').forEach((b) => {
+      b.addEventListener('click', async () => {
+        const field = list.find(f => f.fieldKey === b.dataset.key);
+        if (!field) return;
+        field.isActive = field.isActive === false ? true : false;
+        await admissionService.saveField(field);
+        UIComponents.showToast(`"${field.label}" set to ${field.isActive ? 'Active' : 'Disabled'}.`, 'info');
+        this.renderTab('form-builder');
+      });
+    });
+
+    // Edit field
     tabContent.querySelectorAll('.btn-edit-field').forEach((b) =>
       b.addEventListener('click', () => this.openFieldModal(list.find((f) => f.fieldKey === b.dataset.key) || null)));
+
+    // Delete single field
     tabContent.querySelectorAll('.btn-del-field').forEach((b) =>
       b.addEventListener('click', async () => {
-        if (!confirm('Delete this field?')) return;
+        if (!confirm('Delete this question?')) return;
         await admissionService.removeField(b.dataset.id);
-        UIComponents.showToast('Field deleted.', 'success');
+        UIComponents.showToast('Question deleted.', 'success');
         this.renderTab('form-builder');
       }));
+
     UIComponents.refreshIcons();
   }
 
-  static openFieldModal(field) {
+  static openAddSectionModal(existingSections) {
+    const bodyHtml = `
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        <div class="form-group">
+          <label class="form-label">New Section Name *</label>
+          <input class="form-input" id="new-sec-name" placeholder="e.g. Health &amp; Medical Details, Hostel Facility">
+        </div>
+        <div style="border-top:1px solid var(--border-color); padding-top:14px;">
+          <h5 style="font-size:0.9rem; font-weight:700; margin-bottom:8px;">First Question in this Section</h5>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div class="form-group" style="grid-column:1/-1;">
+              <label class="form-label">Question Label *</label>
+              <input class="form-input" id="new-sec-fld-label" placeholder="e.g. Existing Medical Conditions">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Field Key (unique, no spaces) *</label>
+              <input class="form-input font-mono" id="new-sec-fld-key" placeholder="e.g. medicalCondition">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Response Type</label>
+              <select class="form-select" id="new-sec-fld-type">
+                ${['text', 'textarea', 'number', 'date', 'tel', 'email', 'select', 'checkbox', 'file'].map(t => `<option>${t}</option>`).join('')}
+              </select>
+            </div>
+            <label style="display:flex; gap:8px; align-items:center; grid-column:1/-1;">
+              <input type="checkbox" id="new-sec-fld-req"> Required Question
+            </label>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const footerHtml = `
+      <button class="btn btn-secondary" id="sec-cancel">Cancel</button>
+      <button class="btn btn-primary" id="sec-save"><i data-lucide="plus"></i> Create Section</button>
+    `;
+
+    UIComponents.openModal({ title: 'Add New Form Section', bodyHtml, footerHtml, maxWidth: '520px' });
+    document.getElementById('sec-cancel').addEventListener('click', () => UIComponents.closeModal());
+    document.getElementById('sec-save').addEventListener('click', async () => {
+      const secName = document.getElementById('new-sec-name').value.trim();
+      const label = document.getElementById('new-sec-fld-label').value.trim();
+      const key = document.getElementById('new-sec-fld-key').value.trim().replace(/\s+/g, '_');
+      const type = document.getElementById('new-sec-fld-type').value;
+      const req = document.getElementById('new-sec-fld-req').checked;
+
+      if (!secName) { UIComponents.showToast('Please enter a section name.', 'warning'); return; }
+      if (!label || !key) { UIComponents.showToast('Please enter the question label and field key.', 'warning'); return; }
+
+      try {
+        await admissionService.saveField({
+          label,
+          fieldKey: key,
+          fieldType: type,
+          section: secName,
+          displayOrder: 1,
+          required: req,
+          isActive: true
+        });
+        await auditService.log('ADMISSION_SECTION_CREATED', 'GOVERNANCE', { section: secName, fieldKey: key });
+        UIComponents.showToast(`Section "${secName}" created successfully.`, 'success');
+        UIComponents.closeModal();
+        this.renderTab('form-builder');
+      } catch (e) {
+        UIComponents.showToast(e.message, 'danger');
+      }
+    });
+    UIComponents.refreshIcons();
+  }
+
+  static openRenameSectionModal(currentName, allFields) {
+    const secFields = allFields.filter(f => (f.section || 'General Information').trim() === currentName);
+
+    const bodyHtml = `
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        <div class="form-group">
+          <label class="form-label">Current Section Name</label>
+          <input class="form-input" value="${esc(currentName)}" readonly style="background:var(--bg-subtle);">
+        </div>
+        <div class="form-group">
+          <label class="form-label">New Section Name *</label>
+          <input class="form-input" id="rename-new-sec-name" value="${esc(currentName)}" autofocus>
+          <span style="font-size:0.75rem; color:var(--text-muted); margin-top:4px; display:block;">
+            All ${secFields.length} question(s) in this section will be updated to the new section name.
+          </span>
+        </div>
+      </div>
+    `;
+
+    const footerHtml = `
+      <button class="btn btn-secondary" id="rename-cancel">Cancel</button>
+      <button class="btn btn-primary" id="rename-save"><i data-lucide="check"></i> Update Section Name</button>
+    `;
+
+    UIComponents.openModal({ title: 'Rename Form Section', bodyHtml, footerHtml, maxWidth: '480px' });
+    document.getElementById('rename-cancel').addEventListener('click', () => UIComponents.closeModal());
+    document.getElementById('rename-save').addEventListener('click', async () => {
+      const newName = document.getElementById('rename-new-sec-name').value.trim();
+      if (!newName || newName === currentName) { UIComponents.closeModal(); return; }
+
+      try {
+        for (const f of secFields) {
+          f.section = newName;
+          // eslint-disable-next-line no-await-in-loop
+          await admissionService.saveField(f);
+        }
+        await auditService.log('ADMISSION_SECTION_RENAMED', 'GOVERNANCE', { oldName: currentName, newName });
+        UIComponents.showToast(`Section renamed to "${newName}".`, 'success');
+        UIComponents.closeModal();
+        this.renderTab('form-builder');
+      } catch (e) {
+        UIComponents.showToast(e.message, 'danger');
+      }
+    });
+    UIComponents.refreshIcons();
+  }
+
+  static openFieldModal(field, defaultSection = '') {
     const f = field || {};
+    const existingSection = f.section || defaultSection || 'General Information';
+
     const bodyHtml = `
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
         <div class="form-group" style="grid-column:1/-1;">
-          <label class="form-label">Field Label *</label>
+          <label class="form-label">Question / Field Label *</label>
           <input class="form-input" id="fld-label" value="${esc(f.label || '')}" placeholder="e.g. Mother's Name">
         </div>
         <div class="form-group">
@@ -1892,48 +2178,59 @@ export class AdminModule {
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label">Section</label>
-          <input class="form-input" id="fld-section" value="${esc(f.section || 'General')}">
+          <label class="form-label">Section (Step Group) *</label>
+          <input class="form-input" id="fld-section" value="${esc(existingSection)}" placeholder="e.g. Candidate Details">
         </div>
         <div class="form-group">
           <label class="form-label">Display Order</label>
-          <input type="number" class="form-input" id="fld-order" value="${f.displayOrder || 0}">
+          <input type="number" class="form-input" id="fld-order" value="${f.displayOrder || 1}">
         </div>
         <div class="form-group" style="grid-column:1/-1;">
-          <label class="form-label">Options (comma separated — for select)</label>
-          <input class="form-input" id="fld-options" value="${esc((f.options || []).join(', '))}">
+          <label class="form-label">Options (comma separated — for dropdown select)</label>
+          <input class="form-input" id="fld-options" value="${esc((f.options || []).join(', '))}" placeholder="e.g. Male, Female, Other">
         </div>
         <div class="form-group" style="grid-column:1/-1;">
           <label class="form-label">Placeholder / Help Text</label>
           <input class="form-input" id="fld-placeholder" value="${esc(f.placeholder || '')}">
         </div>
-        <label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" id="fld-required" ${f.required ? 'checked' : ''}> Required</label>
-        <label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" id="fld-active" ${f.isActive === false ? '' : 'checked'}> Active</label>
+        <label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" id="fld-required" ${f.required ? 'checked' : ''}> Required Question</label>
+        <label style="display:flex; gap:8px; align-items:center;"><input type="checkbox" id="fld-active" ${f.isActive === false ? '' : 'checked'}> Active (Ask to Applicants)</label>
       </div>
     `;
+
     const footerHtml = `
       <button class="btn btn-secondary" id="fld-cancel">Cancel</button>
-      <button class="btn btn-primary" id="fld-save"><i data-lucide="save"></i> Save Field</button>
+      <button class="btn btn-primary" id="fld-save"><i data-lucide="save"></i> Save Question</button>
     `;
-    UIComponents.openModal({ title: field ? 'Edit Field' : 'Add Field', bodyHtml, footerHtml });
+
+    UIComponents.openModal({ title: field ? 'Edit Question' : 'Add Question', bodyHtml, footerHtml });
     document.getElementById('fld-cancel').addEventListener('click', () => UIComponents.closeModal());
     document.getElementById('fld-save').addEventListener('click', async () => {
       const options = document.getElementById('fld-options').value.split(',').map((s) => s.trim()).filter(Boolean);
+      const label = document.getElementById('fld-label').value.trim();
+      const fieldKey = document.getElementById('fld-key').value.trim();
+      const section = document.getElementById('fld-section').value.trim();
+
+      if (!label || !fieldKey || !section) {
+        UIComponents.showToast('Label, key, and section are required.', 'warning');
+        return;
+      }
+
       try {
         await admissionService.saveField({
           id: f.id,
-          label: document.getElementById('fld-label').value.trim(),
-          fieldKey: document.getElementById('fld-key').value.trim(),
+          label,
+          fieldKey,
           fieldType: document.getElementById('fld-type').value,
-          section: document.getElementById('fld-section').value.trim(),
-          displayOrder: Number(document.getElementById('fld-order').value || 0),
+          section,
+          displayOrder: Number(document.getElementById('fld-order').value || 1),
           options,
           placeholder: document.getElementById('fld-placeholder').value.trim(),
           required: document.getElementById('fld-required').checked,
           isActive: document.getElementById('fld-active').checked
         });
-        await auditService.log('ADMISSION_FIELD_SAVED', 'GOVERNANCE', { key: document.getElementById('fld-key').value });
-        UIComponents.showToast('Field saved.', 'success');
+        await auditService.log('ADMISSION_FIELD_SAVED', 'GOVERNANCE', { key: fieldKey });
+        UIComponents.showToast('Question saved.', 'success');
         UIComponents.closeModal();
         this.renderTab('form-builder');
       } catch (e) {
@@ -1942,7 +2239,6 @@ export class AdminModule {
     });
     UIComponents.refreshIcons();
   }
-
   /* ================================================================== */
   /* Fees                                                               */
   /* ================================================================== */

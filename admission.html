@@ -32,13 +32,16 @@
       <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
         <span id="entry-by-badge" class="badge badge-success" style="display: none;"></span>
         <button class="btn btn-secondary btn-sm" id="btn-show-guidelines" style="display: none;">
-          <i data-lucide="book-open"></i> General Guidelines &amp; Video
+          <i data-lucide="book-open"></i> Guidelines &amp; Video Walkthrough
         </button>
         <button class="btn btn-secondary btn-sm" id="btn-show-fees" style="display: none;">
           <i data-lucide="receipt"></i> Fee Structure
         </button>
       </div>
     </div>
+
+    <!-- Official Notice Banner (Conditional) -->
+    <div id="admission-notice-slot" class="no-print" style="display: none; margin-bottom: 18px;"></div>
 
     <!-- Institutional Brand Header Card -->
     <div class="admission-hero-card no-print">
@@ -72,7 +75,7 @@
       <!-- Mobile Compact Stepper (< 768px) -->
       <div class="wizard-mobile-stepper" id="wiz-mobile-stepper">
         <div class="wizard-mobile-bar-top">
-          <span class="wizard-mobile-badge" id="wiz-mobile-badge">Step 1 of 6</span>
+          <span class="wizard-mobile-badge" id="wiz-mobile-badge">Step 1 of 5</span>
           <div class="wizard-mobile-jump-wrap">
             <select class="wizard-mobile-select" id="wiz-mobile-select" aria-label="Jump to completed section">
               <option value="">Jump to step ▾</option>
@@ -81,7 +84,7 @@
         </div>
         <div class="wizard-mobile-current-title" id="wiz-mobile-title">Student Information</div>
         <div class="wizard-mobile-track">
-          <div class="wizard-mobile-fill" id="wiz-mobile-fill" style="width: 16.6%;"></div>
+          <div class="wizard-mobile-fill" id="wiz-mobile-fill" style="width: 20%;"></div>
         </div>
       </div>
     </div>
@@ -98,20 +101,32 @@
 
       <!-- Side Column: Supplementary Information -->
       <aside class="admission-side-column">
+        <!-- Dedicated Video Walkthrough Card (Shown when video is configured) -->
+        <div class="admission-side-card" id="side-video-card" style="display: none; padding: 14px;">
+          <div class="admission-side-card-header" style="margin-bottom: 10px;">
+            <i data-lucide="play-circle" class="side-card-icon emerald"></i>
+            <h4 id="side-video-title">Video Walkthrough</h4>
+          </div>
+          <div id="side-video-container"></div>
+          <p style="font-size: 0.74rem; color: var(--text-muted); margin-top: 8px; line-height: 1.4;">
+            Watch this quick institutional guide to fill and complete your application without mistakes.
+          </p>
+        </div>
+
         <!-- Quick Guidance Card -->
         <div class="admission-side-card">
           <div class="admission-side-card-header">
             <i data-lucide="help-circle" class="side-card-icon emerald"></i>
             <h4>Application Guidance</h4>
           </div>
-          <p class="admission-side-card-text">
-            Review the official admission rules, guidelines and fee structure for the current academic session.
+          <p class="admission-side-card-text" id="side-guidance-text">
+            Review the official admission rules, walkthrough video, and instructions for the current academic session.
           </p>
           <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 14px;">
             <button type="button" class="btn btn-secondary btn-sm" id="side-btn-guidelines" style="width: 100%; justify-content: center;">
               <i data-lucide="book-open"></i> Guidelines &amp; Video Walkthrough
             </button>
-            <button type="button" class="btn btn-secondary btn-sm" id="side-btn-fees" style="width: 100%; justify-content: center;">
+            <button type="button" class="btn btn-secondary btn-sm" id="side-btn-fees" style="width: 100%; justify-content: center; display: none;">
               <i data-lucide="receipt"></i> Session Fee Schedule
             </button>
           </div>
@@ -400,34 +415,13 @@
     // Wizard state
     const wizard = {
       currentStep: 1,
-      totalSteps: 6,
-      stepMeta: [], // [{ id, stepNo, title, shortTitle, icon }]
+      totalSteps: 5,
+      stepMeta: [], // [{ id, stepNo, title, shortTitle, icon, fields }]
       completedSteps: new Set(),
       isSubmitting: false,
       photoDataUrl: null
     };
-
-    const PHOTO_KEY = 'photo';
-
-    function resolvePhotoField() {
-      const existing = fields.find((f) => (f.fieldType || 'text') === 'file'
-        && (f.fieldKey === PHOTO_KEY || /photo|photograph/i.test(String(f.label || ''))));
-      if (existing) return existing;
-      return {
-        fieldKey: PHOTO_KEY,
-        label: 'Student Photograph',
-        fieldType: 'file',
-        section: 'Photo & Documents',
-        required: false,
-        helpText: 'Recent passport-size photograph (JPG or PNG, up to 2 MB). Appears on admission form and admit card.'
-      };
-    }
-
-    function allFields() {
-      const photo = resolvePhotoField();
-      const has = fields.some((f) => f.fieldKey === photo.fieldKey);
-      return has ? fields : [...fields, photo];
-    }
+    window.wizard = wizard;
 
     function fieldInputHtml(f) {
       const id = `fld-${f.fieldKey}`;
@@ -468,66 +462,90 @@
         </div>`;
     }
 
-    /** Map and partition form fields into designated wizard steps */
-    function partitionFieldsForWizard() {
-      const photo = resolvePhotoField();
-      const all = allFields().filter(f => f.fieldKey !== photo.fieldKey);
-
-      const candidateFields = [];
-      const parentFields = [];
-      const contactFields = [];
-      const academicAndDocs = [];
-
-      all.forEach(f => {
-        const sec = String(f.section || '').toLowerCase();
-        const key = String(f.fieldKey || '').toLowerCase();
-        const lbl = String(f.label || '').toLowerCase();
-
-        if (sec.includes('candidate') || sec.includes('student') || /^(candidatename|dob|gender|bloodgroup|applyingclass|religion|aadhaar|identificationmarks)$/i.test(key)) {
-          candidateFields.push(f);
-        } else if (sec.includes('guardian') || sec.includes('parent') || /^(father|mother|guardian)/i.test(key) || /^(father|mother|guardian)/i.test(lbl)) {
-          parentFields.push(f);
-        } else if (sec.includes('contact') || sec.includes('address') || /^(phone|email|village|po|ps|district|pin|state)$/i.test(key)) {
-          contactFields.push(f);
-        } else {
-          academicAndDocs.push(f);
-        }
-      });
-
-      return { photo, candidateFields, parentFields, contactFields, academicAndDocs };
-    }
-
-    /** Build wizard structure and render panes */
+    /** Build wizard structure strictly from Admin-Configured Sections & Fields */
     function renderWizard() {
       const container = document.getElementById('dynamic-wizard-panes');
       if (!container) return;
 
-      const { photo, candidateFields, parentFields, contactFields, academicAndDocs } = partitionFieldsForWizard();
+      // STRICT REQUIREMENT: Only ask the questions set in the admin page!
+      const activeFields = fields.filter(f => f.isActive !== false);
 
-      wizard.stepMeta = [
-        { id: 'student', title: 'Student Information', shortTitle: 'Student Info', icon: 'user' },
-        { id: 'parent', title: 'Parent Information', shortTitle: 'Parents', icon: 'users' },
-        { id: 'contact', title: 'Contact & Address', shortTitle: 'Contact', icon: 'map-pin' },
-        { id: 'academic', title: 'Academic & Documents', shortTitle: 'Academic', icon: 'graduation-cap' }
-      ];
+      // Group active fields strictly by admin section
+      const sectionMap = new Map();
+      activeFields.forEach(f => {
+        const s = (f.section || 'General Information').trim();
+        if (!sectionMap.has(s)) sectionMap.set(s, []);
+        sectionMap.get(s).push(f);
+      });
 
-      // Conditional Fee Structure Step
+      wizard.stepMeta = [];
+      let stepCounter = 0;
+
+      // Add each admin-configured section as a wizard step
+      sectionMap.forEach((secFields, secName) => {
+        stepCounter += 1;
+        let icon = 'clipboard-list';
+        const sLower = secName.toLowerCase();
+        if (sLower.includes('student') || sLower.includes('candidate') || sLower.includes('personal')) icon = 'user';
+        else if (sLower.includes('parent') || sLower.includes('guardian') || sLower.includes('family')) icon = 'users';
+        else if (sLower.includes('contact') || sLower.includes('address') || sLower.includes('residential')) icon = 'map-pin';
+        else if (sLower.includes('academic') || sLower.includes('school') || sLower.includes('education')) icon = 'graduation-cap';
+        else if (sLower.includes('doc') || sLower.includes('photo')) icon = 'file-text';
+
+        let shortTitle = secName;
+        if (shortTitle.length > 18) {
+          shortTitle = shortTitle.split(' ')[0] + ' ' + (shortTitle.split(' ')[1] || '');
+        }
+
+        wizard.stepMeta.push({
+          id: `sec-${stepCounter}`,
+          sectionName: secName,
+          title: secName,
+          shortTitle: shortTitle.trim(),
+          icon,
+          fields: secFields
+        });
+      });
+
+      // CONDITIONAL FEE STRUCTURE: DONT SHOW IF TURNED OFF BY ADMIN
       const showFees = settings && settings.showFeeStructure === true && Array.isArray(fees) && fees.length > 0;
       if (showFees) {
-        wizard.stepMeta.push({ id: 'fees', title: 'Fee Structure & Schedule', shortTitle: 'Fees', icon: 'receipt' });
+        stepCounter += 1;
+        wizard.stepMeta.push({
+          id: 'fees',
+          title: 'Fee Structure & Schedule',
+          shortTitle: 'Fees',
+          icon: 'receipt',
+          isFeesStep: true
+        });
       }
 
-      // Application Details & Declaration
-      wizard.stepMeta.push({ id: 'declaration', title: 'Application Details & Declaration', shortTitle: 'Declaration', icon: 'shield-check' });
+      // Application Details & Declaration Step
+      stepCounter += 1;
+      wizard.stepMeta.push({
+        id: 'declaration',
+        title: 'Application Details & Declaration',
+        shortTitle: 'Declaration',
+        icon: 'shield-check',
+        isDeclarationStep: true
+      });
 
-      // Review & Submit
-      wizard.stepMeta.push({ id: 'review', title: 'Review & Submit', shortTitle: 'Review', icon: 'file-check-2' });
+      // Review & Submit Step
+      stepCounter += 1;
+      wizard.stepMeta.push({
+        id: 'review',
+        title: 'Review & Submit',
+        shortTitle: 'Review',
+        icon: 'file-check-2',
+        isReviewStep: true
+      });
 
       wizard.totalSteps = wizard.stepMeta.length;
       wizard.stepMeta.forEach((m, idx) => { m.stepNo = idx + 1; });
 
-      // Build HTML for each step pane
+      // Render step panes HTML
       let panesHtml = '';
+      let photoFieldRef = null;
 
       wizard.stepMeta.forEach((meta) => {
         const sNo = meta.stepNo;
@@ -536,37 +554,7 @@
 
         let contentHtml = '';
 
-        if (meta.id === 'student') {
-          contentHtml = `
-            <div style="background:#F8FAFC; border:1px solid var(--border-color); border-radius:12px; padding:18px; margin-bottom:22px; display:flex; flex-direction:column; align-items:center;">
-              <h4 style="font-size:0.95rem; font-weight:700; color:#111827; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
-                <i data-lucide="camera" style="width:18px;height:18px;color:#16a34a;"></i> Student Photograph <span style="font-size:0.75rem;color:var(--text-subtle);font-weight:400;">(Required for Admit Card)</span>
-              </h4>
-              <div id="student-photo-panel" style="width:100%; max-width:320px;"></div>
-            </div>
-            <div class="admission-fields-grid">
-              ${candidateFields.map(fieldInputHtml).join('')}
-            </div>
-          `;
-        } else if (meta.id === 'parent') {
-          contentHtml = `
-            <div class="admission-fields-grid">
-              ${parentFields.map(fieldInputHtml).join('')}
-            </div>
-          `;
-        } else if (meta.id === 'contact') {
-          contentHtml = `
-            <div class="admission-fields-grid">
-              ${contactFields.map(fieldInputHtml).join('')}
-            </div>
-          `;
-        } else if (meta.id === 'academic') {
-          contentHtml = `
-            <div class="admission-fields-grid">
-              ${academicAndDocs.map(fieldInputHtml).join('')}
-            </div>
-          `;
-        } else if (meta.id === 'fees') {
+        if (meta.isFeesStep) {
           const totalMandatory = fees.filter(f => f.mandatory).reduce((acc, f) => acc + Number(f.amount || 0), 0);
           contentHtml = `
             <div class="wizard-fee-container">
@@ -621,7 +609,7 @@
               </div>
             </div>
           `;
-        } else if (meta.id === 'declaration') {
+        } else if (meta.isDeclarationStep) {
           contentHtml = `
             <div style="margin-bottom:22px;">
               <h4 style="font-size:0.95rem; font-weight:700; color:#111827; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
@@ -650,9 +638,32 @@
               </label>
             </div>
           `;
-        } else if (meta.id === 'review') {
+        } else if (meta.isReviewStep) {
+          contentHtml = `<div id="wizard-review-content"></div>`;
+        } else {
+          // Regular Admin Configured Section
+          const secFields = meta.fields || [];
+          const photoField = secFields.find(f => (f.fieldType === 'file' && (f.fieldKey === 'photo' || /photo|photograph/i.test(f.label))));
+          const otherFields = secFields.filter(f => f !== photoField);
+
+          let photoHtml = '';
+          if (photoField) {
+            photoFieldRef = photoField;
+            photoHtml = `
+              <div style="background:#F8FAFC; border:1px solid var(--border-color); border-radius:12px; padding:18px; margin-bottom:22px; display:flex; flex-direction:column; align-items:center;">
+                <h4 style="font-size:0.95rem; font-weight:700; color:#111827; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+                  <i data-lucide="camera" style="width:18px;height:18px;color:#16a34a;"></i> ${esc(photoField.label)} <span style="font-size:0.75rem;color:var(--text-subtle);font-weight:400;">(Appears on Admit Card)</span>
+                </h4>
+                <div id="student-photo-panel" style="width:100%; max-width:320px;"></div>
+              </div>
+            `;
+          }
+
           contentHtml = `
-            <div id="wizard-review-content"></div>
+            ${photoHtml}
+            <div class="admission-fields-grid">
+              ${otherFields.map(fieldInputHtml).join('')}
+            </div>
           `;
         }
 
@@ -707,12 +718,14 @@
         dateEl.value = new Date().toISOString().split('T')[0];
       }
 
-      // Initialize Photo Upload Component in Step 1
-      renderPhotoPanel(photo);
+      // Initialize Photo Upload Component if photo field exists
+      if (photoFieldRef) {
+        renderPhotoPanel(photoFieldRef);
+      }
 
       // File preview listeners for document fields
       container.querySelectorAll('input[type="file"]').forEach((inp) => {
-        if (inp.id === `fld-${photo.fieldKey}`) return; // handled by renderPhotoPanel
+        if (photoFieldRef && inp.id === `fld-${photoFieldRef.fieldKey}`) return;
         inp.addEventListener('change', () => {
           const nameEl = container.querySelector(`.file-name[data-for="${inp.id}"]`);
           const prevEl = container.querySelector(`.file-preview[data-for="${inp.id}"]`);
@@ -881,7 +894,6 @@
         });
         desktop.innerHTML = dHtml;
 
-        // Allow clicking completed steps to jump directly
         desktop.querySelectorAll('.wizard-step-node.completed').forEach(node => {
           node.addEventListener('click', () => {
             const s = Number(node.dataset.step);
@@ -942,7 +954,7 @@
       updateSteppers();
 
       // If opening Review step, build the summary
-      const reviewMeta = wizard.stepMeta.find(m => m.id === 'review');
+      const reviewMeta = wizard.stepMeta.find(m => m.isReviewStep);
       if (reviewMeta && reviewMeta.stepNo === stepIdx) {
         renderReviewStep();
       }
@@ -1033,127 +1045,82 @@
       return true;
     }
 
-    /** Render the Review & Submit summary screen */
+    /** Render the Review & Submit summary screen strictly from Admin Sections */
     function renderReviewStep() {
       const reviewContainer = document.getElementById('wizard-review-content');
       if (!reviewContainer) return;
 
       const values = readValues();
-      const { photo, candidateFields, parentFields, contactFields, academicAndDocs } = partitionFieldsForWizard();
-
-      const candidateStep = wizard.stepMeta.find(m => m.id === 'student');
-      const parentStep = wizard.stepMeta.find(m => m.id === 'parent');
-      const contactStep = wizard.stepMeta.find(m => m.id === 'contact');
-      const academicStep = wizard.stepMeta.find(m => m.id === 'academic');
-      const feesStep = wizard.stepMeta.find(m => m.id === 'fees');
-      const decStep = wizard.stepMeta.find(m => m.id === 'declaration');
+      const activeFields = fields.filter(f => f.isActive !== false);
 
       let html = '';
+      let secIndex = 0;
 
-      // 1. Student Information Card
-      html += `
-        <div class="wizard-review-card">
-          <div class="wizard-review-header">
-            <h4 class="wizard-review-title"><i data-lucide="user" style="width:18px;height:18px;color:#16a34a;"></i> 1. Student Information</h4>
-            <button type="button" class="btn-wizard-edit" onclick="wizardGoToStep(${candidateStep ? candidateStep.stepNo : 1})">
-              <i data-lucide="edit-3"></i> Edit
-            </button>
-          </div>
-          <div style="display:flex; gap:16px; align-items:flex-start; margin-bottom:14px; flex-wrap:wrap;">
-            <div style="width:72px; height:90px; border:1px solid #CBD5E1; border-radius:6px; background:#F8FAFC; overflow:hidden; display:flex; align-items:center; justify-content:center; text-align:center; font-size:0.65rem; color:#64748B; flex-shrink:0;">
-              ${wizard.photoDataUrl
-                ? `<img src="${wizard.photoDataUrl}" alt="Photo" style="width:100%;height:100%;object-fit:cover;">`
-                : 'No Photo Uploaded'}
+      // Iterate through admin sections in wizard
+      wizard.stepMeta.forEach((meta) => {
+        if (meta.isFeesStep || meta.isDeclarationStep || meta.isReviewStep) return;
+
+        secIndex += 1;
+        const secFields = meta.fields || [];
+        const photoField = secFields.find(f => (f.fieldType === 'file' && (f.fieldKey === 'photo' || /photo|photograph/i.test(f.label))));
+        const otherFields = secFields.filter(f => f !== photoField);
+
+        html += `
+          <div class="wizard-review-card">
+            <div class="wizard-review-header">
+              <h4 class="wizard-review-title"><i data-lucide="${meta.icon || 'folder'}" style="width:18px;height:18px;color:#16a34a;"></i> ${secIndex}. ${esc(meta.title)}</h4>
+              <button type="button" class="btn-wizard-edit" onclick="wizardGoToStep(${meta.stepNo})">
+                <i data-lucide="edit-3"></i> Edit
+              </button>
             </div>
-            <div class="wizard-review-grid" style="flex:1;">
-              ${candidateFields.map(f => `
-                <div class="wizard-review-item">
-                  <span class="wizard-review-label">${esc(f.label)}</span>
-                  <span class="wizard-review-val">${esc(values[f.fieldKey] || '—')}</span>
+            ${photoField ? `
+              <div style="display:flex; gap:16px; align-items:flex-start; margin-bottom:14px; flex-wrap:wrap;">
+                <div style="width:72px; height:90px; border:1px solid #CBD5E1; border-radius:6px; background:#F8FAFC; overflow:hidden; display:flex; align-items:center; justify-content:center; text-align:center; font-size:0.65rem; color:#64748B; flex-shrink:0;">
+                  ${wizard.photoDataUrl
+                    ? `<img src="${wizard.photoDataUrl}" alt="Photo" style="width:100%;height:100%;object-fit:cover;">`
+                    : 'No Photo'}
                 </div>
-              `).join('')}
-            </div>
-          </div>
-        </div>
-      `;
-
-      // 2. Parent Information Card
-      html += `
-        <div class="wizard-review-card">
-          <div class="wizard-review-header">
-            <h4 class="wizard-review-title"><i data-lucide="users" style="width:18px;height:18px;color:#16a34a;"></i> 2. Parent &amp; Family Details</h4>
-            <button type="button" class="btn-wizard-edit" onclick="wizardGoToStep(${parentStep ? parentStep.stepNo : 2})">
-              <i data-lucide="edit-3"></i> Edit
-            </button>
-          </div>
-          <div class="wizard-review-grid">
-            ${parentFields.map(f => `
-              <div class="wizard-review-item">
-                <span class="wizard-review-label">${esc(f.label)}</span>
-                <span class="wizard-review-val">${esc(values[f.fieldKey] || '—')}</span>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-      `;
-
-      // 3. Contact & Address Card
-      html += `
-        <div class="wizard-review-card">
-          <div class="wizard-review-header">
-            <h4 class="wizard-review-title"><i data-lucide="map-pin" style="width:18px;height:18px;color:#16a34a;"></i> 3. Address &amp; Contact Particulars</h4>
-            <button type="button" class="btn-wizard-edit" onclick="wizardGoToStep(${contactStep ? contactStep.stepNo : 3})">
-              <i data-lucide="edit-3"></i> Edit
-            </button>
-          </div>
-          <div class="wizard-review-grid">
-            ${contactFields.map(f => `
-              <div class="wizard-review-item">
-                <span class="wizard-review-label">${esc(f.label)}</span>
-                <span class="wizard-review-val">${esc(values[f.fieldKey] || '—')}</span>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-      `;
-
-      // 4. Academic Background & Documents Card
-      html += `
-        <div class="wizard-review-card">
-          <div class="wizard-review-header">
-            <h4 class="wizard-review-title"><i data-lucide="graduation-cap" style="width:18px;height:18px;color:#16a34a;"></i> 4. Academic Background &amp; Documents</h4>
-            <button type="button" class="btn-wizard-edit" onclick="wizardGoToStep(${academicStep ? academicStep.stepNo : 4})">
-              <i data-lucide="edit-3"></i> Edit
-            </button>
-          </div>
-          <div class="wizard-review-grid">
-            ${academicAndDocs.map(f => {
-              const isFile = (f.fieldType || 'text') === 'file';
-              let displayVal = '—';
-              if (isFile) {
-                const inp = document.getElementById(`fld-${f.fieldKey}`);
-                displayVal = inp && inp.files && inp.files[0] ? inp.files[0].name : 'Not attached';
-              } else {
-                displayVal = values[f.fieldKey] || '—';
-              }
-              return `
-                <div class="wizard-review-item">
-                  <span class="wizard-review-label">${esc(f.label)}</span>
-                  <span class="wizard-review-val">${esc(displayVal)}</span>
+                <div class="wizard-review-grid" style="flex:1;">
+                  ${otherFields.map(f => `
+                    <div class="wizard-review-item">
+                      <span class="wizard-review-label">${esc(f.label)}</span>
+                      <span class="wizard-review-val">${esc(values[f.fieldKey] || '—')}</span>
+                    </div>
+                  `).join('')}
                 </div>
-              `;
-            }).join('')}
+              </div>
+            ` : `
+              <div class="wizard-review-grid">
+                ${secFields.map(f => {
+                  const isFile = (f.fieldType || 'text') === 'file';
+                  let displayVal = '—';
+                  if (isFile) {
+                    const inp = document.getElementById(`fld-${f.fieldKey}`);
+                    displayVal = inp && inp.files && inp.files[0] ? inp.files[0].name : 'Not attached';
+                  } else {
+                    displayVal = values[f.fieldKey] || '—';
+                  }
+                  return `
+                    <div class="wizard-review-item">
+                      <span class="wizard-review-label">${esc(f.label)}</span>
+                      <span class="wizard-review-val">${esc(displayVal)}</span>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            `}
           </div>
-        </div>
-      `;
+        `;
+      });
 
-      // 5. Fee Structure Summary Card (if enabled)
-      if (feesStep) {
+      // Fee Structure Summary Card (ONLY IF ENABLED BY ADMIN)
+      const feesStep = wizard.stepMeta.find(m => m.isFeesStep);
+      if (feesStep && settings.showFeeStructure === true) {
         const totalMandatory = fees.filter(f => f.mandatory).reduce((acc, f) => acc + Number(f.amount || 0), 0);
         html += `
           <div class="wizard-review-card">
             <div class="wizard-review-header">
-              <h4 class="wizard-review-title"><i data-lucide="receipt" style="width:18px;height:18px;color:#16a34a;"></i> 5. Approved Fee Schedule</h4>
+              <h4 class="wizard-review-title"><i data-lucide="receipt" style="width:18px;height:18px;color:#16a34a;"></i> Approved Fee Schedule</h4>
               <button type="button" class="btn-wizard-edit" onclick="wizardGoToStep(${feesStep.stepNo})">
                 <i data-lucide="edit-3"></i> Edit
               </button>
@@ -1165,10 +1132,11 @@
         `;
       }
 
-      // 6. Application Details & Declaration Status Card
+      // Application Details & Declaration Status Card
       const dateVal = values.applicationDate || '—';
       const placeVal = values.applicationPlace || '—';
       const decChecked = document.getElementById('declaration-check')?.checked;
+      const decStep = wizard.stepMeta.find(m => m.isDeclarationStep);
 
       html += `
         <div class="wizard-review-card">
@@ -1203,7 +1171,9 @@
 
     function readValues() {
       const values = {};
-      allFields().forEach((f) => {
+      const activeFields = fields.filter(f => f.isActive !== false);
+
+      activeFields.forEach((f) => {
         const type = f.fieldType || 'text';
         if (type === 'file') return;
         const el = document.getElementById(`fld-${f.fieldKey}`);
@@ -1223,8 +1193,9 @@
 
     async function uploadAttachments(values, formNo) {
       const folder = `admissions/${String(formNo).replace(/[^A-Za-z0-9]/g, '-')}`;
-      for (const f of allFields()) {
-        if ((f.fieldType || 'text') !== 'file') continue;
+      const activeFiles = fields.filter(f => f.isActive !== false && (f.fieldType || 'text') === 'file');
+
+      for (const f of activeFiles) {
         const input = document.getElementById(`fld-${f.fieldKey}`);
         const file = input && input.files && input.files[0];
         if (!file) { values[f.fieldKey] = ''; continue; }
@@ -1240,21 +1211,20 @@
     }
 
     function a4DetailsHtml(values) {
-      const photoKey = resolvePhotoField().fieldKey;
-      const { candidateFields, parentFields, contactFields, academicAndDocs } = partitionFieldsForWizard();
-
-      const sections = [
-        { name: 'Candidate Particulars', list: candidateFields },
-        { name: 'Parent Particulars', list: parentFields },
-        { name: 'Contact & Residential Address', list: contactFields },
-        { name: 'Academic Record & Documents', list: academicAndDocs }
-      ];
+      const activeFields = fields.filter(f => f.isActive !== false);
+      const sectionMap = new Map();
+      activeFields.forEach(f => {
+        const s = (f.section || 'General Information').trim();
+        if (!sectionMap.has(s)) sectionMap.set(s, []);
+        sectionMap.get(s).push(f);
+      });
 
       let html = '';
-      sections.forEach(({ name, list }) => {
-        html += `<div style="font-size:12px;font-weight:800;text-decoration:underline;margin:8px 0 4px;">${esc(name)} :</div>
+      sectionMap.forEach((list, secName) => {
+        html += `<div style="font-size:12px;font-weight:800;text-decoration:underline;margin:8px 0 4px;">${esc(secName)} :</div>
           <table style="width:100%;border-collapse:collapse;font-size:10.5px;margin-bottom:6px;">`;
         list.forEach((f) => {
+          if (f.fieldType === 'file' && (f.fieldKey === 'photo' || /photo|photograph/i.test(f.label))) return;
           const val = values[f.fieldKey];
           const isFile = (f.fieldType || 'text') === 'file';
           const shown = isFile
@@ -1328,7 +1298,8 @@
     }
 
     async function applyA4Photo(values) {
-      const photoKey = resolvePhotoField().fieldKey;
+      const photoField = fields.find(f => (f.fieldType === 'file' && (f.fieldKey === 'photo' || /photo|photograph/i.test(f.label))));
+      const photoKey = photoField ? photoField.fieldKey : 'photo';
       const photoUrl = values[photoKey];
       const a4Photo = document.getElementById('a4-photo');
       const admitPhoto = document.getElementById('admit-photo');
@@ -1351,7 +1322,7 @@
 
       const decCheck = document.getElementById('declaration-check');
       if (!decCheck || !decCheck.checked) {
-        const decMeta = wizard.stepMeta.find(m => m.id === 'declaration');
+        const decMeta = wizard.stepMeta.find(m => m.isDeclarationStep);
         if (decMeta) wizardGoToStep(decMeta.stepNo);
         UIComponents.showToast('Please check the declaration box before submitting.', 'warning');
         return;
@@ -1455,21 +1426,81 @@
 
       const elA4Sess = document.getElementById('a4-session-text');
       if (elA4Sess) elA4Sess.innerText = sessionText;
+
+      // Notice Banner
+      if (settings.showNotice && settings.noticeText) {
+        const slot = document.getElementById('admission-notice-slot');
+        if (slot) {
+          slot.innerHTML = `
+            <div style="background:#FFFBEB; border:1px solid #FCD34D; border-left:4px solid #F59E0B; border-radius:10px; padding:12px 16px; display:flex; align-items:flex-start; gap:12px;">
+              <i data-lucide="bell-ring" style="width:20px; height:20px; color:#D97706; flex-shrink:0; margin-top:2px;"></i>
+              <div style="font-size:0.88rem; color:#92400E; line-height:1.5;">
+                <strong>Institutional Announcement:</strong> ${esc(settings.noticeText)}
+              </div>
+            </div>
+          `;
+          slot.style.display = 'block';
+        }
+      }
+
+      // SHOW THE VIDEO IN SIDEBAR
+      const videoUrl = settings.instructionVideoUrl || settings.guideVideoUrl || '';
+      if (videoUrl && settings.showInstructionVideo !== false) {
+        const sideVideoCard = document.getElementById('side-video-card');
+        const sideVideoContainer = document.getElementById('side-video-container');
+        const sideVideoTitle = document.getElementById('side-video-title');
+
+        if (sideVideoCard && sideVideoContainer) {
+          if (sideVideoTitle) sideVideoTitle.innerText = settings.instructionVideoTitle || 'Admission Video Guide';
+          sideVideoContainer.innerHTML = renderVideoPlayerHtml(videoUrl, settings.instructionVideoTitle || 'How to Fill Admission Form', settings.instructionVideoRatio || 'auto');
+          sideVideoCard.style.display = 'block';
+        }
+      }
+
+      // Fee structure button visibility in Top Nav and Sidebar
+      const showFees = settings.showFeeStructure === true && Array.isArray(fees) && fees.length > 0;
+      const btnFees = document.getElementById('btn-show-fees');
+      if (btnFees) {
+        btnFees.style.display = showFees ? 'inline-flex' : 'none';
+      }
+      const sideBtnFees = document.getElementById('side-btn-fees');
+      if (sideBtnFees) {
+        sideBtnFees.style.display = showFees ? 'inline-flex' : 'none';
+      }
+
+      const sideGuidanceText = document.getElementById('side-guidance-text');
+      if (sideGuidanceText) {
+        sideGuidanceText.innerText = showFees
+          ? 'Review the official admission rules, walkthrough video, fee structure, and guidelines for the current session.'
+          : 'Review the official admission rules, walkthrough video, and instructions for the current academic session.';
+      }
+
+      // Show guidelines button in top nav
+      const btnGuidelines = document.getElementById('btn-show-guidelines');
+      if (btnGuidelines) {
+        btnGuidelines.style.display = 'inline-flex';
+      }
     }
 
     function openGuidelinesModal() {
       const instructions = (settings.instructions && settings.instructions.length)
         ? settings.instructions
         : DEFAULT_INSTRUCTIONS;
-      const videoUrl = settings.guideVideoUrl || '';
-      const embedUrl = getEmbedVideoUrl(videoUrl);
+      const videoUrl = settings.instructionVideoUrl || settings.guideVideoUrl || '';
 
-      const itemsHtml = instructions.map(t => `<li style="padding:6px 0; border-bottom:1px solid var(--border-color); display:flex; gap:8px;"><i data-lucide="check-circle-2" style="width:16px;height:16px;color:#16a34a;flex-shrink:0;margin-top:2px;"></i> <span>${esc(t)}</span></li>`).join('');
+      const itemsHtml = instructions.map(t => `<li style="padding:7px 0; border-bottom:1px solid var(--border-color); display:flex; gap:10px;"><i data-lucide="check-circle-2" style="width:16px;height:16px;color:#16a34a;flex-shrink:0;margin-top:2px;"></i> <span style="font-size:0.88rem; line-height:1.5;">${esc(t)}</span></li>`).join('');
+
+      let videoSectionHtml = '';
+      if (videoUrl && settings.showInstructionVideo !== false) {
+        videoSectionHtml = renderVideoPlayerHtml(videoUrl, settings.instructionVideoTitle || 'How to Fill Admission Application Form', settings.instructionVideoRatio || 'auto');
+      }
 
       const bodyHtml = `
         <div style="font-size:0.9rem; color:var(--text-main); line-height:1.5;">
-          ${renderVideoPlayerHtml(embedUrl)}
-          <h4 style="font-size:0.95rem; font-weight:700; margin-bottom:8px;">General Admission Guidelines</h4>
+          ${videoSectionHtml}
+          <h4 style="font-size:0.95rem; font-weight:800; margin:16px 0 10px 0; display:flex; align-items:center; gap:8px;">
+            <i data-lucide="list-checks" style="width:18px;height:18px;color:#16a34a;"></i> Official Admission Guidelines
+          </h4>
           <ul style="list-style:none; padding:0; margin:0 0 16px 0;">${itemsHtml}</ul>
         </div>
       `;
@@ -1477,12 +1508,14 @@
       UIComponents.openModal({
         title: 'Admission Guidelines & Video Walkthrough',
         bodyHtml,
-        maxWidth: '640px'
+        maxWidth: '660px'
       });
       UIComponents.refreshIcons();
     }
 
     function openFeeStructureModal() {
+      if (!settings || settings.showFeeStructure !== true) return;
+
       let feesList = fees;
       if (!feesList || !feesList.length) {
         feesList = [
@@ -1568,19 +1601,21 @@
       // Top Action Buttons
       const btnGuidelines = document.getElementById('btn-show-guidelines');
       if (btnGuidelines) {
-        btnGuidelines.style.display = 'inline-flex';
         btnGuidelines.addEventListener('click', openGuidelinesModal);
       }
       const sideBtnGuidelines = document.getElementById('side-btn-guidelines');
-      if (sideBtnGuidelines) sideBtnGuidelines.addEventListener('click', openGuidelinesModal);
+      if (sideBtnGuidelines) {
+        sideBtnGuidelines.addEventListener('click', openGuidelinesModal);
+      }
 
       const btnFees = document.getElementById('btn-show-fees');
       if (btnFees) {
-        btnFees.style.display = 'inline-flex';
         btnFees.addEventListener('click', openFeeStructureModal);
       }
       const sideBtnFees = document.getElementById('side-btn-fees');
-      if (sideBtnFees) sideBtnFees.addEventListener('click', openFeeStructureModal);
+      if (sideBtnFees) {
+        sideBtnFees.addEventListener('click', openFeeStructureModal);
+      }
 
       // Back to Form or Success Screen from Print Preview
       document.getElementById('btn-back-to-form').addEventListener('click', () => {
