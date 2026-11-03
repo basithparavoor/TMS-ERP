@@ -317,18 +317,6 @@ class AppController {
         <i data-lucide="file-text" style="color: #16a34a;"></i>
         <span>Admission Form (A4)</span>
       </a>
-      <a class="nav-item" href="teacher-portal.html" target="_blank" data-tooltip="Faculty Portal">
-        <i data-lucide="external-link"></i>
-        <span>Faculty Portal</span>
-      </a>
-      <a class="nav-item" href="student-portal.html" target="_blank" data-tooltip="Student Portal">
-        <i data-lucide="external-link"></i>
-        <span>Student Portal</span>
-      </a>
-      <a class="nav-item" href="parent-portal.html" target="_blank" data-tooltip="Parent Portal">
-        <i data-lucide="external-link"></i>
-        <span>Parent Portal</span>
-      </a>
     `;
 
     nav.innerHTML = html;
