@@ -13,6 +13,7 @@ import { TMS_LOGO } from './logo.js';
 import { admissionService, DEFAULT_INSTRUCTIONS, DEFAULT_POPUP_INSTRUCTIONS, getEmbedVideoUrl, renderVideoPlayerHtml } from './admission-service.js';
 import { notificationService } from './notification-service.js';
 import { brandingService } from './branding-service.js';
+import { WhatsAppService } from './whatsapp-service.js';
 import { downloadCsv, exportPdf, formatPdfFilename, kvTable } from './export-utils.js';
 
 const esc = (v) => UIComponents.escapeHtml(v);
@@ -432,7 +433,8 @@ export class AdminModule {
         <td>${payBadge(a.paymentStatus)}</td>
         <td>${statusBadge(a.status)}</td>
         <td style="white-space:nowrap;">
-          <button class="btn btn-secondary btn-sm btn-view-app" data-id="${esc(a.id)}" title="Open"><i data-lucide="eye"></i></button>
+          <button class="btn btn-secondary btn-sm btn-view-app" data-id="${esc(a.id)}" title="Open Review"><i data-lucide="eye"></i></button>
+          <button class="btn btn-secondary btn-sm btn-edit-app" data-id="${esc(a.id)}" title="Edit Application Data" style="color:#0284c7;"><i data-lucide="edit-3"></i></button>
           <button class="btn btn-secondary btn-sm btn-form-app" data-id="${esc(a.id)}" title="View as Form"><i data-lucide="file-text"></i></button>
           <button class="btn btn-secondary btn-sm btn-print-app" data-id="${esc(a.id)}" title="Print PDF"><i data-lucide="printer"></i></button>
           <button class="btn btn-secondary btn-sm btn-del-single-app" data-id="${esc(a.id)}" title="Delete Application" style="color:var(--danger, #ef4444);"><i data-lucide="trash-2"></i></button>
@@ -448,6 +450,8 @@ export class AdminModule {
       }));
     body.querySelectorAll('.btn-view-app').forEach((b) =>
       b.addEventListener('click', () => this.openApplicationModal(b.dataset.id)));
+    body.querySelectorAll('.btn-edit-app').forEach((b) =>
+      b.addEventListener('click', () => this.openEditApplicationModal(b.dataset.id)));
     body.querySelectorAll('.btn-form-app').forEach((b) =>
       b.addEventListener('click', () => this.showApplicationForm(b.dataset.id)));
     body.querySelectorAll('.btn-print-app').forEach((b) =>
@@ -470,7 +474,10 @@ export class AdminModule {
     body.querySelectorAll('.app-photo-thumb').forEach((img) =>
       img.addEventListener('click', () => {
         const app = rows.find((a) => (a.payload || {}).photo === img.dataset.path);
-        if (app) this.openApplicationModal(app.id);
+        this.openFilePreviewModal({
+          title: (app ? (app.studentName || app.appId) : 'Applicant') + ' - Photograph',
+          path: img.dataset.path
+        });
       }));
 
     this.updateBulkBar();
@@ -593,8 +600,17 @@ export class AdminModule {
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; padding:10px 12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;">
           <div>
             <div style="font-weight:700; font-size:0.8rem; color:#1e293b;">${esc(f.label)}</div>
-            ${raw ? `<a href="#" class="doc-link" data-path="${esc(raw)}" style="font-size:0.76rem; color:#2563eb; text-decoration:none; display:inline-flex; align-items:center; gap:4px; margin-top:2px;"><i data-lucide="file-text" style="width:12px;height:12px;"></i> View Attached File</a>`
-                   : '<span style="font-size:0.75rem; color:var(--text-muted);">Not attached</span>'}
+            ${raw ? `
+              <div style="display:flex; gap:8px; align-items:center; margin-top:4px; flex-wrap:wrap;">
+                <button type="button" class="btn btn-secondary btn-sm btn-preview-doc-file" data-path="${esc(raw)}" data-title="${esc(f.label)}" style="font-size:0.74rem; padding:2px 8px; color:#2563eb; border-color:#bfdbfe; font-weight:600;">
+                  <i data-lucide="eye" style="width:12px;height:12px;"></i> Preview File
+                </button>
+                <a href="#" class="btn btn-secondary btn-sm btn-download-doc-file" data-path="${esc(raw)}" style="font-size:0.74rem; padding:2px 8px; color:#475569; text-decoration:none;">
+                  <i data-lucide="download" style="width:12px;height:12px;"></i> Download
+                </a>
+                <span class="font-mono" style="font-size:0.7rem; color:#64748b; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${esc(String(raw).split('/').pop())}</span>
+              </div>
+            ` : '<span style="font-size:0.75rem; color:var(--text-muted); font-style:italic;">Not attached</span>'}
           </div>
           <div style="display:flex; align-items:center; gap:6px;">
             ${verBadge}
@@ -641,6 +657,7 @@ export class AdminModule {
               <span>Entered by: <strong>${esc(app.submittedByName || 'Self / Public')}</strong></span>
             </div>
             <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-edit-modal-top" style="color:#0284c7; border-color:#bae6fd; font-weight:700;"><i data-lucide="edit-3"></i> Edit Application</button>
               ${statusBadge(app.status)}
               ${payBadge(app.paymentStatus)}
               ${isEnrolled ? `<span class="badge badge-success" style="font-weight:700;"><i data-lucide="graduation-cap"></i> Enrolled: ${esc(app.enrolledAdmissionNo || 'Student')}</span>` : ''}
@@ -676,8 +693,9 @@ export class AdminModule {
         <div style="display:flex; flex-direction:column; gap:16px;">
           <!-- Profile Card -->
           <div class="card" style="padding:16px 18px; border:1px solid var(--border-color); border-radius:10px; background:#fff; margin:0;">
-            <div style="font-weight:800; font-size:0.92rem; color:#15803d; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
-              <i data-lucide="user-check" style="width:16px; height:16px;"></i> Applicant &amp; Family Dossier
+            <div style="font-weight:800; font-size:0.92rem; color:#15803d; margin-bottom:12px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;">
+              <span style="display:flex; align-items:center; gap:8px;"><i data-lucide="user-check" style="width:16px; height:16px;"></i> Applicant &amp; Family Dossier</span>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-edit-dossier-card" style="font-size:0.75rem; padding:2px 8px; color:#0284c7; border-color:#bae6fd; font-weight:700;"><i data-lucide="edit-3"></i> Edit Data</button>
             </div>
             <div class="table-responsive" style="max-height:480px; overflow-y:auto; border:1px solid var(--border-color); border-radius:8px;">
               <table class="tms-table" style="font-size:0.82rem; margin:0;">
@@ -803,6 +821,8 @@ export class AdminModule {
               </div>
               <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
                 <button type="button" class="btn btn-secondary btn-sm" id="btn-save-credential"><i data-lucide="save"></i> Save</button>
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-copy-parent-cred" style="color:#0284c7;"><i data-lucide="share-2"></i> Copy Login Message</button>
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-wa-parent-cred" style="color:#16a34a;"><i data-lucide="send"></i> WhatsApp</button>
                 <button type="button" class="btn btn-secondary btn-sm" id="btn-resend-credential"><i data-lucide="send"></i> Resend</button>
                 ${(credential.userId || app.parentUserId) ? '' : '<button type="button" class="btn btn-primary btn-sm" id="btn-activate-credential"><i data-lucide="key-round"></i> Activate Login</button>'}
                 <button type="button" class="btn btn-secondary btn-sm" id="btn-delete-credential" style="color:#ef4444; margin-left:auto;"><i data-lucide="trash-2"></i> Delete</button>
@@ -905,6 +925,78 @@ export class AdminModule {
         this.openApplicationModal(app.id);
       });
     });
+    // Edit application button listeners
+    document.getElementById('btn-edit-modal-top')?.addEventListener('click', () => {
+      UIComponents.closeModal();
+      this.openEditApplicationModal(app.id);
+    });
+    document.getElementById('btn-edit-dossier-card')?.addEventListener('click', () => {
+      UIComponents.closeModal();
+      this.openEditApplicationModal(app.id);
+    });
+
+    // Applicant photo click opens File Preview modal
+    document.getElementById('app-photo-img')?.addEventListener('click', () => {
+      if (photoPath) {
+        this.openFilePreviewModal({
+          title: `${app.studentName || 'Candidate'} — Photograph`,
+          path: photoPath
+        });
+      }
+    });
+
+    // Document preview buttons
+    document.querySelectorAll('.btn-preview-doc-file').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        this.openFilePreviewModal({
+          title: btn.dataset.title,
+          path: btn.dataset.path
+        });
+      });
+    });
+
+    // Document direct download buttons
+    document.querySelectorAll('.btn-download-doc-file').forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const url = await admissionService.getSignedUrl('admission-docs', btn.dataset.path, 3600) ||
+                    admissionService.getPublicUrl('admission-docs', btn.dataset.path);
+        if (url) window.open(url, '_blank');
+        else UIComponents.showToast('Storage link unavailable.', 'warning');
+      });
+    });
+
+    // Parent login credentials copy & WhatsApp share
+    document.getElementById('btn-copy-parent-cred')?.addEventListener('click', () => {
+      const u = document.getElementById('cred-username')?.value.trim() || credential?.username;
+      const p = document.getElementById('cred-password')?.value || credential?.password;
+      this.copyCredentialMessageToClipboard({
+        name: app.guardianName || app.studentName || 'Parent',
+        role: 'parent',
+        username: u,
+        password: p,
+        customUrl: `${this.getCredentialShareConfig().domain}/login.html`
+      });
+    });
+
+    document.getElementById('btn-wa-parent-cred')?.addEventListener('click', () => {
+      const u = document.getElementById('cred-username')?.value.trim() || credential?.username;
+      const p = document.getElementById('cred-password')?.value || credential?.password;
+      const msg = this.compileCredentialMessage({
+        name: app.guardianName || app.studentName || 'Parent',
+        role: 'parent',
+        username: u,
+        password: p,
+        customUrl: `${this.getCredentialShareConfig().domain}/login.html`
+      });
+      const ph = WhatsAppService.cleanPhone(app.phone);
+      if (ph) {
+        window.open(`https://wa.me/${ph}?text=${encodeURIComponent(msg)}`, '_blank');
+      } else {
+        window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+      }
+    });
+
     const delModalBtn = document.getElementById('btn-app-delete-modal');
     if (delModalBtn) {
       delModalBtn.addEventListener('click', async () => {
@@ -3036,9 +3128,14 @@ export class AdminModule {
 
     tabContent.innerHTML = `
       <div class="card">
-        <div class="card-header">
+        <div class="card-header" style="flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between;">
           <div>
             <h3 class="card-title">Users &amp; Roles</h3>
+            <p class="card-desc">Every account in the system — including staff and parent logins created elsewhere. Use <strong>Edit Details</strong> to change a user's profile, photo, class assignment or password.</p>
+          </div>
+          <div>
+            <button class="btn btn-secondary btn-sm" id="btn-config-cred-share"><i data-lucide="message-square"></i> Customize Share Message</button>
+          </div>
             <p class="card-desc">Every account in the system — including staff and parent logins created elsewhere. Use <strong>Edit Details</strong> to change a user's profile, photo, class assignment or password. To make a staff member an Office Boy (admission data entry), set their role to <strong>Office Boy</strong>.</p>
           </div>
         </div>
@@ -3060,9 +3157,21 @@ export class AdminModule {
                 <td class="font-mono" style="font-size:0.78rem;">${esc(p.email || '—')}</td>
                 <td style="font-size:0.78rem;">
                   ${login && login.username
-                    ? `<span class="font-mono">${esc(login.username)}</span>
-                       <button class="btn btn-secondary btn-sm btn-reveal-pass" data-user="${esc(p.id)}" title="Show password" style="padding:2px 6px;"><i data-lucide="eye"></i></button>
-                       <span class="user-pass font-mono" data-user="${esc(p.id)}" style="display:none; color:#b45309;">${esc(login.password || '—')}</span>`
+                    ? `<div style="display:flex; flex-direction:column; gap:4px;">
+                         <div style="display:flex; align-items:center; gap:6px;">
+                           <span class="font-mono" style="font-weight:700;">${esc(login.username)}</span>
+                           <button class="btn btn-secondary btn-sm btn-reveal-pass" data-user="${esc(p.id)}" title="Show password" style="padding:1px 5px;"><i data-lucide="eye" style="width:12px;height:12px;"></i></button>
+                           <span class="user-pass font-mono" data-user="${esc(p.id)}" style="display:none; color:#b45309; font-weight:700;">${esc(login.password || '—')}</span>
+                         </div>
+                         <div style="display:flex; gap:4px; align-items:center; margin-top:2px;">
+                           <button class="btn btn-secondary btn-sm btn-copy-user-cred" data-user="${esc(p.id)}" title="Copy login message for this user" style="padding:1px 6px; font-size:0.72rem; color:#0284c7; border-color:#bae6fd;">
+                             <i data-lucide="share-2" style="width:11px;height:11px;"></i> Copy
+                           </button>
+                           ${p.phone ? `<button class="btn btn-secondary btn-sm btn-wa-user-cred" data-user="${esc(p.id)}" title="Share login via WhatsApp" style="padding:1px 6px; font-size:0.72rem; color:#16a34a; border-color:#bbf7d0;">
+                             <i data-lucide="send" style="width:11px;height:11px;"></i> WA
+                           </button>` : ''}
+                         </div>
+                       </div>`
                     : '<span style="color:var(--text-muted);">—</span>'}
                 </td>
                 <td>
@@ -3091,6 +3200,53 @@ export class AdminModule {
         </div>
       </div>
     `;
+
+    // Credential share settings button
+    document.getElementById('btn-config-cred-share')?.addEventListener('click', () => {
+      this.openCredentialTemplateModal();
+    });
+
+    // Copy user credentials button
+    tabContent.querySelectorAll('.btn-copy-user-cred').forEach((b) => {
+      b.addEventListener('click', () => {
+        const userId = b.dataset.user;
+        const profile = profiles.find((p) => p.id === userId);
+        const login = loginByUser[userId];
+        if (login) {
+          this.copyCredentialMessageToClipboard({
+            name: profile?.name || 'User',
+            role: profile?.role || 'staff',
+            username: login.username,
+            password: login.password,
+            customUrl: `${this.getCredentialShareConfig().domain}/login.html`
+          });
+        }
+      });
+    });
+
+    // WhatsApp user credentials button
+    tabContent.querySelectorAll('.btn-wa-user-cred').forEach((b) => {
+      b.addEventListener('click', () => {
+        const userId = b.dataset.user;
+        const profile = profiles.find((p) => p.id === userId);
+        const login = loginByUser[userId];
+        if (login) {
+          const msg = this.compileCredentialMessage({
+            name: profile?.name || 'User',
+            role: profile?.role || 'staff',
+            username: login.username,
+            password: login.password,
+            customUrl: `${this.getCredentialShareConfig().domain}/login.html`
+          });
+          const ph = WhatsAppService.cleanPhone(profile?.phone);
+          if (ph) {
+            window.open(`https://wa.me/${ph}?text=${encodeURIComponent(msg)}`, '_blank');
+          } else {
+            window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+          }
+        }
+      });
+    });
 
     tabContent.querySelectorAll('.btn-reveal-pass').forEach((b) =>
       b.addEventListener('click', () => {
@@ -4701,6 +4857,711 @@ const safeOn = (id, event, fn) => {
 
     UIComponents.refreshIcons();
   }
-}
 
-export default AdminModule;
+  /* ================================================================== */
+  /* Document & File Previewer Lightbox                                 */
+  /* ================================================================== */
+
+  static async openFilePreviewModal({ title = 'Document Preview', path, url, fileName = '' }) {
+    let overlay = document.getElementById('tms-file-preview-overlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.id = 'tms-file-preview-overlay';
+      overlay.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(15, 23, 42, 0.78); backdrop-filter: blur(6px);
+        z-index: 999999; display: flex; align-items: center; justify-content: center;
+        padding: 16px; box-sizing: border-box;
+      `;
+      document.body.appendChild(overlay);
+
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) overlay.style.display = 'none';
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && overlay.style.display !== 'none') {
+          overlay.style.display = 'none';
+        }
+      });
+    }
+
+    overlay.style.display = 'flex';
+    overlay.innerHTML = `
+      <div style="background:#ffffff; border-radius:12px; width:100%; max-width:980px; max-height:92vh; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 25px 50px -12px rgba(0,0,0,0.4); border:1px solid rgba(255,255,255,0.2);">
+        <div style="padding:14px 18px; border-bottom:1px solid #e2e8f0; display:flex; align-items:center; justify-content:space-between; background:#f8fafc;">
+          <div style="display:flex; align-items:center; gap:10px; min-width:0;">
+            <div style="width:36px; height:36px; border-radius:8px; background:#eff6ff; color:#2563eb; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+              <i data-lucide="file-text" style="width:20px;height:20px;"></i>
+            </div>
+            <div style="min-width:0;">
+              <h4 style="margin:0; font-size:0.95rem; font-weight:700; color:#1e293b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(title)}</h4>
+              <p style="margin:0; font-size:0.75rem; color:#64748b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(fileName || path || 'Loading document...')}</p>
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <div id="tms-preview-img-controls" style="display:none; align-items:center; gap:4px; margin-right:8px; padding-right:8px; border-right:1px solid #e2e8f0;">
+              <button class="btn btn-secondary btn-sm" id="btn-zoom-in" title="Zoom In" style="padding:4px 8px;"><i data-lucide="zoom-in" style="width:14px;height:14px;"></i></button>
+              <button class="btn btn-secondary btn-sm" id="btn-zoom-out" title="Zoom Out" style="padding:4px 8px;"><i data-lucide="zoom-out" style="width:14px;height:14px;"></i></button>
+              <button class="btn btn-secondary btn-sm" id="btn-rotate-img" title="Rotate 90°" style="padding:4px 8px;"><i data-lucide="rotate-cw" style="width:14px;height:14px;"></i></button>
+              <button class="btn btn-secondary btn-sm" id="btn-reset-img" title="Reset View" style="padding:4px 8px;"><i data-lucide="maximize-2" style="width:14px;height:14px;"></i></button>
+            </div>
+            <a id="btn-download-preview" class="btn btn-secondary btn-sm" style="display:inline-flex; align-items:center; gap:4px; padding:5px 10px; font-size:0.78rem;" download target="_blank">
+              <i data-lucide="download" style="width:14px;height:14px;"></i> Download
+            </a>
+            <a id="btn-open-tab-preview" class="btn btn-secondary btn-sm" style="display:inline-flex; align-items:center; gap:4px; padding:5px 10px; font-size:0.78rem;" target="_blank">
+              <i data-lucide="external-link" style="width:14px;height:14px;"></i> Open
+            </a>
+            <button class="icon-btn" id="btn-close-preview" style="padding:6px; border-radius:6px; color:#64748b; cursor:pointer;"><i data-lucide="x" style="width:18px;height:18px;"></i></button>
+          </div>
+        </div>
+        <div id="tms-preview-content" style="flex:1; overflow:auto; background:#0f172a; min-height:420px; display:flex; align-items:center; justify-content:center; position:relative;">
+          <div style="color:#94a3b8; font-size:0.85rem; display:flex; align-items:center; gap:8px;">
+            <i data-lucide="loader-2" class="spin"></i> Loading document...
+          </div>
+        </div>
+      </div>
+    `;
+
+    UIComponents.refreshIcons();
+    document.getElementById('btn-close-preview')?.addEventListener('click', () => { overlay.style.display = 'none'; });
+
+    let finalUrl = url;
+    if (!finalUrl && path) {
+      finalUrl = await admissionService.getSignedUrl('admission-docs', path, 7200);
+      if (!finalUrl) finalUrl = admissionService.getPublicUrl('admission-docs', path);
+    }
+
+    const contentEl = document.getElementById('tms-preview-content');
+    const dlBtn = document.getElementById('btn-download-preview');
+    const openBtn = document.getElementById('btn-open-tab-preview');
+    const imgControls = document.getElementById('tms-preview-img-controls');
+
+    if (!finalUrl) {
+      if (contentEl) {
+        contentEl.style.background = '#f8fafc';
+        contentEl.innerHTML = `
+          <div style="text-align:center; padding:40px; color:#64748b;">
+            <i data-lucide="alert-circle" style="width:48px;height:48px;color:#f59e0b;margin-bottom:12px;"></i>
+            <h5 style="margin:0 0 6px 0; color:#1e293b;">Document Preview Unavailable</h5>
+            <p style="font-size:0.8rem; margin:0 0 16px 0;">The attached file could not be loaded from storage (${esc(path || 'unknown')}).</p>
+          </div>
+        `;
+        UIComponents.refreshIcons();
+      }
+      return;
+    }
+
+    if (dlBtn) dlBtn.href = finalUrl;
+    if (openBtn) openBtn.href = finalUrl;
+
+    const lowerPath = (path || finalUrl || '').toLowerCase();
+    const isImage = lowerPath.includes('.jpg') || lowerPath.includes('.jpeg') || lowerPath.includes('.png') ||
+                    lowerPath.includes('.webp') || lowerPath.includes('.gif') || lowerPath.includes('.svg') ||
+                    finalUrl.startsWith('data:image/');
+    const isPdf = lowerPath.includes('.pdf') || finalUrl.startsWith('data:application/pdf');
+
+    if (isImage) {
+      if (imgControls) imgControls.style.display = 'flex';
+      let zoom = 1;
+      let rot = 0;
+      contentEl.innerHTML = `
+        <div style="width:100%; height:100%; min-height:480px; display:flex; align-items:center; justify-content:center; overflow:auto; padding:20px;">
+          <img id="tms-target-img" src="${finalUrl}" alt="Preview" style="max-width:100%; max-height:75vh; object-fit:contain; transition:transform 0.15s ease-out; transform:scale(1) rotate(0deg); border-radius:4px; box-shadow:0 10px 25px rgba(0,0,0,0.5);">
+        </div>
+      `;
+
+      const targetImg = document.getElementById('tms-target-img');
+      const updateTransform = () => {
+        if (targetImg) targetImg.style.transform = `scale(${zoom}) rotate(${rot}deg)`;
+      };
+
+      document.getElementById('btn-zoom-in')?.addEventListener('click', () => { zoom = Math.min(zoom + 0.25, 3.5); updateTransform(); });
+      document.getElementById('btn-zoom-out')?.addEventListener('click', () => { zoom = Math.max(zoom - 0.25, 0.4); updateTransform(); });
+      document.getElementById('btn-rotate-img')?.addEventListener('click', () => { rot = (rot + 90) % 360; updateTransform(); });
+      document.getElementById('btn-reset-img')?.addEventListener('click', () => { zoom = 1; rot = 0; updateTransform(); });
+    } else if (isPdf) {
+      contentEl.style.background = '#334155';
+      contentEl.innerHTML = `
+        <iframe src="${finalUrl}#toolbar=1" style="width:100%; height:76vh; border:none; background:#ffffff;" title="PDF Preview"></iframe>
+      `;
+    } else {
+      contentEl.style.background = '#f8fafc';
+      contentEl.innerHTML = `
+        <div style="text-align:center; padding:40px; color:#1e293b;">
+          <div style="width:56px; height:56px; border-radius:12px; background:#eff6ff; color:#2563eb; display:inline-flex; align-items:center; justify-content:center; margin-bottom:16px;">
+            <i data-lucide="file-check" style="width:28px;height:28px;"></i>
+          </div>
+          <h4 style="margin:0 0 8px 0;">Attached File</h4>
+          <p style="font-size:0.82rem; color:#64748b; margin:0 0 20px 0;">${esc(path || fileName)}</p>
+          <div style="display:flex; justify-content:center; gap:10px;">
+            <a href="${finalUrl}" target="_blank" class="btn btn-primary btn-sm"><i data-lucide="external-link"></i> Open Document</a>
+            <a href="${finalUrl}" download class="btn btn-secondary btn-sm"><i data-lucide="download"></i> Download File</a>
+          </div>
+        </div>
+      `;
+    }
+    UIComponents.refreshIcons();
+  }
+
+  /* ================================================================== */
+  /* Admission Application Data Editor                                  */
+  /* ================================================================== */
+
+  static async openEditApplicationModal(appId) {
+    let app = (this._apps || []).find((a) => a.id === appId);
+    if (!app) {
+      app = await admissionService.getApplication(appId);
+    }
+    if (!app) {
+      UIComponents.showToast('Application record not found.', 'danger');
+      return;
+    }
+
+    const fields = await admissionService.listFields();
+    const payload = app.payload || {};
+
+    const getVal = (key, fallback = '') => {
+      if (payload[key] !== undefined && payload[key] !== null) return payload[key];
+      if (app[key] !== undefined && app[key] !== null) return app[key];
+      return fallback;
+    };
+
+    const classOptions = ['Nursery', 'LKG', 'UKG', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
+    const currentClass = getVal('applyingClass', app.grade || '');
+
+    const docFields = fields.filter((f) => (f.fieldType || 'text') === 'file');
+    const standardDocKeys = ['photo', 'birthCertificate', 'aadhaarDoc', 'marksheet'];
+    const standardDocLabels = {
+      photo: 'Applicant Photo',
+      birthCertificate: 'Birth Certificate',
+      aadhaarDoc: 'Aadhaar / ID Card',
+      marksheet: 'Previous Marksheet / Transfer Certificate'
+    };
+
+    const docFieldsToRender = [...docFields];
+    standardDocKeys.forEach(k => {
+      if (!docFieldsToRender.some(f => f.fieldKey === k)) {
+        docFieldsToRender.push({ fieldKey: k, label: standardDocLabels[k], fieldType: 'file' });
+      }
+    });
+
+    const docsHtml = docFieldsToRender.map((f) => {
+      const curPath = getVal(f.fieldKey, '');
+      return `
+        <div style="padding:12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; display:flex; flex-direction:column; gap:8px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+            <strong style="font-size:0.8rem; color:#1e293b;">${esc(f.label)}</strong>
+            ${curPath ? `
+              <div style="display:flex; gap:6px; align-items:center;">
+                <span class="badge badge-success" style="font-size:0.68rem;"><i data-lucide="check"></i> Attached</span>
+                <button type="button" class="btn btn-secondary btn-sm btn-edit-preview-doc" data-path="${esc(curPath)}" data-title="${esc(f.label)}" style="font-size:0.72rem; padding:2px 8px; color:#2563eb; border-color:#bfdbfe;">
+                  <i data-lucide="eye" style="width:12px;height:12px;"></i> Preview
+                </button>
+              </div>
+            ` : '<span style="font-size:0.72rem; color:#94a3b8; font-style:italic;">No file attached</span>'}
+          </div>
+          <div>
+            <label style="font-size:0.7rem; color:#64748b; display:block; margin-bottom:3px;">Replace or Upload File:</label>
+            <input type="file" class="form-input form-input-sm edit-doc-file" data-key="${esc(f.fieldKey)}" accept="image/*,application/pdf" style="font-size:0.75rem;">
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    const bodyHtml = `
+      <form id="edit-app-form" style="display:flex; flex-direction:column; gap:16px;">
+        <!-- Status & Meta Bar -->
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:12px; background:#f0fdf4; border:1px solid #bbf7d0; padding:12px 16px; border-radius:8px;">
+          <div>
+            <label class="form-label" style="font-size:0.75rem; color:#166534; font-weight:700;">Application Status</label>
+            <select class="form-select form-select-sm" id="ea-status">
+              <option value="Submitted" ${app.status === 'Submitted' ? 'selected' : ''}>Submitted</option>
+              <option value="Under Verification" ${app.status === 'Under Verification' ? 'selected' : ''}>Under Verification</option>
+              <option value="Approved" ${app.status === 'Approved' ? 'selected' : ''}>Approved</option>
+              <option value="Rejected" ${app.status === 'Rejected' ? 'selected' : ''}>Rejected</option>
+              <option value="Enrolled" ${app.status === 'Enrolled' ? 'selected' : ''}>Enrolled</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label" style="font-size:0.75rem; color:#166534; font-weight:700;">Payment Status</label>
+            <select class="form-select form-select-sm" id="ea-pay-status">
+              <option value="Not Required" ${app.paymentStatus === 'Not Required' ? 'selected' : ''}>Not Required</option>
+              <option value="Pending" ${app.paymentStatus === 'Pending' ? 'selected' : ''}>Pending</option>
+              <option value="Paid" ${app.paymentStatus === 'Paid' ? 'selected' : ''}>Paid</option>
+              <option value="Partial" ${app.paymentStatus === 'Partial' ? 'selected' : ''}>Partial</option>
+              <option value="Waived" ${app.paymentStatus === 'Waived' ? 'selected' : ''}>Waived</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label" style="font-size:0.75rem; color:#166534; font-weight:700;">Total Fees (₹)</label>
+            <input type="number" class="form-input form-input-sm" id="ea-fee-total" value="${esc(app.feeTotal != null ? app.feeTotal : 0)}">
+          </div>
+        </div>
+
+        <!-- Section 1: Candidate Identity -->
+        <div class="card" style="margin:0; padding:14px; border:1px solid var(--border-color); border-radius:8px;">
+          <div style="font-weight:700; font-size:0.85rem; color:#15803d; margin-bottom:12px; display:flex; align-items:center; gap:6px;">
+            <i data-lucide="user" style="width:16px;height:16px;"></i> 1. Candidate Details
+          </div>
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:12px;">
+            <div>
+              <label class="form-label" style="font-size:0.75rem;">Candidate's Full Name *</label>
+              <input class="form-input form-input-sm" id="ea-candidate-name" value="${esc(getVal('candidateName', app.studentName || ''))}" required>
+            </div>
+            <div>
+              <label class="form-label" style="font-size:0.75rem;">Applying for Class *</label>
+              <select class="form-select form-select-sm" id="ea-class">
+                ${classOptions.map((c) => `<option value="${esc(c)}" ${(currentClass === c || app.grade === c) ? 'selected' : ''}>${esc(c)}</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label class="form-label" style="font-size:0.75rem;">Date of Birth</label>
+              <input type="date" class="form-input form-input-sm" id="ea-dob" value="${esc(getVal('dob', app.dob || ''))}">
+            </div>
+            <div>
+              <label class="form-label" style="font-size:0.75rem;">Gender</label>
+              <select class="form-select form-select-sm" id="ea-gender">
+                <option value="Male" ${getVal('gender', app.gender) === 'Male' ? 'selected' : ''}>Male</option>
+                <option value="Female" ${getVal('gender', app.gender) === 'Female' ? 'selected' : ''}>Female</option>
+                <option value="Other" ${getVal('gender', app.gender) === 'Other' ? 'selected' : ''}>Other</option>
+              </select>
+            </div>
+            <div>
+              <label class="form-label" style="font-size:0.75rem;">Blood Group</label>
+              <select class="form-select form-select-sm" id="ea-blood-group">
+                <option value="">Select Blood Group</option>
+                ${['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'].map(b => `<option value="${b}" ${getVal('bloodGroup') === b ? 'selected' : ''}>${b}</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label class="form-label" style="font-size:0.75rem;">Religion</label>
+              <input class="form-input form-input-sm" id="ea-religion" value="${esc(getVal('religion', ''))}">
+            </div>
+            <div>
+              <label class="form-label" style="font-size:0.75rem;">Aadhaar / National ID</label>
+              <input class="form-input form-input-sm font-mono" id="ea-aadhaar" value="${esc(getVal('aadhaar', ''))}">
+            </div>
+            <div>
+              <label class="form-label" style="font-size:0.75rem;">Identification Marks</label>
+              <input class="form-input form-input-sm" id="ea-marks" value="${esc(getVal('identificationMarks', ''))}">
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 2: Guardian Details -->
+        <div class="card" style="margin:0; padding:14px; border:1px solid var(--border-color); border-radius:8px;">
+          <div style="font-weight:700; font-size:0.85rem; color:#15803d; margin-bottom:12px; display:flex; align-items:center; gap:6px;">
+            <i data-lucide="users" style="width:16px;height:16px;"></i> 2. Guardian &amp; Contact Details
+          </div>
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:12px;">
+            <div>
+              <label class="form-label" style="font-size:0.75rem;">Father's / Guardian's Name *</label>
+              <input class="form-input form-input-sm" id="ea-father-name" value="${esc(getVal('fatherName', app.guardianName || ''))}" required>
+            </div>
+            <div>
+              <label class="form-label" style="font-size:0.75rem;">Father's Occupation</label>
+              <input class="form-input form-input-sm" id="ea-father-occ" value="${esc(getVal('fatherOccupation', ''))}">
+            </div>
+            <div>
+              <label class="form-label" style="font-size:0.75rem;">Mother's Name</label>
+              <input class="form-input form-input-sm" id="ea-mother-name" value="${esc(getVal('motherName', ''))}">
+            </div>
+            <div>
+              <label class="form-label" style="font-size:0.75rem;">Mother's Occupation</label>
+              <input class="form-input form-input-sm" id="ea-mother-occ" value="${esc(getVal('motherOccupation', ''))}">
+            </div>
+            <div>
+              <label class="form-label" style="font-size:0.75rem;">Mobile / WhatsApp Number *</label>
+              <input class="form-input form-input-sm font-mono" id="ea-phone" value="${esc(getVal('phone', app.phone || ''))}" required>
+            </div>
+            <div>
+              <label class="form-label" style="font-size:0.75rem;">Email Address</label>
+              <input type="email" class="form-input form-input-sm font-mono" id="ea-email" value="${esc(getVal('email', app.email || ''))}">
+            </div>
+            <div>
+              <label class="form-label" style="font-size:0.75rem;">Annual Family Income</label>
+              <input type="number" class="form-input form-input-sm" id="ea-income" value="${esc(getVal('fatherIncome', getVal('annualIncome', '')))}">
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 3: Address & School -->
+        <div class="card" style="margin:0; padding:14px; border:1px solid var(--border-color); border-radius:8px;">
+          <div style="font-weight:700; font-size:0.85rem; color:#15803d; margin-bottom:12px; display:flex; align-items:center; gap:6px;">
+            <i data-lucide="map-pin" style="width:16px;height:16px;"></i> 3. Address &amp; Academic History
+          </div>
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap:12px;">
+            <div>
+              <label class="form-label" style="font-size:0.75rem;">Village / Street</label>
+              <input class="form-input form-input-sm" id="ea-village" value="${esc(getVal('village', ''))}">
+            </div>
+            <div>
+              <label class="form-label" style="font-size:0.75rem;">Post Office (PO)</label>
+              <input class="form-input form-input-sm" id="ea-po" value="${esc(getVal('po', ''))}">
+            </div>
+            <div>
+              <label class="form-label" style="font-size:0.75rem;">Police Station (PS)</label>
+              <input class="form-input form-input-sm" id="ea-ps" value="${esc(getVal('ps', ''))}">
+            </div>
+            <div>
+              <label class="form-label" style="font-size:0.75rem;">District</label>
+              <input class="form-input form-input-sm" id="ea-district" value="${esc(getVal('district', ''))}">
+            </div>
+            <div>
+              <label class="form-label" style="font-size:0.75rem;">PIN Code</label>
+              <input class="form-input form-input-sm font-mono" id="ea-pin" value="${esc(getVal('pin', ''))}">
+            </div>
+            <div>
+              <label class="form-label" style="font-size:0.75rem;">Previous School</label>
+              <input class="form-input form-input-sm" id="ea-prev-school" value="${esc(getVal('previousSchool', ''))}">
+            </div>
+            <div>
+              <label class="form-label" style="font-size:0.75rem;">Last Class Passed</label>
+              <input class="form-input form-input-sm" id="ea-last-class" value="${esc(getVal('lastClass', ''))}">
+            </div>
+            <div>
+              <label class="form-label" style="font-size:0.75rem;">Last Percentage / Marks</label>
+              <input class="form-input form-input-sm" id="ea-last-marks" value="${esc(getVal('lastMarks', ''))}">
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 4: Attached Files -->
+        <div class="card" style="margin:0; padding:14px; border:1px solid var(--border-color); border-radius:8px;">
+          <div style="font-weight:700; font-size:0.85rem; color:#15803d; margin-bottom:12px; display:flex; align-items:center; gap:6px;">
+            <i data-lucide="paperclip" style="width:16px;height:16px;"></i> 4. Attached Files &amp; Uploads
+          </div>
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:12px;">
+            ${docsHtml}
+          </div>
+        </div>
+
+        <!-- Section 5: Remarks -->
+        <div class="card" style="margin:0; padding:14px; border:1px solid var(--border-color); border-radius:8px;">
+          <div style="font-weight:700; font-size:0.85rem; color:#475569; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+            <i data-lucide="message-square" style="width:16px;height:16px;"></i> 5. Verification Remarks / Internal Notes
+          </div>
+          <textarea class="form-textarea" id="ea-remarks" rows="2" style="font-size:0.82rem;" placeholder="Administrative notes visible to reviewers...">${esc(app.remarks || '')}</textarea>
+        </div>
+      </form>
+    `;
+
+    const footerHtml = `
+      <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-cancel-edit-app">Cancel</button>
+        <button type="button" class="btn btn-primary btn-sm" id="btn-save-edit-app"><i data-lucide="save"></i> Save Application Changes</button>
+      </div>
+    `;
+
+    UIComponents.openModal({
+      title: `Edit Application Data — ${app.appId || app.id}`,
+      bodyHtml,
+      footerHtml,
+      maxWidth: '1000px'
+    });
+
+    document.getElementById('btn-cancel-edit-app')?.addEventListener('click', () => {
+      UIComponents.closeModal();
+      this.openApplicationModal(app.id);
+    });
+
+    // Wire document preview buttons inside edit modal
+    document.querySelectorAll('.btn-edit-preview-doc').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        this.openFilePreviewModal({ title: btn.dataset.title, path: btn.dataset.path });
+      });
+    });
+
+    // Wire save button
+    document.getElementById('btn-save-edit-app')?.addEventListener('click', async () => {
+      const saveBtn = document.getElementById('btn-save-edit-app');
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Saving...';
+      UIComponents.refreshIcons();
+
+      try {
+        const candidateName = document.getElementById('ea-candidate-name')?.value.trim();
+        const applyingClass = document.getElementById('ea-class')?.value;
+        const fatherName = document.getElementById('ea-father-name')?.value.trim();
+        const phone = document.getElementById('ea-phone')?.value.trim();
+
+        if (!candidateName || !fatherName || !phone) {
+          UIComponents.showToast('Please fill in required fields: Candidate Name, Father Name, and Mobile Number.', 'warning');
+          saveBtn.disabled = false;
+          saveBtn.innerHTML = '<i data-lucide="save"></i> Save Application Changes';
+          UIComponents.refreshIcons();
+          return;
+        }
+
+        const values = {
+          candidateName,
+          applyingClass,
+          dob: document.getElementById('ea-dob')?.value || '',
+          gender: document.getElementById('ea-gender')?.value || '',
+          bloodGroup: document.getElementById('ea-blood-group')?.value || '',
+          religion: document.getElementById('ea-religion')?.value.trim() || '',
+          aadhaar: document.getElementById('ea-aadhaar')?.value.trim() || '',
+          identificationMarks: document.getElementById('ea-marks')?.value.trim() || '',
+          fatherName,
+          fatherOccupation: document.getElementById('ea-father-occ')?.value.trim() || '',
+          motherName: document.getElementById('ea-mother-name')?.value.trim() || '',
+          motherOccupation: document.getElementById('ea-mother-occ')?.value.trim() || '',
+          phone,
+          email: document.getElementById('ea-email')?.value.trim() || '',
+          fatherIncome: document.getElementById('ea-income')?.value || '',
+          village: document.getElementById('ea-village')?.value.trim() || '',
+          po: document.getElementById('ea-po')?.value.trim() || '',
+          ps: document.getElementById('ea-ps')?.value.trim() || '',
+          district: document.getElementById('ea-district')?.value.trim() || '',
+          pin: document.getElementById('ea-pin')?.value.trim() || '',
+          previousSchool: document.getElementById('ea-prev-school')?.value.trim() || '',
+          lastClass: document.getElementById('ea-last-class')?.value.trim() || '',
+          lastMarks: document.getElementById('ea-last-marks')?.value || ''
+        };
+
+        // Process file uploads
+        const fileInputs = document.querySelectorAll('.edit-doc-file');
+        for (const input of fileInputs) {
+          if (input.files && input.files[0]) {
+            const file = input.files[0];
+            const key = input.dataset.key;
+            const sanitizedName = admissionService.sanitizeFileName(file.name);
+            const uploadPath = `applications/${app.appId || app.id}/${key}-${Date.now()}-${sanitizedName}`;
+            const res = await admissionService.uploadFile('admission-docs', uploadPath, file);
+            if (res && res.path) {
+              values[key] = res.path;
+            } else {
+              // Fallback to base64 data URL
+              const base64 = await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => resolve(null);
+                reader.readAsDataURL(file);
+              });
+              if (base64) values[key] = base64;
+            }
+          }
+        }
+
+        const status = document.getElementById('ea-status')?.value;
+        const paymentStatus = document.getElementById('ea-pay-status')?.value;
+        const feeTotal = parseFloat(document.getElementById('ea-fee-total')?.value) || 0;
+        const remarks = document.getElementById('ea-remarks')?.value.trim() || '';
+
+        await admissionService.updateApplication(app.id, { values, status, paymentStatus, remarks });
+        await dbService.update('admissions_applications', app.id, { feeTotal });
+        await auditService.log('ADMISSION_UPDATED', 'ADMISSIONS', { id: app.id, formNo: app.appId, candidateName }, app.id);
+
+        UIComponents.showToast('Application details updated successfully!', 'success');
+        UIComponents.closeModal();
+
+        const tabContent = document.getElementById('admin-tab-content');
+        await this.refreshApplications(tabContent);
+        this.openApplicationModal(app.id);
+      } catch (err) {
+        console.error('Save application failed:', err);
+        UIComponents.showToast(`Error saving application: ${err.message}`, 'danger');
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<i data-lucide="save"></i> Save Application Changes';
+        UIComponents.refreshIcons();
+      }
+    });
+
+    UIComponents.refreshIcons();
+  }
+
+  /* ================================================================== */
+  /* Credential Sharing & Template Manager                             */
+  /* ================================================================== */
+
+  static getCredentialShareConfig() {
+    let raw = null;
+    try {
+      raw = localStorage.getItem('tms_credential_share_template');
+    } catch (_) {}
+
+    let cfg = null;
+    if (raw) {
+      try { cfg = JSON.parse(raw); } catch (_) {}
+    }
+
+    const defaultDomain = (window && window.location && window.location.origin && !window.location.origin.includes('localhost'))
+      ? window.location.origin
+      : 'https://tms.clubad.space';
+
+    const defaultTemplate = `Assalamu Alaikum / Greetings {name},
+
+Here are your official login credentials for {institution_name}:
+
+• Role: {role}
+• Login ID / Username: {username}
+• Password: {password}
+• Portal Link: {portal_url}
+
+Please keep your login details safe and confidential.`;
+
+    return {
+      template: (cfg && cfg.template) || defaultTemplate,
+      domain: (cfg && cfg.domain) || defaultDomain
+    };
+  }
+
+  static async saveCredentialShareConfig({ template, domain }) {
+    const payload = { template, domain, updatedAt: new Date().toISOString() };
+    try {
+      localStorage.setItem('tms_credential_share_template', JSON.stringify(payload));
+    } catch (_) {}
+    try {
+      await dbService.upsert('app_settings', { id: 'credential_share_template', value: payload });
+    } catch (_) {}
+    UIComponents.showToast('Credential sharing template saved!', 'success');
+  }
+
+  static compileCredentialMessage({ name, role, username, password, customUrl }) {
+    const cfg = this.getCredentialShareConfig();
+    const portalUrl = customUrl || `${cfg.domain}/login.html`;
+    const schoolName = TMS_CONFIG.schoolName || 'Thaiba Model School';
+
+    let msg = cfg.template;
+    msg = msg.replace(/{name}/g, name || 'User');
+    msg = msg.replace(/{role}/g, ROLE_LABELS[role] || role || 'User');
+    msg = msg.replace(/{username}/g, username || '—');
+    msg = msg.replace(/{password}/g, password || '—');
+    msg = msg.replace(/{portal_url}/g, portalUrl);
+    msg = msg.replace(/{domain}/g, cfg.domain);
+    msg = msg.replace(/{institution_name}/g, schoolName);
+
+    return msg;
+  }
+
+  static async copyCredentialMessageToClipboard(opts) {
+    const msg = this.compileCredentialMessage(opts);
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(msg);
+      } else {
+        const ta = document.createElement('textarea');
+        ta.value = msg;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      }
+      UIComponents.showToast(`Login credentials copied for ${opts.name || 'user'}! Ready to paste & share.`, 'success');
+    } catch (e) {
+      UIComponents.showToast('Could not copy to clipboard: ' + e.message, 'danger');
+    }
+  }
+
+  static openCredentialTemplateModal() {
+    const cfg = this.getCredentialShareConfig();
+
+    const sampleProfile = {
+      name: 'Dr. Ahmad Khan',
+      role: 'teacher',
+      username: 'ahmad.khan',
+      password: 'TMS@Secure2026'
+    };
+
+    const previewMsg = this.compileCredentialMessage(sampleProfile);
+
+    const bodyHtml = `
+      <div style="display:flex; flex-direction:column; gap:16px;">
+        <p style="font-size:0.82rem; color:var(--text-muted); margin:0;">
+          Customize the template message used when copying or sharing login credentials to Staff, Parents, or Students via WhatsApp, SMS, or Clipboard.
+        </p>
+
+        <div>
+          <label class="form-label" style="font-size:0.78rem; font-weight:700;">Portal Domain / Link</label>
+          <input class="form-input form-input-sm font-mono" id="cst-domain" value="${esc(cfg.domain)}" placeholder="e.g. https://tms.clubad.space">
+          <small style="font-size:0.7rem; color:var(--text-muted);">The default website address or domain included in the login link.</small>
+        </div>
+
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+            <label class="form-label" style="font-size:0.78rem; font-weight:700; margin:0;">Message Template</label>
+            <div style="display:flex; gap:4px; flex-wrap:wrap;">
+              <span class="badge badge-info cst-tag" data-tag="{name}" style="cursor:pointer;" title="Click to insert">{name}</span>
+              <span class="badge badge-info cst-tag" data-tag="{username}" style="cursor:pointer;" title="Click to insert">{username}</span>
+              <span class="badge badge-info cst-tag" data-tag="{password}" style="cursor:pointer;" title="Click to insert">{password}</span>
+              <span class="badge badge-info cst-tag" data-tag="{role}" style="cursor:pointer;" title="Click to insert">{role}</span>
+              <span class="badge badge-info cst-tag" data-tag="{portal_url}" style="cursor:pointer;" title="Click to insert">{portal_url}</span>
+              <span class="badge badge-info cst-tag" data-tag="{institution_name}" style="cursor:pointer;" title="Click to insert">{institution_name}</span>
+            </div>
+          </div>
+          <textarea class="form-textarea font-mono" id="cst-template" rows="7" style="font-size:0.82rem; line-height:1.45;">${esc(cfg.template)}</textarea>
+        </div>
+
+        <div>
+          <label class="form-label" style="font-size:0.78rem; font-weight:700; color:#15803d; display:flex; align-items:center; gap:6px;">
+            <i data-lucide="eye" style="width:14px;height:14px;"></i> Live Preview
+          </label>
+          <pre id="cst-preview" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px; font-size:0.8rem; white-space:pre-wrap; color:#1e293b; margin:0; max-height:160px; overflow-y:auto;">${esc(previewMsg)}</pre>
+        </div>
+      </div>
+    `;
+
+    const footerHtml = `
+      <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-close-cst">Cancel</button>
+        <button type="button" class="btn btn-primary btn-sm" id="btn-save-cst"><i data-lucide="save"></i> Save Template</button>
+      </div>
+    `;
+
+    UIComponents.openModal({
+      title: 'Credential Sharing Message Settings',
+      bodyHtml,
+      footerHtml,
+      maxWidth: '680px'
+    });
+
+    const updateLivePreview = () => {
+      const template = document.getElementById('cst-template')?.value || '';
+      const domain = document.getElementById('cst-domain')?.value.trim() || window.location.origin;
+      const portalUrl = `${domain}/login.html`;
+      const schoolName = TMS_CONFIG.schoolName || 'Thaiba Model School';
+
+      let out = template;
+      out = out.replace(/{name}/g, sampleProfile.name);
+      out = out.replace(/{role}/g, ROLE_LABELS[sampleProfile.role] || sampleProfile.role);
+      out = out.replace(/{username}/g, sampleProfile.username);
+      out = out.replace(/{password}/g, sampleProfile.password);
+      out = out.replace(/{portal_url}/g, portalUrl);
+      out = out.replace(/{domain}/g, domain);
+      out = out.replace(/{institution_name}/g, schoolName);
+
+      const previewEl = document.getElementById('cst-preview');
+      if (previewEl) previewEl.innerText = out;
+    };
+
+    document.getElementById('cst-template')?.addEventListener('input', updateLivePreview);
+    document.getElementById('cst-domain')?.addEventListener('input', updateLivePreview);
+
+    document.querySelectorAll('.cst-tag').forEach((chip) => {
+      chip.addEventListener('click', () => {
+        const ta = document.getElementById('cst-template');
+        if (!ta) return;
+        const tag = chip.dataset.tag;
+        const start = ta.selectionStart;
+        const end = ta.selectionEnd;
+        ta.value = ta.value.substring(0, start) + tag + ta.value.substring(end);
+        ta.focus();
+        ta.selectionStart = ta.selectionEnd = start + tag.length;
+        updateLivePreview();
+      });
+    });
+
+    document.getElementById('btn-close-cst')?.addEventListener('click', () => UIComponents.closeModal());
+
+    document.getElementById('btn-save-cst')?.addEventListener('click', async () => {
+      const template = document.getElementById('cst-template')?.value || '';
+      const domain = document.getElementById('cst-domain')?.value.trim() || window.location.origin;
+      await this.saveCredentialShareConfig({ template, domain });
+      UIComponents.closeModal();
+    });
+
+    UIComponents.refreshIcons();
+  }
+
+}

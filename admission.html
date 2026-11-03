@@ -22,17 +22,17 @@
     <div class="mesh-glow-2"></div>
   </div>
 
-  <div style="max-width: 900px; margin: 0 auto; position: relative; z-index: 10;">
+  <div class="admission-portal-wrapper">
 
     <!-- Top Action Nav -->
-    <div class="no-print" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+    <div class="admission-top-nav no-print">
       <a href="/login" class="btn btn-secondary btn-sm">
         <i data-lucide="arrow-left"></i> Authorized Staff Login
       </a>
-      <div style="display: flex; gap: 10px; align-items: center;">
+      <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
         <span id="entry-by-badge" class="badge badge-success" style="display: none;"></span>
         <button class="btn btn-secondary btn-sm" id="btn-show-guidelines" style="display: none;">
-          <i data-lucide="book-open"></i> General Guidelines
+          <i data-lucide="book-open"></i> General Guidelines &amp; Video
         </button>
         <button class="btn btn-secondary btn-sm" id="btn-show-fees" style="display: none;">
           <i data-lucide="receipt"></i> Fee Structure
@@ -40,44 +40,165 @@
       </div>
     </div>
 
-    <!-- Interactive Admission Form -->
-    <div class="card no-print" id="interactive-form-card" style="box-shadow: var(--shadow-lg); padding: 32px 28px; margin-bottom: 30px;">
-      <div style="text-align: center; margin-bottom: 24px;">
-        <div id="portal-emblem-container" style="margin-bottom: 8px;"></div>
-        <h2 id="dyn-form-title" style="font-size: 1.5rem; font-weight: 800; color: var(--text-main); text-transform: uppercase;">
-          Admission Application Form
-        </h2>
-        <p style="color: #16a34a; font-weight: 700; font-size: 0.88rem;">
-          <span id="dyn-form-subtitle">Run by : Thaiba Heritage, Kolkata</span> • Academic Session: <span id="dyn-session-text">2027 - 2028</span>
-        </p>
-      </div>
-
-      <form id="tms-admission-form">
-        <!-- Student Photograph -->
-        <div id="student-photo-panel" style="margin-bottom: 22px;"></div>
-
-        <div id="dynamic-form-container"></div>
-
-        <!-- Declaration -->
-        <div style="background: rgba(22, 163, 74, 0.05); border: 1px solid #16a34a; border-radius: var(--radius-md); padding: 16px; margin-bottom: 24px; margin-top: 20px;">
-          <label style="display: flex; gap: 10px; align-items: flex-start; cursor: pointer; font-size: 0.88rem; line-height: 1.5;">
-            <input type="checkbox" id="declaration-check" required style="margin-top: 4px;">
-            <span>
-              <strong>Declaration:</strong> I hereby declare that all information furnished above are true and correct to the best of my knowledge and belief. I agree to abide by the rules and discipline of THAIBA MODEL SCHOOL.
-            </span>
-          </label>
+    <!-- Institutional Brand Header Card -->
+    <div class="admission-hero-card no-print">
+      <div class="admission-hero-brand">
+        <div id="portal-emblem-container" class="admission-hero-emblem"></div>
+        <div class="admission-hero-info">
+          <div class="admission-hero-badge">
+            <span class="badge-dot"></span>
+            <span>Official Institutional Online Admission Portal</span>
+          </div>
+          <h1 id="dyn-form-title" class="admission-hero-title">
+            Admission Application Form
+          </h1>
+          <div class="admission-hero-sub">
+            <span id="dyn-form-subtitle">Run by : Thaiba Heritage, Kolkata</span>
+            <span>•</span>
+            <span>Academic Session: <strong id="dyn-session-text" class="session-pill">2027 - 2028</strong></span>
+          </div>
+          <div class="admission-hero-reg">
+            Baghait, Tapan, Dakshin Dinajpur • Regd. No. : IV 01894/2011 • CBSE Affiliated Curriculum
+          </div>
         </div>
-
-        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 14px; font-size: 1.05rem;" id="btn-submit-admission">
-          <i data-lucide="check-circle-2"></i> Submit Application &amp; Generate Printable A4 Form
-        </button>
-      </form>
+      </div>
     </div>
 
-    <!-- PRINTABLE A4 PREVIEW -->
+    <!-- Horizontal Step Progress Indicator Rail -->
+    <div class="admission-progress-wrapper no-print">
+      <div class="admission-progress-rail" id="admission-progress-rail"></div>
+    </div>
+
+    <!-- Interactive Admission Form Layout -->
+    <div class="admission-layout-grid no-print" id="interactive-form-card">
+
+      <!-- Main Column: Organized Form Sections -->
+      <div class="admission-main-column">
+        <form id="tms-admission-form">
+          <div id="dynamic-form-container"></div>
+
+          <!-- Final Section: Declaration & Signatures -->
+          <div class="admission-section-card" id="admission-sec-declaration">
+            <div class="admission-section-header">
+              <div class="admission-section-badge declaration-badge"><i data-lucide="shield-check" style="width: 18px; height: 18px;"></i></div>
+              <div>
+                <h3 class="admission-section-title">Declaration &amp; Undertaking</h3>
+                <p class="admission-section-desc">Formal legal affirmation by parent / legal guardian and candidate</p>
+              </div>
+            </div>
+
+            <div class="admission-declaration-box">
+              <label class="admission-declaration-label">
+                <input type="checkbox" id="declaration-check" required class="admission-checkbox">
+                <span>
+                  <strong>Declaration:</strong> I hereby declare that all information furnished above are true and correct to the best of my knowledge and belief. I agree to abide by the rules, code of conduct, and academic discipline of <strong>THAIBA MODEL SCHOOL</strong>. I understand that any false statement or concealed information may lead to cancellation of admission.
+                </span>
+              </label>
+            </div>
+
+            <div class="admission-declaration-meta-grid">
+              <div class="form-group">
+                <label class="form-label">Application Date</label>
+                <input type="text" class="form-input font-mono" id="dec-date-display" readonly>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Place of Application</label>
+                <input type="text" class="form-input" id="dec-place-display" value="Tapan, Dakshin Dinajpur" readonly>
+              </div>
+            </div>
+
+            <div class="admission-signature-blocks">
+              <div class="admission-signature-slot">
+                <div class="admission-signature-line"></div>
+                <span>Signature of Candidate</span>
+              </div>
+              <div class="admission-signature-slot">
+                <div class="admission-signature-line"></div>
+                <span>Signature of Father / Guardian</span>
+              </div>
+            </div>
+
+            <div class="admission-submit-wrap">
+              <button type="submit" class="btn btn-primary admission-submit-btn" id="btn-submit-admission">
+                <i data-lucide="check-circle-2"></i> Submit Application &amp; Generate Printable A4 Form
+              </button>
+              <p class="admission-submit-note">
+                Upon submission, your application will be registered and an official printable A4 document with Tear-Off Admit Card will be generated instantly.
+              </p>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <!-- Side Column: Student Photograph & Verification Checklist -->
+      <aside class="admission-side-column">
+        <!-- Student Photograph Component -->
+        <div class="admission-side-card admission-photo-card">
+          <div class="admission-side-card-header">
+            <i data-lucide="camera" class="side-card-icon emerald"></i>
+            <h4>Student Photograph</h4>
+          </div>
+          <div id="student-photo-panel"></div>
+        </div>
+
+        <!-- Quick Guidance Card -->
+        <div class="admission-side-card">
+          <div class="admission-side-card-header">
+            <i data-lucide="help-circle" class="side-card-icon emerald"></i>
+            <h4>Application Guidance</h4>
+          </div>
+          <p class="admission-side-card-text">
+            Review the official admission rules, guidelines and fee structure for the current academic session.
+          </p>
+          <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 14px;">
+            <button type="button" class="btn btn-secondary btn-sm" id="side-btn-guidelines" style="width: 100%; justify-content: center;">
+              <i data-lucide="book-open"></i> Guidelines &amp; Video Walkthrough
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" id="side-btn-fees" style="width: 100%; justify-content: center;">
+              <i data-lucide="receipt"></i> Session Fee Schedule
+            </button>
+          </div>
+        </div>
+
+        <!-- Document Checklist Card -->
+        <div class="admission-side-card">
+          <div class="admission-side-card-header">
+            <i data-lucide="clipboard-check" class="side-card-icon blue"></i>
+            <h4>Verification Checklist</h4>
+          </div>
+          <p class="admission-side-card-text" style="margin-bottom: 12px;">
+            Please carry self-attested photocopies of these documents during document verification:
+          </p>
+          <ul class="admission-side-checklist">
+            <li><i data-lucide="check" class="check-icon"></i> <span>Candidate Birth Certificate</span></li>
+            <li><i data-lucide="check" class="check-icon"></i> <span>Candidate / Guardian Aadhaar Card</span></li>
+            <li><i data-lucide="check" class="check-icon"></i> <span>Previous Marksheet / Transfer Certificate (if applicable)</span></li>
+            <li><i data-lucide="check" class="check-icon"></i> <span>3 Recent Passport Photographs</span></li>
+          </ul>
+        </div>
+
+        <!-- Campus Helpline Card -->
+        <div class="admission-side-card">
+          <div class="admission-side-card-header">
+            <i data-lucide="phone-call" class="side-card-icon green"></i>
+            <h4>Admission Help Desk</h4>
+          </div>
+          <div class="admission-helpline-contacts">
+            <a href="tel:+918653382851" class="helpline-link"><i data-lucide="phone"></i> +91 8653382851</a>
+            <a href="tel:+918167782851" class="helpline-link"><i data-lucide="phone"></i> +91 8167782851</a>
+          </div>
+          <div class="admission-helpline-addr">
+            <i data-lucide="map-pin"></i> Baghait, Tapan, Dakshin Dinajpur, WB
+          </div>
+        </div>
+      </aside>
+
+    </div>
+
+    <!-- PRINTABLE A4 PREVIEW & TEAR-OFF ADMIT CARD -->
     <div id="a4-document-wrapper" style="display: none;">
-      <div class="no-print" style="margin-bottom: 16px; text-align: center; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
-        <button class="btn btn-primary" onclick="window.print()" style="font-size: 1rem; padding: 12px 24px;">
+      <div class="no-print" style="margin-bottom: 20px; text-align: center; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+        <button class="btn btn-primary" onclick="window.print()" style="font-size: 1rem; padding: 12px 28px;">
           <i data-lucide="printer"></i> Print / Save as PDF
         </button>
         <button class="btn btn-secondary" id="btn-back-to-form">
@@ -104,7 +225,7 @@
             </div>
           </div>
           <div style="width: 130px; text-align: right; font-size: 9px;">
-            <div id="a4-photo" style="width: 100px; height: 124px; border: 1px solid #000; margin-left: auto; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 8.5px; line-height: 1.25; background: #fafafa; overflow: hidden;">
+            <div id="a4-photo" style="width: 100px; height: 124px; border: 1.5px solid #000; margin-left: auto; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 8.5px; line-height: 1.25; background: #fafafa; overflow: hidden;">
               Affix recent<br>passport-size<br>photograph
             </div>
             <div id="a4-entry-by" style="margin-top: 4px; font-size: 9px;"></div>
@@ -140,60 +261,64 @@
           </table>
         </div>
 
-        <div class="perforated-cut"></div>
+        <div class="perforated-cut">
+          <span class="cut-label">✂ - - - - - - - - - - - - - - - TEAR OFF ADMIT CARD SLIP FOR ADMISSION TEST - - - - - - - - - - - - - - - ✂</span>
+        </div>
 
         <!-- Tear-Off Slip: ADMIT CARD -->
-        <div style="border: 1.5px solid #000; padding: 10px; position: relative;">
-          <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div style="border: 2px solid #000; border-radius: 4px; padding: 12px; position: relative; background: #ffffff;">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
             <div style="flex: 1; text-align: center;">
-              <h3 id="admit-slip-title" style="font-size: 14px; font-weight: 800; text-transform: uppercase; margin: 0; text-decoration: underline;">
-                ADMIT CARD
-              </h3>
-              <div id="admit-slip-school" style="font-size: 11px; font-weight: 700;">THAIBA MODEL SCHOOL</div>
+              <div style="display: inline-block; padding: 2px 10px; background: #000; color: #fff; border-radius: 3px; margin-bottom: 4px;">
+                <h3 id="admit-slip-title" style="font-size: 13px; font-weight: 800; text-transform: uppercase; margin: 0; letter-spacing: 0.05em;">
+                  ADMIT CARD — ENTRANCE &amp; VERIFICATION
+                </h3>
+              </div>
+              <div id="admit-slip-school" style="font-size: 12px; font-weight: 800; color: #000;">THAIBA MODEL SCHOOL</div>
               <div id="admit-slip-address" style="font-size: 9px; color: #333;">Baghait, Tapan, Dakshin Dinajpur • Contact : +91 8653382851, +91 8167782851</div>
             </div>
-            <div id="admit-photo" style="width: 85px; height: 100px; border: 1px solid #000; display: flex; align-items: center; justify-content: center; font-size: 8px; text-align: center; background: #fafafa; margin-left: 10px; overflow: hidden;">
+            <div id="admit-photo" style="width: 85px; height: 105px; border: 1.5px solid #000; display: flex; align-items: center; justify-content: center; font-size: 8px; text-align: center; background: #fafafa; margin-left: 10px; overflow: hidden; flex-shrink: 0;">
               Passport size photo
             </div>
           </div>
 
           <div style="display: flex; justify-content: space-between; font-size: 10.5px; margin-top: 4px;">
-            <div><strong>Form No. :</strong> <span id="admit-form-no" class="font-mono" style="font-weight: 700;">—</span></div>
-            <div><strong>Application Portal :</strong> <span class="font-mono">Online</span></div>
+            <div><strong>Form No. :</strong> <span id="admit-form-no" class="font-mono" style="font-weight: 800; font-size: 12px;">—</span></div>
+            <div><strong>Application Portal :</strong> <span class="font-mono" style="font-weight: 700;">Online Portal</span></div>
           </div>
 
-          <table style="width: 100%; border-collapse: collapse; font-size: 10px; margin-top: 6px; border: 1px solid #000;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 10px; margin-top: 6px; border: 1.5px solid #000;">
             <tr>
-              <td style="border: 1px solid #000; padding: 4px; width: 32%;"><strong>Student Name :</strong></td>
-              <td style="border: 1px solid #000; padding: 4px; font-weight: 700;" id="admit-name">—</td>
+              <td style="border: 1px solid #000; padding: 5px 8px; width: 30%;"><strong>Student Name :</strong></td>
+              <td style="border: 1px solid #000; padding: 5px 8px; font-weight: 800;" id="admit-name">—</td>
             </tr>
             <tr>
-              <td style="border: 1px solid #000; padding: 4px;"><strong>Father / Guardian :</strong></td>
-              <td style="border: 1px solid #000; padding: 4px;" id="admit-father">—</td>
+              <td style="border: 1px solid #000; padding: 5px 8px;"><strong>Father / Guardian :</strong></td>
+              <td style="border: 1px solid #000; padding: 5px 8px;" id="admit-father">—</td>
             </tr>
             <tr>
-              <td style="border: 1px solid #000; padding: 4px;"><strong>Address :</strong></td>
-              <td style="border: 1px solid #000; padding: 4px;" id="admit-address">—</td>
+              <td style="border: 1px solid #000; padding: 5px 8px;"><strong>Address :</strong></td>
+              <td style="border: 1px solid #000; padding: 5px 8px;" id="admit-address">—</td>
             </tr>
             <tr>
-              <td style="border: 1px solid #000; padding: 4px;"><strong>Contact No. :</strong></td>
-              <td style="border: 1px solid #000; padding: 4px;" id="admit-contact">—</td>
+              <td style="border: 1px solid #000; padding: 5px 8px;"><strong>Contact No. :</strong></td>
+              <td style="border: 1px solid #000; padding: 5px 8px;" id="admit-contact">—</td>
             </tr>
             <tr>
-              <td style="border: 1px solid #000; padding: 4px;"><strong>Applying for class :</strong></td>
-              <td style="border: 1px solid #000; padding: 4px; font-weight: 700;" id="admit-class">—</td>
+              <td style="border: 1px solid #000; padding: 5px 8px;"><strong>Applying for class :</strong></td>
+              <td style="border: 1px solid #000; padding: 5px 8px; font-weight: 800;" id="admit-class">—</td>
             </tr>
             <tr style="background: #f0fdf4;">
-              <td style="border: 1.5px solid #16a34a; padding: 4px; font-weight: 800; color: #166534;"><strong>Portal Login :</strong></td>
-              <td style="border: 1.5px solid #16a34a; padding: 4px; font-weight: 700;">
+              <td style="border: 1.5px solid #16a34a; padding: 5px 8px; font-weight: 800; color: #166534;"><strong>Portal Login :</strong></td>
+              <td style="border: 1.5px solid #16a34a; padding: 5px 8px; font-weight: 700;">
                 User: <strong class="font-mono" id="admit-username" style="color: #0f172a; background: #fff; padding: 1px 6px; border: 1px solid #86efac; border-radius: 3px;">—</strong> &nbsp;|&nbsp;
                 Pass: <strong class="font-mono" id="admit-password" style="color: #0f172a; background: #fff; padding: 1px 6px; border: 1px solid #86efac; border-radius: 3px;">—</strong> &nbsp;|&nbsp;
                 <span class="font-mono" style="color: #15803d; font-size: 9px;">www.thaibagarden.com</span>
               </td>
             </tr>
             <tr>
-              <td style="border: 1px solid #000; padding: 4px;"><strong>Admission Test Centre :</strong></td>
-              <td style="border: 1px solid #000; padding: 4px;" id="admit-slip-centre">THAIBA MODEL SCHOOL, Baghait, Tapan, Dakshin Dinajpur</td>
+              <td style="border: 1px solid #000; padding: 5px 8px;"><strong>Admission Test Centre :</strong></td>
+              <td style="border: 1px solid #000; padding: 5px 8px;" id="admit-slip-centre">THAIBA MODEL SCHOOL, Baghait, Tapan, Dakshin Dinajpur</td>
             </tr>
           </table>
 
@@ -232,6 +357,10 @@
     document.getElementById('portal-emblem-container').innerHTML = TMS_LOGO.emblemSvg(56);
     document.getElementById('a4-header-slot').innerHTML = TMS_LOGO.printHeaderSvg();
 
+    // Set declaration date
+    const dateInput = document.getElementById('dec-date-display');
+    if (dateInput) dateInput.value = new Date().toLocaleDateString('en-GB');
+
     let settings = null;
     let fields = [];
     let fees = [];
@@ -241,7 +370,7 @@
     function groupBySection(list) {
       const map = new Map();
       list.forEach((f) => {
-        const s = f.section || 'General';
+        const s = f.section || 'General Information';
         if (!map.has(s)) map.set(s, []);
         map.get(s).push(f);
       });
@@ -272,65 +401,80 @@
       return has ? fields : [...fields, photo];
     }
 
+    function getSectionSubtitle(sectionName) {
+      const s = String(sectionName || '').toLowerCase();
+      if (s.includes('candidate') || s.includes('student')) return 'Personal credentials, birth particulars, and class of admission';
+      if (s.includes('guardian') || s.includes('parent')) return 'Parental particulars, occupations, and family background';
+      if (s.includes('contact') || s.includes('address')) return 'Permanent residential address, postal details, and phone numbers';
+      if (s.includes('previous') || s.includes('school') || s.includes('academic')) return 'Previous educational background and last qualification passed';
+      if (s.includes('doc') || s.includes('photo')) return 'Official verification documents and identification proofs';
+      return 'Institutional application particulars';
+    }
+
     function fieldInputHtml(f) {
       const id = `fld-${f.fieldKey}`;
       const req = f.required ? 'required' : '';
       const ph = esc(f.placeholder || '');
       const type = f.fieldType || 'text';
       let control = '';
+      const isFullWidth = type === 'textarea' || type === 'file' || (f.fieldKey === 'village');
 
       if (type === 'textarea') {
         control = `<textarea class="form-input" id="${id}" rows="2" placeholder="${ph}" ${req}></textarea>`;
       } else if (type === 'select') {
         const opts = (f.options || []).map((o) => `<option value="${esc(o)}">${esc(o)}</option>`).join('');
-        control = `<select class="form-select" id="${id}" ${req}><option value="">— Select —</option>${opts}</select>`;
+        control = `<select class="form-select" id="${id}" ${req}><option value="">— Select ${esc(f.label)} —</option>${opts}</select>`;
       } else if (type === 'checkbox') {
-        control = `<label style="display:flex;gap:8px;align-items:center;font-size:0.88rem;"><input type="checkbox" id="${id}"> ${esc(f.helpText || f.label)}</label>`;
+        control = `<label style="display:flex;gap:8px;align-items:center;font-size:0.88rem;cursor:pointer;"><input type="checkbox" id="${id}" class="admission-checkbox"> ${esc(f.helpText || f.label)}</label>`;
       } else if (type === 'file') {
-        control = `<input type="file" class="form-input" id="${id}" accept="image/*,.pdf" ${req}>
-          <span class="file-name" data-for="${id}" style="font-size:0.74rem;color:var(--text-subtle);display:block;margin-top:4px;"></span>
-          <span class="file-preview" data-for="${id}"></span>`;
+        control = `
+          <div class="file-upload-dropzone" style="border: 1.5px dashed var(--border-color); border-radius: var(--radius-md); padding: 12px 16px; background: var(--bg-subtle); display:flex; align-items:center; gap:12px; cursor:pointer;" onclick="document.getElementById('${id}').click()">
+            <i data-lucide="upload-cloud" style="width:24px;height:24px;color:#16a34a;flex-shrink:0;"></i>
+            <div style="flex:1;min-width:0;">
+              <input type="file" id="${id}" accept="image/*,.pdf" ${req} style="display:none;">
+              <div style="font-size:0.84rem;font-weight:600;color:var(--text-main);">Click to browse document</div>
+              <span class="file-name" data-for="${id}" style="font-size:0.75rem;color:var(--text-subtle);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">PDF, JPG, or PNG up to 2 MB</span>
+            </div>
+          </div>
+          <span class="file-preview" data-for="${id}"></span>
+        `;
       } else {
         control = `<input type="${type}" class="form-input${type === 'tel' || type === 'number' ? ' font-mono' : ''}" id="${id}" placeholder="${ph}" ${req}>`;
       }
 
       return `
-        <div class="form-group">
-          <label class="form-label">${esc(f.label)} ${f.required ? '<span style="color:#dc2626;">*</span>' : ''}</label>
+        <div class="form-group${isFullWidth ? ' full-width' : ''}">
+          <label class="form-label" for="${id}">${esc(f.label)} ${f.required ? '<span style="color:#dc2626;">*</span>' : ''}</label>
           ${control}
-          ${f.helpText && type !== 'checkbox' ? `<span style="font-size:0.72rem;color:var(--text-subtle);">${esc(f.helpText)}</span>` : ''}
+          ${f.helpText && type !== 'checkbox' && type !== 'file' ? `<span style="font-size:0.72rem;color:var(--text-subtle);margin-top:3px;display:block;">${esc(f.helpText)}</span>` : ''}
         </div>`;
     }
 
-    /** Prominent passport-photo capture block shown above the form sections. */
+    /** Prominent passport-photo capture block. */
     function renderPhotoPanel(photo) {
       const panel = document.getElementById('student-photo-panel');
       if (!panel) return;
 
       panel.innerHTML = `
-        <h3 style="font-size: 1.05rem; font-weight: 700; color: #15803d; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; margin-bottom: 16px;">
-          Student Photograph ${photo.required ? '<span style="color:#dc2626;">*</span>' : ''}
-        </h3>
-        <div style="display:flex; gap:20px; align-items:flex-start; flex-wrap:wrap;">
-          <div id="photo-drop" title="Click to upload a photo" style="width:132px;height:162px;border:1.5px dashed var(--border-color);border-radius:10px;background:var(--bg-subtle);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;text-align:center;padding:6px;">
-            <div id="photo-placeholder" style="font-size:0.7rem;color:var(--text-subtle);line-height:1.35;">
-              <i data-lucide="camera" style="width:26px;height:26px;display:block;margin:0 auto 6px;"></i>
-              Click to upload<br>passport-size photo
-            </div>
-            <img id="photo-preview-img" alt="" style="width:100%;height:100%;object-fit:cover;display:none;">
+        <div id="photo-drop" class="admission-photo-dropzone" title="Click or Drag &amp; Drop Passport Photo">
+          <div id="photo-placeholder" class="admission-photo-placeholder">
+            <i data-lucide="camera" style="width:32px;height:32px;display:block;margin:0 auto 8px;color:#16a34a;"></i>
+            <strong>Passport Photo</strong><br>
+            <span style="font-size:0.68rem;color:var(--text-subtle);">Click or drag file here</span>
           </div>
-          <div style="flex:1;min-width:220px;">
-            <input type="file" class="form-input" id="fld-${photo.fieldKey}" accept="image/*" ${photo.required ? 'required' : ''}>
-            <span class="file-name font-mono" data-for="fld-${photo.fieldKey}" style="font-size:0.74rem;color:var(--text-subtle);display:block;margin-top:6px;"></span>
-            <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
-              <button type="button" class="btn btn-secondary btn-sm" id="photo-pick"><i data-lucide="upload"></i> Choose Photo</button>
-              <button type="button" class="btn btn-secondary btn-sm" id="photo-remove" style="color:#ef4444;"><i data-lucide="trash-2"></i> Remove</button>
-            </div>
-            <p style="font-size:0.72rem;color:var(--text-subtle);margin-top:8px;">
-              ${esc(photo.helpText || 'Recent passport-size photograph, JPG or PNG up to 2 MB.')}
-            </p>
-          </div>
+          <img id="photo-preview-img" class="admission-photo-preview" alt="Student Photograph">
         </div>
+
+        <input type="file" id="fld-${photo.fieldKey}" accept="image/*" ${photo.required ? 'required' : ''} style="display:none;">
+        <span class="file-name font-mono" data-for="fld-${photo.fieldKey}" style="font-size:0.74rem;color:var(--text-subtle);display:block;margin:6px 0;"></span>
+
+        <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+          <button type="button" class="btn btn-secondary btn-sm" id="photo-pick"><i data-lucide="upload"></i> Upload</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="photo-remove" style="color:#ef4444;"><i data-lucide="trash-2"></i> Clear</button>
+        </div>
+        <p style="font-size:0.72rem;color:var(--text-subtle);margin-top:10px;line-height:1.4;">
+          ${esc(photo.helpText || 'Recent passport-size photo, JPG or PNG up to 2 MB. Appears on form and admit card.')}
+        </p>
       `;
 
       const input = panel.querySelector(`#fld-${photo.fieldKey}`);
@@ -343,18 +487,38 @@
         img.style.display = 'none';
         img.removeAttribute('src');
         placeholder.style.display = 'block';
+        if (input) input.value = '';
+        if (nameEl) nameEl.innerText = '';
       };
 
       drop.addEventListener('click', () => input.click());
       panel.querySelector('#photo-pick').addEventListener('click', () => input.click());
-      panel.querySelector('#photo-remove').addEventListener('click', () => {
-        input.value = '';
-        if (nameEl) nameEl.innerText = '';
-        clearPreview();
+      panel.querySelector('#photo-remove').addEventListener('click', clearPreview);
+
+      // Drag and drop events
+      ['dragenter', 'dragover'].forEach(eventName => {
+        drop.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          drop.classList.add('dragover');
+        });
       });
+      ['dragleave', 'drop'].forEach(eventName => {
+        drop.addEventListener(eventName, (e) => {
+          e.preventDefault();
+          drop.classList.remove('dragover');
+        });
+      });
+      drop.addEventListener('drop', (e) => {
+        const dt = e.dataTransfer;
+        if (dt && dt.files && dt.files.length) {
+          input.files = dt.files;
+          input.dispatchEvent(new Event('change'));
+        }
+      });
+
       input.addEventListener('change', () => {
         const file = input.files && input.files[0];
-        if (!file) { clearPreview(); if (nameEl) nameEl.innerText = ''; return; }
+        if (!file) { clearPreview(); return; }
         if (nameEl) nameEl.innerText = `${file.name} (${Math.round(file.size / 1024)} KB)`;
         if (file.type.startsWith('image/')) {
           img.src = URL.createObjectURL(file);
@@ -367,6 +531,45 @@
       UIComponents.refreshIcons();
     }
 
+    function renderProgressIndicator(groups) {
+      const rail = document.getElementById('admission-progress-rail');
+      if (!rail) return;
+      let idx = 0;
+      let html = '';
+      groups.forEach((list, section) => {
+        idx += 1;
+        html += `
+          <div class="admission-step ${idx === 1 ? 'active' : ''}" data-step="${idx}" id="step-pill-${idx}">
+            <div class="admission-step-circle">${idx}</div>
+            <div class="admission-step-label">${esc(section)}</div>
+          </div>
+        `;
+      });
+      idx += 1;
+      html += `
+        <div class="admission-step" data-step="${idx}" id="step-pill-${idx}">
+          <div class="admission-step-circle"><i data-lucide="check" style="width:14px;height:14px;"></i></div>
+          <div class="admission-step-label">Declaration &amp; Submit</div>
+        </div>
+      `;
+      rail.innerHTML = html;
+      UIComponents.refreshIcons();
+
+      rail.querySelectorAll('.admission-step').forEach(stepEl => {
+        stepEl.addEventListener('click', () => {
+          const s = stepEl.dataset.step;
+          const target = s === String(idx)
+            ? document.getElementById('admission-sec-declaration')
+            : document.getElementById(`admission-sec-${s}`);
+          if (target) {
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            rail.querySelectorAll('.admission-step').forEach(el => el.classList.remove('active'));
+            stepEl.classList.add('active');
+          }
+        });
+      });
+    }
+
     function renderForm() {
       const container = document.getElementById('dynamic-form-container');
       const photo = resolvePhotoField();
@@ -374,31 +577,44 @@
       const groups = groupBySection(rest);
       let sectionNo = 0;
       let html = '';
+
       groups.forEach((list, section) => {
         sectionNo += 1;
-        html += `<h3 style="font-size: 1.05rem; font-weight: 700; color: #15803d; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; margin-bottom: 16px;">
-          ${sectionNo}. ${esc(section)}
-        </h3>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 20px;">
-          ${list.map(fieldInputHtml).join('')}
-        </div>`;
+        const sub = getSectionSubtitle(section);
+        html += `
+          <div class="admission-section-card" id="admission-sec-${sectionNo}">
+            <div class="admission-section-header">
+              <div class="admission-section-badge">${String(sectionNo).padStart(2, '0')}</div>
+              <div>
+                <h3 class="admission-section-title">${esc(section)}</h3>
+                <p class="admission-section-desc">${esc(sub)}</p>
+              </div>
+            </div>
+            <div class="admission-fields-grid">
+              ${list.map(fieldInputHtml).join('')}
+            </div>
+          </div>
+        `;
       });
       container.innerHTML = html;
 
+      renderProgressIndicator(groups);
+
+      // File preview listeners for document fields
       container.querySelectorAll('input[type="file"]').forEach((inp) => {
         inp.addEventListener('change', () => {
           const nameEl = container.querySelector(`.file-name[data-for="${inp.id}"]`);
           const prevEl = container.querySelector(`.file-preview[data-for="${inp.id}"]`);
           const file = inp.files && inp.files[0];
           if (!file) {
-            if (nameEl) nameEl.innerText = '';
+            if (nameEl) nameEl.innerText = 'PDF, JPG, or PNG up to 2 MB';
             if (prevEl) prevEl.innerHTML = '';
             return;
           }
           if (nameEl) nameEl.innerText = `Selected: ${file.name} (${Math.round(file.size / 1024)} KB)`;
           if (prevEl && file.type.startsWith('image/')) {
             const url = URL.createObjectURL(file);
-            prevEl.innerHTML = `<img src="${url}" alt="preview" style="max-width:84px; max-height:104px; border:1px solid var(--border-color); border-radius:6px; margin-top:6px; display:block;">`;
+            prevEl.innerHTML = `<img src="${url}" alt="preview" style="max-width:84px; max-height:104px; border:1px solid var(--border-color); border-radius:6px; margin-top:8px; display:block;">`;
           } else if (prevEl) {
             prevEl.innerHTML = '';
           }
@@ -412,7 +628,7 @@
       const formTitle = settings.formTitle || 'Admission Application Form';
       const formSubtitle = settings.formSubtitle || 'Run by : Thaiba Heritage, Kolkata';
       const sessionText = settings.session || '—';
-      const admitTitle = settings.admitCardTitle || 'ADMIT CARD';
+      const admitTitle = settings.admitCardTitle || 'ADMIT CARD — ENTRANCE & VERIFICATION';
       const admitSchool = settings.admitCardSubtitle || 'THAIBA MODEL SCHOOL';
       const admitAddress = settings.admitCardAddress || 'Baghait, Tapan, Dakshin Dinajpur • Contact : +91 8653382851, +91 8167782851';
       const admitCentre = settings.testCentre || settings.admissionTestCentre || 'THAIBA MODEL SCHOOL, Baghait, Tapan, Dakshin Dinajpur';
@@ -622,7 +838,7 @@
           const isFile = (f.fieldType || 'text') === 'file';
           const shown = isFile
             ? (val ? String(val).split('/').pop() : 'Not attached')
-            : (val ? esc(val) : '\u2014');
+            : (val ? esc(val) : '—');
           html += `<tr>
             <td style="width:38%;padding:3px 0;"><strong>${esc(f.label)}${f.required ? ' <span style="color:red;">*</span>' : ''} :</strong></td>
             <td style="padding:3px 0;"><span style="border-bottom:1px solid #000;display:inline-block;min-width:150px;padding:0 6px;">${shown}</span></td>
@@ -971,8 +1187,10 @@
         if (user && user.role && user.role !== 'parent' && user.role !== 'pending') {
           staffUser = user;
           const badge = document.getElementById('entry-by-badge');
-          badge.style.display = 'inline-flex';
-          badge.innerText = `Entered by: ${user.name}`;
+          if (badge) {
+            badge.style.display = 'inline-flex';
+            badge.innerText = `Entered by: ${user.name}`;
+          }
         }
       } catch (e) { /* public visitor */ }
 
@@ -983,21 +1201,23 @@
       document.getElementById('tms-admission-form').addEventListener('submit', handleSubmit);
       
       const btnGuidelines = document.getElementById('btn-show-guidelines');
-      if (btnGuidelines) {
-        btnGuidelines.addEventListener('click', openGuidelinesModal);
-      }
+      if (btnGuidelines) btnGuidelines.addEventListener('click', openGuidelinesModal);
+      const sideBtnGuidelines = document.getElementById('side-btn-guidelines');
+      if (sideBtnGuidelines) sideBtnGuidelines.addEventListener('click', openGuidelinesModal);
+
       const btnFees = document.getElementById('btn-show-fees');
-      if (btnFees) {
-        btnFees.addEventListener('click', openFeeStructureModal);
-      }
+      if (btnFees) btnFees.addEventListener('click', openFeeStructureModal);
+      const sideBtnFees = document.getElementById('side-btn-fees');
+      if (sideBtnFees) sideBtnFees.addEventListener('click', openFeeStructureModal);
 
       document.getElementById('btn-back-to-form').addEventListener('click', () => {
         document.getElementById('a4-document-wrapper').style.display = 'none';
-        document.getElementById('interactive-form-card').style.display = 'block';
+        document.getElementById('interactive-form-card').style.display = 'grid';
         window.scrollTo(0, 0);
       });
     }
 
+    window.populateA4 = populateA4;
     boot();
   </script>
 </body>

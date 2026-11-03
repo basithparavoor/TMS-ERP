@@ -2160,3 +2160,1400 @@ a {
   font-size: 0.92rem;
   border-radius: 10px;
 }
+
+
+/* ==========================================================================
+   LOGIN PAGE — RESPONSIVE SPLIT-SCREEN AUTHENTICATION LAYOUT
+   ========================================================================== */
+
+/* Login Viewport Container */
+.login-split-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  display: flex;
+  position: relative;
+  overflow-x: hidden;
+  background-color: var(--bg-canvas, #F7F9FC);
+}
+
+/* Ambient Background Glow */
+.login-split-page .ambient-mesh {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+}
+
+/* Desktop Split Layout: 1024px and above */
+@media (min-width: 1024px) {
+  .login-split-page {
+    height: 100dvh;
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: 46% 54%;
+  }
+
+  .login-split-hero {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: clamp(24px, 3.8vh, 48px) clamp(28px, 3.5vw, 52px) clamp(20px, 2.8vh, 36px) clamp(32px, 4vw, 64px);
+    background: linear-gradient(145deg, #F0FDF4 0%, #F7F9FC 45%, #FFFFFF 100%);
+    border-right: 1px solid var(--border-color, #E8EDF3);
+    position: relative;
+    z-index: 2;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(203, 213, 225, 0.6) transparent;
+  }
+
+  .login-split-form-panel {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 36px;
+    position: relative;
+    z-index: 2;
+    overflow-y: auto;
+    height: 100%;
+  }
+
+  /* Hide mobile-only compact branding on desktop */
+  .login-mobile-brand {
+    display: none !important;
+  }
+}
+
+/* Large Desktop (> 1440px) Enhancement */
+@media (min-width: 1440px) {
+  .login-split-page {
+    grid-template-columns: 44% 56%;
+  }
+  .login-split-hero {
+    padding: 60px 60px 44px 72px;
+  }
+  .login-split-form-panel {
+    padding: 48px;
+  }
+}
+
+/* Left Hero Branding Components */
+.login-hero-content {
+  max-width: 500px;
+  margin: auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(14px, 2.2vh, 24px);
+}
+
+.login-hero-brand {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.login-hero-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.login-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  background: rgba(22, 163, 74, 0.08);
+  border: 1px solid rgba(22, 163, 74, 0.2);
+  border-radius: var(--radius-full, 9999px);
+  color: #15803d;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  width: fit-content;
+}
+
+.login-hero-badge .badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #16a34a;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.25);
+}
+
+.login-hero-title {
+  font-size: 1.85rem;
+  font-weight: 800;
+  color: var(--text-primary, #111827);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin: 0;
+}
+
+.login-hero-sub {
+  font-size: 0.84rem;
+  color: #16a34a;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.login-hero-reg {
+  font-size: 0.78rem;
+  color: var(--text-muted, #64748B);
+  margin-top: -4px;
+}
+
+.login-hero-heading {
+  font-size: 1.12rem;
+  font-weight: 700;
+  color: var(--text-primary, #111827);
+  line-height: 1.45;
+  margin: 0 0 8px 0;
+}
+
+.login-hero-desc {
+  font-size: 0.88rem;
+  color: var(--text-muted, #64748B);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Feature Showcase Cards on Left Hero */
+.login-hero-features {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(8px, 1.2vh, 12px);
+  margin-top: 2px;
+}
+
+.login-hero-feature-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: clamp(9px, 1.4vh, 13px) 14px;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border-color, #E8EDF3);
+  border-radius: var(--radius-md, 10px);
+  box-shadow: 0 2px 6px rgba(17, 24, 39, 0.03);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+
+.login-hero-feature-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+  background: #ffffff;
+}
+
+.login-hero-feature-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.login-hero-feature-icon.emerald {
+  background: #DCFCE7;
+  color: #16A34A;
+}
+
+.login-hero-feature-icon.blue {
+  background: #DBEAFE;
+  color: #2563EB;
+}
+
+.login-hero-feature-icon.purple {
+  background: #F3E8FF;
+  color: #8B5CF6;
+}
+
+.login-hero-feature-text h4 {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-primary, #111827);
+  margin: 0 0 2px 0;
+}
+
+.login-hero-feature-text p {
+  font-size: 0.78rem;
+  color: var(--text-muted, #64748B);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.login-hero-footer {
+  font-size: 0.76rem;
+  color: var(--text-muted, #64748B);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 16px;
+}
+
+/* ==========================================================================
+   LOGIN CARD & FORM STYLING
+   ========================================================================== */
+
+.login-card-wrapper {
+  width: 100%;
+  max-width: 440px;
+  margin: auto;
+}
+
+.login-auth-card {
+  width: 100%;
+  background: var(--bg-surface, #FFFFFF);
+  border: 1px solid var(--border-color, #E8EDF3);
+  border-radius: var(--radius-lg, 16px);
+  box-shadow: var(--shadow-lg);
+  padding: 38px 34px;
+  box-sizing: border-box;
+}
+
+.login-card-header {
+  text-align: left;
+  margin-bottom: 22px;
+}
+
+.login-card-title {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: var(--text-primary, #111827);
+  margin: 0 0 6px 0;
+  letter-spacing: -0.01em;
+}
+
+.login-card-subtitle {
+  font-size: 0.88rem;
+  color: var(--text-muted, #64748B);
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* Form Group Spacing & Consistency */
+.login-form-group {
+  margin-bottom: 18px;
+}
+
+.login-label-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.login-label-row .form-label {
+  margin-bottom: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+}
+
+.login-forgot-link {
+  font-size: 0.8rem;
+  color: #16a34a;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.login-forgot-link:hover {
+  color: #15803d;
+  text-decoration: underline;
+}
+
+/* Consistent Input Wrapping (50px to 54px Height) */
+.login-input-wrap {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.login-input-wrap .login-input-icon {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  color: var(--text-muted, #64748B);
+  pointer-events: none;
+  transition: color 0.15s ease;
+  z-index: 2;
+}
+
+.login-input-wrap .form-input {
+  height: 52px;
+  width: 100%;
+  padding-left: 42px;
+  padding-right: 14px;
+  font-size: 0.94rem;
+  border-radius: var(--radius-md, 10px);
+  border: 1px solid var(--border-color, #E8EDF3);
+  background-color: #FFFFFF;
+  color: var(--text-primary, #111827);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  box-sizing: border-box;
+}
+
+.login-input-wrap .form-input:focus {
+  border-color: #16a34a;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15);
+  outline: none;
+}
+
+.login-input-wrap .form-input:focus ~ .login-input-icon {
+  color: #16a34a;
+}
+
+/* Password Input Specific */
+.login-input-wrap.has-toggle .form-input {
+  padding-right: 46px;
+}
+
+/* Integrated Password Visibility Toggle */
+.login-password-toggle {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-muted, #64748B);
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.15s ease, background-color 0.15s ease;
+  z-index: 2;
+}
+
+.login-password-toggle:hover {
+  color: var(--text-primary, #111827);
+  background: var(--bg-hover, #F1F5F9);
+}
+
+.login-password-toggle i {
+  width: 18px;
+  height: 18px;
+}
+
+/* Helper Text */
+.login-helper-text {
+  font-size: 0.74rem;
+  color: var(--text-subtle, #94A3B8);
+  margin-top: 6px;
+  line-height: 1.45;
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+}
+
+.login-helper-text .login-helper-icon {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+/* Primary Submit Button (Height 52px) */
+.login-submit-btn {
+  width: 100%;
+  height: 52px;
+  font-size: 0.96rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: var(--radius-md, 10px);
+  margin-top: 22px;
+  margin-bottom: 16px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+}
+
+.login-submit-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.28);
+}
+
+.login-submit-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* Authentication Divider */
+.login-divider {
+  display: flex;
+  align-items: center;
+  margin: 18px 0;
+  gap: 12px;
+}
+
+.login-divider-line {
+  flex: 1;
+  height: 1px;
+  background-color: var(--border-color, #E8EDF3);
+}
+
+.login-divider-text {
+  font-size: 0.74rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-subtle, #94A3B8);
+  white-space: nowrap;
+}
+
+/* Google Sign In Button */
+.login-google-btn {
+  width: 100%;
+  height: 50px;
+  font-size: 0.92rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: var(--radius-md, 10px);
+  font-weight: 600;
+  background: #ffffff;
+  border: 1px solid var(--border-color, #E8EDF3);
+  color: #1e293b;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+
+.login-google-btn:hover:not(:disabled) {
+  background-color: #F8FAFC;
+  border-color: #CBD5E1;
+  transform: translateY(-1px);
+}
+
+/* Institutional Footer */
+.login-footer {
+  margin-top: 22px;
+  text-align: center;
+}
+
+.login-footer-text {
+  font-size: 0.78rem;
+  color: var(--text-muted, #64748B);
+  font-weight: 600;
+}
+
+.login-footer-sub {
+  font-size: 0.72rem;
+  color: var(--text-subtle, #94A3B8);
+  margin-top: 3px;
+}
+
+/* ==========================================================================
+   TABLET RESPONSIVENESS (768px to 1023px)
+   ========================================================================== */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .login-split-page {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 36px 24px;
+    min-height: 100dvh;
+  }
+
+  .login-split-hero {
+    display: none !important;
+  }
+
+  .login-split-form-panel {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .login-mobile-brand {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    margin-bottom: 24px;
+  }
+
+  .login-card-wrapper {
+    max-width: 460px;
+    width: 100%;
+  }
+
+  .login-auth-card {
+    padding: 36px 32px;
+  }
+}
+
+/* ==========================================================================
+   MOBILE RESPONSIVENESS (320px to 767px)
+   ========================================================================== */
+@media (max-width: 767px) {
+  .login-split-page {
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 24px 16px;
+    min-height: 100dvh;
+  }
+
+  .login-split-hero {
+    display: none !important;
+  }
+
+  .login-split-form-panel {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0;
+    margin: auto 0;
+  }
+
+  .login-mobile-brand {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    margin-bottom: 20px;
+    width: 100%;
+  }
+
+  .login-card-wrapper {
+    width: 100%;
+    max-width: 440px;
+  }
+
+  .login-auth-card {
+    padding: 28px 20px;
+    border-radius: var(--radius-md, 12px);
+  }
+
+  .login-card-header {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  .login-card-title {
+    font-size: 1.3rem;
+  }
+
+  .login-input-wrap .form-input {
+    height: 50px;
+    font-size: 0.92rem;
+  }
+
+  .login-submit-btn {
+    height: 50px;
+    font-size: 0.94rem;
+  }
+
+  .login-google-btn {
+    height: 48px;
+    font-size: 0.9rem;
+  }
+}
+
+/* Small Mobile Screens (320px to 374px) */
+@media (max-width: 374px) {
+  .login-split-page {
+    padding: 16px 12px;
+  }
+
+  .login-auth-card {
+    padding: 22px 14px;
+  }
+
+  .login-card-title {
+    font-size: 1.2rem;
+  }
+
+  .login-card-subtitle {
+    font-size: 0.82rem;
+  }
+
+  .login-input-wrap .form-input {
+    height: 48px;
+    padding-left: 38px;
+    font-size: 0.88rem;
+  }
+
+  .login-input-wrap .login-input-icon {
+    left: 12px;
+    width: 16px;
+    height: 16px;
+  }
+}
+
+
+/* ==========================================================================
+   ONLINE ADMISSION PORTAL — RESPONSIVE REDESIGN & ADMIT CARD ENGINE
+   ========================================================================== */
+
+.admission-portal-wrapper {
+  max-width: 1360px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 10;
+}
+
+/* Top Navigation Bar */
+.admission-top-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* Institutional Hero Banner */
+.admission-hero-card {
+  background: var(--bg-surface, #FFFFFF);
+  border: 1px solid var(--border-color, #E8EDF3);
+  border-radius: var(--radius-lg, 16px);
+  box-shadow: var(--shadow-sm);
+  padding: 24px 28px;
+  margin-bottom: 22px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  background-image: radial-gradient(circle at 100% 0%, rgba(22, 163, 74, 0.04) 0%, transparent 60%);
+}
+
+.admission-hero-brand {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.admission-hero-emblem {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admission-hero-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admission-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #15803d;
+  background: rgba(22, 163, 74, 0.08);
+  border: 1px solid rgba(22, 163, 74, 0.2);
+  padding: 2px 10px;
+  border-radius: 9999px;
+  width: fit-content;
+  margin-bottom: 2px;
+}
+
+.admission-hero-badge .badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #16a34a;
+}
+
+.admission-hero-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--text-primary, #111827);
+  letter-spacing: -0.02em;
+  margin: 0;
+  line-height: 1.25;
+}
+
+.admission-hero-sub {
+  font-size: 0.86rem;
+  color: #16a34a;
+  font-weight: 700;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.admission-hero-sub .session-pill {
+  color: #15803d;
+  background: #DCFCE7;
+  padding: 1px 8px;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+
+.admission-hero-reg {
+  font-size: 0.75rem;
+  color: var(--text-muted, #64748B);
+  margin-top: 2px;
+}
+
+.admission-hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Horizontal Progress Step Indicator */
+.admission-progress-wrapper {
+  margin-bottom: 24px;
+  background: var(--bg-surface, #FFFFFF);
+  border: 1px solid var(--border-color, #E8EDF3);
+  border-radius: var(--radius-md, 12px);
+  padding: 14px 20px;
+  box-shadow: var(--shadow-xs);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.admission-progress-rail {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 640px;
+}
+
+.admission-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 6px 12px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  user-select: none;
+  flex: 1;
+}
+
+.admission-step:hover {
+  background: var(--bg-hover, #F8FAFC);
+}
+
+.admission-step-circle {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--bg-subtle, #F1F5F9);
+  color: var(--text-muted, #64748B);
+  border: 1.5px solid var(--border-color, #E8EDF3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.admission-step.active .admission-step-circle {
+  background: #16a34a;
+  color: #ffffff;
+  border-color: #16a34a;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.2);
+}
+
+.admission-step.completed .admission-step-circle {
+  background: #DCFCE7;
+  color: #15803d;
+  border-color: #86EFAC;
+}
+
+.admission-step-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted, #64748B);
+  white-space: nowrap;
+  transition: color 0.2s ease;
+}
+
+.admission-step.active .admission-step-label {
+  color: var(--text-primary, #111827);
+  font-weight: 700;
+}
+
+/* Two-Column Grid Layout (Desktop >= 1024px) */
+.admission-layout-grid {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 24px;
+  align-items: flex-start;
+  margin-bottom: 32px;
+}
+
+@media (max-width: 1023px) {
+  .admission-layout-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .admission-side-column {
+    display: contents;
+  }
+
+  .admission-photo-card {
+    order: 1;
+    width: 100%;
+    margin-bottom: 20px;
+  }
+
+  .admission-main-column {
+    order: 2;
+    width: 100%;
+  }
+
+  .admission-side-card:not(.admission-photo-card) {
+    order: 3;
+    width: 100%;
+    margin-bottom: 20px;
+  }
+}
+
+/* Form Section Cards */
+.admission-section-card {
+  background: var(--bg-surface, #FFFFFF);
+  border: 1px solid var(--border-color, #E8EDF3);
+  border-radius: var(--radius-lg, 16px);
+  box-shadow: var(--shadow-sm);
+  padding: 28px;
+  margin-bottom: 22px;
+  transition: box-shadow 0.2s ease;
+}
+
+.admission-section-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+.admission-section-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 22px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-color, #E8EDF3);
+}
+
+.admission-section-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #DCFCE7;
+  color: #15803d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.92rem;
+  font-weight: 800;
+  font-family: var(--font-mono, monospace);
+  flex-shrink: 0;
+}
+
+.admission-section-badge.declaration-badge {
+  background: #FEF3C7;
+  color: #B45309;
+}
+
+.admission-section-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text-primary, #111827);
+  margin: 0 0 2px 0;
+  letter-spacing: -0.01em;
+}
+
+.admission-section-desc {
+  font-size: 0.8rem;
+  color: var(--text-muted, #64748B);
+  margin: 0;
+}
+
+/* Fields Grid within Section Cards */
+.admission-fields-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px 20px;
+}
+
+@media (max-width: 640px) {
+  .admission-fields-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.admission-fields-grid .form-group.full-width {
+  grid-column: 1 / -1;
+}
+
+.admission-fields-grid .form-input,
+.admission-fields-grid .form-select {
+  height: 50px;
+  font-size: 0.92rem;
+  border-radius: var(--radius-md, 10px);
+  border: 1px solid var(--border-color, #E8EDF3);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.admission-fields-grid textarea.form-input {
+  height: auto;
+  min-height: 80px;
+}
+
+.admission-fields-grid .form-input:focus,
+.admission-fields-grid .form-select:focus {
+  border-color: #16a34a;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15);
+  outline: none;
+}
+
+/* Photograph Upload Box Component */
+.admission-photo-card {
+  text-align: center;
+}
+
+.admission-photo-dropzone {
+  width: 140px;
+  height: 175px;
+  margin: 0 auto 14px auto;
+  border: 2px dashed #16a34a;
+  border-radius: 12px;
+  background: rgba(22, 163, 74, 0.03);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: pointer;
+  padding: 8px;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.admission-photo-dropzone:hover,
+.admission-photo-dropzone.dragover {
+  background: rgba(22, 163, 74, 0.08);
+  border-color: #15803d;
+  transform: scale(1.02);
+}
+
+.admission-photo-placeholder {
+  font-size: 0.72rem;
+  color: var(--text-muted, #64748B);
+  line-height: 1.4;
+  text-align: center;
+}
+
+.admission-photo-preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 8px;
+  display: none;
+}
+
+/* Side Column Cards */
+.admission-side-card {
+  background: var(--bg-surface, #FFFFFF);
+  border: 1px solid var(--border-color, #E8EDF3);
+  border-radius: var(--radius-lg, 16px);
+  box-shadow: var(--shadow-sm);
+  padding: 22px;
+  margin-bottom: 20px;
+}
+
+.admission-side-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.admission-side-card-header h4 {
+  font-size: 0.94rem;
+  font-weight: 700;
+  color: var(--text-primary, #111827);
+  margin: 0;
+}
+
+.side-card-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.side-card-icon.emerald { color: #16a34a; }
+.side-card-icon.blue { color: #2563eb; }
+.side-card-icon.green { color: #15803d; }
+
+.admission-side-card-text {
+  font-size: 0.8rem;
+  color: var(--text-muted, #64748B);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.admission-side-checklist {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admission-side-checklist li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: var(--text-primary, #111827);
+  line-height: 1.35;
+}
+
+.admission-side-checklist .check-icon {
+  width: 14px;
+  height: 14px;
+  color: #16a34a;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.admission-helpline-contacts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 10px 0;
+}
+
+.helpline-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #16a34a;
+  text-decoration: none;
+}
+
+.helpline-link:hover {
+  text-decoration: underline;
+}
+
+.admission-helpline-addr {
+  font-size: 0.74rem;
+  color: var(--text-muted, #64748B);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+/* Formal Declaration Box */
+.admission-declaration-box {
+  background: rgba(22, 163, 74, 0.04);
+  border: 1px solid rgba(22, 163, 74, 0.25);
+  border-left: 4px solid #16a34a;
+  border-radius: var(--radius-md, 10px);
+  padding: 16px 18px;
+  margin-bottom: 20px;
+}
+
+.admission-declaration-label {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  cursor: pointer;
+  font-size: 0.86rem;
+  line-height: 1.55;
+  color: var(--text-primary, #111827);
+}
+
+.admission-checkbox {
+  width: 18px;
+  height: 18px;
+  margin-top: 3px;
+  accent-color: #16a34a;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.admission-declaration-meta-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+@media (max-width: 640px) {
+  .admission-declaration-meta-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.admission-signature-blocks {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 24px;
+  padding: 18px 0 10px;
+  border-top: 1px dashed var(--border-color, #E8EDF3);
+}
+
+@media (max-width: 640px) {
+  .admission-signature-blocks {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+.admission-signature-slot {
+  text-align: center;
+}
+
+.admission-signature-line {
+  border-bottom: 1.5px solid #0f172a;
+  height: 36px;
+  margin-bottom: 6px;
+}
+
+.admission-signature-slot span {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-muted, #64748B);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.admission-submit-btn {
+  width: 100%;
+  height: 54px;
+  font-size: 1.05rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: var(--radius-md, 10px);
+  box-shadow: 0 4px 14px rgba(22, 163, 74, 0.25);
+  transition: all 0.2s ease;
+}
+
+.admission-submit-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(22, 163, 74, 0.35);
+}
+
+.admission-submit-note {
+  font-size: 0.76rem;
+  color: var(--text-muted, #64748B);
+  text-align: center;
+  margin-top: 10px;
+  line-height: 1.45;
+}
+
+/* Perforated Cut Line for Tear-Off Slip */
+.perforated-cut {
+  border-top: 2px dashed #475569;
+  margin: 18px 0 14px;
+  position: relative;
+  text-align: center;
+}
+
+.perforated-cut .cut-label {
+  background: #ffffff;
+  padding: 0 14px;
+  position: relative;
+  top: -9px;
+  font-size: 9px;
+  font-weight: 700;
+  color: #475569;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 768px) {
+  .admission-portal-wrapper {
+    padding: 0 2px;
+  }
+
+  .admission-top-nav {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+
+  .admission-top-nav > div {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    gap: 8px;
+  }
+
+  .admission-top-nav .btn {
+    flex: 1;
+    justify-content: center;
+    font-size: 0.82rem;
+    padding: 8px 10px;
+  }
+
+  .admission-hero-card {
+    padding: 20px 16px;
+    border-radius: 14px;
+  }
+
+  .admission-hero-brand {
+    gap: 14px;
+    align-items: flex-start;
+  }
+
+  .admission-hero-emblem {
+    width: 48px;
+    height: 48px;
+  }
+
+  .admission-hero-badge {
+    white-space: normal;
+    font-size: 0.68rem;
+    line-height: 1.35;
+    padding: 3px 8px;
+  }
+
+  .admission-hero-title {
+    font-size: 1.25rem;
+    line-height: 1.3;
+  }
+
+  .admission-hero-sub {
+    font-size: 0.78rem;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .admission-hero-reg {
+    font-size: 0.72rem;
+    line-height: 1.4;
+  }
+
+  .admission-progress-wrapper {
+    padding: 10px 12px;
+    border-radius: 12px;
+  }
+
+  .admission-progress-rail {
+    min-width: max-content;
+    gap: 8px;
+  }
+
+  .admission-step {
+    padding: 6px 10px;
+    flex: 0 0 auto;
+  }
+
+  .admission-step-circle {
+    width: 24px;
+    height: 24px;
+    font-size: 0.75rem;
+  }
+
+  .admission-step-label {
+    font-size: 0.76rem;
+  }
+
+  .admission-section-card {
+    padding: 18px 16px;
+    border-radius: 14px;
+    margin-bottom: 18px;
+  }
+
+  .admission-section-header {
+    gap: 10px;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+  }
+
+  .admission-section-badge {
+    width: 32px;
+    height: 32px;
+    font-size: 0.85rem;
+    border-radius: 8px;
+  }
+
+  .admission-section-title {
+    font-size: 1.05rem;
+  }
+
+  .admission-section-desc {
+    font-size: 0.76rem;
+  }
+
+  .admission-fields-grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .admission-fields-grid .form-input,
+  .admission-fields-grid .form-select {
+    height: 46px;
+    font-size: 0.88rem;
+  }
+
+  .admission-declaration-box {
+    padding: 14px;
+  }
+
+  .admission-declaration-text {
+    font-size: 0.82rem;
+  }
+
+  .admission-declaration-meta-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .admission-signature-blocks {
+    grid-template-columns: 1fr;
+    gap: 18px;
+    padding: 14px 0 8px;
+  }
+
+  .admission-submit-btn {
+    height: 48px;
+    font-size: 0.96rem;
+  }
+
+  .admission-side-card {
+    padding: 18px 16px;
+    border-radius: 14px;
+  }
+}
