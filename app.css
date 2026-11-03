@@ -2931,40 +2931,47 @@ a {
   margin-bottom: 24px;
   background: var(--bg-surface, #FFFFFF);
   border: 1px solid var(--border-color, #E8EDF3);
-  border-radius: var(--radius-md, 12px);
+  border-radius: var(--radius-lg, 16px);
   padding: 14px 20px;
-  box-shadow: var(--shadow-xs);
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+  box-shadow: var(--shadow-sm);
 }
 
-.admission-progress-rail {
+/* Desktop Horizontal Stepper (>= 768px) */
+.wizard-desktop-stepper {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  min-width: 640px;
+  width: 100%;
+  gap: 6px;
 }
 
-.admission-step {
+@media (max-width: 767px) {
+  .wizard-desktop-stepper {
+    display: none !important;
+  }
+}
+
+.wizard-step-node {
   display: flex;
   align-items: center;
-  gap: 10px;
-  cursor: pointer;
-  padding: 6px 12px;
-  border-radius: 8px;
-  transition: all 0.2s ease;
+  gap: 8px;
+  cursor: default;
   user-select: none;
-  flex: 1;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
-.admission-step:hover {
-  background: var(--bg-hover, #F8FAFC);
+.wizard-step-node.completed {
+  cursor: pointer;
 }
 
-.admission-step-circle {
-  width: 28px;
-  height: 28px;
+.wizard-step-node.completed:hover .wizard-step-title {
+  color: #15803d;
+}
+
+.wizard-step-circle {
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: var(--bg-subtle, #F1F5F9);
   color: var(--text-muted, #64748B);
@@ -2974,34 +2981,353 @@ a {
   justify-content: center;
   font-size: 0.78rem;
   font-weight: 700;
-  flex-shrink: 0;
   transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
-.admission-step.active .admission-step-circle {
+.wizard-step-node.active .wizard-step-circle {
   background: #16a34a;
   color: #ffffff;
   border-color: #16a34a;
   box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.2);
 }
 
-.admission-step.completed .admission-step-circle {
+.wizard-step-node.completed .wizard-step-circle {
   background: #DCFCE7;
   color: #15803d;
   border-color: #86EFAC;
 }
 
-.admission-step-label {
-  font-size: 0.82rem;
+.wizard-step-title {
+  font-size: 0.8rem;
   font-weight: 600;
   color: var(--text-muted, #64748B);
   white-space: nowrap;
   transition: color 0.2s ease;
 }
 
-.admission-step.active .admission-step-label {
+.wizard-step-node.active .wizard-step-title {
   color: var(--text-primary, #111827);
   font-weight: 700;
+}
+
+.wizard-step-line {
+  flex: 1;
+  height: 2px;
+  background: var(--border-color, #E8EDF3);
+  margin: 0 4px;
+  min-width: 14px;
+  transition: background 0.2s ease;
+}
+
+.wizard-step-line.completed {
+  background: #86EFAC;
+}
+
+/* Mobile Stepper Navigation (< 768px) */
+.wizard-mobile-stepper {
+  display: none;
+  width: 100%;
+}
+
+@media (max-width: 767px) {
+  .wizard-mobile-stepper {
+    display: block;
+  }
+}
+
+.wizard-mobile-bar-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  gap: 10px;
+}
+
+.wizard-mobile-badge {
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: #15803d;
+  background: #DCFCE7;
+  border: 1px solid #BBF7D0;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-family: var(--font-mono, monospace);
+  flex-shrink: 0;
+}
+
+.wizard-mobile-select {
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #E8EDF3);
+  background: var(--bg-surface, #FFFFFF);
+  color: var(--text-primary, #111827);
+  max-width: 160px;
+  outline: none;
+}
+
+.wizard-mobile-current-title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--text-primary, #111827);
+  margin: 2px 0 8px 0;
+  letter-spacing: -0.01em;
+}
+
+.wizard-mobile-track {
+  height: 6px;
+  width: 100%;
+  background: #E2E8F0;
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.wizard-mobile-fill {
+  height: 100%;
+  background: #16a34a;
+  border-radius: 9999px;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Step Panes */
+.wizard-pane {
+  display: none;
+}
+
+.wizard-pane.active {
+  display: block;
+  animation: wizardFadeIn 0.25s ease-out;
+}
+
+@keyframes wizardFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Wizard Navigation Footer */
+.wizard-nav-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  margin-top: 26px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-color, #E8EDF3);
+}
+
+@media (max-width: 640px) {
+  .wizard-nav-footer {
+    flex-direction: column-reverse;
+    gap: 10px;
+  }
+  .wizard-nav-footer .btn {
+    width: 100% !important;
+    justify-content: center;
+  }
+}
+
+.btn-wizard-prev {
+  min-width: 120px;
+  height: 48px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.btn-wizard-next {
+  min-width: 140px;
+  height: 48px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: #16a34a !important;
+  color: #ffffff !important;
+  border: none;
+  border-radius: var(--radius-md, 10px);
+  box-shadow: 0 2px 8px rgba(22, 163, 74, 0.25);
+  transition: all 0.2s ease;
+}
+
+.btn-wizard-next:hover {
+  background: #15803d !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(22, 163, 74, 0.35);
+}
+
+/* Application Details (Date & Place) Grid */
+.wizard-app-details-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+@media (max-width: 640px) {
+  .wizard-app-details-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+/* Fee Structure Table & Card */
+.wizard-fee-container {
+  background: #F8FAFC;
+  border: 1px solid var(--border-color, #E8EDF3);
+  border-radius: var(--radius-md, 12px);
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.wizard-fee-table-wrap {
+  overflow-x: auto;
+  margin: 16px 0;
+  background: #ffffff;
+  border-radius: 8px;
+  border: 1px solid #E2E8F0;
+}
+
+.wizard-fee-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.wizard-fee-table th {
+  background: #F1F5F9;
+  padding: 10px 14px;
+  text-align: left;
+  font-weight: 700;
+  color: #334155;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid #E2E8F0;
+}
+
+.wizard-fee-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid #F1F5F9;
+}
+
+.wizard-fee-notes {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: #EFF6FF;
+  border: 1px solid #BFDBFE;
+  border-radius: 8px;
+  padding: 12px 14px;
+  font-size: 0.82rem;
+  color: #1E40AF;
+  line-height: 1.5;
+}
+
+/* Review Step Cards */
+.wizard-review-card {
+  background: var(--bg-surface, #FFFFFF);
+  border: 1px solid var(--border-color, #E8EDF3);
+  border-radius: var(--radius-md, 12px);
+  padding: 18px 20px;
+  margin-bottom: 16px;
+  transition: border-color 0.2s ease;
+}
+
+.wizard-review-card:hover {
+  border-color: #CBD5E1;
+}
+
+.wizard-review-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #F1F5F9;
+}
+
+.wizard-review-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.96rem;
+  font-weight: 800;
+  color: var(--text-primary, #111827);
+  margin: 0;
+}
+
+.btn-wizard-edit {
+  font-size: 0.78rem;
+  padding: 4px 10px;
+  height: auto;
+  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: #15803d;
+  background: #DCFCE7;
+  border: 1px solid #86EFAC;
+  cursor: pointer;
+  font-weight: 700;
+  transition: all 0.15s ease;
+}
+
+.btn-wizard-edit:hover {
+  background: #BBF7D0;
+  color: #14532D;
+}
+
+.wizard-review-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px 18px;
+}
+
+.wizard-review-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wizard-review-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-muted, #64748B);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.wizard-review-val {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-primary, #111827);
+  word-break: break-word;
+}
+
+/* Validation Styling */
+.form-input.is-invalid,
+.form-select.is-invalid,
+.admission-checkbox.is-invalid {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
+}
+
+.field-error-msg {
+  color: #ef4444;
+  font-size: 0.74rem;
+  margin-top: 4px;
+  display: block;
+  font-weight: 600;
 }
 
 /* Two-Column Grid Layout (Desktop >= 1024px) */
