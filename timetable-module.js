@@ -58,26 +58,19 @@ export class TimetableModule {
     this._currentSchedule = existing?.schedule || {};
 
     container.innerHTML = `
-      <div style="margin-bottom: 24px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-          <div>
-            <h1 style="font-size: 1.8rem; display: flex; align-items: center; gap: 10px;">
-              <span style="color: #2563eb;"><i data-lucide="calendar-days"></i></span> Timetable &amp; Teacher Substitution Matrix
-            </h1>
-            <p style="color: var(--text-muted); font-size: 0.9rem;">
-              Weekly period routine, teacher schedule allocations, and automated daily teacher absence &amp; substitution engine.
-            </p>
-          </div>
-          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-            ${this._activeView === 'matrix' ? `
-              <button class="btn btn-secondary" id="btn-print-timetable"><i data-lucide="printer"></i> Print Class Timetable (A4)</button>
-              <button class="btn btn-primary" id="btn-save-timetable"><i data-lucide="save"></i> Save Schedule</button>
-            ` : `
-              <button class="btn btn-primary" id="btn-print-substitution-slips"><i data-lucide="printer"></i> Print Daily Proxy Slips (A4)</button>
-            `}
-          </div>
-        </div>
-      </div>
+      <div class="tms-content-wrapper">
+        ${UIComponents.renderPageHeader({
+          title: 'Class Timetables & Substitution Matrix',
+          subtitle: 'Weekly period routine, teacher schedule allocations, and automated daily teacher absence & substitution engine.',
+          breadcrumbs: [{ label: 'Class Timetables' }],
+          badge: `${this._selectedGrade} - Sec ${this._selectedSection}`,
+          actionsHtml: this._activeView === 'matrix' ? `
+            <button class="btn btn-secondary" id="btn-print-timetable"><i data-lucide="printer"></i> Print Timetable (A4)</button>
+            <button class="btn btn-primary" id="btn-save-timetable"><i data-lucide="save"></i> Save Schedule</button>
+          ` : `
+            <button class="btn btn-primary" id="btn-print-substitution-slips"><i data-lucide="printer"></i> Print Proxy Slips (A4)</button>
+          `
+        })}
 
       <!-- Module View Tabs -->
       <div class="tms-tab-rail-wrapper">
@@ -393,7 +386,8 @@ export class TimetableModule {
         `;
       })()}
       `}
-    `;
+    </div>
+  `;
 
     this.bindEvents(container);
     UIComponents.refreshIcons();

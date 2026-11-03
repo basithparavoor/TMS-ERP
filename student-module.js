@@ -25,22 +25,19 @@ export class StudentModule {
     const clearanceValue = totalBilled > 0 ? `${((totalCollected / totalBilled) * 100).toFixed(1)}%` : '—';
 
     container.innerHTML = `
-      <div style="margin-bottom: 24px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-          <div>
-            <h1 style="font-size: 1.8rem;">Student Lifecycle & Directory</h1>
-            <p style="color: var(--text-muted); font-size: 0.9rem;">
-              Student information system, admissions pipeline, guardian records, and printable biometric ID cards.
-            </p>
-          </div>
-          <div style="display: flex; gap: 10px; flex-wrap:wrap;">
-            <button class="btn btn-secondary" id="btn-infirmary-roster"><i data-lucide="cross"></i> Medical &amp; Infirmary Roster</button>
-            <button class="btn btn-secondary" id="btn-bulk-print-id-cards"><i data-lucide="printer"></i> Bulk Print PVC ID Cards</button>
+      <div class="tms-content-wrapper">
+        ${UIComponents.renderPageHeader({
+          title: 'Student Lifecycle & Directory',
+          subtitle: 'Student information system, admissions pipeline, guardian records, and printable biometric ID cards.',
+          breadcrumbs: [{ label: 'Student Directory' }],
+          badge: `${students.length} Enrolled`,
+          actionsHtml: `
+            <button class="btn btn-secondary" id="btn-infirmary-roster"><i data-lucide="cross"></i> Medical Roster</button>
+            <button class="btn btn-secondary" id="btn-bulk-print-id-cards"><i data-lucide="printer"></i> Bulk Print PVC ID</button>
             <a href="student-admission-portal.html" target="_blank" class="btn btn-secondary"><i data-lucide="file-text"></i> Admission Form (A4)</a>
             ${canManage ? `<button class="btn btn-primary" id="btn-new-admission"><i data-lucide="user-plus"></i> New Enrollment</button>` : ''}
-          </div>
-        </div>
-      </div>
+          `
+        })}
 
       <div class="kpi-grid">
         ${UIComponents.renderKpiCard({ title: 'Total Enrolled Students', value: `${students.length}`, icon: 'users', color: 'blue', subtitle: TMS_CONFIG.academic.currentYear })}
@@ -194,7 +191,8 @@ export class StudentModule {
           </table>
         </div>
       </div>
-    `;
+    </div>
+  `;
 
     this.bindEvents(container);
     UIComponents.refreshIcons();

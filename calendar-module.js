@@ -60,23 +60,18 @@ export class CalendarModule {
     const ptms = this._events.filter(e => e.category === 'ptm').length;
 
     container.innerHTML = `
-      <div style="margin-bottom: 24px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-          <div>
-            <h1 style="font-size: 1.8rem; display: flex; align-items: center; gap: 10px;">
-              <span style="color: #16a34a;"><i data-lucide="calendar"></i></span> Institutional Event &amp; Academic Planner
-            </h1>
-            <p style="color: var(--text-muted); font-size: 0.9rem;">
-              School calendar, holidays, exam schedules, PTMs, and smartphone iCal (.ics) integration.
-            </p>
-          </div>
-          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-            <button class="btn btn-secondary" id="btn-export-ics"><i data-lucide="download"></i> Export to Phone Calendar (.ics)</button>
-            <button class="btn btn-secondary" id="btn-print-academic-cal"><i data-lucide="printer"></i> Print Annual Calendar (A4)</button>
+      <div class="tms-content-wrapper">
+        ${UIComponents.renderPageHeader({
+          title: 'Institutional Event & Academic Planner',
+          subtitle: 'School calendar, holidays, exam schedules, PTMs, and smartphone iCal (.ics) integration.',
+          breadcrumbs: [{ label: 'Academic Calendar' }],
+          badge: `${year}`,
+          actionsHtml: `
+            <button class="btn btn-secondary" id="btn-export-ics"><i data-lucide="download"></i> Sync Phone (.ics)</button>
+            <button class="btn btn-secondary" id="btn-print-academic-cal"><i data-lucide="printer"></i> Print Annual (A4)</button>
             <button class="btn btn-primary" id="btn-add-cal-event"><i data-lucide="plus"></i> Add Event</button>
-          </div>
-        </div>
-      </div>
+          `
+        })}
 
       <!-- KPI Summary -->
       <div class="kpi-grid">
@@ -116,7 +111,8 @@ export class CalendarModule {
           ${this.renderMonthGridHtml(year, month)}
         </div>
       </div>
-    `;
+    </div>
+  `;
 
     this.bindEvents(container);
     UIComponents.refreshIcons();

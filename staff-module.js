@@ -72,21 +72,17 @@ export class StaffModule {
     const payrollTotal = staff.reduce((sum, s) => sum + (parseFloat(s.basicPay) || 0), 0);
 
     container.innerHTML = `
-      <div style="margin-bottom: 24px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-          <div>
-            <h1 style="font-size: 1.8rem;">Staff &amp; Human Resources</h1>
-            <p style="color: var(--text-muted); font-size: 0.9rem;">
-              Faculty registry, departments, designations, employment contracts and login credentials.
-              Appointing a staff member also creates their username &amp; password and adds them to Users &amp; Roles.
-            </p>
-          </div>
-          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <div class="tms-content-wrapper">
+        ${UIComponents.renderPageHeader({
+          title: 'Staff & Human Resources',
+          subtitle: 'Faculty registry, departments, designations, employment contracts and login credentials.',
+          breadcrumbs: [{ label: 'Staff & HR' }],
+          badge: `${staff.length} Employees`,
+          actionsHtml: `
             <button class="btn btn-secondary" id="btn-export-staff"><i data-lucide="file-spreadsheet"></i> Export CSV</button>
             ${canManage ? '<button class="btn btn-primary" id="btn-add-staff"><i data-lucide="user-plus"></i> Appoint New Staff</button>' : ''}
-          </div>
-        </div>
-      </div>
+          `
+        })}
 
       <div class="kpi-grid">
         ${UIComponents.renderKpiCard({ title: 'Total Faculty & Staff', value: `${staff.length}`, icon: 'briefcase', color: 'blue', subtitle: 'Permanent & Contracted' })}
@@ -171,7 +167,8 @@ export class StaffModule {
           </table>
         </div>
       </div>
-    `;
+    </div>
+  `;
 
     this.bindEvents(container, canManage);
     UIComponents.refreshIcons();

@@ -41,7 +41,8 @@ const ROLE_LABELS = {
   office_boy: 'Office Boy (Data Entry)',
   student: 'Student',
   parent: 'Parent / Guardian',
-  pending: 'Pending Assignment'
+  pending: 'Pending Assignment',
+  rejected: 'Access Rejected'
 };
 
 function parseUserAgent(ua) {
@@ -92,20 +93,17 @@ export class AdminModule {
     const isSuperAdmin = currentUser?.isSuperAdmin === true || (currentUser?.email || '').toLowerCase() === (TMS_CONFIG.superAdminEmail || '').toLowerCase();
 
     container.innerHTML = `
-      <div style="margin-bottom: 24px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-          <div>
-            <h1 style="font-size: 1.8rem;">School Administration &amp; Governance</h1>
-            <p style="color: var(--text-muted); font-size: 0.9rem;">
-              Admission form builder, fee &amp; payment configuration, application review, notifications and audit trail.
-            </p>
-          </div>
-          <div style="display: flex; gap: 10px;">
+      <div class="tms-content-wrapper">
+        ${UIComponents.renderPageHeader({
+          title: 'School Administration & Governance',
+          subtitle: 'Admission form builder, fee & payment configuration, application review, notifications and audit trail.',
+          breadcrumbs: [{ label: 'Administration' }],
+          badge: isSuperAdmin ? 'Super Admin' : 'Admin Console',
+          actionsHtml: `
             <a href="student-admission-portal.html" target="_blank" class="btn btn-secondary"><i data-lucide="external-link"></i> Public Admission Gateway</a>
             <button class="btn btn-primary" id="btn-new-notification"><i data-lucide="bell-plus"></i> New Notification</button>
-          </div>
-        </div>
-      </div>
+          `
+        })}
 
       <div class="kpi-grid" style="margin-bottom: 22px;">
         ${UIComponents.renderKpiCard({ title: 'Total Applications', value: stats.total, icon: 'file-text', color: 'blue' })}
@@ -142,6 +140,7 @@ export class AdminModule {
           <button class="tms-tab-pill" data-group="users">
             <i data-lucide="shield-check"></i>
             <span>Access & Security</span>
+            <span class="tab-badge" id="admin-pending-users-badge" style="display:none; background:#f59e0b; color:#fff;">0</span>
           </button>
           <button class="tms-tab-pill" data-group="notices">
             <i data-lucide="bell"></i>
@@ -155,6 +154,7 @@ export class AdminModule {
           <button class="tms-tab-pill super-admin-pill" data-group="superadmin" style="background: linear-gradient(135deg, rgba(245, 158, 11, 0.14), rgba(239, 68, 68, 0.12)); border: 1.5px solid rgba(245, 158, 11, 0.45); color: #b45309; font-weight: 800;">
             <i data-lucide="crown" style="color: #f59e0b;"></i>
             <span>Super Admin &amp; Dev</span>
+            <span class="tab-badge" id="superadmin-pending-badge" style="display:none; background:#ef4444; color:#fff;">0</span>
           </button>
           ` : ''}
         </div>
@@ -164,10 +164,40 @@ export class AdminModule {
       <div class="tms-subtab-rail" id="admin-subtab-rail"></div>
 
       <div id="admin-tab-content"></div>
-    `;
+    </div>
+  `;
 
     this.bindEvents(container);
+    this.refreshPendingBadges();
     this.switchGroup('admissions', 'applications');
+  }
+
+  static async refreshPendingBadges() {
+    try {
+      const profiles = await dbService.select('profiles');
+      const pending = (profiles || []).filter(p => p.role === 'pending' || p.approvalStatus === 'pending');
+      this._pendingApprovalsCount = pending.length;
+
+      const userBadge = document.getElementById('admin-pending-users-badge');
+      if (userBadge) {
+        if (pending.length > 0) {
+          userBadge.innerText = pending.length;
+          userBadge.style.display = 'inline-block';
+        } else {
+          userBadge.style.display = 'none';
+        }
+      }
+
+      const superBadge = document.getElementById('superadmin-pending-badge');
+      if (superBadge) {
+        if (pending.length > 0) {
+          superBadge.innerText = pending.length;
+          superBadge.style.display = 'inline-block';
+        } else {
+          superBadge.style.display = 'none';
+        }
+      }
+    } catch (e) { /* ignore */ }
   }
 
   static switchGroup(groupKey, targetSubtab = null) {
@@ -182,6 +212,7 @@ export class AdminModule {
         { key: 'payment-settings', label: 'Portal Rules & Video', icon: 'settings' }
       ],
       users: [
+        { key: 'google-approvals', label: 'User Authentication (Google)', icon: 'user-check', showPendingBadge: true },
         { key: 'users', label: 'User Logins & Roles', icon: 'users' },
         ...(isSuperAdmin ? [{ key: 'user-sessions', label: 'Login & Logout Sessions', icon: 'history' }] : []),
         { key: 'audit', label: 'Security Audit Trail', icon: 'shield-alert' }
@@ -194,6 +225,7 @@ export class AdminModule {
         { key: 'backup', label: 'JSON Disaster Recovery', icon: 'database' }
       ],
       superadmin: [
+        { key: 'google-approvals', label: '🛡️ Google Auth Approvals', icon: 'user-check', showPendingBadge: true },
         { key: 'system-doctor', label: '🩺 System Doctor (Find & Fix)', icon: 'wrench' },
         { key: 'user-sessions', label: '👤 User Login / Logout Sessions', icon: 'history' },
         { key: 'audit', label: '🛡️ Security Audit Logs', icon: 'shield-alert' },
@@ -206,11 +238,13 @@ export class AdminModule {
     if (!subRail) return;
 
     const activeSubKey = targetSubtab || subList[0].key;
+    const pendingCount = this._pendingApprovalsCount || 0;
 
     subRail.innerHTML = subList.map(st => `
       <button class="tms-subtab-pill ${st.key === activeSubKey ? 'active' : ''}" data-tab="${st.key}">
         <i data-lucide="${st.icon}" style="width: 14px; height: 14px;"></i>
         <span>${st.label}</span>
+        ${st.showPendingBadge && pendingCount > 0 ? `<span class="badge" style="background:#ef4444; color:#fff; font-size:0.68rem; padding:1px 6px; border-radius:10px; margin-left:4px;">${pendingCount}</span>` : ''}
       </button>
     `).join('');
 
@@ -250,6 +284,7 @@ export class AdminModule {
       else if (tabKey === 'payment-settings') await this.renderPaymentSettingsTab(tabContent);
       else if (tabKey === 'notifications') await this.renderNotificationsTab(tabContent);
       else if (tabKey === 'users') await this.renderUsersTab(tabContent);
+      else if (tabKey === 'google-approvals') await this.renderGoogleApprovalsTab(tabContent);
       else if (tabKey === 'branding') await this.renderBrandingTab(tabContent);
       else if (tabKey === 'audit') await this.renderAuditTab(tabContent);
       else if (tabKey === 'backup') await this.renderBackupTab(tabContent);
@@ -2270,6 +2305,387 @@ export class AdminModule {
       if (active && active.dataset.tab === 'notifications') this.renderTab('notifications');
     });
     UIComponents.refreshIcons();
+  }
+
+  /* ================================================================== */
+  /* User Authentication & Google Approvals                             */
+  /* ================================================================== */
+
+  static async renderGoogleApprovalsTab(tabContent) {
+    const currentUser = authService.getCurrentUser();
+    const isSuperAdmin = currentUser?.isSuperAdmin === true || (currentUser?.email || '').toLowerCase() === (TMS_CONFIG.superAdminEmail || '').toLowerCase();
+
+    let profiles = [];
+    try {
+      profiles = await dbService.select('profiles');
+    } catch (e) {
+      profiles = [];
+    }
+
+    // Categorize
+    const pendingList = profiles.filter((p) => p.role === 'pending' || p.approvalStatus === 'pending');
+    const approvedList = profiles.filter((p) => p.role !== 'pending' && p.role !== 'rejected' && p.isActive !== false);
+    const rejectedList = profiles.filter((p) => p.role === 'rejected' || p.approvalStatus === 'rejected' || p.isActive === false);
+
+    this._pendingApprovalsCount = pendingList.length;
+    this.refreshPendingBadges();
+
+    const roles = Object.values(TMS_CONFIG.roles).filter((r) => isSuperAdmin ? true : r !== 'super_admin');
+    const scopes = Object.values(TMS_CONFIG.scopes);
+
+    if (!this._approvalFilter) {
+      this._approvalFilter = pendingList.length > 0 ? 'pending' : 'all';
+    }
+    const currentFilter = this._approvalFilter;
+
+    let displayed = profiles;
+    if (currentFilter === 'pending') displayed = pendingList;
+    else if (currentFilter === 'approved') displayed = approvedList;
+    else if (currentFilter === 'rejected') displayed = rejectedList;
+
+    tabContent.innerHTML = `
+      <div style="display:flex; flex-direction:column; gap:20px;">
+        <!-- KPI Summary Cards -->
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:14px;">
+          <div class="card" style="padding:16px; border-left:4px solid #f59e0b; background:linear-gradient(to right, rgba(245,158,11,0.06), var(--bg-surface));">
+            <div style="font-size:0.75rem; font-weight:700; color:#b45309; text-transform:uppercase; letter-spacing:0.04em;">Pending Approvals</div>
+            <div style="display:flex; align-items:baseline; gap:8px; margin-top:4px;">
+              <span style="font-size:1.8rem; font-weight:800; color:var(--text-main);">${pendingList.length}</span>
+              ${pendingList.length > 0 ? '<span class="badge badge-warning" style="font-size:0.72rem;">Requires Action</span>' : '<span style="font-size:0.72rem; color:#16a34a;">All Approved</span>'}
+            </div>
+            <div style="font-size:0.72rem; color:var(--text-muted); margin-top:4px;">Waiting on approval screen</div>
+          </div>
+          <div class="card" style="padding:16px; border-left:4px solid #16a34a; background:linear-gradient(to right, rgba(22,163,74,0.06), var(--bg-surface));">
+            <div style="font-size:0.75rem; font-weight:700; color:#15803d; text-transform:uppercase; letter-spacing:0.04em;">Active &amp; Approved</div>
+            <div style="display:flex; align-items:baseline; gap:8px; margin-top:4px;">
+              <span style="font-size:1.8rem; font-weight:800; color:var(--text-main);">${approvedList.length}</span>
+              <span style="font-size:0.72rem; color:var(--text-muted);">Active Staff &amp; Users</span>
+            </div>
+            <div style="font-size:0.72rem; color:var(--text-muted); margin-top:4px;">Full portal permissions granted</div>
+          </div>
+          <div class="card" style="padding:16px; border-left:4px solid #ef4444; background:linear-gradient(to right, rgba(239,68,68,0.06), var(--bg-surface));">
+            <div style="font-size:0.75rem; font-weight:700; color:#b91c1c; text-transform:uppercase; letter-spacing:0.04em;">Rejected / Revoked</div>
+            <div style="display:flex; align-items:baseline; gap:8px; margin-top:4px;">
+              <span style="font-size:1.8rem; font-weight:800; color:var(--text-main);">${rejectedList.length}</span>
+              <span style="font-size:0.72rem; color:var(--text-muted);">Blocked Access</span>
+            </div>
+            <div style="font-size:0.72rem; color:var(--text-muted); margin-top:4px;">Access denied or disabled</div>
+          </div>
+          <div class="card" style="padding:16px; border-left:4px solid #6366f1; background:linear-gradient(to right, rgba(99,102,241,0.06), var(--bg-surface));">
+            <div style="font-size:0.75rem; font-weight:700; color:#4338ca; text-transform:uppercase; letter-spacing:0.04em;">Total Registered</div>
+            <div style="display:flex; align-items:baseline; gap:8px; margin-top:4px;">
+              <span style="font-size:1.8rem; font-weight:800; color:var(--text-main);">${profiles.length}</span>
+              <span style="font-size:0.72rem; color:var(--text-muted);">Total Accounts</span>
+            </div>
+            <div style="font-size:0.72rem; color:var(--text-muted); margin-top:4px;">Google &amp; manual accounts</div>
+          </div>
+        </div>
+
+        <!-- Main Approvals Management Card -->
+        <div class="card">
+          <div class="card-header" style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px;">
+            <div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <h3 class="card-title" style="margin:0; font-size:1.15rem;">User Authentication &amp; Google Sign-in Approvals</h3>
+                <span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-weight:700; font-size:0.72rem;">
+                  Google OAuth / Gmail
+                </span>
+              </div>
+              <p class="card-desc" style="margin-top:4px;">
+                When institutional users sign in with Gmail/Google, their accounts are held in pending status until you approve them and assign their official institutional role.
+              </p>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <button class="btn btn-secondary btn-sm" id="btn-refresh-approvals">
+                <i data-lucide="refresh-cw"></i> Refresh List
+              </button>
+            </div>
+          </div>
+
+          <!-- Filter & Search Toolbar -->
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+            <div style="display:flex; gap:6px; flex-wrap:wrap;" id="approval-filter-tabs">
+              <button class="btn btn-sm ${currentFilter === 'pending' ? 'btn-primary' : 'btn-secondary'} filter-btn" data-filter="pending" style="display:flex; align-items:center; gap:6px;">
+                <i data-lucide="clock"></i>
+                <span>Pending Approvals</span>
+                <span class="badge" style="background:${currentFilter === 'pending' ? 'rgba(255,255,255,0.25)' : '#fef3c7'}; color:${currentFilter === 'pending' ? '#fff' : '#b45309'}; padding:1px 6px; font-size:0.7rem;">${pendingList.length}</span>
+              </button>
+              <button class="btn btn-sm ${currentFilter === 'approved' ? 'btn-primary' : 'btn-secondary'} filter-btn" data-filter="approved" style="display:flex; align-items:center; gap:6px;">
+                <i data-lucide="check-circle"></i>
+                <span>Approved Users (${approvedList.length})</span>
+              </button>
+              <button class="btn btn-sm ${currentFilter === 'rejected' ? 'btn-primary' : 'btn-secondary'} filter-btn" data-filter="rejected" style="display:flex; align-items:center; gap:6px;">
+                <i data-lucide="shield-x"></i>
+                <span>Rejected (${rejectedList.length})</span>
+              </button>
+              <button class="btn btn-sm ${currentFilter === 'all' ? 'btn-primary' : 'btn-secondary'} filter-btn" data-filter="all" style="display:flex; align-items:center; gap:6px;">
+                <i data-lucide="users"></i>
+                <span>All Accounts (${profiles.length})</span>
+              </button>
+            </div>
+
+            <div style="position:relative; min-width:240px;">
+              <input type="text" class="form-input form-input-sm" id="approval-search-input" placeholder="Search by name or email..." style="padding-left:32px;">
+              <i data-lucide="search" style="position:absolute; left:10px; top:50%; transform:translateY(-50%); width:14px; height:14px; color:var(--text-muted);"></i>
+            </div>
+          </div>
+
+          <!-- Approvals Table -->
+          <div class="table-responsive">
+            <table class="tms-table" id="approval-table" style="font-size:0.85rem;">
+              <thead>
+                <tr>
+                  <th style="min-width:220px;">User &amp; Google Account</th>
+                  <th>Current Status</th>
+                  <th style="min-width:160px;">Role Assignment</th>
+                  <th style="min-width:140px;">Access Scope</th>
+                  <th style="min-width:130px;">Title / Designation</th>
+                  <th style="min-width:120px;">Department</th>
+                  <th style="text-align:right; min-width:180px;">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${displayed.map((p) => {
+                  const isPending = p.role === 'pending' || p.approvalStatus === 'pending';
+                  const isRejected = p.role === 'rejected' || p.approvalStatus === 'rejected' || p.isActive === false;
+                  const isTargetSuper = (p.email || '').toLowerCase() === (TMS_CONFIG.superAdminEmail || '').toLowerCase() || p.role === 'super_admin' || p.is_super_admin === true || p.isSuperAdmin === true;
+                  const canModify = isSuperAdmin || !isTargetSuper;
+                  const isGmail = (p.email || '').toLowerCase().includes('@gmail.com');
+
+                  // Default selected role for pending user
+                  const currentRole = p.role === 'pending' ? 'teacher' : p.role;
+                  const currentScope = p.scope === 'own_records' ? (currentRole === 'admin' ? 'school_wide' : 'own_records') : (p.scope || 'own_records');
+
+                  return `
+                    <tr data-id="${esc(p.id)}" data-email="${esc(p.email || '')}" class="approval-row ${isPending ? 'row-pending-highlight' : ''}" style="${isPending ? 'background:rgba(245, 158, 11, 0.04);' : ''}">
+                      <td>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                          <img src="${esc(p.avatar || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150')}" alt="" style="width:36px; height:36px; border-radius:50%; object-fit:cover; border:1.5px solid var(--border-color); background:#f1f5f9; flex-shrink:0;">
+                          <div style="min-width:0;">
+                            <div style="font-weight:700; color:var(--text-main); display:flex; align-items:center; gap:6px;">
+                              <span class="user-display-name">${esc(p.name || 'TMS User')}</span>
+                              ${isTargetSuper ? '<span class="badge" style="background:#fef3c7; color:#b45309; font-weight:800; font-size:0.65rem; padding:1px 5px;">👑 ROOT</span>' : ''}
+                            </div>
+                            <div class="font-mono user-display-email" style="font-size:0.75rem; color:var(--text-muted); display:flex; align-items:center; gap:6px; margin-top:2px;">
+                              <span>${esc(p.email || '—')}</span>
+                              ${isGmail ? `
+                                <span class="badge" style="background:#e0f2fe; color:#0369a1; font-size:0.62rem; padding:1px 5px; display:inline-flex; align-items:center; gap:3px;">
+                                  <svg width="10" height="10" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/></svg>
+                                  Google
+                                </span>` : ''}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+
+                      <td>
+                        ${isPending ? `
+                          <span class="badge badge-warning" style="display:inline-flex; align-items:center; gap:4px; font-weight:700;">
+                            <i data-lucide="clock" style="width:12px; height:12px;"></i> Pending Approval
+                          </span>
+                        ` : isRejected ? `
+                          <span class="badge badge-danger" style="display:inline-flex; align-items:center; gap:4px; font-weight:700;">
+                            <i data-lucide="shield-x" style="width:12px; height:12px;"></i> Rejected / Inactive
+                          </span>
+                        ` : `
+                          <span class="badge badge-success" style="display:inline-flex; align-items:center; gap:4px; font-weight:700;">
+                            <i data-lucide="check-circle" style="width:12px; height:12px;"></i> Approved (${esc(ROLE_LABELS[p.role] || p.role)})
+                          </span>
+                        `}
+                      </td>
+
+                      <td>
+                        ${!canModify ? `<span class="badge" style="background:#fef3c7; color:#b45309; font-weight:700;">👑 Super Admin</span>` : `
+                          <select class="form-select form-select-sm approval-role-select">
+                            ${roles.map((r) => `
+                              <option value="${esc(r)}" ${(r === currentRole) ? 'selected' : ''}>
+                                ${esc(ROLE_LABELS[r] || r)}
+                              </option>
+                            `).join('')}
+                          </select>
+                        `}
+                      </td>
+
+                      <td>
+                        ${!canModify ? `<span class="badge badge-success">school_wide</span>` : `
+                          <select class="form-select form-select-sm approval-scope-select">
+                            ${scopes.map((s) => `
+                              <option value="${esc(s)}" ${(s === currentScope) ? 'selected' : ''}>
+                                ${esc(s)}
+                              </option>
+                            `).join('')}
+                          </select>
+                        `}
+                      </td>
+
+                      <td>
+                        ${!canModify ? `<span>${esc(p.title || 'Super Admin')}</span>` : `
+                          <input type="text" class="form-input form-input-sm approval-title-input" value="${esc(p.title || (isPending ? 'Teacher' : 'Staff Member'))}" placeholder="Title">
+                        `}
+                      </td>
+
+                      <td>
+                        ${!canModify ? `<span>${esc(p.department || 'Governance')}</span>` : `
+                          <input type="text" class="form-input form-input-sm approval-dept-input" value="${esc(p.department || (isPending ? 'Academics' : 'General'))}" placeholder="Department">
+                        `}
+                      </td>
+
+                      <td style="text-align:right; white-space:nowrap;">
+                        ${!canModify ? '<span style="font-size:0.72rem; color:var(--text-muted); font-style:italic;">Root Protected</span>' : `
+                          ${isPending ? `
+                            <button class="btn btn-primary btn-sm btn-action-approve" style="padding:5px 12px; font-weight:700;" title="Approve user and grant portal access">
+                              <i data-lucide="user-check"></i> Approve &amp; Assign
+                            </button>
+                            <button class="btn btn-secondary btn-sm btn-action-reject" style="padding:5px 9px; color:#ef4444;" title="Reject access request">
+                              <i data-lucide="user-x"></i> Reject
+                            </button>
+                          ` : isRejected ? `
+                            <button class="btn btn-secondary btn-sm btn-action-approve" style="padding:5px 12px; color:#16a34a; font-weight:700;" title="Re-approve and activate">
+                              <i data-lucide="rotate-ccw"></i> Re-Approve
+                            </button>
+                          ` : `
+                            <button class="btn btn-secondary btn-sm btn-action-update" style="padding:5px 10px;" title="Update role and permissions">
+                              <i data-lucide="save"></i> Update
+                            </button>
+                            <button class="btn btn-secondary btn-sm btn-action-reject" style="padding:5px 9px; color:#ef4444;" title="Revoke access">
+                              <i data-lucide="user-x"></i> Reject
+                            </button>
+                          `}
+                        `}
+                      </td>
+                    </tr>
+                  `;
+                }).join('') || `<tr><td colspan="7" style="text-align:center; padding:32px; color:var(--text-muted);">No accounts found in this view.</td></tr>`}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    `;
+
+    this.bindGoogleApprovalEvents(tabContent, profiles);
+    UIComponents.refreshIcons();
+  }
+
+  static bindGoogleApprovalEvents(tabContent, profiles) {
+    // 1. Filter tabs
+    tabContent.querySelectorAll('.filter-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        this._approvalFilter = e.currentTarget.dataset.filter;
+        this.renderGoogleApprovalsTab(tabContent);
+      });
+    });
+
+    // 2. Search input live filtering
+    const searchInput = tabContent.querySelector('#approval-search-input');
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        const query = e.target.value.toLowerCase().trim();
+        tabContent.querySelectorAll('.approval-row').forEach((row) => {
+          const name = (row.querySelector('.user-display-name')?.innerText || '').toLowerCase();
+          const email = (row.querySelector('.user-display-email')?.innerText || '').toLowerCase();
+          if (!query || name.includes(query) || email.includes(query)) {
+            row.style.display = '';
+          } else {
+            row.style.display = 'none';
+          }
+        });
+      });
+    }
+
+    // 3. Refresh button
+    const refreshBtn = tabContent.querySelector('#btn-refresh-approvals');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', () => {
+        UIComponents.showToast('Refreshing accounts list...', 'info');
+        this.renderGoogleApprovalsTab(tabContent);
+      });
+    }
+
+    // 4. Approve / Update Button
+    tabContent.querySelectorAll('.btn-action-approve, .btn-action-update').forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        const row = e.currentTarget.closest('tr');
+        const userId = row.dataset.id;
+        const userEmail = row.dataset.email;
+        const selectedRole = row.querySelector('.approval-role-select')?.value || 'teacher';
+        const selectedScope = row.querySelector('.approval-scope-select')?.value || 'own_records';
+        const title = row.querySelector('.approval-title-input')?.value.trim() || ROLE_LABELS[selectedRole] || 'Staff Member';
+        const dept = row.querySelector('.approval-dept-input')?.value.trim() || 'General';
+
+        btn.disabled = true;
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = `<i data-lucide="loader-2" class="spin"></i> Saving...`;
+        UIComponents.refreshIcons();
+
+        try {
+          const updates = {
+            role: selectedRole,
+            scope: selectedScope,
+            title: title,
+            department: dept,
+            isActive: true
+          };
+
+          await dbService.update('profiles', userId, updates);
+          await auditService.log('USER_APPROVED_BY_ADMIN', 'SECURITY', {
+            userId,
+            email: userEmail,
+            role: selectedRole,
+            scope: selectedScope
+          });
+
+          UIComponents.showToast(`Account ${userEmail} approved as ${ROLE_LABELS[selectedRole] || selectedRole}!`, 'success');
+          await this.renderGoogleApprovalsTab(tabContent);
+        } catch (err) {
+          console.error('Approval failed:', err);
+          UIComponents.showToast(`Approval failed: ${err.message}`, 'error');
+          btn.disabled = false;
+          btn.innerHTML = originalHtml;
+          UIComponents.refreshIcons();
+        }
+      });
+    });
+
+    // 5. Reject Button
+    tabContent.querySelectorAll('.btn-action-reject').forEach((btn) => {
+      btn.addEventListener('click', async (e) => {
+        const row = e.currentTarget.closest('tr');
+        const userId = row.dataset.id;
+        const userEmail = row.dataset.email;
+
+        if (!confirm(`Are you sure you want to REJECT and block access for ${userEmail}?\nThey will be shown the access rejected message and prevented from entering the ERP.`)) {
+          return;
+        }
+
+        btn.disabled = true;
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = `<i data-lucide="loader-2" class="spin"></i> Rejecting...`;
+        UIComponents.refreshIcons();
+
+        try {
+          const updates = {
+            role: 'rejected',
+            isActive: false
+          };
+
+          await dbService.update('profiles', userId, updates);
+          await auditService.log('USER_REJECTED_BY_ADMIN', 'SECURITY', {
+            userId,
+            email: userEmail
+          });
+
+          UIComponents.showToast(`Access rejected for ${userEmail}.`, 'info');
+          await this.renderGoogleApprovalsTab(tabContent);
+        } catch (err) {
+          console.error('Rejection failed:', err);
+          UIComponents.showToast(`Rejection failed: ${err.message}`, 'error');
+          btn.disabled = false;
+          btn.innerHTML = originalHtml;
+          UIComponents.refreshIcons();
+        }
+      });
+    });
   }
 
   /* ================================================================== */

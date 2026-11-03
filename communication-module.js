@@ -36,17 +36,14 @@ export class CommunicationModule {
     this._notices = notices;
 
     container.innerHTML = `
-      <div style="margin-bottom: 24px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-          <div>
-            <h1 style="font-size: 1.8rem;">Official Communication &amp; Broadcast</h1>
-            <p style="color: var(--text-muted); font-size: 0.9rem;">
-              School circulars, targeted notices, emergency bulletins, SMS/WhatsApp broadcast dispatch.
-            </p>
-          </div>
-          ${canManage ? '<button class="btn btn-primary" id="btn-create-notice"><i data-lucide="send"></i> Publish New Notice</button>' : ''}
-        </div>
-      </div>
+      <div class="tms-content-wrapper">
+        ${UIComponents.renderPageHeader({
+          title: 'Official Communication & Broadcast',
+          subtitle: 'School circulars, targeted notices, emergency bulletins, SMS/WhatsApp broadcast dispatch.',
+          breadcrumbs: [{ label: 'Notice & Bulletins' }],
+          badge: `${notices.length} Published`,
+          actionsHtml: canManage ? '<button class="btn btn-primary" id="btn-create-notice"><i data-lucide="send"></i> Publish New Notice</button>' : ''
+        })}
 
       <div class="kpi-grid">
         ${UIComponents.renderKpiCard({ title: 'Active Circulars', value: `${notices.length}`, icon: 'bell', color: 'blue', subtitle: 'Published on Campus' })}
@@ -109,7 +106,8 @@ export class CommunicationModule {
           `}
         </div>
       </div>
-    `;
+    </div>
+  `;
 
     this.bindEvents(container, canManage);
     UIComponents.refreshIcons();

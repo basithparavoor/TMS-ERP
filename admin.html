@@ -49,7 +49,11 @@
       checkMigration();
       await authService.init();
       const user = authService.getCurrentUser();
-      const allowed = user && [TMS_CONFIG.roles.ADMIN, TMS_CONFIG.roles.PRINCIPAL].includes(user.role);
+      const allowed = user && (
+        [TMS_CONFIG.roles.ADMIN, TMS_CONFIG.roles.PRINCIPAL, TMS_CONFIG.roles.SUPER_ADMIN].includes(user.role) ||
+        user.isSuperAdmin === true ||
+        (user.email || '').toLowerCase() === (TMS_CONFIG.superAdminEmail || '').toLowerCase()
+      );
 
       if (!allowed) {
         window.location.href = user ? 'index.html#/dashboard' : 'login.html';

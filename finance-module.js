@@ -29,28 +29,25 @@ export class FinanceModule {
     const efficiencyValue = totalBilled > 0 ? `${((totalCollected / totalBilled) * 100).toFixed(1)}%` : '—';
 
     container.innerHTML = `
-      <div style="margin-bottom: 24px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-          <div>
-            <h1 style="font-size: 1.8rem;">Fees & Financial Operations</h1>
-            <p style="color: var(--text-muted); font-size: 0.9rem;">
-              Tuition fee structures, invoicing engine, cash counter receipts, and student ledger for THAIBA MODEL SCHOOL.
-            </p>
-          </div>
-          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+      <div class="tms-content-wrapper">
+        ${UIComponents.renderPageHeader({
+          title: 'Fees & Financial Operations',
+          subtitle: 'Tuition fee structures, invoicing engine, cash counter receipts, and student ledger for THAIBA MODEL SCHOOL.',
+          breadcrumbs: [{ label: 'Finance & Accounts' }],
+          badge: 'Accounts Active',
+          actionsHtml: `
             <button class="btn btn-secondary" id="btn-generate-challan"><i data-lucide="layers"></i> 3-Part Fee Challan</button>
             <button class="btn btn-secondary" id="btn-defaulters-list"><i data-lucide="alert-circle"></i> Defaulters Aging</button>
             <button class="btn btn-primary" id="btn-open-cash-counter"><i data-lucide="credit-card"></i> Fee Collection Counter</button>
-          </div>
-        </div>
-      </div>
+          `
+        })}
 
-      <div class="kpi-grid">
-        ${UIComponents.renderKpiCard({ title: 'Total Invoiced (Term 1)', value: `₹ ${totalBilled.toLocaleString()}`, icon: 'file-text', color: 'blue' })}
-        ${UIComponents.renderKpiCard({ title: 'Total Collections', value: `₹ ${totalCollected.toLocaleString()}`, icon: 'check-circle-2', color: 'emerald', subtitle: 'Bank & Cash Reconciled' })}
-        ${UIComponents.renderKpiCard({ title: 'Outstanding Balance', value: `₹ ${totalOutstanding.toLocaleString()}`, icon: 'clock', color: 'rose', subtitle: 'Pending Collection' })}
-        ${UIComponents.renderKpiCard({ title: 'Collection Efficiency', value: efficiencyValue, icon: 'pie-chart', color: 'amber', subtitle: 'Collected vs Invoiced' })}
-      </div>
+        <div class="kpi-grid">
+          ${UIComponents.renderKpiCard({ title: 'Total Invoiced (Term 1)', value: `₹ ${totalBilled.toLocaleString()}`, icon: 'file-text', color: 'blue', subtitle: 'Academic Term Fees' })}
+          ${UIComponents.renderKpiCard({ title: 'Total Collections', value: `₹ ${totalCollected.toLocaleString()}`, icon: 'check-circle-2', color: 'emerald', subtitle: 'Bank & Cash Reconciled', progress: totalBilled > 0 ? (totalCollected / totalBilled) * 100 : 0 })}
+          ${UIComponents.renderKpiCard({ title: 'Outstanding Balance', value: `₹ ${totalOutstanding.toLocaleString()}`, icon: 'clock', color: 'rose', subtitle: 'Pending Collection' })}
+          ${UIComponents.renderKpiCard({ title: 'Collection Efficiency', value: efficiencyValue, icon: 'pie-chart', color: 'amber', subtitle: 'Collected vs Invoiced', trend: { direction: 'up', label: 'On Target' } })}
+        </div>
 
       <!-- Invoices Ledger Card -->
       <div class="card">
@@ -143,7 +140,8 @@ export class FinanceModule {
           </table>
         </div>
       </div>
-    `;
+    </div>
+  `;
 
     this._invoices = invoices;
     this.bindEvents(container);
@@ -617,7 +615,8 @@ export class FinanceModule {
           </table>
         </div>
       </div>
-    `;
+    </div>
+  `;
 
     UIComponents.openModal({
       title: 'Defaulters Aging Analysis & Automated WhatsApp Recovery',

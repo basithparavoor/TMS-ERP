@@ -74,22 +74,17 @@ export class ExaminationModule {
     const passRate = recordedList.length ? `${Math.round((passCount / recordedList.length) * 100)}%` : '—';
 
     container.innerHTML = `
-      <div style="margin-bottom: 24px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-          <div>
-            <h1 style="font-size: 1.8rem; display: flex; align-items: center; gap: 10px;">
-              <span style="color: #16a34a;"><i data-lucide="award"></i></span> Examinations & Assessment Engine
-            </h1>
-            <p style="color: var(--text-muted); font-size: 0.9rem;">
-              Class gradebooks, bulk marks ledger, official CBSE/State-Board A4 Cumulative Progress Report Cards.
-            </p>
-          </div>
-          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+      <div class="tms-content-wrapper">
+        ${UIComponents.renderPageHeader({
+          title: 'Examinations & Assessment Engine',
+          subtitle: 'Class gradebooks, bulk marks ledger, official CBSE/State-Board A4 Cumulative Progress Report Cards.',
+          breadcrumbs: [{ label: 'Exams & Reports' }],
+          badge: 'Evaluation Suite',
+          actionsHtml: `
             <button class="btn btn-secondary" id="btn-publish-results"><i data-lucide="share-2"></i> Publish Results</button>
             <button class="btn btn-primary" id="btn-enter-marks"><i data-lucide="edit-3"></i> Bulk Marks Entry</button>
-          </div>
-        </div>
-      </div>
+          `
+        })}
 
       <div class="kpi-grid">
         ${UIComponents.renderKpiCard({ title: 'Current Assessment', value: this._selectedTerm, icon: 'calendar', color: 'blue', subtitle: TMS_CONFIG.academic.currentYear })}
@@ -539,7 +534,8 @@ export class ExaminationModule {
         </div>
       </div>
       ` : ''}
-    `;
+    </div>
+  `;
 
     this.bindEvents(container);
     UIComponents.refreshIcons();

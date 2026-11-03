@@ -91,22 +91,19 @@ export class AcademicModule {
     const currentSessionObj = this._sessions.find(s => s.isCurrent) || this._sessions[0] || { sessionName: TMS_CONFIG.academic.currentYear };
 
     container.innerHTML = `
-      <div style="margin-bottom: 24px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-          <div>
-            <h1 style="font-size: 1.8rem; display: flex; align-items: center; gap: 10px;">
-              <span style="color: #16a34a;"><i data-lucide="book-open"></i></span> Academic Management Gateway
-            </h1>
-            <p style="color: var(--text-muted); font-size: 0.9rem;">
-              Manage classes, sections, bell timetable, teacher assignments, academic sessions &amp; curriculum master.
-            </p>
-          </div>
-          <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;" id="acad-action-buttons">
-            <button class="btn btn-secondary" id="btn-detect-clashes"><i data-lucide="shield-check"></i> Timetable Clash Audit</button>
-            <button class="btn btn-primary" id="btn-acad-primary-action"><i data-lucide="plus"></i> Add Class</button>
-          </div>
-        </div>
-      </div>
+      <div class="tms-content-wrapper">
+        ${UIComponents.renderPageHeader({
+          title: 'Academic & Curriculum Gateway',
+          subtitle: 'Manage classes, sections, bell timetable, teacher assignments, academic sessions & curriculum master.',
+          breadcrumbs: [{ label: 'Academic & Timetable' }],
+          badge: currentSessionObj.sessionName,
+          actionsHtml: `
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;" id="acad-action-buttons">
+              <button class="btn btn-secondary" id="btn-detect-clashes"><i data-lucide="shield-check"></i> Timetable Clash Audit</button>
+              <button class="btn btn-primary" id="btn-acad-primary-action"><i data-lucide="plus"></i> Add Class</button>
+            </div>
+          `
+        })}
 
       <div class="kpi-grid">
         ${UIComponents.renderKpiCard({ title: 'Active Academic Session', value: currentSessionObj.sessionName, icon: 'calendar', color: 'blue', subtitle: currentSessionObj.status || 'Active' })}
@@ -142,7 +139,8 @@ export class AcademicModule {
       </div>
 
       <div id="acad-tab-content"></div>
-    `;
+    </div>
+  `;
 
     this.bindEvents(container);
     this.renderTab(this._currentTab, container);

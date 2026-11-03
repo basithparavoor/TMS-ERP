@@ -7,84 +7,82 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&display=swap');
 
 :root {
-  /* HSL Color Foundation — Thaiba Emerald Primary */
-  --primary-h: 152;
-  --primary-s: 76%;
-  --primary-l: 36%;
-  --primary: hsl(var(--primary-h), var(--primary-s), var(--primary-l));
-  --primary-hover: hsl(var(--primary-h), 80%, 30%);
-  --primary-light: #ecfdf5;
-  --primary-subtle: #f0fdf4;
-  --primary-dark: #14532d;
-  --primary-glow: rgba(22, 163, 74, 0.28);
+  /* Exact Specified Visual Identity Tokens */
+  --bg-canvas: #F7F9FC;
+  --bg-canvas-subtle: #EDF2F7;
+  --surface: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --bg-card-hover: #FFFFFF;
+  --bg-sidebar: #FFFFFF;
+  --bg-topbar: rgba(255, 255, 255, 0.92);
+  --bg-subtle: #F7F9FC;
 
-  /* Academic Accents */
-  --sapphire: #2563eb;
-  --sapphire-light: #eff6ff;
-  --sapphire-dark: #1d4ed8;
+  /* Brand & Semantic Colors */
+  --primary: #16A34A;
+  --primary-hover: #15803D;
+  --primary-light: #F0FDF4;
+  --primary-subtle: #DCFCE7;
+  --primary-dark: #14532D;
+  --primary-glow: rgba(22, 163, 74, 0.22);
 
-  --emerald: #16a34a;
-  --emerald-dark: #15803d;
-  --emerald-light: #dcfce7;
+  --text-primary: #111827;
+  --text-main: #111827;
+  --text-secondary: #64748B;
+  --text-muted: #64748B;
+  --text-subtle: #94A3B8;
 
-  --amber: #f59e0b;
-  --amber-light: #fffbeb;
-  --amber-dark: #b45309;
+  --border: #E8EDF3;
+  --border-color: #E8EDF3;
+  --border-subtle: #F1F5F9;
+  --border-focus: #16A34A;
 
-  --rose: #ef4444;
-  --rose-light: #fef2f2;
-  --rose-dark: #b91c1c;
+  --success: #16A34A;
+  --warning: #F59E0B;
+  --danger: #EF4444;
+  --info: #3B82F6;
+  --accent: #8B5CF6;
 
-  --purple: #7c3aed;
-  --purple-light: #f5f3ff;
+  /* Additional Palette Accents */
+  --sapphire: #3B82F6;
+  --sapphire-light: #EFF6FF;
+  --emerald: #16A34A;
+  --emerald-light: #DCFCE7;
+  --amber: #F59E0B;
+  --amber-light: #FEF3C7;
+  --rose: #EF4444;
+  --rose-light: #FEE2E2;
+  --purple: #8B5CF6;
+  --purple-light: #F5F3FF;
 
-  --gold: #d4af37;
-  --gold-glow: rgba(212, 175, 55, 0.35);
-
-  /* Surfaces — Strictly Premium Luxury Light Theme */
-  --bg-canvas: #f8fafc;
-  --bg-canvas-subtle: #f1f5f9;
-  --bg-card: #ffffff;
-  --bg-card-hover: #ffffff;
-  --bg-sidebar: #ffffff;
-  --bg-topbar: rgba(255, 255, 255, 0.88);
-  --bg-subtle: #f8fafc;
-
-  /* Typography Colors */
-  --text-main: #0f172a;
-  --text-muted: #475569;
-  --text-subtle: #94a3b8;
-  --border-color: #e2e8f0;
-  --border-subtle: #edf2f7;
-  --border-focus: #16a34a;
-
-  /* Diffuse Pro-Max Multi-Layer Shadows */
-  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
-  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.05), 0 2px 5px rgba(15, 23, 42, 0.02);
-  --shadow-md: 0 4px 12px -2px rgba(15, 23, 42, 0.06), 0 2px 6px -1px rgba(15, 23, 42, 0.03);
-  --shadow-lg: 0 12px 28px -4px rgba(15, 23, 42, 0.08), 0 4px 12px -2px rgba(15, 23, 42, 0.04);
-  --shadow-xl: 0 24px 48px -8px rgba(15, 23, 42, 0.12), 0 8px 20px -4px rgba(15, 23, 42, 0.04);
-  --shadow-glow: 0 0 24px rgba(22, 163, 74, 0.24);
+  /* Premium Linear/Stripe Multi-Layer Shadows */
+  --shadow-xs: 0 1px 2px rgba(17, 24, 39, 0.04);
+  --shadow-sm: 0 1px 3px rgba(17, 24, 39, 0.05), 0 1px 2px rgba(17, 24, 39, 0.03);
+  --shadow-md: 0 4px 14px -2px rgba(17, 24, 39, 0.06), 0 2px 6px -1px rgba(17, 24, 39, 0.03);
+  --shadow-lg: 0 10px 25px -4px rgba(17, 24, 39, 0.08), 0 4px 10px -2px rgba(17, 24, 39, 0.03);
+  --shadow-xl: 0 20px 35px -6px rgba(17, 24, 39, 0.10), 0 8px 16px -4px rgba(17, 24, 39, 0.04);
+  --shadow-glow: 0 0 24px rgba(22, 163, 74, 0.22);
 
   /* Typography Stacks */
-  --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-sans: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-display: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
   /* Layout Constants */
-  --sidebar-width: 272px;
-  --topbar-height: 70px;
+  --sidebar-width: 260px;
+  --sidebar-collapsed-width: 72px;
+  --topbar-height: 72px;
+  --content-max-width: 1600px;
   --radius-xs: 6px;
   --radius-sm: 8px;
-  --radius-md: 12px;
+  --radius-md: 10px;
   --radius-lg: 16px;
-  --radius-xl: 22px;
+  --radius-xl: 20px;
   --radius-full: 9999px;
 
-  /* Micro-Interaction Transitions */
+  /* Transitions */
   --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-smooth: 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-  --transition-spring: 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  --transition-spring: 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 /* Institutional Color Theme Accents (All Light Luxury) */
@@ -1198,6 +1196,127 @@ a {
 }
 
 /* ==========================================================================
+   SKELETON SHIMMER & LOADING STATES
+   ========================================================================== */
+.tms-skeleton {
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-line {
+  background: linear-gradient(90deg, #F1F5F9 25%, #E2E8F0 50%, #F1F5F9 75%);
+  background-size: 200% 100%;
+  animation: skeletonShimmer 1.5s infinite;
+  border-radius: 6px;
+}
+
+@keyframes skeletonShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ==========================================================================
+   INTERACTIVE SVG CHARTS & DATA VIZ
+   ========================================================================== */
+.tms-svg-chart-wrap {
+  position: relative;
+}
+
+.tms-svg-chart-wrap svg {
+  display: block;
+}
+
+.chart-bar-group rect:hover {
+  filter: brightness(1.1);
+  transform: translateY(-2px);
+}
+
+.chart-point-group:hover circle {
+  r: 6.5;
+  stroke-width: 3.5;
+  filter: drop-shadow(0 2px 6px rgba(22, 163, 74, 0.4));
+}
+
+/* ==========================================================================
+   ACTIVITY TIMELINE
+   ========================================================================== */
+.tms-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+}
+
+.tms-timeline::before {
+  content: '';
+  position: absolute;
+  top: 14px;
+  bottom: 14px;
+  left: 17px;
+  width: 2px;
+  background: var(--border-color);
+  z-index: 1;
+}
+
+.tms-timeline-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  position: relative;
+  z-index: 2;
+}
+
+.tms-timeline-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #ffffff;
+  border: 2px solid var(--border-color);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: var(--shadow-xs);
+  transition: all var(--transition-fast);
+}
+
+.tms-timeline-item:hover .tms-timeline-badge {
+  border-color: var(--primary);
+  transform: scale(1.1);
+}
+
+.tms-timeline-content {
+  flex: 1;
+  min-width: 0;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  padding: 10px 14px;
+  box-shadow: var(--shadow-xs);
+  transition: all var(--transition-fast);
+}
+
+.tms-timeline-item:hover .tms-timeline-content {
+  border-color: #cbd5e1;
+  box-shadow: var(--shadow-sm);
+}
+
+.tms-timeline-title {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 2px;
+}
+
+.tms-timeline-meta {
+  font-size: 0.76rem;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ==========================================================================
    A4 PRINT STYLESHEET — High-DPI Luxury Document & Admit Card Engine
    ========================================================================== */
 .a4-preview-container {
@@ -1609,11 +1728,11 @@ a {
 
 @media (max-width: 768px) {
   .mobile-bottom-nav {
-    display: none !important;
+    display: flex !important;
   }
 
   .app-viewport {
-    padding: 14px 12px 28px 12px !important;
+    padding: 16px 14px 90px 14px !important;
   }
 
   .app-topbar {

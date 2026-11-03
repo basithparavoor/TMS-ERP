@@ -58,22 +58,17 @@ export class HomeworkModule {
     const dueTodayCount = this._assignments.filter(a => a.due_date === todayStr).length;
 
     container.innerHTML = `
-      <div style="margin-bottom: 24px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-          <div>
-            <h1 style="font-size: 1.8rem; display: flex; align-items: center; gap: 10px;">
-              <span style="color: #16a34a;"><i data-lucide="book-open"></i></span> Digital Homework &amp; Assignment Diary
-            </h1>
-            <p style="color: var(--text-muted); font-size: 0.9rem;">
-              Daily coursework tracking, submission deadlines, 1-click WhatsApp broadcast to parent groups, and A4 printable diary sheets.
-            </p>
-          </div>
-          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-            <button class="btn btn-secondary" id="btn-print-hw-sheet"><i data-lucide="printer"></i> Print Weekly Homework Sheet (A4)</button>
+      <div class="tms-content-wrapper">
+        ${UIComponents.renderPageHeader({
+          title: 'Digital Homework & Assignment Diary',
+          subtitle: 'Daily coursework tracking, submission deadlines, 1-click WhatsApp broadcast to parent groups, and A4 printable diary sheets.',
+          breadcrumbs: [{ label: 'Homework Diary' }],
+          badge: 'Daily Log',
+          actionsHtml: `
+            <button class="btn btn-secondary" id="btn-print-hw-sheet"><i data-lucide="printer"></i> Weekly Sheet (A4)</button>
             <button class="btn btn-primary" id="btn-post-new-hw"><i data-lucide="plus"></i> Post Assignment</button>
-          </div>
-        </div>
-      </div>
+          `
+        })}
 
       <!-- KPI Summary -->
       <div class="kpi-grid">
@@ -161,7 +156,8 @@ export class HomeworkModule {
           `}
         </div>
       </div>
-    `;
+    </div>
+  `;
 
     this.bindEvents(container);
     UIComponents.refreshIcons();

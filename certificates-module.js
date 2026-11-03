@@ -22,22 +22,17 @@ export class CertificatesModule {
     this._certificates = allCerts || [];
 
     container.innerHTML = `
-      <div style="margin-bottom: 24px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
-          <div>
-            <h1 style="font-size: 1.8rem; display: flex; align-items: center; gap: 10px;">
-              <span style="color: #16a34a;"><i data-lucide="file-check"></i></span> Official Certificates Engine
-            </h1>
-            <p style="color: var(--text-muted); font-size: 0.9rem;">
-              Generate and print official School Transfer Certificates (TC), Character Certificates, and Academic Merit Awards.
-            </p>
-          </div>
-          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+      <div class="tms-content-wrapper">
+        ${UIComponents.renderPageHeader({
+          title: 'Official Certificates Engine',
+          subtitle: 'Generate and print official School Transfer Certificates (TC), Character Certificates, and Academic Merit Awards.',
+          breadcrumbs: [{ label: 'Certificates (TC & Merit)' }],
+          badge: 'Credentials',
+          actionsHtml: `
             <button class="btn btn-secondary" id="btn-new-character-cert"><i data-lucide="award"></i> Character Certificate</button>
             <button class="btn btn-primary" id="btn-new-tc"><i data-lucide="file-text"></i> Issue Transfer Certificate (TC)</button>
-          </div>
-        </div>
-      </div>
+          `
+        })}
 
       <div class="kpi-grid">
         ${UIComponents.renderKpiCard({ title: 'Total Certificates Issued', value: `${this._certificates.length}`, icon: 'file-text', color: 'blue' })}
@@ -98,7 +93,8 @@ export class CertificatesModule {
           </table>
         </div>
       </div>
-    `;
+    </div>
+  `;
 
     this.bindEvents(container);
     UIComponents.refreshIcons();
@@ -420,7 +416,8 @@ export class CertificatesModule {
           </div>
         </div>
       </div>
-    `;
+    </div>
+  `;
 
     UIComponents.openModal({
       title: `Official Transfer Certificate — ${cert.studentName}`,
@@ -514,7 +511,8 @@ export class CertificatesModule {
           </div>
         </div>
       </div>
-    `;
+    </div>
+  `;
 
     UIComponents.openModal({
       title: `Character Certificate — ${cert.studentName}`,
