@@ -1005,7 +1005,7 @@ class AppController {
           <div class="m-hero-footer-stats">
             <div class="m-hero-f-stat">
               <span class="m-hero-f-label">Morning Turnout</span>
-              <span class="m-hero-f-val" id="m-hero-turnout-val" style="color: #34D399;">${isPrivacyInitial ? '••%' : attPercent + '%'}</span>
+              <span class="m-hero-f-val" id="m-hero-turnout-val" style="color: #059669;">${isPrivacyInitial ? '••%' : attPercent + '%'}</span>
             </div>
             <div class="m-hero-f-stat">
               <span class="m-hero-f-label">Faculty & Staff</span>
@@ -1013,11 +1013,11 @@ class AppController {
             </div>
             <div class="m-hero-f-stat">
               <span class="m-hero-f-label">Fee Realization</span>
-              <span class="m-hero-f-val" id="m-hero-fee-val" style="color: #FBBF24;">${isPrivacyInitial ? '₹ ••••••' : '₹ ' + totalCollected.toLocaleString()}</span>
+              <span class="m-hero-f-val" id="m-hero-fee-val" style="color: #D97706;">${isPrivacyInitial ? '₹ ••••••' : '₹ ' + totalCollected.toLocaleString()}</span>
             </div>
             <div class="m-hero-f-stat" style="cursor: pointer;" onclick="window.location.hash='#/timetable'" title="View Live Period & Classroom Allocations">
               <span class="m-hero-f-label">Timetable Slots</span>
-              <span class="m-hero-f-val" style="color: #60A5FA;">Period 3 Live →</span>
+              <span class="m-hero-f-val" style="color: #2563EB;">Period 3 Live →</span>
             </div>
           </div>
         </div>
