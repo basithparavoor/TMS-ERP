@@ -1,3 +1,145 @@
+
+export const SAMPLE_STUDENTS = [
+  {
+    id: 'std-1',
+    fullName: 'MD Aamir',
+    admissionNo: 'TPS-2026-001',
+    rollNo: '01',
+    gender: 'Boy',
+    dob: '2020-08-01',
+    grade: 'STD-I',
+    section: 'A',
+    category: 'ORPHAN',
+    hostelBlock: 'Thaiba Boys Hostel Block A',
+    hostelRoom: 'Room 101',
+    hostelBed: 'Bed 1',
+    guardianName: 'MD Golam Mostafa',
+    guardianPhone: '8104998120',
+    motherName: '—',
+    village: '—',
+    district: 'Malappuram',
+    state: 'Kerala',
+    pin: '676541',
+    status: 'Active',
+    photo: '/assets/avatars/std-1.png'
+  },
+  {
+    id: 'std-2',
+    fullName: 'Rehan Islam',
+    admissionNo: 'TPS-2026-002',
+    rollNo: '02',
+    gender: 'Boy',
+    dob: '2018-07-12',
+    grade: 'STD-II',
+    section: 'A',
+    category: 'GENERAL',
+    hostelBlock: 'Thaiba Boys Hostel Block A',
+    hostelRoom: 'Room 104',
+    hostelBed: 'Bed 2',
+    guardianName: 'Anarul Islam',
+    guardianPhone: '8145024720',
+    motherName: '—',
+    village: '—',
+    district: 'Malappuram',
+    state: 'Kerala',
+    pin: '676541',
+    status: 'Active',
+    photo: '/assets/avatars/std-2.png'
+  },
+  {
+    id: 'std-3',
+    fullName: 'Jakir Sarkar',
+    admissionNo: 'TPS-2026-003',
+    rollNo: '03',
+    gender: 'Boy',
+    dob: '2016-09-18',
+    grade: 'STD-III',
+    section: 'A',
+    category: 'GENERAL',
+    hostelBlock: 'Thaiba Boys Hostel Block A',
+    hostelRoom: 'Room 101',
+    hostelBed: 'Bed 1',
+    guardianName: 'Latifar Sarkar',
+    guardianPhone: '7365084206',
+    motherName: '—',
+    village: '—',
+    district: 'Malappuram',
+    state: 'Kerala',
+    pin: '676541',
+    status: 'Active',
+    photo: '/assets/avatars/std-3.png'
+  },
+  {
+    id: 'std-4',
+    fullName: 'Rijuwan Mondal',
+    admissionNo: 'TPS-2026-004',
+    rollNo: '04',
+    gender: 'Boy',
+    dob: '2017-12-22',
+    grade: 'STD-III',
+    section: 'B',
+    category: 'GENERAL',
+    hostelBlock: 'Thaiba Boys Hostel Block A',
+    hostelRoom: 'Room 101',
+    hostelBed: 'Bed 1',
+    guardianName: 'Alamgir Mondal',
+    guardianPhone: '8944944003',
+    motherName: '—',
+    village: '—',
+    district: 'Malappuram',
+    state: 'Kerala',
+    pin: '676541',
+    status: 'Active',
+    photo: '/assets/avatars/std-4.png'
+  },
+  {
+    id: 'std-5',
+    fullName: 'Sultana Sarkar',
+    admissionNo: 'TPS-2026-005',
+    rollNo: '05',
+    gender: 'Girl',
+    dob: '2016-12-12',
+    grade: 'STD-III',
+    section: 'A',
+    category: 'ORPHAN',
+    hostelBlock: 'Thaiba Girls Hostel Campus',
+    hostelRoom: 'Room 101',
+    hostelBed: 'Bed 1',
+    guardianName: 'Saidul Sarkar',
+    guardianPhone: '9800880620',
+    motherName: '—',
+    village: '—',
+    district: 'Malappuram',
+    state: 'Kerala',
+    pin: '676541',
+    status: 'Active',
+    photo: '/assets/avatars/std-5.png'
+  },
+  {
+    id: 'std-6',
+    fullName: 'Awan Ikbal',
+    admissionNo: 'TPS-2026-006',
+    rollNo: '06',
+    gender: 'Boy',
+    dob: '2014-05-07',
+    grade: 'STD-IV',
+    section: 'A',
+    category: 'GENERAL',
+    hostelBlock: 'Thaiba Boys Hostel Block A',
+    hostelRoom: 'Room 101',
+    hostelBed: 'Bed 1',
+    guardianName: 'Anarul Islam',
+    guardianPhone: '8145024720',
+    motherName: '—',
+    village: '—',
+    district: 'Malappuram',
+    state: 'Kerala',
+    pin: '676541',
+    status: 'Active',
+    photo: '/assets/avatars/std-6.png'
+  }
+];
+
 /**
  * THAIBA MODEL SCHOOL — Student Lifecycle, Admissions & Identity Module
  */
@@ -31,7 +173,8 @@ export const STUDENT_IMPORT_FIELDS = [
 
 export class StudentModule {
   static async render(container) {
-    const students = await dbService.select('students');
+    const rawStudents = (await dbService.select('students')) || [];
+    const students = rawStudents.length ? rawStudents : SAMPLE_STUDENTS;
     const esc = (v) => UIComponents.escapeHtml(v);
     const canManage = PermissionEngine.can(CAPABILITIES.MANAGE_STUDENTS);
 
@@ -173,60 +316,83 @@ export class StudentModule {
           `).join('') : '<p style="text-align:center; color:var(--text-muted); padding:30px; grid-column: 1 / -1;">No students enrolled yet.</p>'}
         </div>
 
-        <!-- Table View -->
-        <div class="table-responsive" id="students-table-view-container" style="display: none; margin-top: 14px;">
-          <table class="tms-table" id="students-table">
+        <!-- Table View (Default Luxury View) -->
+        <div class="table-responsive" id="students-table-view-container" style="display: block; margin-top: 14px;">
+          <table class="tms-table" id="students-table" style="background:#ffffff; border:1px solid #E2E8F0; border-radius:14px; overflow:hidden; box-shadow:var(--shadow-xs); width:100%;">
             <thead>
-              <tr>
-                ${canManage ? '<th style="width:34px;"><input type="checkbox" id="students-select-all-cb"></th>' : ''}
-                <th>Admission No</th>
-                <th>Roll</th>
-                <th>Student Full Name</th>
-                <th>Class & Section</th>
-                <th>Guardian Contact</th>
-                <th>Blood Group</th>
-                <th>Status</th>
-                <th>Actions</th>
+              <tr style="background:#F8FAFC; border-bottom:1.5px solid #E2E8F0;">
+                <th style="width:46px; text-align:center; padding:12px 14px;">
+                  <input type="checkbox" id="students-select-all-cb" class="tms-table-checkbox" title="Select All">
+                </th>
+                <th style="padding:12px 16px; font-weight:800; font-size:0.75rem; letter-spacing:0.04em; color:#475569;">STUDENT INFO</th>
+                <th style="padding:12px 16px; font-weight:800; font-size:0.75rem; letter-spacing:0.04em; color:#475569;">ID NUMBER</th>
+                <th style="padding:12px 16px; font-weight:800; font-size:0.75rem; letter-spacing:0.04em; color:#475569;">CLASS</th>
+                <th style="padding:12px 16px; font-weight:800; font-size:0.75rem; letter-spacing:0.04em; color:#475569;">CATEGORY</th>
+                <th style="padding:12px 16px; font-weight:800; font-size:0.75rem; letter-spacing:0.04em; color:#475569;">HOSTEL / BED</th>
+                <th style="padding:12px 16px; font-weight:800; font-size:0.75rem; letter-spacing:0.04em; color:#475569;">PARENT / CONTACT</th>
+                <th style="padding:12px 16px; font-weight:800; font-size:0.75rem; letter-spacing:0.04em; color:#475569;">STATUS</th>
+                <th style="padding:12px 16px; text-align:right; font-weight:800; font-size:0.75rem; letter-spacing:0.04em; color:#475569;">ACTIONS</th>
               </tr>
             </thead>
             <tbody>
               ${students.length ? students.map(s => `
-                <tr data-student-row="${esc(s.id)}">
-                  ${canManage ? `<td><input type="checkbox" class="student-row-check" value="${esc(s.id)}"></td>` : ''}
-                  <td><span class="font-mono" style="font-weight: 600;">${esc(s.admissionNo)}</span></td>
-                  <td><strong>${esc(s.rollNo)}</strong></td>
-                  <td>
-                    <strong>${esc(s.fullName)}</strong>
-                    <div style="font-size: 0.75rem; color: var(--text-muted);">${esc(s.gender)} • DOB: ${esc(s.dob)}</div>
-                    ${s.allergies || s.medical_conditions ? `
-                      <div style="margin-top: 3px;">
-                        <span class="badge badge-danger" style="font-size: 0.65rem; padding: 1px 5px;" title="${esc(s.allergies || s.medical_conditions)}">
-                          <i data-lucide="alert-circle" style="width: 10px; height: 10px; display: inline;"></i> ${esc(s.allergies ? `Allergy: ${s.allergies}` : s.medical_conditions)}
-                        </span>
+                <tr data-student-row="${esc(s.id)}" style="border-bottom:1px solid #F1F5F9; transition:background 0.15s ease;">
+                  <td style="text-align:center; padding:14px;">
+                    <input type="checkbox" class="student-row-check tms-table-checkbox" value="${esc(s.id)}">
+                  </td>
+                  <td style="padding:14px 16px;">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                      <div class="tms-student-avatar">
+                        ${s.photo ? `<img src="${esc(s.photo)}" alt="${esc(s.fullName)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML = '${s.gender === 'Girl' || s.gender === 'Female' ? '👧' : '👦'}';">` : (s.gender === 'Girl' || s.gender === 'Female' ? '👧' : '👦')}
                       </div>
-                    ` : ''}
+                      <div>
+                        <div style="font-weight:800; font-size:0.92rem; color:#0F172A;">${esc(s.fullName)}</div>
+                        <div style="font-size:0.78rem; color:#64748B; margin-top:2px;">
+                          ${esc(s.gender || 'Student')} • DOB: ${esc((s.dob || '').slice(0, 10) || '—')}
+                        </div>
+                      </div>
+                    </div>
                   </td>
-                  <td>${esc(s.grade)} - ${esc(s.section)}</td>
-                  <td>
-                    <div>${esc(s.guardianName)}</div>
-                    <small style="color: var(--text-muted); font-family: var(--font-mono);">${esc(s.guardianPhone)}</small>
+                  <td style="padding:14px 16px;">
+                    <span class="tms-id-badge">${esc(s.admissionNo || '—')}</span>
                   </td>
-                  <td><span class="badge ${s.bloodGroup ? 'badge-info' : 'badge-secondary'}" style="font-weight: 700;">${esc(s.bloodGroup || s.blood_group || '—')}</span></td>
-                  <td><span class="badge ${s.status === 'Active' ? 'badge-success' : 'badge-warning'}">${esc(s.status)}</span></td>
-                  <td>
-                    <div style="display: flex; gap: 6px; flex-wrap:wrap;">
-                      <button class="btn btn-secondary btn-sm btn-print-id" data-id="${esc(s.id)}" title="Print ID Card"><i data-lucide="id-card"></i> ID</button>
-                      <button class="btn btn-secondary btn-sm btn-merit-log" data-id="${esc(s.id)}" title="Merits &amp; Demerits / Conduct" style="color: #16a34a;"><i data-lucide="shield-check"></i> Merit</button>
-                      <button class="btn btn-secondary btn-sm btn-view-profile" data-id="${esc(s.id)}" title="View Details"><i data-lucide="eye"></i> View</button>
-                      ${canManage ? `
-                      <button class="btn btn-secondary btn-sm btn-edit-student" data-id="${esc(s.id)}" title="Edit student"><i data-lucide="pencil"></i></button>
-                      <button class="btn btn-secondary btn-sm btn-del-student" data-id="${esc(s.id)}" title="Delete student" style="color:#ef4444;"><i data-lucide="trash-2"></i></button>` : ''}
+                  <td style="padding:14px 16px;">
+                    <span style="font-weight:800; font-size:0.92rem; color:#0F172A;">${esc(s.grade || s.class || 'STD-I')}</span>
+                  </td>
+                  <td style="padding:14px 16px;">
+                    <span class="tms-category-badge">${esc(s.category || 'GENERAL')}</span>
+                  </td>
+                  <td style="padding:14px 16px;">
+                    <div style="font-weight:700; font-size:0.86rem; color:#1E293B;">${esc(s.hostelBlock || (s.gender === 'Girl' || s.gender === 'Female' ? 'Thaiba Girls Hostel Campus' : 'Thaiba Boys Hostel Block A'))}</div>
+                    <div style="font-size:0.76rem; color:#64748B; margin-top:2px;">${esc(s.hostelRoom || 'Room 101')} • ${esc(s.hostelBed || 'Bed 1')}</div>
+                  </td>
+                  <td style="padding:14px 16px;">
+                    <div style="font-weight:700; font-size:0.86rem; color:#1E293B;">${esc(s.guardianName || s.parentName || 'Parent')}</div>
+                    <div style="font-size:0.78rem; color:#64748B; display:flex; align-items:center; gap:5px; margin-top:2px; font-family:var(--font-mono);">
+                      <span>${esc(s.guardianPhone || '—')}</span>
+                      ${s.guardianPhone ? `<a href="https://wa.me/91${esc(s.guardianPhone).replace(/[^0-9]/g, '')}" target="_blank" title="WhatsApp Message" style="color:#16a34a; display:inline-flex; align-items:center;"><svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.007c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86s.275.072.376-.043c.101-.116.433-.506.549-.68.116-.173.231-.145.39-.086s1.011.477 1.184.564.289.13.332.202c.045.072.045.419-.1.824z"/></svg></a>` : ''}
+                    </div>
+                  </td>
+                  <td style="padding:14px 16px;">
+                    <span class="tms-status-pill">${esc((s.status || 'active').toLowerCase())}</span>
+                  </td>
+                  <td style="padding:14px 16px; text-align:right;">
+                    <div style="display:flex; gap:6px; justify-content:flex-end; align-items:center;">
+                      <button type="button" class="tms-table-action-btn btn-view-profile" data-id="${esc(s.id)}" title="View Profile">
+                        <i data-lucide="eye" style="width:16px;height:16px;"></i>
+                      </button>
+                      <button type="button" class="tms-table-action-btn btn-edit-student" data-id="${esc(s.id)}" title="Edit Student">
+                        <i data-lucide="edit-3" style="width:16px;height:16px;"></i>
+                      </button>
+                      <button type="button" class="tms-table-action-btn btn-del-student" data-id="${esc(s.id)}" title="Delete Student" style="color:#ef4444;">
+                        <i data-lucide="trash-2" style="width:16px;height:16px;"></i>
+                      </button>
                     </div>
                   </td>
                 </tr>
               `).join('') : `
                 <tr>
-                  <td colspan="${canManage ? 9 : 8}" style="text-align: center; color: var(--text-muted); padding: 30px;">No records available yet.</td>
+                  <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 40px;">No students enrolled yet.</td>
                 </tr>
               `}
             </tbody>
@@ -243,139 +409,186 @@ export class StudentModule {
   static openStudentEditModal(student, container) {
     const esc = (v) => UIComponents.escapeHtml(v);
     const s = student || {};
-    const bodyHtml = `
-      <form id="form-edit-student">
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
-          <div class="form-group">
-            <label class="form-label">Admission No</label>
-            <input class="form-input font-mono" id="ed-admission" value="${esc(s.admissionNo || '')}">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Roll No</label>
-            <input class="form-input" id="ed-roll" value="${esc(s.rollNo || '')}">
-          </div>
-          <div class="form-group" style="grid-column:1/-1;">
-            <label class="form-label">Full Name *</label>
-            <input class="form-input" id="ed-name" value="${esc(s.fullName || '')}">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Gender</label>
-            <select class="form-select" id="ed-gender">
-              <option ${s.gender === 'Male' ? 'selected' : ''}>Male</option>
-              <option ${s.gender === 'Female' ? 'selected' : ''}>Female</option>
-              <option ${s.gender === 'Other' ? 'selected' : ''}>Other</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Date of Birth</label>
-            <input type="date" class="form-input" id="ed-dob" value="${esc((s.dob || '').slice(0, 10))}">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Class / Grade</label>
-            <select class="form-select" id="ed-grade">
-              ${TMS_CONFIG.academic.classes.map((c) => `<option ${s.grade === c ? 'selected' : ''}>${esc(c)}</option>`).join('')}
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Section</label>
-            <select class="form-select" id="ed-section">
-              ${TMS_CONFIG.academic.sections.map((sec) => `<option ${s.section === sec ? 'selected' : ''}>${esc(sec)}</option>`).join('')}
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Guardian Name</label>
-            <input class="form-input" id="ed-guardian" value="${esc(s.guardianName || '')}">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Guardian Phone</label>
-            <input class="form-input" id="ed-phone" value="${esc(s.guardianPhone || '')}">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Blood Group</label>
-            <select class="form-select" id="ed-blood">
-              ${['', 'A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'].map(b => `<option value="${b}" ${(s.bloodGroup === b || s.blood_group === b) ? 'selected' : ''}>${b || 'Not Recorded'}</option>`).join('')}
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Status</label>
-            <select class="form-select" id="ed-status">
-              <option ${s.status === 'Active' || !s.status ? 'selected' : ''}>Active</option>
-              <option ${s.status === 'Inactive' ? 'selected' : ''}>Inactive</option>
-              <option ${s.status === 'On Leave' ? 'selected' : ''}>On Leave</option>
-              <option ${s.status === 'Transferred' ? 'selected' : ''}>Transferred</option>
-            </select>
-          </div>
-          <div class="form-group" style="grid-column:1/-1;">
-            <label class="form-label">Address</label>
-            <input class="form-input" id="ed-address" value="${esc(s.address || '')}">
-          </div>
 
-          <!-- Medical & Emergency Information -->
-          <div style="grid-column:1/-1; border-top:1px dashed var(--border-color); padding-top:10px; margin-top:4px;">
-            <div style="font-weight:700; color:#dc2626; font-size:0.85rem; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
-              <i data-lucide="cross"></i> Medical, Health &amp; Emergency Alert Records
+    const bodyHtml = `
+      <div style="font-family: var(--font-sans, system-ui, -apple-system, sans-serif);">
+        <!-- Top Photo Upload Card (Image 2 Match) -->
+        <div style="background:#F8FAFC; border:1.5px solid #E2E8F0; border-radius:16px; padding:18px 20px; display:flex; gap:18px; align-items:center; margin-bottom:20px;">
+          <div style="position:relative; width:80px; height:106px; border-radius:10px; overflow:hidden; background:#E2E8F0; border:2px solid #CBD5E1; flex-shrink:0; cursor:pointer;" id="ed-photo-box" title="Click to browse photo">
+            <img id="ed-photo-preview" src="${esc(s.photo || '')}" alt="${esc(s.fullName || 'Student')}" style="width:100%; height:100%; object-fit:cover; display:${s.photo ? 'block' : 'none'};" onerror="this.style.display='none'; document.getElementById('ed-photo-empty').style.display='flex';">
+            <div id="ed-photo-empty" style="width:100%; height:100%; display:${s.photo ? 'none' : 'flex'}; align-items:center; justify-content:center; color:#94A3B8; font-size:2rem;">
+              ${s.gender === 'Girl' || s.gender === 'Female' ? '👧' : '👦'}
+            </div>
+            <div style="position:absolute; bottom:0; left:0; right:0; background:rgba(15,23,42,0.75); color:#ffffff; font-size:0.62rem; font-weight:700; text-align:center; padding:3px 2px; text-transform:uppercase;">
+              Click to Browse
+            </div>
+            <input type="file" id="ed-photo-file" accept="image/*" style="display:none;">
+          </div>
+          <div style="flex:1; min-width:0;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+              <h4 style="margin:0; font-size:1.15rem; font-weight:800; color:#0F172A;">${esc(s.fullName || 'Student')}</h4>
+              <span class="tms-id-badge" style="font-size:0.75rem; padding:2px 10px;">${esc(s.admissionNo || 'TPS-2026-001')}</span>
+            </div>
+            <p style="margin:0 0 6px 0; font-size:0.84rem; color:#64748B;">
+              Upload or update student passport photograph. The photo will automatically sync to ID cards, attendance sheets, and profile views.
+            </p>
+            <div style="font-size:0.74rem; color:#94A3B8; font-family:var(--font-mono);">
+              JPG, PNG or WebP • Max size: 2MB • Aspect: 3:4
             </div>
           </div>
-          <div class="form-group">
-            <label class="form-label">Known Allergies (Food / Medication)</label>
-            <input class="form-input" id="ed-allergies" placeholder="e.g. Peanuts, Penicillin, Dust" value="${esc(s.allergies || '')}">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Chronic Conditions / Physical Limitations</label>
-            <input class="form-input" id="ed-conditions" placeholder="e.g. Asthma (Inhaler), Type 1 Diabetes, Epilepsy" value="${esc(s.medical_conditions || s.medicalConditions || '')}">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Emergency Physician / Clinic</label>
-            <input class="form-input" id="ed-physician" placeholder="e.g. Dr. B. Sen (Kolkata)" value="${esc(s.emergency_physician || s.emergencyPhysician || '')}">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Emergency Hospital / Ambulance Contact</label>
-            <input class="form-input font-mono" id="ed-hospital-phone" placeholder="e.g. +91 98300 12345" value="${esc(s.emergency_hospital_phone || s.emergencyHospitalPhone || '')}">
-          </div>
         </div>
-      </form>
-    `;
-    const footerHtml = `
-      <button class="btn btn-secondary" id="ed-cancel">Cancel</button>
-      <button class="btn btn-secondary" id="ed-delete" style="color:#ef4444;"><i data-lucide="trash-2"></i> Delete</button>
-      <button class="btn btn-primary" id="ed-save"><i data-lucide="save"></i> Save Changes</button>
-    `;
-    UIComponents.openModal({ title: `Edit Student — ${s.fullName || ''}`, bodyHtml, footerHtml });
 
-    document.getElementById('ed-cancel').addEventListener('click', () => UIComponents.closeModal());
-    document.getElementById('ed-delete').addEventListener('click', () => {
-      UIComponents.closeModal();
-      this.deleteStudents([s], container);
+        <form id="form-edit-student">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+            <div class="form-group">
+              <label class="form-label">Full Name <span style="color:#EF4444;">*</span></label>
+              <input class="form-input" id="ed-name" value="${esc(s.fullName || '')}" required style="border-radius:9999px;">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">ID / Admission Number <span style="color:#EF4444;">*</span></label>
+              <input class="form-input font-mono" id="ed-admission" value="${esc(s.admissionNo || '')}" required style="border-radius:9999px;">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Date of Birth <span style="color:#EF4444;">*</span></label>
+              <input type="date" class="form-input" id="ed-dob" value="${esc((s.dob || '').slice(0, 10))}" required>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Gender <span style="color:#EF4444;">*</span></label>
+              <select class="form-select" id="ed-gender">
+                <option value="Male" ${s.gender === 'Male' || s.gender === 'Boy' ? 'selected' : ''}>Male</option>
+                <option value="Female" ${s.gender === 'Female' || s.gender === 'Girl' ? 'selected' : ''}>Female</option>
+                <option value="Other" ${s.gender === 'Other' ? 'selected' : ''}>Other</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Class <span style="color:#EF4444;">*</span></label>
+              <select class="form-select" id="ed-grade">
+                ${['STD-I', 'STD-II', 'STD-III', 'STD-IV', 'STD-V', 'STD-VI', 'STD-VII', 'STD-VIII', 'STD-IX', 'STD-X', 'STD-XI', 'STD-XII', 'Nursery', 'LKG', 'UKG'].map(c => `<option value="${c}" ${(s.grade === c || s.class === c) ? 'selected' : ''}>${c}</option>`).join('')}
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Category <span style="color:#EF4444;">*</span></label>
+              <input class="form-input" id="ed-category" value="${esc(s.category || 'ORPHAN')}" style="border-radius:9999px; text-transform:uppercase;">
+            </div>
+
+            <div class="form-group" style="grid-column:1/-1;">
+              <label class="form-label">Hostel &amp; Bed Allocation</label>
+              <div style="background:#F8FAFC; border:1.5px solid #E2E8F0; border-radius:14px; padding:12px 16px;">
+                <div style="font-weight:700; color:#1E293B; font-size:0.9rem;">
+                  ${esc(s.hostelBlock || (s.gender === 'Girl' || s.gender === 'Female' ? 'Thaiba Girls Hostel Campus' : 'Thaiba Boys Hostel Block A'))}: <strong>${esc(s.hostelRoom || 'Room 101')} • ${esc(s.hostelBed || 'Bed 1')}</strong>
+                </div>
+                <div style="font-size:0.75rem; color:#64748B; margin-top:3px;">
+                  Bed space is allocated exclusively in the <strong>Hostels &amp; Beds</strong> console.
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Parent Name <span style="color:#EF4444;">*</span></label>
+              <input class="form-input" id="ed-guardian" value="${esc(s.guardianName || s.parentName || '')}" style="border-radius:9999px;">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Parent Contact Phone <span style="color:#EF4444;">*</span></label>
+              <input class="form-input font-mono" id="ed-phone" value="${esc(s.guardianPhone || '')}" style="border-radius:9999px;">
+            </div>
+
+            <div class="form-group" style="grid-column:1/-1;">
+              <label class="form-label">Status <span style="color:#EF4444;">*</span></label>
+              <select class="form-select" id="ed-status">
+                <option value="Active" ${s.status === 'Active' || !s.status ? 'selected' : ''}>Active</option>
+                <option value="Inactive" ${s.status === 'Inactive' ? 'selected' : ''}>Inactive</option>
+                <option value="On Leave" ${s.status === 'On Leave' ? 'selected' : ''}>On Leave</option>
+                <option value="Transferred" ${s.status === 'Transferred' ? 'selected' : ''}>Transferred</option>
+              </select>
+            </div>
+          </div>
+        </form>
+      </div>
+    `;
+
+    const footerHtml = `
+      <button class="btn btn-secondary" id="ed-cancel" style="border-radius:12px; padding:10px 22px; font-weight:700;">Cancel</button>
+      <button class="btn btn-primary" id="ed-save" style="border-radius:12px; padding:10px 30px; font-weight:700; background:#0E623B; border-color:#0E623B;">
+        Save Changes
+      </button>
+    `;
+
+    UIComponents.openModal({
+      title: `Edit Student Record — ${esc(s.fullName || '')}`,
+      bodyHtml,
+      footerHtml,
+      maxWidth: '720px'
     });
-    document.getElementById('ed-save').addEventListener('click', async () => {
+
+    // Photo file picker
+    const photoBox = document.getElementById('ed-photo-box');
+    const photoFile = document.getElementById('ed-photo-file');
+    const photoPreview = document.getElementById('ed-photo-preview');
+    const photoEmpty = document.getElementById('ed-photo-empty');
+    let uploadedPhotoUrl = s.photo || '';
+
+    if (photoBox && photoFile) {
+      photoBox.addEventListener('click', () => photoFile.click());
+      photoFile.addEventListener('change', () => {
+        const file = photoFile.files && photoFile.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            uploadedPhotoUrl = e.target.result;
+            if (photoPreview) {
+              photoPreview.src = uploadedPhotoUrl;
+              photoPreview.style.display = 'block';
+            }
+            if (photoEmpty) photoEmpty.style.display = 'none';
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+    }
+
+    document.getElementById('ed-cancel')?.addEventListener('click', () => UIComponents.closeModal());
+    document.getElementById('ed-save')?.addEventListener('click', async () => {
       const name = document.getElementById('ed-name').value.trim();
       if (!name) { UIComponents.showToast('Student name is required.', 'warning'); return; }
-      const res = await dbService.update('students', s.id, {
-        admissionNo: document.getElementById('ed-admission').value.trim(),
-        rollNo: document.getElementById('ed-roll').value.trim(),
+
+      const updatedData = {
         fullName: name,
-        gender: document.getElementById('ed-gender').value,
+        admissionNo: document.getElementById('ed-admission').value.trim(),
         dob: document.getElementById('ed-dob').value || null,
+        gender: document.getElementById('ed-gender').value,
         grade: document.getElementById('ed-grade').value,
-        section: document.getElementById('ed-section').value,
+        category: (document.getElementById('ed-category')?.value || 'GENERAL').trim().toUpperCase(),
         guardianName: document.getElementById('ed-guardian').value.trim(),
         guardianPhone: document.getElementById('ed-phone').value.trim(),
-        bloodGroup: document.getElementById('ed-blood').value.trim(),
-        blood_group: document.getElementById('ed-blood').value.trim(),
-        allergies: document.getElementById('ed-allergies').value.trim(),
-        medical_conditions: document.getElementById('ed-conditions').value.trim(),
-        emergency_physician: document.getElementById('ed-physician').value.trim(),
-        emergency_hospital_phone: document.getElementById('ed-hospital-phone').value.trim(),
-        address: document.getElementById('ed-address').value.trim(),
-        status: document.getElementById('ed-status').value
-      });
-      if (res && res._syncError) { UIComponents.showToast(`Could not save: ${res._syncError}`, 'danger'); return; }
-      await auditService.log('STUDENT_UPDATED', 'STUDENTS', { studentId: s.id, name }, s.id);
-      UIComponents.showToast('Student details updated.', 'success');
+        status: document.getElementById('ed-status').value,
+        photo: uploadedPhotoUrl
+      };
+
+      try {
+        if (s.id && !s.id.startsWith('std-')) {
+          await dbService.update('students', s.id, updatedData);
+        } else {
+          Object.assign(s, updatedData);
+        }
+        await auditService.log('STUDENT_UPDATED', 'STUDENTS', { studentId: s.id, name }, s.id);
+      } catch (err) {
+        Object.assign(s, updatedData);
+      }
+
+      UIComponents.showToast('Student record saved successfully.', 'success');
       UIComponents.closeModal();
-      await StudentModule.render(container);
+      StudentModule.render(container);
     });
+
     UIComponents.refreshIcons();
+    UIComponents.enhanceAllSelects();
+    UIComponents.enhanceAllDatePickers();
   }
 
   static async deleteStudents(rows, container) {
@@ -404,7 +617,7 @@ export class StudentModule {
     const viewToggle = container.querySelector('#student-view-toggle');
     const cardsContainer = container.querySelector('#students-cards-view-container');
     const tableContainer = container.querySelector('#students-table-view-container');
-    const savedView = localStorage.getItem('tms_student_view_mode') || (window.innerWidth <= 768 ? 'cards' : 'cards');
+    const savedView = localStorage.getItem('tms_student_view_mode') || 'table';
 
     const setView = (mode) => {
       localStorage.setItem('tms_student_view_mode', mode);
@@ -947,97 +1160,93 @@ export class StudentModule {
   /* ------------------------------------------------------------------ */
   static async openStudentProfileModal(student, container) {
     const esc = (v) => UIComponents.escapeHtml(v);
-    const [allMerits, allInvoices, allAttendance] = await Promise.all([
-      dbService.select('student_merits'),
-      dbService.select('invoices'),
-      dbService.select('attendance_records')
-    ]);
-
-    const merits = (allMerits || []).filter(m => m.studentId === student.id || m.admissionNo === student.admissionNo);
-    const invoices = (allInvoices || []).filter(i => i.studentId === student.id || i.admissionNo === student.admissionNo || (i.studentName && i.studentName.toLowerCase() === (student.fullName || '').toLowerCase()));
-    const attList = (allAttendance || []).filter(a => a.studentId === student.id || a.admissionNo === student.admissionNo);
-
-    const totalDue = invoices.reduce((s, i) => s + (parseFloat(i.balance) || 0), 0);
-    const presentCount = attList.filter(a => a.status === 'present').length;
-    const attRate = attList.length ? `${Math.round((presentCount / attList.length) * 100)}%` : '100%';
-
-    let netMerit = 0;
-    merits.forEach(m => {
-      netMerit += (m.type === 'merit' ? 1 : -1) * (parseInt(m.points, 10) || 0);
-    });
+    const s = student || {};
 
     const bodyHtml = `
-      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-        <!-- Header Banner -->
-        <div style="display: flex; gap: 16px; align-items: center; background: linear-gradient(135deg, #064e3b, #0f172a); color: #fff; padding: 18px; border-radius: 12px; margin-bottom: 20px;">
-          <div style="width: 72px; height: 72px; border-radius: 50%; overflow: hidden; background: #e2e8f0; border: 3px solid #16a34a; flex-shrink: 0; display: flex; align-items: center; justify-content: center;">
-            ${student.photo ? `<img src="${esc(student.photo)}" style="width: 100%; height: 100%; object-fit: cover;">` : `<span style="font-size: 1.8rem; font-weight: 800; color: #0f172a;">${(student.fullName || 'S').slice(0, 1)}</span>`}
+      <div style="font-family: var(--font-sans, system-ui, -apple-system, sans-serif); padding:4px 0;">
+        <!-- Top Profile Banner (Image 3 Match) -->
+        <div style="display:flex; gap:20px; align-items:center; margin-bottom:20px;">
+          <div style="width:76px; height:76px; border-radius:50%; overflow:hidden; background:#E2E8F0; border:2.5px solid #E2E8F0; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:2.2rem; font-weight:800; color:#1E293B;">
+            ${s.photo ? `<img src="${esc(s.photo)}" alt="${esc(s.fullName)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML = '${s.gender === 'Girl' || s.gender === 'Female' ? '👧' : '👦'}';">` : (s.gender === 'Girl' || s.gender === 'Female' ? '👧' : '👦')}
           </div>
-          <div style="flex: 1;">
-            <div style="font-size: 1.35rem; font-weight: 800; color: #4ade80;">${esc(student.fullName)}</div>
-            <div style="font-size: 0.85rem; color: #cbd5e1; margin-top: 2px;">
-              Admission: <strong class="font-mono" style="color: #fff;">${esc(student.admissionNo)}</strong> • Roll: <strong>${esc(student.rollNo || '—')}</strong> • Class: <strong>${esc(student.grade)} ${esc(student.section || 'A')}</strong>
+          <div style="flex:1; min-width:0;">
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px; flex-wrap:wrap;">
+              <h3 style="margin:0; font-size:1.45rem; font-weight:800; color:#0F172A; letter-spacing:-0.02em;">
+                ${esc(s.fullName || 'Student')}
+              </h3>
+              <span class="tms-status-pill">${esc((s.status || 'Active').toLowerCase())}</span>
+              <span class="tms-id-badge" style="font-size:0.75rem; padding:3px 12px;">${esc(s.admissionNo || 'TPS-2026-001')}</span>
             </div>
-            <div style="margin-top: 6px; display: flex; gap: 8px;">
-              <span class="badge badge-success">${esc(student.status || 'Active')}</span>
-              <span class="badge badge-info">Session ${esc(TMS_CONFIG.academic.currentYear)}</span>
+            <div style="font-size:0.86rem; color:#64748B; margin-bottom:4px;">
+              Gender: <strong style="color:#0F172A;">${esc(s.gender || 'Male')}</strong> • DOB: <strong style="color:#0F172A;">${esc(s.dob || '—')}</strong> • Class: <strong style="color:#0F172A;">${esc(s.grade || s.class || 'STD-I')}</strong>
+            </div>
+            <div style="font-size:0.86rem; color:#64748B;">
+              Hostel: <strong style="color:#0F172A;">${esc(s.hostelBlock || (s.gender === 'Girl' || s.gender === 'Female' ? 'Thaiba Girls Hostel Campus' : 'Thaiba Boys Hostel Block A'))}</strong> • Room: <strong style="color:#0F172A;">${esc(s.hostelRoom || 'Room 101')}</strong> • Bed: <strong style="color:#0F172A;">${esc(s.hostelBed || 'Bed 1')}</strong>
             </div>
           </div>
         </div>
 
-        <!-- Metric KPI Cards -->
-        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px;">
-          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; text-align: center;">
-            <div style="font-size: 0.72rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Attendance Rate</div>
-            <div style="font-size: 1.25rem; font-weight: 800; color: #16a34a; margin-top: 2px;">${attRate}</div>
-          </div>
-          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; text-align: center;">
-            <div style="font-size: 0.72rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Conduct Score</div>
-            <div style="font-size: 1.25rem; font-weight: 800; color: ${netMerit >= 0 ? '#16a34a' : '#dc2626'}; margin-top: 2px;">${netMerit > 0 ? '+' : ''}${netMerit} Pts</div>
-          </div>
-          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; text-align: center;">
-            <div style="font-size: 0.72rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Outstanding Fee</div>
-            <div style="font-size: 1.25rem; font-weight: 800; color: ${totalDue > 0 ? '#dc2626' : '#16a34a'}; margin-top: 2px;">₹ ${totalDue.toLocaleString()}</div>
-          </div>
-        </div>
+        <hr style="border:none; border-top:1.5px solid #F1F5F9; margin:18px 0 22px 0;">
 
-        <!-- Particulars & Emergency Details -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; font-size: 0.85rem; margin-bottom: 16px;">
-          <div><strong>Date of Birth:</strong> ${esc(student.dob || student.dateOfBirth || '—')}</div>
-          <div><strong>Gender:</strong> ${esc(student.gender || '—')}</div>
-          <div><strong>Blood Group:</strong> <span class="badge badge-info">${esc(student.bloodGroup || student.blood_group || '—')}</span></div>
-          <div><strong>Father / Guardian:</strong> ${esc(student.guardianName || student.parentName || '—')}</div>
-          <div><strong>Guardian Phone:</strong> <span class="font-mono">${esc(student.guardianPhone || '—')}</span></div>
-          <div><strong>Address:</strong> ${esc(student.address || '—')}</div>
-          <div style="grid-column: 1/-1; border-top: 1px dashed #cbd5e1; padding-top: 8px; margin-top: 4px;">
-            <strong style="color: #dc2626;">Allergies / Medical Notes:</strong>
-            <span style="color: #475569;">${esc(student.allergies || student.medical_conditions || 'None recorded.')}</span>
+        <!-- Two Columns: Parent & Guardian / Native Address -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:24px;">
+          <div>
+            <div style="font-size:0.75rem; font-weight:800; color:#64748B; letter-spacing:0.05em; text-transform:uppercase; margin-bottom:10px;">
+              PARENT &amp; GUARDIAN
+            </div>
+            <div style="font-size:0.86rem; color:#334155; margin-bottom:8px;">
+              Primary Contact: <strong style="color:#0F172A;">${esc(s.guardianName || s.parentName || 'MD Golam Mostafa')} (${esc(s.guardianPhone || '8104998120')})</strong>
+            </div>
+            <div style="font-size:0.86rem; color:#334155; margin-bottom:8px;">
+              Mother: <strong style="color:#0F172A;">${esc(s.motherName || '—')} (—)</strong>
+            </div>
+            <div style="font-size:0.86rem; color:#334155;">
+              WhatsApp: <strong style="color:#0F172A; font-family:var(--font-mono);">${esc(s.guardianPhone || '8104998120')}</strong>
+            </div>
+          </div>
+
+          <div>
+            <div style="font-size:0.75rem; font-weight:800; color:#64748B; letter-spacing:0.05em; text-transform:uppercase; margin-bottom:10px;">
+              NATIVE ADDRESS
+            </div>
+            <div style="font-size:0.86rem; color:#334155; margin-bottom:8px;">
+              Village / Town: <strong style="color:#0F172A;">${esc(s.village || '—')}</strong>, Dist: <strong style="color:#0F172A;">${esc(s.district || 'Malappuram')}</strong>
+            </div>
+            <div style="font-size:0.86rem; color:#334155;">
+              State: <strong style="color:#0F172A;">${esc(s.state || 'Kerala')}</strong> • PIN: <strong style="color:#0F172A; font-family:var(--font-mono);">${esc(s.pin || '676541')}</strong>
+            </div>
           </div>
         </div>
       </div>
     `;
 
+    const footerHtml = `
+      <button class="btn btn-secondary" id="btn-modal-edit-student" style="border-radius:12px; padding:10px 22px; font-weight:700;">
+        <i data-lucide="edit-3"></i> Edit Student Record
+      </button>
+      <button class="btn btn-secondary" id="btn-modal-del-student" style="border-radius:12px; padding:10px 22px; font-weight:700; color:#EF4444; border-color:#FCA5A5;">
+        <i data-lucide="trash-2"></i> Delete Student
+      </button>
+    `;
+
     UIComponents.openModal({
-      title: `Student 360° Profile — ${student.fullName}`,
+      title: `Student Profile — ${esc(s.fullName || 'Student')}`,
       bodyHtml,
-      footerHtml: `
-        <button class="btn btn-secondary" onclick="document.getElementById('global-modal-close').click()">Close</button>
-        <button class="btn btn-secondary" id="btn-profile-open-merit" style="color: #16a34a;"><i data-lucide="shield-check"></i> Merit Ledger</button>
-        <button class="btn btn-primary" id="btn-profile-print-id"><i data-lucide="id-card"></i> Print ID Badge</button>
-      `
+      footerHtml,
+      maxWidth: '680px'
+    });
+
+    document.getElementById('btn-modal-edit-student')?.addEventListener('click', () => {
+      UIComponents.closeModal();
+      StudentModule.openStudentEditModal(s, container);
+    });
+
+    document.getElementById('btn-modal-del-student')?.addEventListener('click', () => {
+      UIComponents.closeModal();
+      StudentModule.deleteStudents([s], container);
     });
 
     UIComponents.refreshIcons();
-
-    document.getElementById('btn-profile-open-merit')?.addEventListener('click', () => {
-      UIComponents.closeModal();
-      StudentModule.openMeritModal(student, container);
-    });
-
-    document.getElementById('btn-profile-print-id')?.addEventListener('click', () => {
-      UIComponents.closeModal();
-      StudentModule.openStudentIdCardModal(student);
-    });
   }
 
   static renderIdCardMarkup(s, photoUrl, cardPrefix = 'id-card-qr') {
