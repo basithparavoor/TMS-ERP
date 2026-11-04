@@ -35,6 +35,7 @@ import { WhatsAppService } from './whatsapp-service.js';
 import { admissionService } from './admission-service.js';
 import { OnboardingService } from './onboarding-service.js';
 import { brandingService } from './branding-service.js';
+import { institutionService } from './institution-service.js';
 import { checkMigration } from './migration-check.js';
 
 /** Escape untrusted values before putting them into an HTML template. */

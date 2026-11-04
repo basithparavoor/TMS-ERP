@@ -6,6 +6,7 @@
 import { TMS_CONFIG } from './config.js';
 import { dbService } from './supabase-client.js';
 import { UIComponents } from './ui-components.js';
+import { institutionService } from './institution-service.js';
 import { auditService } from './audit-service.js';
 import { downloadCsv } from './export-utils.js';
 

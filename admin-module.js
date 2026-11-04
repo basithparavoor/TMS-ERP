@@ -186,7 +186,17 @@ export class AdminModule {
 
     this.bindEvents(container);
     this.refreshPendingBadges();
-    this.switchGroup('admissions', 'applications');
+    const hash = (typeof window !== 'undefined' ? window.location.hash || '' : '').replace('#', '');
+    if (hash === 'users' || hash.startsWith('user')) {
+      const usersTab = container.querySelector('#admin-primary-tabs .tms-tab-pill[data-group="users"]');
+      if (usersTab) {
+        container.querySelectorAll('#admin-primary-tabs .tms-tab-pill').forEach(b => b.classList.remove('active'));
+        usersTab.classList.add('active');
+      }
+      this.switchGroup('users', 'users');
+    } else {
+      this.switchGroup('admissions', 'applications');
+    }
   }
 
   static async refreshPendingBadges() {
@@ -229,8 +239,8 @@ export class AdminModule {
         { key: 'payment-settings', label: 'Portal Rules & Video', icon: 'settings' }
       ],
       users: [
-        { key: 'google-approvals', label: 'User Authentication (Google)', icon: 'user-check', showPendingBadge: true },
-        { key: 'users', label: 'User Logins & Roles', icon: 'users' },
+        { key: 'users', label: 'User Logins, Roles & Permissions', icon: 'users', showPendingBadge: true },
+        { key: 'google-approvals', label: 'Google Approvals Queue', icon: 'user-check' },
         { key: 'staff-onboarding', label: 'Staff Onboarding & Governance', icon: 'user-cog' },
         ...(isSuperAdmin ? [{ key: 'user-sessions', label: 'Login & Logout Sessions', icon: 'history' }] : []),
         { key: 'audit', label: 'Security Audit Trail', icon: 'shield-alert' }
