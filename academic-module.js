@@ -1,3 +1,4 @@
+import { ClassroomModal } from './classroom-modal.js';
 /**
  * THAIBA MODEL SCHOOL — Academic & Curriculum Management Module
  * Comprehensive CRUD Suite: Classes, Sections, Period & Bell Timetable,
@@ -641,122 +642,32 @@ export class AcademicModule {
      MODALS: CLASS CRUD & TEACHER ASSIGNMENT
      ========================================================================= */
   static openAddClassModal(initialData = null) {
-    const isEdit = !!initialData;
-    const staffOptions = this._staff.map(s => `
-      <option value="${esc(s.fullName)}" ${initialData && initialData.teacher === s.fullName ? 'selected' : ''}>
-        ${esc(s.fullName)} (${esc(s.role || 'Faculty')})
-      </option>
-    `).join('');
-
-    const bodyHtml = `
-      <form id="form-manage-class" style="display:flex; flex-direction:column; gap:12px;">
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-          <div class="form-group">
-            <label class="form-label">Grade / Class Name *</label>
-            <input class="form-input" id="cls-grade" list="grade-suggestions" required value="${esc(initialData?.grade || 'Class 1')}">
-            <datalist id="grade-suggestions">
-              ${TMS_CONFIG.academic.classes.map(c => `<option value="${c}"></option>`).join('')}
-            </datalist>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Section *</label>
-            <input class="form-input font-mono" id="cls-section" required value="${esc(initialData?.section || 'A')}" placeholder="e.g. A, B, C">
-          </div>
-        </div>
-
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-          <div class="form-group">
-            <label class="form-label">Room Number</label>
-            <input class="form-input" id="cls-room" value="${esc(initialData?.roomNo || 'Room 101')}" placeholder="e.g. Room 101, Science Lab">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Student Capacity</label>
-            <input type="number" class="form-input font-mono" id="cls-capacity" value="${esc(initialData?.capacity || 35)}">
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label">Class Teacher Allocation</label>
-          <select class="form-select" id="cls-teacher">
-            <option value="Unassigned">-- Select Faculty Member --</option>
-            ${staffOptions}
-          </select>
-        </div>
-
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-          <div class="form-group">
-            <label class="form-label">Weekly Periods</label>
-            <input type="number" class="form-input font-mono" id="cls-periods" value="${esc(initialData?.periods || 35)}">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Status</label>
-            <select class="form-select" id="cls-status">
-              <option value="Active" ${initialData?.status === 'Active' ? 'selected' : ''}>Active</option>
-              <option value="Inactive" ${initialData?.status === 'Inactive' ? 'selected' : ''}>Inactive</option>
-            </select>
-          </div>
-        </div>
-      </form>
-    `;
-
-    UIComponents.openModal({
-      title: isEdit ? `Edit Class: ${initialData.grade} (${initialData.section})` : 'Add New Class Division',
-      bodyHtml,
-      footerHtml: `
-        <button class="btn btn-secondary" id="btn-cls-cancel">Cancel</button>
-        <button class="btn btn-primary" id="btn-cls-save"><i data-lucide="save"></i> ${isEdit ? 'Save Changes' : 'Create Class'}</button>
-      `
-    });
-
-    const cancelBtn = document.getElementById('btn-cls-cancel');
-    if (cancelBtn) cancelBtn.addEventListener('click', () => UIComponents.closeModal());
-
-    const saveBtn = document.getElementById('btn-cls-save');
-    if (saveBtn) {
-      saveBtn.addEventListener('click', async () => {
-        const grade = document.getElementById('cls-grade')?.value?.trim();
-        const section = document.getElementById('cls-section')?.value?.trim().toUpperCase();
-        const roomNo = document.getElementById('cls-room')?.value?.trim() || 'Room 101';
-        const capacity = parseInt(document.getElementById('cls-capacity')?.value, 10) || 35;
-        const teacher = document.getElementById('cls-teacher')?.value || 'Assigned Faculty';
-        const periods = parseInt(document.getElementById('cls-periods')?.value, 10) || 35;
-        const status = document.getElementById('cls-status')?.value || 'Active';
-
-        if (!grade || !section) {
-          UIComponents.showToast('Grade and Section are required.', 'warning');
-          return;
-        }
-
+    ClassroomModal.open({
+      classroom: initialData,
+      onSave: async (recordData) => {
         const classRecord = {
-          id: initialData?.id || `cls-${Date.now()}`,
-          grade,
-          section,
-          roomNo,
-          capacity,
-          teacher,
-          periods,
-          status
+          id: initialData?.id || recordData.id,
+          grade: recordData.name,
+          name: recordData.name,
+          section: recordData.section,
+          roomNo: recordData.room,
+          capacity: recordData.capacity,
+          teacher: recordData.teacher,
+          days: recordData.days,
+          startTime: recordData.startTime,
+          endTime: recordData.endTime,
+          gender: recordData.gender,
+          status: recordData.status
         };
-
-        saveBtn.disabled = true;
-        saveBtn.innerHTML = 'Saving...';
-
         try {
           await dbService.upsert('academic_classes', classRecord);
-          await auditService.log(isEdit ? 'CLASS_UPDATED' : 'CLASS_CREATED', 'ACADEMIC', { grade, section, teacher });
-          UIComponents.showToast(`Class ${grade} (${section}) ${isEdit ? 'updated' : 'created'} successfully!`, 'success');
-          UIComponents.closeModal();
-          await this.render(this._container);
+          await auditService.log(initialData ? 'CLASS_UPDATED' : 'CLASS_CREATED', 'ACADEMIC', classRecord);
         } catch (err) {
-          console.error('Failed to save class:', err);
-          UIComponents.showToast('Error saving class: ' + err.message, 'error');
-          saveBtn.disabled = false;
-          saveBtn.innerHTML = '<i data-lucide="save"></i> Save Class';
+          console.warn('Academic class save fallback:', err);
         }
-      });
-    }
-
-    UIComponents.refreshIcons();
+        if (this._container) await this.render(this._container);
+      }
+    });
   }
 
   static openEditClassModal(classId) {
@@ -846,109 +757,35 @@ export class AcademicModule {
      MODALS: PERIODS CRUD
      ========================================================================= */
   static openAddPeriodModal(initialData = null) {
-    const isEdit = !!initialData;
-    const bodyHtml = `
-      <form id="form-manage-period" style="display:flex; flex-direction:column; gap:12px;">
-        <div class="form-group">
-          <label class="form-label">Period Name *</label>
-          <input class="form-input" id="prd-name" required value="${esc(initialData?.name || '')}" placeholder="e.g. Period 1, Recess, Morning Assembly">
-        </div>
-
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-          <div class="form-group">
-            <label class="form-label">Period Number</label>
-            <input type="number" class="form-input font-mono" id="prd-num" value="${esc(initialData?.periodNo ?? 1)}" placeholder="0 for break">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Display Order Index</label>
-            <input type="number" class="form-input font-mono" id="prd-order" value="${esc(initialData?.orderIndex ?? 1)}">
-          </div>
-        </div>
-
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-          <div class="form-group">
-            <label class="form-label">Start Time *</label>
-            <input type="time" class="form-input font-mono" id="prd-start" required value="${esc(initialData?.startTime || '08:50')}">
-          </div>
-          <div class="form-group">
-            <label class="form-label">End Time *</label>
-            <input type="time" class="form-input font-mono" id="prd-end" required value="${esc(initialData?.endTime || '09:35')}">
-          </div>
-        </div>
-
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
-          <div class="form-group">
-            <label class="form-label">Duration (Minutes)</label>
-            <input type="number" class="form-input font-mono" id="prd-duration" value="${esc(initialData?.durationMins || 45)}">
-          </div>
-          <div class="form-group" style="display:flex; flex-direction:column; justify-content:center; padding-top:14px;">
-            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
-              <input type="checkbox" id="prd-isbreak" ${initialData?.isBreak ? 'checked' : ''}>
-              <span style="font-size:0.9rem; font-weight:600;">Is Break / Assembly</span>
-            </label>
-          </div>
-        </div>
-      </form>
-    `;
-
-    UIComponents.openModal({
-      title: isEdit ? `Edit Period: ${initialData.name}` : 'Add New Period / Bell Schedule Slot',
-      bodyHtml,
-      footerHtml: `
-        <button class="btn btn-secondary" id="btn-prd-cancel">Cancel</button>
-        <button class="btn btn-primary" id="btn-prd-save"><i data-lucide="save"></i> ${isEdit ? 'Save Changes' : 'Create Period'}</button>
-      `
-    });
-
-    const cancelBtn = document.getElementById('btn-prd-cancel');
-    if (cancelBtn) cancelBtn.addEventListener('click', () => UIComponents.closeModal());
-
-    const saveBtn = document.getElementById('btn-prd-save');
-    if (saveBtn) {
-      saveBtn.addEventListener('click', async () => {
-        const name = document.getElementById('prd-name')?.value?.trim();
-        const periodNo = parseInt(document.getElementById('prd-num')?.value, 10) || 0;
-        const orderIndex = parseInt(document.getElementById('prd-order')?.value, 10) || 1;
-        const startTime = document.getElementById('prd-start')?.value?.trim();
-        const endTime = document.getElementById('prd-end')?.value?.trim();
-        const durationMins = parseInt(document.getElementById('prd-duration')?.value, 10) || 45;
-        const isBreak = document.getElementById('prd-isbreak')?.checked || false;
-
-        if (!name || !startTime || !endTime) {
-          UIComponents.showToast('Period name, start time, and end time are required.', 'warning');
-          return;
-        }
-
+    ClassroomModal.open({
+      classroom: initialData ? {
+        ...initialData,
+        name: initialData.name,
+        startTime: initialData.startTime,
+        endTime: initialData.endTime
+      } : null,
+      onSave: async (recordData) => {
         const periodRecord = {
-          id: initialData?.id || `prd-${Date.now()}`,
-          name,
-          periodNo,
-          orderIndex,
-          startTime,
-          endTime,
-          durationMins,
-          isBreak,
+          id: initialData?.id || recordData.id,
+          name: recordData.name,
+          section: recordData.section,
+          startTime: recordData.startTime,
+          endTime: recordData.endTime,
+          teacher: recordData.teacher,
+          days: recordData.days,
+          roomNo: recordData.room,
+          capacity: recordData.capacity,
           status: 'Active'
         };
-
-        saveBtn.disabled = true;
-        saveBtn.innerHTML = 'Saving...';
-
         try {
-          await dbService.upsert('academic_periods', periodRecord);
-          await auditService.log(isEdit ? 'PERIOD_UPDATED' : 'PERIOD_CREATED', 'ACADEMIC', { name, startTime, endTime });
-          UIComponents.showToast(`Period "${name}" saved!`, 'success');
-          UIComponents.closeModal();
-          await this.render(this._container);
+          await dbService.upsert('bell_schedule', periodRecord);
+          await auditService.log(initialData ? 'PERIOD_UPDATED' : 'PERIOD_CREATED', 'ACADEMIC', periodRecord);
         } catch (err) {
-          UIComponents.showToast('Failed to save period: ' + err.message, 'error');
-          saveBtn.disabled = false;
-          saveBtn.innerHTML = '<i data-lucide="save"></i> Save Period';
+          console.warn('Period save fallback:', err);
         }
-      });
-    }
-
-    UIComponents.refreshIcons();
+        if (this._container) await this.render(this._container);
+      }
+    });
   }
 
   static openEditPeriodModal(periodId) {
