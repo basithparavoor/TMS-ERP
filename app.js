@@ -305,6 +305,7 @@ class AppController {
           { id: 'communication', label: 'Notice & Bulletins', icon: 'message-square', module: 'communication' },
           { id: 'reports', label: 'School Analytics', icon: 'bar-chart-3', module: 'reports' },
           { id: 'institution', label: 'Campus Facilities', icon: 'building', module: 'institution' },
+          { id: 'users', label: 'User & Permissions', icon: 'shield-check', module: 'users' },
           { id: 'administration', label: 'School Administration', icon: 'settings', module: 'administration' }
         ]
       }
@@ -1078,6 +1079,7 @@ class AppController {
       'communication': 'Notice & Bulletins',
       'reports': 'School Analytics',
       'institution': 'Campus Facilities',
+      'users': 'User Accounts & Permissions',
       'administration': 'School Administration'
     };
 
@@ -1178,7 +1180,9 @@ class AppController {
       case 'institution':
         await InstitutionModule.render(viewport);
         break;
+      case 'users':
       case 'administration':
+        window.location.hash = moduleName === 'users' ? '#users' : window.location.hash;
         await AdminModule.render(viewport);
         break;
       default:
