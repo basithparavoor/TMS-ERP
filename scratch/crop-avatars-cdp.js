@@ -2,10 +2,61 @@ const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
 
+async function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function getWsUrl(port) {
+  for (let i = 0; i < 40; i++) {
+    try {
+      const res = await fetch(`http://127.0.0.1:${port}/json/version`);
+      const data = await res.json();
+      if (data.webSocketDebuggerUrl) return data.webSocketDebuggerUrl;
+    } catch (e) {}
+    await wait(200);
+  }
+  throw new Error('CDP connection timeout');
+}
+
+class CDPClient {
+  constructor(wsUrl) {
+    this.ws = new WebSocket(wsUrl);
+    this.id = 1;
+    this.callbacks = new Map();
+    this.ws.onmessage = (event) => {
+      const msg = JSON.parse(event.data);
+      if (msg.id && this.callbacks.has(msg.id)) {
+        const { resolve, reject } = this.callbacks.get(msg.id);
+        this.callbacks.delete(msg.id);
+        if (msg.error) reject(msg.error);
+        else resolve(msg.result);
+      }
+    };
+  }
+
+  async ready() {
+    if (this.ws.readyState === WebSocket.OPEN) return;
+    return new Promise((resolve) => {
+      this.ws.onopen = () => resolve();
+    });
+  }
+
+  async send(method, params = {}) {
+    await this.ready();
+    const id = this.id++;
+    return new Promise((resolve, reject) => {
+      this.callbacks.set(id, { resolve, reject });
+      this.ws.send(JSON.stringify({ id, method, params }));
+    });
+  }
+
+  close() {
+    this.ws.close();
+  }
+}
+
 async function main() {
   const edgePath = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
   const userDataDir = path.resolve(process.env.TEMP, 'edge_crop_avatars_' + Date.now());
-  const port = 9444;
+  const port = 9445;
 
   const edgeProc = spawn(edgePath, [
     '--headless=new',
@@ -14,40 +65,18 @@ async function main() {
     'about:blank'
   ]);
 
-  await new Promise(r => setTimeout(r, 1500));
+  const wsUrl = await getWsUrl(port);
+  const client = new CDPClient(wsUrl);
 
-  const listRes = await fetch(`http://127.0.0.1:${port}/json/list`);
-  const pages = await listRes.json();
-  const wsUrl = pages[0].webSocketDebuggerUrl;
+  await client.send('Page.enable');
+  await client.send('Runtime.enable');
 
-  const ws = new (require('ws'))(wsUrl);
-  await new Promise(r => ws.on('open', r));
-
-  let reqId = 1;
-  const send = (method, params = {}) => new Promise((resolve) => {
-    const curId = reqId++;
-    const onMsg = (msg) => {
-      const parsed = JSON.parse(msg.toString());
-      if (parsed.id === curId) {
-        ws.off('message', onMsg);
-        resolve(parsed.result);
-      }
-    };
-    ws.on('message', onMsg);
-    ws.send(JSON.stringify({ id: curId, method, params }));
-  });
-
-  await send('Page.enable');
-  await send('Runtime.enable');
-
-  // Read the reference images
   const refTablePath = 'C:/Users/asus/.gemini/antigravity/brain/674a3e6a-ddb8-49de-b0e1-fc2f88ac42fe/dataview-ref-table.png';
   const refEditPath = 'C:/Users/asus/.gemini/antigravity/brain/674a3e6a-ddb8-49de-b0e1-fc2f88ac42fe/dataview-ref-edit-modal.png';
 
   const tableB64 = fs.readFileSync(refTablePath).toString('base64');
   const editB64 = fs.readFileSync(refEditPath).toString('base64');
 
-  // Run canvas operations inside Edge
   const evalScript = `(async () => {
     const loadImage = (b64) => new Promise(res => {
       const img = new Image();
@@ -61,37 +90,22 @@ async function main() {
     const W = tableImg.naturalWidth;
     const H = tableImg.naturalHeight;
 
-    // Crop MD Aamir's high-res passport photo from editImg
-    // In editImg, the photo box is around x: 68, y: 175, w: 98, h: 130
-    const editCanvas = document.createElement('canvas');
-    editCanvas.width = editImg.naturalWidth;
-    editCanvas.height = editImg.naturalHeight;
-    const eCtx = editCanvas.getContext('2d');
-    eCtx.drawImage(editImg, 0, 0);
-
-    // Let's find passport box precisely in editImg
-    // Total editImg dimensions:
     const eW = editImg.naturalWidth;
     const eH = editImg.naturalHeight;
 
-    // Crop passport:
-    // In Image 2 (dataview-ref-edit-modal.png):
-    // Top banner is at ~y: 15% - 35%, left: 6% - 17%
+    // Crop passport photo from editImg (MD Aamir)
     const pCanvas = document.createElement('canvas');
-    const pX = Math.round(eW * 0.068);
-    const pY = Math.round(eH * 0.178);
-    const pBoxW = Math.round(eW * 0.10);
-    const pBoxH = Math.round(eH * 0.145);
+    const pX = Math.round(eW * 0.065);
+    const pY = Math.round(eH * 0.175);
+    const pBoxW = Math.round(eW * 0.103);
+    const pBoxH = Math.round(eH * 0.147);
     pCanvas.width = pBoxW;
     pCanvas.height = pBoxH;
     const pCtx = pCanvas.getContext('2d');
     pCtx.drawImage(editImg, pX, pY, pBoxW, pBoxH, 0, 0, pBoxW, pBoxH);
     const passportB64 = pCanvas.toDataURL('image/png').replace(/^data:image\\/png;base64,/, '');
 
-    // Now let's crop the 6 avatars from tableImg
-    // The avatars are located on the left column:
-    // x: approx 3.8% of W, width: approx 2.8% of W
-    // 6 rows spaced evenly vertically from ~y: 41.5% to ~y: 93%
+    // Crop 6 avatars from tableImg
     const avatars = [];
     const tCanvas = document.createElement('canvas');
     tCanvas.width = W;
@@ -100,11 +114,8 @@ async function main() {
     tCtx.drawImage(tableImg, 0, 0);
 
     const aX = Math.round(W * 0.0385);
-    const aDiam = Math.round(W * 0.024); // avatar diameter
-    
-    // Y coordinates of the 6 rows
-    // Row 1: ~440px / 1000px, Row 2: ~535px, Row 3: ~630px, Row 4: ~725px, Row 5: ~820px, Row 6: ~915px
-    const rowStep = (H * 0.505) / 5;
+    const aDiam = Math.round(W * 0.0245);
+    const rowStep = (H * 0.502) / 5;
     const rowStart = H * 0.435;
 
     for (let i = 0; i < 6; i++) {
@@ -120,29 +131,27 @@ async function main() {
     return { W, H, eW, eH, passportB64, avatars };
   })()`;
 
-  const res = await send('Runtime.evaluate', {
+  const res = await client.send('Runtime.evaluate', {
     expression: evalScript,
     awaitPromise: true,
     returnByValue: true
   });
 
-  if (res.result && res.result.value) {
+  if (res && res.result && res.result.value) {
     const val = res.result.value;
-    console.log('Processed dimensions:', val.W, val.H);
+    console.log('Processed reference dimensions:', val.W, 'x', val.H);
 
-    // Save passport photo
     fs.writeFileSync('assets/avatars/std-1-passport.png', Buffer.from(val.passportB64, 'base64'));
 
-    // Save avatars
     for (let i = 0; i < val.avatars.length; i++) {
       fs.writeFileSync(`assets/avatars/std-${i+1}.png`, Buffer.from(val.avatars[i], 'base64'));
     }
-    console.log('Saved 6 avatars and 1 passport photo into assets/avatars/!');
+    console.log('Successfully saved real student avatars into assets/avatars/!');
   } else {
     console.error('Eval error:', res);
   }
 
-  ws.close();
+  client.close();
   edgeProc.kill();
 }
 
