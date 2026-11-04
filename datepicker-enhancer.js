@@ -1,3 +1,240 @@
+
+function ensureDatePickerStyles() {
+  if (typeof document === 'undefined') return;
+  if (document.getElementById('tms-datepicker-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'tms-datepicker-styles';
+  style.textContent = `
+/* TMS Custom Datepicker Engine Styles */
+.tms-datepicker-native-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.tms-datepicker-wrapper {
+  position: relative !important;
+  display: block !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.tms-datepicker-trigger {
+  width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 10px 18px !important;
+  background: #FFFFFF !important;
+  border: 1.5px solid #E2E8F0 !important;
+  border-radius: 9999px !important;
+  color: #0F172A !important;
+  font-family: inherit !important;
+  font-size: 0.92rem !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  outline: none !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+  box-sizing: border-box !important;
+  text-align: left !important;
+}
+
+.tms-datepicker-trigger:hover {
+  border-color: #10B981 !important;
+  background: #FAFAFA !important;
+}
+
+.tms-datepicker-wrapper.is-open .tms-datepicker-trigger {
+  border-color: #10B981 !important;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15) !important;
+}
+
+.tms-datepicker-label {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  flex: 1 !important;
+}
+
+.tms-datepicker-label.is-placeholder {
+  color: #94A3B8 !important;
+  font-weight: 500 !important;
+}
+
+.tms-datepicker-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin-left: 8px !important;
+  flex-shrink: 0 !important;
+  color: #10B981 !important;
+}
+
+.tms-datepicker-popup {
+  display: none !important;
+  position: absolute !important;
+  top: calc(100% + 8px) !important;
+  left: 0 !important;
+  z-index: 10050 !important;
+  background: #FFFFFF !important;
+  border: 1.5px solid #E2E8F0 !important;
+  border-radius: 24px !important;
+  padding: 20px !important;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.14), 0 4px 16px rgba(0, 0, 0, 0.06) !important;
+  width: 320px !important;
+  box-sizing: border-box !important;
+}
+
+.tms-datepicker-wrapper.is-open .tms-datepicker-popup {
+  display: block !important;
+  animation: tmsDpPopupFade 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.tms-datepicker-wrapper.is-open-above .tms-datepicker-popup {
+  top: auto !important;
+  bottom: calc(100% + 8px) !important;
+}
+
+@keyframes tmsDpPopupFade {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.tms-datepicker-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  margin-bottom: 16px !important;
+}
+
+.tms-datepicker-badge-3d {
+  width: 52px !important;
+  height: 52px !important;
+  border-radius: 16px !important;
+  background: linear-gradient(135deg, #10B981, #047857) !important;
+  box-shadow: 0 6px 14px rgba(16, 185, 129, 0.35) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #FFFFFF !important;
+  font-size: 1.4rem !important;
+  font-weight: 800 !important;
+  position: relative !important;
+  flex-shrink: 0 !important;
+}
+
+.tms-datepicker-badge-3d::before {
+  content: "" !important;
+  position: absolute !important;
+  top: 4px !important;
+  left: 12px !important;
+  width: 6px !important;
+  height: 6px !important;
+  border-radius: 50% !important;
+  background: #FFFFFF !important;
+  box-shadow: 22px 0 0 #FFFFFF !important;
+}
+
+.tms-dp-nav-pill {
+  padding: 5px 12px !important;
+  background: #F1F5F9 !important;
+  border: 1px solid #E2E8F0 !important;
+  border-radius: 9999px !important;
+  font-size: 0.82rem !important;
+  font-weight: 700 !important;
+  color: #1E293B !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+  transition: all 0.15s ease !important;
+}
+
+.tms-dp-nav-pill:hover {
+  background: #E2E8F0 !important;
+  color: #0F172A !important;
+}
+
+.tms-dp-weekdays {
+  display: grid !important;
+  grid-template-columns: repeat(7, 1fr) !important;
+  gap: 2px !important;
+  text-align: center !important;
+  font-size: 0.68rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.05em !important;
+  color: #475569 !important;
+  margin-bottom: 8px !important;
+}
+
+.tms-dp-days-grid {
+  display: grid !important;
+  grid-template-columns: repeat(7, 1fr) !important;
+  gap: 4px !important;
+  margin-bottom: 16px !important;
+}
+
+.tms-dp-day-cell {
+  aspect-ratio: 1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 10px !important;
+  font-size: 0.82rem !important;
+  font-weight: 600 !important;
+  color: #1E293B !important;
+  cursor: pointer !important;
+  transition: all 0.12s ease !important;
+  user-select: none !important;
+}
+
+.tms-dp-day-cell:hover:not(.is-empty):not(.is-other-month) {
+  background: #F1F5F9 !important;
+}
+
+.tms-dp-day-cell.is-other-month {
+  color: #CBD5E1 !important;
+}
+
+.tms-dp-day-cell.is-selected {
+  background: #0E623B !important;
+  color: #FFFFFF !important;
+  font-weight: 800 !important;
+  box-shadow: 0 4px 10px rgba(14, 98, 59, 0.35) !important;
+  border-radius: 12px !important;
+}
+
+.tms-dp-confirm-btn {
+  width: 100% !important;
+  padding: 10px !important;
+  background: #0E623B !important;
+  color: #FFFFFF !important;
+  border: none !important;
+  border-radius: 14px !important;
+  font-weight: 700 !important;
+  font-size: 0.9rem !important;
+  cursor: pointer !important;
+  transition: all 0.15s ease !important;
+  box-shadow: 0 4px 12px rgba(14, 98, 59, 0.25) !important;
+}
+
+.tms-dp-confirm-btn:hover {
+  background: #0B4E2F !important;
+}
+`;
+  document.head.appendChild(style);
+}
+ensureDatePickerStyles();
+
 /**
  * THAIBA MODEL SCHOOL ERP — Universal Luxury Date Picker Engine
  * Replaces standard browser <input type="date"> elements with the custom
@@ -78,6 +315,8 @@ function closeAllDatePickers(exceptWrapper = null) {
       w.classList.remove('is-open', 'is-open-above');
       const trig = w.querySelector('.tms-datepicker-trigger');
       if (trig) trig.setAttribute('aria-expanded', 'false');
+      const pop = w.querySelector('.tms-datepicker-popup');
+      if (pop) pop.style.display = 'none';
     }
   });
 }
@@ -115,6 +354,13 @@ export function enhanceDatePicker(input) {
 
   // Hide native input visually but keep accessible to form submission & validation
   input.classList.add('tms-datepicker-native-hidden');
+  input.style.setProperty('position', 'absolute', 'important');
+  input.style.setProperty('opacity', '0', 'important');
+  input.style.setProperty('width', '1px', 'important');
+  input.style.setProperty('height', '1px', 'important');
+  input.style.setProperty('pointer-events', 'none', 'important');
+  input.style.setProperty('margin', '-1px', 'important');
+  input.style.setProperty('clip', 'rect(0, 0, 0, 0)', 'important');
 
   // Trigger button
   const trigger = document.createElement('button');
@@ -139,6 +385,7 @@ export function enhanceDatePicker(input) {
   const popup = document.createElement('div');
   popup.className = 'tms-datepicker-popup';
   popup.setAttribute('role', 'dialog');
+  popup.style.display = 'none';
   wrapper.appendChild(popup);
 
   // Internal state
@@ -316,6 +563,7 @@ export function enhanceDatePicker(input) {
     updateTriggerDisplay();
     wrapper.classList.remove('is-open', 'is-open-above');
     trigger.setAttribute('aria-expanded', 'false');
+    popup.style.display = 'none';
     trigger.focus();
     wrapper.classList.remove('is-invalid');
   }
@@ -462,6 +710,7 @@ export function enhanceDatePicker(input) {
     if (isOpen) {
       wrapper.classList.remove('is-open', 'is-open-above');
       trigger.setAttribute('aria-expanded', 'false');
+      popup.style.display = 'none';
     } else {
       closeAllDatePickers(wrapper);
 
@@ -489,6 +738,7 @@ export function enhanceDatePicker(input) {
 
       wrapper.classList.add('is-open');
       trigger.setAttribute('aria-expanded', 'true');
+      popup.style.display = 'block';
     }
   }
 

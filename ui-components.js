@@ -272,13 +272,13 @@ export class UIComponents {
   static renderPageHeader({ title, subtitle = '', breadcrumbs = [], actionsHtml = '', badge = '' }) {
     const esc = this.escapeHtml;
     const breadcrumbsHtml = breadcrumbs.length ? `
-      <nav class="tms-breadcrumbs" aria-label="Breadcrumb">
-        <ol class="tms-breadcrumbs-list">
-          <li><a href="#/dashboard" class="tms-breadcrumb-link"><i data-lucide="home" style="width:13px; height:13px;"></i> TMS ERP</a></li>
+      <nav class="tms-breadcrumbs" aria-label="Breadcrumb" style="margin-bottom:8px !important; display:block !important;">
+        <ol class="tms-breadcrumbs-list" style="display:flex !important; flex-direction:row !important; align-items:center !important; list-style:none !important; list-style-type:none !important; padding:0 !important; margin:0 !important; gap:6px !important; flex-wrap:wrap !important;">
+          <li style="display:inline-flex !important; align-items:center !important; gap:6px !important; list-style:none !important; list-style-type:none !important;"><a href="#/dashboard" class="tms-breadcrumb-link" style="display:inline-flex; align-items:center; gap:5px; text-decoration:none;"><i data-lucide="home" style="width:13px; height:13px;"></i> TMS ERP</a></li>
           ${breadcrumbs.map((b, idx) => `
-            <li class="tms-breadcrumb-item">
+            <li class="tms-breadcrumb-item" style="display:inline-flex !important; align-items:center !important; gap:6px !important; list-style:none !important; list-style-type:none !important;">
               <i data-lucide="chevron-right" style="width:12px; height:12px; opacity:0.5;"></i>
-              ${b.href && idx < breadcrumbs.length - 1 ? `<a href="${esc(b.href)}" class="tms-breadcrumb-link">${esc(b.label)}</a>` : `<span class="tms-breadcrumb-current">${esc(b.label)}</span>`}
+              ${b.href && idx < breadcrumbs.length - 1 ? `<a href="${esc(b.href)}" class="tms-breadcrumb-link" style="display:inline-flex; align-items:center; gap:5px; text-decoration:none;">${esc(b.label)}</a>` : `<span class="tms-breadcrumb-current" style="font-weight:700; color:#0F172A;">${esc(b.label)}</span>`}
             </li>
           `).join('')}
         </ol>

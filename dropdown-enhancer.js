@@ -1,3 +1,158 @@
+
+function ensureDropdownStyles() {
+  if (typeof document === 'undefined') return;
+  if (document.getElementById('tms-custom-select-styles')) return;
+  const style = document.createElement('style');
+  style.id = 'tms-custom-select-styles';
+  style.textContent = `
+/* TMS Custom Dropdown Engine Styles */
+.tms-custom-select-native-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.tms-custom-select-wrapper {
+  position: relative !important;
+  display: block !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.tms-custom-select-trigger {
+  width: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 10px 18px !important;
+  background: #FFFFFF !important;
+  border: 1.5px solid #E2E8F0 !important;
+  border-radius: 9999px !important;
+  color: #0F172A !important;
+  font-family: inherit !important;
+  font-size: 0.92rem !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  outline: none !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
+  box-sizing: border-box !important;
+  text-align: left !important;
+}
+
+.tms-custom-select-trigger:hover {
+  border-color: #10B981 !important;
+  background: #FAFAFA !important;
+}
+
+.tms-custom-select-wrapper.is-open .tms-custom-select-trigger {
+  border-color: #10B981 !important;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15) !important;
+}
+
+.tms-custom-select-label {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  flex: 1 !important;
+}
+
+.tms-custom-select-label.is-placeholder {
+  color: #94A3B8 !important;
+  font-weight: 500 !important;
+}
+
+.tms-custom-select-arrow {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin-left: 8px !important;
+  transition: transform 0.2s ease !important;
+  flex-shrink: 0 !important;
+}
+
+.tms-custom-select-wrapper.is-open .tms-custom-select-arrow {
+  transform: rotate(180deg) !important;
+}
+
+.tms-custom-select-menu {
+  display: none !important;
+  position: absolute !important;
+  top: calc(100% + 6px) !important;
+  left: 0 !important;
+  right: 0 !important;
+  z-index: 10050 !important;
+  background: #FFFFFF !important;
+  border: 1.5px solid #E2E8F0 !important;
+  border-radius: 18px !important;
+  padding: 8px !important;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(0, 0, 0, 0.06) !important;
+  max-height: 280px !important;
+  overflow-y: auto !important;
+  box-sizing: border-box !important;
+}
+
+.tms-custom-select-wrapper.is-open .tms-custom-select-menu {
+  display: block !important;
+  animation: tmsSelectMenuFade 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.tms-custom-select-wrapper.is-open-above .tms-custom-select-menu {
+  top: auto !important;
+  bottom: calc(100% + 6px) !important;
+}
+
+@keyframes tmsSelectMenuFade {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.tms-custom-select-option {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 10px 14px !important;
+  border-radius: 12px !important;
+  color: #1E293B !important;
+  font-size: 0.9rem !important;
+  font-weight: 600 !important;
+  cursor: pointer !important;
+  transition: all 0.12s ease !important;
+  margin-bottom: 2px !important;
+  user-select: none !important;
+}
+
+.tms-custom-select-option:hover {
+  background: #F1F5F9 !important;
+  color: #0F172A !important;
+}
+
+.tms-custom-select-option.is-selected {
+  background: #E8F5E9 !important;
+  color: #15803D !important;
+  font-weight: 700 !important;
+}
+
+.tms-custom-select-check {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #15803D !important;
+  margin-left: 8px !important;
+}
+`;
+  document.head.appendChild(style);
+}
+ensureDropdownStyles();
+
 /**
  * THAIBA MODEL SCHOOL ERP — Universal Custom Dropdown Engine
  * Replaces standard browser <select> dropdowns with modern pill-shaped triggers,
@@ -29,6 +184,8 @@ function closeAllCustomSelects(exceptWrapper = null) {
       w.classList.remove('is-open', 'is-open-above');
       const trig = w.querySelector('.tms-custom-select-trigger');
       if (trig) trig.setAttribute('aria-expanded', 'false');
+      const m = w.querySelector('.tms-custom-select-menu');
+      if (m) m.style.display = 'none';
     }
   });
 }
@@ -66,8 +223,15 @@ export function enhanceSelect(select) {
   select.parentNode.insertBefore(wrapper, select);
   wrapper.appendChild(select);
 
-  // Add hidden class to native select
+  // Add hidden class to native select AND inline style to guarantee it is NEVER visible
   select.classList.add('tms-custom-select-native-hidden');
+  select.style.setProperty('position', 'absolute', 'important');
+  select.style.setProperty('opacity', '0', 'important');
+  select.style.setProperty('width', '1px', 'important');
+  select.style.setProperty('height', '1px', 'important');
+  select.style.setProperty('pointer-events', 'none', 'important');
+  select.style.setProperty('margin', '-1px', 'important');
+  select.style.setProperty('clip', 'rect(0, 0, 0, 0)', 'important');
 
   // Create Trigger
   const trigger = document.createElement('button');
@@ -92,6 +256,7 @@ export function enhanceSelect(select) {
   const menu = document.createElement('div');
   menu.className = 'tms-custom-select-menu';
   menu.setAttribute('role', 'listbox');
+  menu.style.display = 'none';
   wrapper.appendChild(menu);
 
   // Rebuild Menu Options from Native Select
@@ -149,6 +314,7 @@ export function enhanceSelect(select) {
 
         wrapper.classList.remove('is-open', 'is-open-above');
         trigger.setAttribute('aria-expanded', 'false');
+        menu.style.display = 'none';
         trigger.focus();
         wrapper.classList.remove('is-invalid');
       });
@@ -167,6 +333,7 @@ export function enhanceSelect(select) {
     if (isOpen) {
       wrapper.classList.remove('is-open', 'is-open-above');
       trigger.setAttribute('aria-expanded', 'false');
+      menu.style.display = 'none';
     } else {
       closeAllCustomSelects(wrapper);
 
@@ -183,7 +350,8 @@ export function enhanceSelect(select) {
       }
 
       wrapper.classList.add('is-open');
-      trigger.setAttribute('aria-expanded', 'false');
+      trigger.setAttribute('aria-expanded', 'true');
+      menu.style.display = 'block';
 
       // Scroll selected item into view
       const selectedItem = menu.querySelector('.tms-custom-select-option.is-selected');
