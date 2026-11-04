@@ -60,7 +60,7 @@ export const DEFAULT_FEES = [
   { name: 'Transport Fee (optional)', amount: 0, mandatory: false, description: 'Choose based on your route.' }
 ];
 
-const FIELD_TYPES = ['text', 'textarea', 'number', 'date', 'tel', 'email', 'select', 'checkbox', 'file'];
+const FIELD_TYPES = ['text', 'textarea', 'number', 'date', 'tel', 'email', 'select', 'checkbox', 'file', 'photo', 'image'];
 
 /* ------------------------------------------------------------------ */
 
@@ -447,8 +447,8 @@ class AdmissionService {
   /* ---------------- Applications ---------------- */
 
   async listApplications() {
-    const rows = await dbService.select('admissions_applications');
-    return rows.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    const rows = await dbService.select('admissions_applications', null, true);
+    return (rows || []).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
   }
 
   async listApplicationsForParent(userId, email) {
@@ -491,26 +491,41 @@ class AdmissionService {
       feeTotal = feeItems.reduce((s, f) => s + f.amount, 0);
     }
 
-    const appNo = formNo || this.generateFormNo();
+    const appNo = (formNo || this.generateFormNo()).toString().trim();
     const credentials = this.buildCredentials(appNo);
-    const guardianName =
-      values.fatherName || values.guardianName || values.motherName || 'Parent / Guardian';
+    const guardianName = (values.fatherName || values.guardianName || values.motherName || 'Parent / Guardian').toString().trim();
 
-    // Create the parent login (best effort — the application is still saved if this fails).
-    const account = await this.createParentAccount(credentials.email, credentials.password, guardianName);
+    // Create parent login (best effort — application is still safely registered if this fails)
+    let account = { userId: null };
+    try {
+      account = await this.createParentAccount(credentials.email, credentials.password, guardianName);
+    } catch (e) {
+      console.warn('Parent account creation notice:', e.message);
+    }
 
     let paymentStatus = 'Not Required';
     if (feeTotal > 0) paymentStatus = paymentRef ? 'Paid' : 'Pending';
 
+    // Strict schema sanitization: ensures Postgres NOT NULL & DATE constraints are respected
+    const cleanStudentName = (values.candidateName || values.studentName || 'Applicant').toString().trim();
+    const cleanGrade = (values.applyingClass || values.grade || values.class || 'LKG').toString().trim();
+    const cleanPhone = (values.phone || values.mobile || 'Not Provided').toString().trim();
+    const cleanEmail = (values.email && values.email.trim()) ? values.email.trim() : (credentials.email || `parent_${appNo.toLowerCase()}@thaiba.edu`);
+    const cleanDob = (values.dob && values.dob.trim()) ? values.dob.trim() : null;
+    const cleanGender = (values.gender && values.gender.trim()) ? values.gender.trim() : null;
+
+    const uniqueRowId = 'app_' + appNo.toLowerCase().replace(/[^a-z0-9]/g, '_') + '_' + Date.now().toString(36);
+
     const application = {
+      id: uniqueRowId,
       appId: appNo,
-      studentName: values.candidateName || values.studentName || 'Applicant',
-      dob: values.dob || null,
-      gender: values.gender || null,
-      grade: values.applyingClass || values.grade || null,
-      guardianName,
-      phone: values.phone || values.mobile || null,
-      email: values.email || null,
+      studentName: cleanStudentName,
+      dob: cleanDob,
+      gender: cleanGender,
+      grade: cleanGrade,
+      guardianName: guardianName,
+      phone: cleanPhone,
+      email: cleanEmail,
       address: [values.village, values.po, values.ps, values.district, values.pin]
         .filter(Boolean)
         .join(', '),
@@ -522,8 +537,8 @@ class AdmissionService {
       paymentMode: feeTotal > 0 ? paymentMode || 'UPI' : '',
       paymentRef: paymentRef || '',
       payments: [],
-      submittedBy: submittedBy ? submittedBy.id : null,
-      submittedByName: submittedBy ? submittedBy.name : 'Self / Public',
+      submittedBy: submittedBy ? (submittedBy.id || null) : null,
+      submittedByName: submittedBy ? (submittedBy.name || 'Staff') : 'Self / Public',
       parentUserId: account.userId || null,
       parentUsername: credentials.username,
       parentEmail: credentials.email,
@@ -532,16 +547,21 @@ class AdmissionService {
 
     const saved = await dbService.insert('admissions_applications', application);
 
-    const credentialRow = await dbService.insert('parent_credentials', {
-      id: `cred-${credentials.username}`,
-      applicationId: saved.id,
-      username: credentials.username,
-      email: credentials.email,
-      password: credentials.password,
-      userId: account.userId || null,
-      studentId: null,
-      status: 'Active'
-    });
+    let credentialRow = null;
+    try {
+      credentialRow = await dbService.insert('parent_credentials', {
+        id: `cred-${credentials.username}`,
+        applicationId: saved.id || uniqueRowId,
+        username: credentials.username,
+        email: credentials.email,
+        password: credentials.password,
+        userId: account.userId || null,
+        studentId: null,
+        status: 'Active'
+      });
+    } catch (e) {
+      console.warn('Parent credential row insert notice:', e.message);
+    }
 
     try {
       await dbService.upsert('login_aliases', {

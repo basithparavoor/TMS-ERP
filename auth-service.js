@@ -185,6 +185,8 @@ class AuthService {
       assignedClass: profile.assigned_class || null,
       assignedSection: profile.assigned_section || null,
       phone: profile.phone || '',
+      tgiId: (() => { try { return JSON.parse(localStorage.getItem('tms_staff_meta_' + profile.id) || '{}').tgiId || profile.staff_id || ''; } catch(e){ return ''; } })(),
+      bloodGroup: (() => { try { return JSON.parse(localStorage.getItem('tms_staff_meta_' + profile.id) || '{}').bloodGroup || ''; } catch(e){ return ''; } })(),
       rawTitle: profile.title || '',
       rawDepartment: profile.department || '',
       avatar: userAvatar,

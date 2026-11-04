@@ -8,6 +8,7 @@
 
 import { TMS_CONFIG } from './config.js';
 import { authService } from './auth-service.js';
+import { WindowPermissionsService } from './window-permissions.js';
 
 export const CAPABILITIES = {
   // Administration
@@ -234,6 +235,27 @@ export class PermissionEngine {
     return this.getScope() === TMS_CONFIG.scopes.SCHOOL_WIDE;
   }
 
+  // --- Window-Level Permissions (https://tpsh.vercel.app/#users) ---
+  static getWindowPermission(windowKey) {
+    const user = this._user();
+    return WindowPermissionsService.getWindowPermission(user, windowKey);
+  }
+
+  static hasWindowAccess(windowKey) {
+    const user = this._user();
+    return WindowPermissionsService.hasWindowAccess(user, windowKey);
+  }
+
+  static isWindowViewOnly(windowKey) {
+    const user = this._user();
+    return WindowPermissionsService.isWindowViewOnly(user, windowKey);
+  }
+
+  static isWindowFull(windowKey) {
+    const user = this._user();
+    return WindowPermissionsService.isWindowFull(user, windowKey);
+  }
+
   static canAccessModule(moduleId) {
     const user = this._user();
     if (!user || !user.role) return false;
@@ -242,6 +264,12 @@ export class PermissionEngine {
     if (user.role === 'pending') return false;
 
     if (this._isSuperAdmin(user) || user.role === TMS_CONFIG.roles.ADMIN) {
+      return true;
+    }
+
+    // Check Window-Level Permission override if set
+    const winPerm = WindowPermissionsService.getWindowPermission(user, moduleId);
+    if (winPerm === 'full' || winPerm === 'view') {
       return true;
     }
 
@@ -278,7 +306,7 @@ export class PermissionEngine {
       case 'finance':
         return [TMS_CONFIG.roles.FINANCE, TMS_CONFIG.roles.STUDENT, TMS_CONFIG.roles.PARENT].includes(role);
       case 'operations':
-        return false;
+        return [TMS_CONFIG.roles.ADMIN, TMS_CONFIG.roles.PRINCIPAL, TMS_CONFIG.roles.OPERATIONS].includes(role);
       case 'communication':
         return true;
       case 'reports':

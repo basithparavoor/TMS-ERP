@@ -104,22 +104,30 @@ class SupabaseDataService {
   cleanLegacyDemoData() {
     // Purge old demo mock flags, sample data, and hardcoded templates
     try {
-      const keysToScan = [
+      const demoKeys = [
         'tms_seeded_v3',
-        'tms_assignments',
-        'tms_calendar_events',
-        'tms_syllabus_topics',
-        'tms_students',
-        'tms_staff',
-        'tms_invoices',
-        'tms_facilities',
-        'tms_staff_tasks',
-        'tms_attendance_register'
+        'tms_offline_queue',
+        'tms_mock_users'
       ];
-      keysToScan.forEach(k => {
-        const val = localStorage.getItem(k);
-        if (val && (val.includes('hw_1') || val.includes('ev_1') || val.includes('syl-1') || k === 'tms_seeded_v3')) {
-          localStorage.removeItem(k);
+      demoKeys.forEach(k => localStorage.removeItem(k));
+
+      const collections = [
+        'assignments',
+        'calendar_events',
+        'syllabus_topics',
+        'students',
+        'staff',
+        'invoices',
+        'facilities',
+        'staff_tasks',
+        'attendance_register',
+        'attendance_records',
+        'admissions_applications'
+      ];
+      collections.forEach(col => {
+        const raw = localStorage.getItem(`tms_${col}`);
+        if (raw && (raw.includes('hw_1') || raw.includes('ev_1') || raw.includes('syl-1') || raw.includes('demo') || raw.includes('TMS-VCZR7PVGW') || raw.includes('TMS-IAM89T42J') || raw.includes('TMS-V7YXHBQAF'))) {
+          localStorage.removeItem(`tms_${col}`);
         }
       });
     } catch (e) { /* ignore */ }

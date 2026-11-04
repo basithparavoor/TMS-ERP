@@ -429,7 +429,7 @@
       const ph = esc(f.placeholder || '');
       const type = f.fieldType || 'text';
       let control = '';
-      const isFullWidth = type === 'textarea' || type === 'file' || (f.fieldKey === 'village');
+      const isFullWidth = type === 'textarea' || type === 'file' || type === 'photo' || type === 'image' || (f.fieldKey === 'village');
 
       if (type === 'textarea') {
         control = `<textarea class="form-input" id="${id}" rows="2" placeholder="${ph}" ${req}></textarea>`;
@@ -643,7 +643,7 @@
         } else {
           // Regular Admin Configured Section
           const secFields = meta.fields || [];
-          const photoField = secFields.find(f => (f.fieldType === 'file' && (f.fieldKey === 'photo' || /photo|photograph/i.test(f.label))));
+          const photoField = secFields.find(f => ((f.fieldType === 'file' || f.fieldType === 'photo' || f.fieldType === 'image') && (f.fieldKey === 'photo' || /photo|photograph|passport/i.test(f.label))));
           const otherFields = secFields.filter(f => f !== photoField);
 
           let photoHtml = '';
@@ -723,6 +723,38 @@
         renderPhotoPanel(photoFieldRef);
       }
 
+      // Photo upload and live preview listeners
+      container.querySelectorAll('.admission-photo-input').forEach((inp) => {
+        inp.addEventListener('change', () => {
+          const file = inp.files && inp.files[0];
+          if (!file) return;
+          const id = inp.id;
+          const reader = new FileReader();
+          reader.onload = (re) => {
+            const dataUrl = re.target.result;
+            const previewBox = document.getElementById(`preview-box-${id}`);
+            const img = document.getElementById(`img-preview-${id}`);
+            const placeholder = document.getElementById(`placeholder-${id}`);
+            const fileInfo = document.getElementById(`file-info-${id}`);
+
+            if (img && previewBox) {
+              img.src = dataUrl;
+              previewBox.style.display = 'block';
+            }
+            if (placeholder) placeholder.style.display = 'none';
+            if (fileInfo) {
+              fileInfo.style.display = 'block';
+              fileInfo.innerText = `✓ Selected: ${file.name} (${Math.round(file.size / 1024)} KB)`;
+            }
+
+            if (inp.dataset.key === 'photo' || /passport|student.*photo|profile.*photo/i.test(inp.dataset.key)) {
+              wizard.photoDataUrl = dataUrl;
+            }
+          };
+          reader.readAsDataURL(file);
+        });
+      });
+
       // File preview listeners for document fields
       container.querySelectorAll('input[type="file"]').forEach((inp) => {
         if (photoFieldRef && inp.id === `fld-${photoFieldRef.fieldKey}`) return;
@@ -771,6 +803,8 @@
       // Initial Stepper Render
       updateSteppers();
       UIComponents.refreshIcons();
+      UIComponents.enhanceAllSelects(container);
+      UIComponents.enhanceAllDatePickers(container);
     }
 
     /** Prominent passport-photo capture block */
@@ -987,7 +1021,9 @@
         if (input.type === 'checkbox') {
           empty = !input.checked;
         } else if (input.type === 'file') {
-          empty = input.files && input.files.length === 0 && !wizard.photoDataUrl;
+          const isPhoto = input.classList.contains('admission-photo-input');
+          const hasImg = isPhoto && (wizard.photoDataUrl || document.getElementById(`img-preview-${input.id}`)?.getAttribute('src'));
+          empty = (!input.files || input.files.length === 0) && !hasImg;
         } else {
           empty = !input.value || !input.value.trim();
         }
@@ -1062,7 +1098,7 @@
 
         secIndex += 1;
         const secFields = meta.fields || [];
-        const photoField = secFields.find(f => (f.fieldType === 'file' && (f.fieldKey === 'photo' || /photo|photograph/i.test(f.label))));
+        const photoField = secFields.find(f => ((f.fieldType === 'file' || f.fieldType === 'photo' || f.fieldType === 'image') && (f.fieldKey === 'photo' || /photo|photograph|passport/i.test(f.label))));
         const otherFields = secFields.filter(f => f !== photoField);
 
         html += `
@@ -1193,7 +1229,7 @@
 
     async function uploadAttachments(values, formNo) {
       const folder = `admissions/${String(formNo).replace(/[^A-Za-z0-9]/g, '-')}`;
-      const activeFiles = fields.filter(f => f.isActive !== false && (f.fieldType || 'text') === 'file');
+      const activeFiles = fields.filter(f => f.isActive !== false && ((f.fieldType || 'text') === 'file' || f.fieldType === 'photo' || f.fieldType === 'image'));
 
       for (const f of activeFiles) {
         const input = document.getElementById(`fld-${f.fieldKey}`);
@@ -1224,7 +1260,7 @@
         html += `<div style="font-size:12px;font-weight:800;text-decoration:underline;margin:8px 0 4px;">${esc(secName)} :</div>
           <table style="width:100%;border-collapse:collapse;font-size:10.5px;margin-bottom:6px;">`;
         list.forEach((f) => {
-          if (f.fieldType === 'file' && (f.fieldKey === 'photo' || /photo|photograph/i.test(f.label))) return;
+          if ((f.fieldType === 'file' || f.fieldType === 'photo' || f.fieldType === 'image') && (f.fieldKey === 'photo' || /photo|photograph|passport/i.test(f.label))) return;
           const val = values[f.fieldKey];
           const isFile = (f.fieldType || 'text') === 'file';
           const shown = isFile
@@ -1298,7 +1334,7 @@
     }
 
     async function applyA4Photo(values) {
-      const photoField = fields.find(f => (f.fieldType === 'file' && (f.fieldKey === 'photo' || /photo|photograph/i.test(f.label))));
+      const photoField = fields.find(f => ((f.fieldType === 'file' || f.fieldType === 'photo' || f.fieldType === 'image') && (f.fieldKey === 'photo' || /photo|photograph|passport/i.test(f.label))));
       const photoKey = photoField ? photoField.fieldKey : 'photo';
       const photoUrl = values[photoKey];
       const a4Photo = document.getElementById('a4-photo');

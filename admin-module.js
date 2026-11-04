@@ -10,11 +10,13 @@ import { authService } from './auth-service.js';
 import { auditService } from './audit-service.js';
 import { UIComponents } from './ui-components.js';
 import { TMS_LOGO } from './logo.js';
+import { OnboardingService } from './onboarding-service.js';
 import { admissionService, DEFAULT_INSTRUCTIONS, DEFAULT_POPUP_INSTRUCTIONS, getEmbedVideoUrl, renderVideoPlayerHtml } from './admission-service.js';
 import { notificationService } from './notification-service.js';
 import { brandingService } from './branding-service.js';
 import { WhatsAppService } from './whatsapp-service.js';
 import { downloadCsv, exportPdf, formatPdfFilename, kvTable } from './export-utils.js';
+import { AdminWebsiteCms } from './admin-website-cms.js';
 
 const esc = (v) => UIComponents.escapeHtml(v);
 const safeOn = (id, event, fn) => {
@@ -147,6 +149,14 @@ export class AdminModule {
             <i data-lucide="bell"></i>
             <span>Notifications</span>
           </button>
+          <button class="tms-tab-pill" data-group="website">
+            <i data-lucide="globe"></i>
+            <span>Institutional Website</span>
+          </button>
+          <button class="tms-tab-pill" data-group="hostel">
+            <i data-lucide="home"></i>
+            <span>Hostel Management</span>
+          </button>
           <button class="tms-tab-pill" data-group="system">
             <i data-lucide="sliders"></i>
             <span>Governance & Backup</span>
@@ -215,8 +225,31 @@ export class AdminModule {
       users: [
         { key: 'google-approvals', label: 'User Authentication (Google)', icon: 'user-check', showPendingBadge: true },
         { key: 'users', label: 'User Logins & Roles', icon: 'users' },
+        { key: 'staff-onboarding', label: 'Staff Onboarding & Governance', icon: 'user-cog' },
         ...(isSuperAdmin ? [{ key: 'user-sessions', label: 'Login & Logout Sessions', icon: 'history' }] : []),
         { key: 'audit', label: 'Security Audit Trail', icon: 'shield-alert' }
+      ],
+      website: [
+        { key: 'website-general', label: 'Identity & Brand Colors', icon: 'palette' },
+        { key: 'website-hero', label: 'Hero & Headlines', icon: 'sparkles' },
+        { key: 'website-about', label: 'About & Leadership', icon: 'book-open' },
+        { key: 'website-academics', label: 'Academic Programs', icon: 'graduation-cap' },
+        { key: 'website-facilities', label: 'Campus Facilities', icon: 'building' },
+        { key: 'website-hostel', label: 'Hostel Managing Setup', icon: 'home' },
+        { key: 'website-notices', label: 'Notice Board Bulletins', icon: 'megaphone' },
+        { key: 'website-gallery', label: 'Photo Gallery', icon: 'image' },
+        { key: 'website-testimonials', label: 'Parent Testimonials', icon: 'message-square-quote' },
+        { key: 'website-contact', label: 'Contact, Admission & Footer', icon: 'phone-call' },
+        { key: 'website-backup', label: 'CMS Backup & Reset', icon: 'database' }
+      ],
+      hostel: [
+        { key: 'website-hostel', label: 'Hostel Managing Setup & Button', icon: 'sliders' },
+        { key: 'hostel-wings', label: 'Dormitories & Wings', icon: 'home' },
+        { key: 'hostel-features', label: 'Facilities & Amenities', icon: 'sparkles' },
+        { key: 'hostel-routine', label: 'Daily Life Routine', icon: 'clock' },
+        { key: 'hostel-mess', label: 'Mess & Weekly Menu', icon: 'utensils' },
+        { key: 'hostel-wardens', label: 'Wardens & Contact', icon: 'phone-call' },
+        { key: 'hostel-roster', label: 'Student Bed Allotments', icon: 'users' }
       ],
       notices: [
         { key: 'notifications', label: 'Broadcast Bulletins', icon: 'bell' }
@@ -227,6 +260,7 @@ export class AdminModule {
       ],
       superadmin: [
         { key: 'google-approvals', label: '🛡️ Google Auth Approvals', icon: 'user-check', showPendingBadge: true },
+        { key: 'staff-onboarding', label: '👥 Staff Onboarding & Governance', icon: 'user-cog' },
         { key: 'system-doctor', label: '🩺 System Doctor (Find & Fix)', icon: 'wrench' },
         { key: 'user-sessions', label: '👤 User Login / Logout Sessions', icon: 'history' },
         { key: 'audit', label: '🛡️ Security Audit Logs', icon: 'shield-alert' },
@@ -279,12 +313,30 @@ export class AdminModule {
     if (!tabContent) return;
 
     try {
-      if (tabKey === 'applications') await this.renderApplicationsTab(tabContent);
+      if (tabKey.startsWith('website-')) await AdminWebsiteCms.render(tabContent, tabKey);
+      else if (tabKey.startsWith('hostel-')) {
+        await AdminWebsiteCms.render(tabContent, 'website-hostel');
+        const targetMap = {
+          'hostel-wings': 'hostel-sec-wings',
+          'hostel-features': 'hostel-sec-features',
+          'hostel-routine': 'hostel-sec-routine',
+          'hostel-mess': 'hostel-sec-mess',
+          'hostel-wardens': 'hostel-sec-wardens',
+          'hostel-roster': 'hostel-sec-roster'
+        };
+        const targetId = targetMap[tabKey];
+        if (targetId) {
+          const pill = tabContent.querySelector(`.hostel-sub-pill[data-target="${targetId}"]`);
+          if (pill) pill.click();
+        }
+      }
+      else if (tabKey === 'applications') await this.renderApplicationsTab(tabContent);
       else if (tabKey === 'form-builder') await this.renderFormBuilderTab(tabContent);
       else if (tabKey === 'fees') await this.renderFeesTab(tabContent);
       else if (tabKey === 'payment-settings') await this.renderPaymentSettingsTab(tabContent);
       else if (tabKey === 'notifications') await this.renderNotificationsTab(tabContent);
       else if (tabKey === 'users') await this.renderUsersTab(tabContent);
+      else if (tabKey === 'staff-onboarding') await this.renderStaffOnboardingTab(tabContent);
       else if (tabKey === 'google-approvals') await this.renderGoogleApprovalsTab(tabContent);
       else if (tabKey === 'branding') await this.renderBrandingTab(tabContent);
       else if (tabKey === 'audit') await this.renderAuditTab(tabContent);
@@ -321,6 +373,7 @@ export class AdminModule {
             <button class="btn btn-secondary btn-sm" id="btn-export-csv"><i data-lucide="file-spreadsheet"></i> Export CSV</button>
             <button class="btn btn-secondary btn-sm" id="btn-export-pdf"><i data-lucide="file-text"></i> Export PDF</button>
             <button class="btn btn-secondary btn-sm" id="btn-delete-pending" style="color:#ef4444;"><i data-lucide="trash-2"></i> Delete Pending</button>
+            <button class="btn btn-secondary btn-sm" id="btn-refresh-apps" title="Fetch fresh applications from server"><i data-lucide="refresh-cw"></i> Refresh</button>
             <a href="/admission" target="_blank" class="btn btn-primary btn-sm"><i data-lucide="plus"></i> New Entry</a>
           </div>
         </div>
@@ -413,7 +466,9 @@ export class AdminModule {
     }
 
     body.innerHTML = rows.map((a) => {
-      const photoName = (a.payload || {}).photo;
+      const pld = a.payload || {};
+      const photoName = pld.photo || pld.candidatePassportPhoto || pld.passportPhoto || pld.studentPassportPhoto || pld.studentProfilePhoto || pld.candidatePhoto;
+      const photoSrc = photoName && (photoName.startsWith('http') || photoName.startsWith('data:')) ? photoName : '';
       const photoCell = photoName
         ? `<img class="app-photo-thumb" data-path="${esc(photoName)}" alt="Applicant photo"
              style="width:30px;height:36px;object-fit:cover;border:1px solid var(--border-color);border-radius:4px;background:#f1f5f9;cursor:pointer;"
@@ -1828,6 +1883,9 @@ export class AdminModule {
               <button class="btn btn-secondary btn-sm btn-rename-section" data-section="${esc(secName)}" title="Rename this section">
                 <i data-lucide="edit-3"></i> Rename Section
               </button>
+              <button class="btn btn-secondary btn-sm btn-add-photo-to-sec" data-section="${esc(secName)}" style="color:#059669; border-color:#86efac; font-weight:700;">
+                <i data-lucide="camera"></i> + Add Photo
+              </button>
               <button class="btn btn-primary btn-sm btn-add-field-to-sec" data-section="${esc(secName)}">
                 <i data-lucide="plus"></i> Add Question
               </button>
@@ -1861,7 +1919,14 @@ export class AdminModule {
                       ${f.placeholder ? `<br><span style="font-size:0.72rem; color:var(--text-muted);">${esc(f.placeholder)}</span>` : ''}
                     </td>
                     <td class="font-mono" style="font-size:0.78rem; color:#475569;">${esc(f.fieldKey)}</td>
-                    <td><span class="badge badge-info" style="font-size:0.72rem;">${esc(f.fieldType)}</span></td>
+                    <td>
+                      ${(f.fieldType === 'photo' || f.fieldType === 'image')
+                        ? `<span class="badge" style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; font-weight:700; font-size:0.72rem; display:inline-flex; align-items:center; gap:4px;"><i data-lucide="camera" style="width:11px;height:11px;"></i> Photo</span>`
+                        : (f.fieldType === 'file')
+                        ? `<span class="badge" style="background:#eff6ff; color:#2563eb; border:1px solid #bfdbfe; font-size:0.72rem; display:inline-flex; align-items:center; gap:4px;"><i data-lucide="file-text" style="width:11px;height:11px;"></i> Document</span>`
+                        : `<span class="badge badge-info" style="font-size:0.72rem;">${esc(f.fieldType)}</span>`
+                      }
+                    </td>
                     <td>
                       <button type="button" class="badge btn-toggle-required ${f.required ? 'badge-success' : ''}" data-key="${esc(f.fieldKey)}" style="cursor:pointer; border:none;" title="Click to toggle required">
                         ${f.required ? '✓ Required' : 'Optional'}
@@ -1907,6 +1972,7 @@ export class AdminModule {
                 <button class="btn btn-secondary btn-sm" id="btn-bulk-del-fields" style="color:#ef4444;"><i data-lucide="trash-2"></i> Delete Selected (<span id="field-selected-count">0</span>)</button>
               `}
               <button class="btn btn-secondary btn-sm" id="btn-add-section"><i data-lucide="folder-plus"></i> Add New Section</button>
+              <button class="btn btn-secondary btn-sm" id="btn-add-photo-field" style="color:#059669; border-color:#86efac; font-weight:700;"><i data-lucide="camera"></i> + Add Photo Question</button>
               <button class="btn btn-primary btn-sm" id="btn-add-field"><i data-lucide="plus"></i> Add Question</button>
             </div>
           </div>
@@ -2163,18 +2229,51 @@ export class AdminModule {
 
     const bodyHtml = `
       <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+        <!-- Quick Photo Templates Toolbar -->
+        <div style="grid-column:1/-1; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:12px 14px;">
+          <div style="font-size:0.78rem; font-weight:700; color:#166534; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+            <i data-lucide="sparkles" style="width:14px;height:14px;color:#059669;"></i> Quick Photo Templates (Click to auto-fill):
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button type="button" class="btn btn-secondary btn-sm btn-photo-preset" data-label="Candidate Passport Photograph" data-key="candidatePassportPhoto" data-help="Recent colour passport-size photograph (JPG or PNG up to 2 MB). Required for admit card." style="background:#fff; font-size:0.75rem; border-color:#86efac; color:#15803d; font-weight:700;">
+              📸 Candidate Passport Photo
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm btn-photo-preset" data-label="Student Profile Photo" data-key="studentProfilePhoto" data-help="Front-facing portrait profile picture (JPG or PNG up to 2 MB)." style="background:#fff; font-size:0.75rem; border-color:#86efac; color:#15803d; font-weight:700;">
+              👤 Student Profile Photo
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm btn-photo-preset" data-label="Father's Photograph" data-key="fatherPhoto" data-help="Recent passport-size photo of father / male guardian." style="background:#fff; font-size:0.75rem; border-color:#86efac; color:#15803d; font-weight:600;">
+              👨 Father's Photo
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm btn-photo-preset" data-label="Mother's Photograph" data-key="motherPhoto" data-help="Recent passport-size photo of mother / female guardian." style="background:#fff; font-size:0.75rem; border-color:#86efac; color:#15803d; font-weight:600;">
+              👩 Mother's Photo
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm btn-photo-preset" data-label="Guardian's Photograph" data-key="guardianPhoto" data-help="Recent passport-size photo of legal guardian." style="background:#fff; font-size:0.75rem; border-color:#86efac; color:#15803d; font-weight:600;">
+              👥 Guardian's Photo
+            </button>
+          </div>
+        </div>
+
         <div class="form-group" style="grid-column:1/-1;">
-          <label class="form-label">Question / Field Label *</label>
-          <input class="form-input" id="fld-label" value="${esc(f.label || '')}" placeholder="e.g. Mother's Name">
+          <label class="form-label" style="font-weight:700;">Question / Field Label *</label>
+          <input class="form-input" id="fld-label" value="${esc(f.label || '')}" placeholder="e.g. Candidate Passport Photograph">
         </div>
         <div class="form-group">
-          <label class="form-label">Field Key (unique, no spaces) *</label>
-          <input class="form-input font-mono" id="fld-key" value="${esc(f.fieldKey || '')}" placeholder="e.g. motherName">
+          <label class="form-label" style="font-weight:700;">Field Key (unique, no spaces) *</label>
+          <input class="form-input font-mono" id="fld-key" value="${esc(f.fieldKey || '')}" placeholder="e.g. candidatePassportPhoto">
         </div>
         <div class="form-group">
-          <label class="form-label">Response Type</label>
-          <select class="form-select" id="fld-type">
-            ${['text', 'textarea', 'number', 'date', 'tel', 'email', 'select', 'checkbox', 'file'].map((t) => `<option ${f.fieldType === t ? 'selected' : ''}>${t}</option>`).join('')}
+          <label class="form-label" style="font-weight:700;">Response Type *</label>
+          <select class="form-select" id="fld-type" style="font-weight:600;">
+            <option value="photo" ${(f.fieldType === 'photo' || f.fieldType === 'image') ? 'selected' : ''}>📸 Photo / Passport / Profile Image</option>
+            <option value="file" ${f.fieldType === 'file' ? 'selected' : ''}>📁 Document / PDF Attachment</option>
+            <option value="text" ${(!f.fieldType || f.fieldType === 'text') ? 'selected' : ''}>📝 Single-line Text</option>
+            <option value="textarea" ${f.fieldType === 'textarea' ? 'selected' : ''}>📄 Multi-line Paragraph</option>
+            <option value="select" ${f.fieldType === 'select' ? 'selected' : ''}>🔽 Dropdown Selection</option>
+            <option value="date" ${f.fieldType === 'date' ? 'selected' : ''}>📅 Date Picker</option>
+            <option value="tel" ${f.fieldType === 'tel' ? 'selected' : ''}>📞 Phone Number</option>
+            <option value="email" ${f.fieldType === 'email' ? 'selected' : ''}>✉️ Email Address</option>
+            <option value="number" ${f.fieldType === 'number' ? 'selected' : ''}>🔢 Numeric Value</option>
+            <option value="checkbox" ${f.fieldType === 'checkbox' ? 'selected' : ''}>☑️ Checkbox Confirmation</option>
           </select>
         </div>
         <div class="form-group">
@@ -3575,7 +3674,7 @@ export class AdminModule {
   }
 
   /** Full user editor: identity, assignment, avatar upload and password reset. */
-  static openUserEditModal(p) {
+  static async openUserEditModal(p) {
     const currentUser = authService.getCurrentUser();
     const isSuperAdmin = currentUser?.isSuperAdmin === true || (currentUser?.email || '').toLowerCase() === (TMS_CONFIG.superAdminEmail || '').toLowerCase();
     const isTargetSuper = (p.email || '').toLowerCase() === (TMS_CONFIG.superAdminEmail || '').toLowerCase() || p.role === 'super_admin' || p.isSuperAdmin === true || p.is_super_admin === true;
@@ -3586,6 +3685,7 @@ export class AdminModule {
     }
 
     let pendingAvatar = null;
+    const staffMeta = await OnboardingService.getStaffMeta(p.id);
     const roleList = Object.values(TMS_CONFIG.roles).filter((r) => isSuperAdmin ? true : r !== 'super_admin');
     if (p.role === 'pending' && !roleList.includes('pending')) roleList.unshift('pending');
     const scopeList = Object.values(TMS_CONFIG.scopes);
@@ -3606,6 +3706,8 @@ export class AdminModule {
         <div class="form-group"><label class="form-label">Title / Designation</label><input class="form-input" id="ue-title" value="${esc(p.title || '')}"></div>
         <div class="form-group"><label class="form-label">Department</label><input class="form-input" id="ue-department" value="${esc(p.department || '')}"></div>
         <div class="form-group"><label class="form-label">Phone</label><input class="form-input" id="ue-phone" value="${esc(p.phone || '')}"></div>
+        <div class="form-group"><label class="form-label">TGI ID (Staff ID)</label><div style="display:flex; align-items:stretch; border:1px solid var(--border-color); border-radius:6px; overflow:hidden;"><div style="background:#f1f5f9; padding:8px 12px; font-weight:700; font-family:monospace; border-right:1px solid var(--border-color); color:#475569;">TGI</div><input class="form-input font-mono" id="ue-tgi-id" value="${esc(staffMeta.tgiId || '')}" placeholder="001" style="border:none; border-radius:0;"></div><span style="font-size:0.7rem; color:var(--text-subtle);">Displays read-only in the staff member's profile</span></div>
+        <div class="form-group"><label class="form-label">Blood Group</label><select class="form-select" id="ue-blood-group"><option value="">Select Blood Group</option>${['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'].map(b => `<option value="${b}" ${staffMeta.bloodGroup === b ? 'selected' : ''}>${b}</option>`).join('')}</select></div>
         <div class="form-group"><label class="form-label">Assigned Class</label>
           <select class="form-select" id="ue-class">${classList.map((c) => `<option value="${esc(c)}" ${p.assignedClass === c ? 'selected' : ''}>${c ? esc(c) : '—'}</option>`).join('')}</select></div>
         <div class="form-group"><label class="form-label">Assigned Section</label>
@@ -3684,6 +3786,12 @@ export class AdminModule {
         isActive: document.getElementById('ue-active').checked
       };
       if (pendingAvatar) updates.avatar = pendingAvatar;
+      const tgiIdVal = (document.getElementById('ue-tgi-id')?.value || '').trim();
+      const bloodGroupVal = document.getElementById('ue-blood-group')?.value || '';
+      await OnboardingService.saveStaffMeta(p.id, {
+        tgiId: tgiIdVal,
+        bloodGroup: bloodGroupVal
+      });
       await dbService.update('profiles', p.id, updates);
       await auditService.log('USER_DETAILS_UPDATED', 'GOVERNANCE', { userId: p.id, role: updates.role });
       UIComponents.showToast('User details saved.', 'success');
@@ -3711,6 +3819,612 @@ export class AdminModule {
         // Table may not exist yet (migration not applied) - ignore.
       }
     }
+  }
+
+
+  /* ================================================================== */
+  /* Staff Onboarding & Profile Governance (Questions & Grace Period)   */
+  /* ================================================================== */
+
+  static async renderStaffOnboardingTab(tabContent) {
+    const currentUser = authService.getCurrentUser() || {};
+    const isSuperAdmin = currentUser?.isSuperAdmin === true || (currentUser?.email || '').toLowerCase() === (TMS_CONFIG.superAdminEmail || '').toLowerCase();
+
+    // Load onboarding configuration, staff profiles, and metadata
+    const config = await OnboardingService.getConfig();
+    let profiles = [];
+    try {
+      profiles = await dbService.select('profiles');
+    } catch (e) { profiles = []; }
+
+    // Filter staff profiles (exclude parents and students)
+    const staffProfiles = profiles.filter(p => {
+      const r = (p.role || '').toLowerCase();
+      return r !== TMS_CONFIG.roles.PARENT && r !== TMS_CONFIG.roles.STUDENT && r !== 'parent' && r !== 'student';
+    });
+
+    const staffMetaMap = await OnboardingService.getAllStaffMeta();
+
+    // Calculate metrics
+    let activeWindowCount = 0;
+    let expiredWindowCount = 0;
+    let completedCount = 0;
+
+    const staffData = staffProfiles.map(p => {
+      const meta = staffMetaMap[p.id] || {};
+      const isTargetSuper = (p.email || '').toLowerCase() === (TMS_CONFIG.superAdminEmail || '').toLowerCase() || p.role === 'super_admin' || p.isSuperAdmin === true;
+
+      let status = 'Not Logged In';
+      let statusColor = '#64748b';
+      let statusBadge = '<span class="badge" style="background:#f1f5f9; color:#475569;">Never Logged In</span>';
+      let daysLeft = 0;
+
+      if (isTargetSuper) {
+        status = 'Super Admin Authority';
+        statusBadge = '<span class="badge" style="background:#fef3c7; color:#b45309; border:1px solid #fde68a; font-weight:700;">👑 Permanent Edit Access</span>';
+      } else if (meta.firstLoginAt) {
+        const firstLoginMs = new Date(meta.firstLoginAt).getTime();
+        const windowMs = (Number(config.editWindowDays) || 7) * 24 * 60 * 60 * 1000;
+        let deadlineMs = firstLoginMs + windowMs;
+        if (meta.editWindowExtensionUntil) {
+          const extMs = new Date(meta.editWindowExtensionUntil).getTime();
+          if (extMs > deadlineMs) deadlineMs = extMs;
+        }
+        const msRemaining = deadlineMs - Date.now();
+        if (msRemaining > 0) {
+          activeWindowCount++;
+          daysLeft = Math.ceil(msRemaining / (24 * 60 * 60 * 1000));
+          status = `Active (${daysLeft}d left)`;
+          statusBadge = `<span class="badge" style="background:#ecfdf5; color:#059669; border:1px solid #a7f3d0; font-weight:700;"><i data-lucide="clock" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:2px;"></i> Active (${daysLeft}d left)</span>`;
+        } else {
+          expiredWindowCount++;
+          status = 'Expired / Locked';
+          statusBadge = '<span class="badge" style="background:#fef2f2; color:#b91c1c; border:1px solid #fecaca; font-weight:700;"><i data-lucide="lock" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:2px;"></i> Expired / Locked</span>';
+        }
+      }
+
+      if (meta.onboardingCompleted) {
+        completedCount++;
+      }
+
+      return {
+        ...p,
+        meta,
+        isTargetSuper,
+        status,
+        statusBadge,
+        daysLeft,
+        firstLoginDisplay: meta.firstLoginAt ? new Date(meta.firstLoginAt).toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) : 'Never'
+      };
+    });
+
+    const questions = config.questions || [];
+
+    tabContent.innerHTML = `
+      <!-- Top Overview Bar -->
+      <div class="card" style="margin-bottom:18px;">
+        <div class="card-header" style="flex-wrap:wrap; gap:12px; justify-content:space-between; align-items:center;">
+          <div>
+            <h3 class="card-title" style="display:flex; align-items:center; gap:8px;">
+              <i data-lucide="user-cog" style="color:#059669;"></i> Staff Onboarding &amp; Profile Governance
+            </h3>
+            <p class="card-desc">
+              Manage the initial login questionnaire required from staff members, configure the self-editing grace period duration, allocate institutional TGI IDs, and grant grace period extensions.
+            </p>
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn btn-primary btn-sm" id="btn-add-onboarding-question" style="background:#059669; border-color:#059669;">
+              <i data-lucide="plus"></i> Add Onboarding Question
+            </button>
+            <button class="btn btn-secondary btn-sm" id="btn-preview-staff-modal">
+              <i data-lucide="eye"></i> Preview Profile Modal
+            </button>
+          </div>
+        </div>
+
+        <!-- 4-Metric Grid -->
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-top:14px;">
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 16px;">
+            <div style="font-size:0.75rem; color:#64748b; font-weight:600; text-transform:uppercase;">Total Staff Accounts</div>
+            <div style="font-size:1.5rem; font-weight:800; color:#0f172a; margin-top:4px;">${staffProfiles.length}</div>
+          </div>
+          <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:12px 16px;">
+            <div style="font-size:0.75rem; color:#166534; font-weight:600; text-transform:uppercase;">Active Edit Windows</div>
+            <div style="font-size:1.5rem; font-weight:800; color:#059669; margin-top:4px;">${activeWindowCount}</div>
+          </div>
+          <div style="background:#fef2f2; border:1px solid #fecaca; border-radius:10px; padding:12px 16px;">
+            <div style="font-size:0.75rem; color:#991b1b; font-weight:600; text-transform:uppercase;">Expired / Locked Profiles</div>
+            <div style="font-size:1.5rem; font-weight:800; color:#dc2626; margin-top:4px;">${expiredWindowCount}</div>
+          </div>
+          <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:12px 16px;">
+            <div style="font-size:0.75rem; color:#1e40af; font-weight:600; text-transform:uppercase;">Completed Profiles</div>
+            <div style="font-size:1.5rem; font-weight:800; color:#2563eb; margin-top:4px;">${completedCount}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 1: Grace Period Configuration -->
+      <div class="card" style="margin-bottom:18px;">
+        <div class="card-header" style="flex-wrap:wrap; gap:10px; align-items:center;">
+          <div>
+            <h3 class="card-title" style="display:flex; align-items:center; gap:8px;">
+              <i data-lucide="clock" style="color:#2563eb;"></i> Profile Edit Grace Period Window
+            </h3>
+            <p class="card-desc">
+              When a staff member logs in for the first time, a countdown begins. During this window, they can edit their profile information. After the period expires, profile fields are locked unless an administrator grants an extension.
+            </p>
+          </div>
+        </div>
+        <div style="display:flex; gap:14px; align-items:flex-end; flex-wrap:wrap; margin-top:8px;">
+          <div style="max-width:240px; flex:1;">
+            <label class="form-label" style="font-weight:600; font-size:0.85rem;">Edit Grace Period (in Days) *</label>
+            <div style="display:flex; align-items:center; border:1px solid var(--border-color); border-radius:8px; overflow:hidden;">
+              <input type="number" id="inp-grace-period-days" class="form-input" min="1" max="180" value="${Number(config.editWindowDays) || 7}" style="border:none; font-weight:700; font-size:1rem; padding:8px 12px;">
+              <div style="background:#f1f5f9; padding:8px 14px; font-weight:600; color:#475569; font-size:0.85rem; border-left:1px solid var(--border-color);">Days</div>
+            </div>
+          </div>
+          <button class="btn btn-primary" id="btn-save-grace-period" style="background:#2563eb; border-color:#2563eb; padding:9px 18px; border-radius:8px;">
+            <i data-lucide="save"></i> Save Grace Period Setting
+          </button>
+        </div>
+      </div>
+
+      <!-- Section 2: First-Login Question Builder -->
+      <div class="card" style="margin-bottom:18px;">
+        <div class="card-header" style="flex-wrap:wrap; gap:10px; justify-content:space-between; align-items:center;">
+          <div>
+            <h3 class="card-title" style="display:flex; align-items:center; gap:8px;">
+              <i data-lucide="help-circle" style="color:#059669;"></i> First-Login Staff Onboarding Questions
+            </h3>
+            <p class="card-desc">
+              Questions presented to staff members upon initial login and rendered inside their Institutional User Profile.
+            </p>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="btn-add-question-sub">
+            <i data-lucide="plus"></i> Add Question
+          </button>
+        </div>
+
+        <div class="table-responsive" style="margin-top:10px;">
+          <table class="tms-table" style="font-size:0.85rem;">
+            <thead>
+              <tr>
+                <th style="width:40px;">#</th>
+                <th>Question / Field Label</th>
+                <th>Field Type</th>
+                <th>Requirement</th>
+                <th>Placeholder &amp; Subtext</th>
+                <th style="text-align:right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${questions.length === 0 ? `
+                <tr><td colspan="6" style="text-align:center; padding:20px; color:#64748b;">No onboarding questions configured yet. Click "Add Question" above.</td></tr>
+              ` : questions.map((q, idx) => {
+                const typeLabels = {
+                  text: 'Single-line Text',
+                  textarea: 'Multi-line Paragraph',
+                  select: 'Dropdown Select',
+                  date: 'Date Picker',
+                  number: 'Numeric'
+                };
+                return `
+                  <tr data-qid="${esc(q.id)}">
+                    <td style="font-weight:700; color:#64748b;">${idx + 1}</td>
+                    <td style="font-weight:600; color:#0f172a;">
+                      ${esc(q.label)}
+                    </td>
+                    <td>
+                      <span class="badge" style="background:#f1f5f9; color:#334155;">${esc(typeLabels[q.type] || q.type)}</span>
+                    </td>
+                    <td>
+                      ${q.required ? '<span class="badge" style="background:#fef2f2; color:#b91c1c; font-weight:700;">Mandatory *</span>' : '<span class="badge" style="background:#f8fafc; color:#64748b;">Optional</span>'}
+                    </td>
+                    <td style="color:#64748b; font-size:0.78rem;">
+                      ${q.placeholder ? `<div><strong>Placeholder:</strong> ${esc(q.placeholder)}</div>` : ''}
+                      ${q.options ? `<div><strong>Options:</strong> ${esc(q.options)}</div>` : ''}
+                      ${q.subtext ? `<div><strong>Helper:</strong> ${esc(q.subtext)}</div>` : ''}
+                    </td>
+                    <td style="text-align:right; white-space:nowrap;">
+                      <button class="btn btn-secondary btn-sm btn-edit-q" data-qid="${esc(q.id)}" title="Edit Question" style="padding:4px 8px;">
+                        <i data-lucide="edit" style="width:13px;height:13px;"></i>
+                      </button>
+                      <button class="btn btn-secondary btn-sm btn-del-q" data-qid="${esc(q.id)}" title="Delete Question" style="padding:4px 8px; color:#dc2626;">
+                        <i data-lucide="trash-2" style="width:13px;height:13px;"></i>
+                      </button>
+                      ${idx > 0 ? `<button class="btn btn-secondary btn-sm btn-up-q" data-qid="${esc(q.id)}" title="Move Up" style="padding:4px 6px;"><i data-lucide="arrow-up" style="width:13px;height:13px;"></i></button>` : ''}
+                      ${idx < questions.length - 1 ? `<button class="btn btn-secondary btn-sm btn-down-q" data-qid="${esc(q.id)}" title="Move Down" style="padding:4px 6px;"><i data-lucide="arrow-down" style="width:13px;height:13px;"></i></button>` : ''}
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Section 3: Staff Profile Status & Grace Period Override Roster -->
+      <div class="card">
+        <div class="card-header" style="flex-wrap:wrap; gap:12px; justify-content:space-between; align-items:center;">
+          <div>
+            <h3 class="card-title" style="display:flex; align-items:center; gap:8px;">
+              <i data-lucide="users" style="color:#2563eb;"></i> Staff Profile Roster &amp; Grace Period Overrides
+            </h3>
+            <p class="card-desc">
+              Allocate official TGI IDs, inspect each staff member's initial login date, review profile completion status, and grant individual grace period extensions.
+            </p>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <input type="text" class="form-input" id="staff-roster-search" placeholder="Search staff name, email, TGI ID..." style="max-width:240px; font-size:0.83rem;">
+            <select class="form-select" id="staff-roster-status-filter" style="max-width:180px; font-size:0.83rem;">
+              <option value="">All Statuses</option>
+              <option value="active">Active Edit Window</option>
+              <option value="expired">Expired / Locked</option>
+              <option value="completed">Completed Profile</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="table-responsive" style="margin-top:10px;">
+          <table class="tms-table" id="table-staff-roster" style="font-size:0.85rem;">
+            <thead>
+              <tr>
+                <th>Staff Member</th>
+                <th>Role</th>
+                <th>TGI ID (Staff ID)</th>
+                <th>Blood Group</th>
+                <th>First Login</th>
+                <th>Edit Grace Status</th>
+                <th style="text-align:right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${staffData.map(st => {
+                const tgiRaw = st.meta.tgiId || '';
+                const tgiBadge = tgiRaw ? `<span class="badge font-mono" style="background:#f1f5f9; color:#1e293b; font-weight:700; border:1px solid #cbd5e1;">TGI-${esc(tgiRaw)}</span>` : '<span class="badge" style="background:#fffbeb; color:#b45309; border:1px solid #fde68a;">Not Allocated</span>';
+                const bloodBadge = st.meta.bloodGroup ? `<span class="badge" style="background:#f0fdf4; color:#15803d; font-weight:700;">${esc(st.meta.bloodGroup)}</span>` : '<span style="color:#94a3b8;">—</span>';
+
+                return `
+                  <tr class="staff-row" data-id="${esc(st.id)}" data-name="${esc(st.name || '').toLowerCase()}" data-email="${esc(st.email || '').toLowerCase()}" data-tgi="${esc(tgiRaw).toLowerCase()}" data-status="${st.daysLeft > 0 ? 'active' : (st.meta.firstLoginAt ? 'expired' : '')}">
+                    <td>
+                      <div style="display:flex; align-items:center; gap:8px;">
+                        <img src="${esc(st.avatar || DEFAULT_AVATAR)}" alt="" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:1px solid var(--border-color);background:#f1f5f9;">
+                        <div>
+                          <div style="font-weight:700; color:#0f172a;">${esc(st.name || 'Staff User')}</div>
+                          <div class="font-mono" style="font-size:0.75rem; color:#64748b;">${esc(st.email || '—')}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <span class="badge" style="background:#eff6ff; color:#1e40af; font-weight:600;">${esc(ROLE_LABELS[st.role] || st.role || 'Staff')}</span>
+                    </td>
+                    <td>
+                      <div style="display:flex; align-items:center; gap:6px;">
+                        ${tgiBadge}
+                        <button class="btn btn-secondary btn-sm btn-quick-tgi" data-id="${esc(st.id)}" data-name="${esc(st.name || '')}" data-tgi="${esc(tgiRaw)}" title="Assign or Edit TGI ID" style="padding:2px 6px;">
+                          <i data-lucide="edit-2" style="width:12px;height:12px;"></i>
+                        </button>
+                      </div>
+                    </td>
+                    <td>${bloodBadge}</td>
+                    <td style="font-size:0.78rem; color:#64748b;">${esc(st.firstLoginDisplay)}</td>
+                    <td>${st.statusBadge}</td>
+                    <td style="text-align:right; white-space:nowrap;">
+                      ${st.isTargetSuper ? `
+                        <span style="font-size:0.75rem; color:#b45309; font-weight:700;">Protected</span>
+                      ` : `
+                        <button class="btn btn-secondary btn-sm btn-extend-grace" data-id="${esc(st.id)}" data-name="${esc(st.name || '')}" title="Grant +7 Days Extension" style="padding:4px 8px; color:#15803d;">
+                          <i data-lucide="plus-circle" style="width:13px;height:13px;"></i> +7d
+                        </button>
+                        ${st.daysLeft > 0 ? `
+                        <button class="btn btn-secondary btn-sm btn-lock-grace" data-id="${esc(st.id)}" data-name="${esc(st.name || '')}" title="Lock Profile Now" style="padding:4px 8px; color:#dc2626;">
+                          <i data-lucide="lock" style="width:13px;height:13px;"></i> Lock
+                        </button>
+                        ` : ''}
+                        <button class="btn btn-secondary btn-sm btn-edit-staff-profile" data-id="${esc(st.id)}" title="Full Staff Edit" style="padding:4px 8px;">
+                          <i data-lucide="settings" style="width:13px;height:13px;"></i>
+                        </button>
+                      `}
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+
+    // Bind Event Handlers
+    // 1. Save Grace Period Days Setting
+    safeOn('btn-save-grace-period', 'click', async () => {
+      const days = Number(document.getElementById('inp-grace-period-days')?.value) || 7;
+      if (days < 1 || days > 180) {
+        UIComponents.showToast('Please enter a grace period between 1 and 180 days.', 'warning');
+        return;
+      }
+      config.editWindowDays = days;
+      const res = await OnboardingService.saveConfig(config);
+      await auditService.log('STAFF_ONBOARDING_GRACE_PERIOD_UPDATED', 'GOVERNANCE', { editWindowDays: days });
+      UIComponents.showToast(`Grace period updated to ${days} days successfully!`, 'success');
+      this.renderTab('staff-onboarding');
+    });
+
+    // 2. Add Question Buttons
+    const openAdd = () => this.openQuestionEditorModal(null, config);
+    safeOn('btn-add-onboarding-question', 'click', openAdd);
+    safeOn('btn-add-question-sub', 'click', openAdd);
+
+    // 3. Edit Question Buttons
+    tabContent.querySelectorAll('.btn-edit-q').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const qid = btn.dataset.qid;
+        const q = (config.questions || []).find(x => x.id === qid);
+        if (q) this.openQuestionEditorModal(q, config);
+      });
+    });
+
+    // 4. Delete Question Buttons
+    tabContent.querySelectorAll('.btn-del-q').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const qid = btn.dataset.qid;
+        const q = (config.questions || []).find(x => x.id === qid);
+        if (!q) return;
+        if (!confirm(`Are you sure you want to delete the question "${q.label}"?`)) return;
+        config.questions = (config.questions || []).filter(x => x.id !== qid);
+        await OnboardingService.saveConfig(config);
+        await auditService.log('STAFF_ONBOARDING_QUESTION_DELETED', 'GOVERNANCE', { questionId: qid, label: q.label });
+        UIComponents.showToast('Question deleted successfully.', 'success');
+        this.renderTab('staff-onboarding');
+      });
+    });
+
+    // 5. Move Question Up / Down
+    tabContent.querySelectorAll('.btn-up-q').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const qid = btn.dataset.qid;
+        const idx = config.questions.findIndex(x => x.id === qid);
+        if (idx > 0) {
+          const temp = config.questions[idx - 1];
+          config.questions[idx - 1] = config.questions[idx];
+          config.questions[idx] = temp;
+          await OnboardingService.saveConfig(config);
+          this.renderTab('staff-onboarding');
+        }
+      });
+    });
+
+    tabContent.querySelectorAll('.btn-down-q').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const qid = btn.dataset.qid;
+        const idx = config.questions.findIndex(x => x.id === qid);
+        if (idx >= 0 && idx < config.questions.length - 1) {
+          const temp = config.questions[idx + 1];
+          config.questions[idx + 1] = config.questions[idx];
+          config.questions[idx] = temp;
+          await OnboardingService.saveConfig(config);
+          this.renderTab('staff-onboarding');
+        }
+      });
+    });
+
+    // 6. Preview Staff Profile Modal
+    safeOn('btn-preview-staff-modal', 'click', () => {
+      if (window.app && typeof window.app.openMyProfile === 'function') {
+        window.app.openMyProfile();
+      } else {
+        UIComponents.showToast('Profile preview opening...', 'info');
+      }
+    });
+
+    // 7. Quick Assign / Edit TGI ID
+    tabContent.querySelectorAll('.btn-quick-tgi').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const userId = btn.dataset.id;
+        const currentTgi = btn.dataset.tgi || '';
+        const staffName = btn.dataset.name || 'Staff';
+        const newTgi = prompt(`Assign / Edit TGI ID for ${staffName} (e.g. 001, 002):\nNote: Prefix "TGI" is automatically attached.`, currentTgi);
+        if (newTgi !== null) {
+          const clean = newTgi.trim().replace(/^TGI-?/i, '');
+          await OnboardingService.saveStaffMeta(userId, { tgiId: clean });
+          await auditService.log('STAFF_TGI_ID_ALLOCATED', 'GOVERNANCE', { userId, tgiId: clean });
+          UIComponents.showToast(`TGI ID updated for ${staffName} to TGI-${clean || 'Not Assigned'}.`, 'success');
+          this.renderTab('staff-onboarding');
+        }
+      });
+    });
+
+    // 8. Grant Extension (+7 Days)
+    tabContent.querySelectorAll('.btn-extend-grace').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const userId = btn.dataset.id;
+        const staffName = btn.dataset.name || 'Staff Member';
+        const extensionMs = Date.now() + (7 * 24 * 60 * 60 * 1000);
+        await OnboardingService.saveStaffMeta(userId, {
+          editWindowExtensionUntil: new Date(extensionMs).toISOString()
+        });
+        await auditService.log('STAFF_GRACE_PERIOD_EXTENDED', 'GOVERNANCE', { userId, extensionDays: 7 });
+        UIComponents.showToast(`Granted +7 days self-editing extension to ${staffName}.`, 'success');
+        this.renderTab('staff-onboarding');
+      });
+    });
+
+    // 9. Lock Grace Period Immediately
+    tabContent.querySelectorAll('.btn-lock-grace').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const userId = btn.dataset.id;
+        const staffName = btn.dataset.name || 'Staff Member';
+        if (!confirm(`Lock profile self-editing immediately for ${staffName}?`)) return;
+        await OnboardingService.saveStaffMeta(userId, {
+          editWindowExtensionUntil: new Date(Date.now() - 1000).toISOString()
+        });
+        await auditService.log('STAFF_PROFILE_LOCKED_MANUALLY', 'GOVERNANCE', { userId });
+        UIComponents.showToast(`Profile self-editing locked for ${staffName}.`, 'success');
+        this.renderTab('staff-onboarding');
+      });
+    });
+
+    // 10. Open Full Edit Modal
+    tabContent.querySelectorAll('.btn-edit-staff-profile').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const userId = btn.dataset.id;
+        const profile = profiles.find(p => p.id === userId);
+        if (profile) this.openUserEditModal(profile);
+      });
+    });
+
+    // 11. Search and Status Filtering in Staff Roster
+    const searchInp = document.getElementById('staff-roster-search');
+    const filterSelect = document.getElementById('staff-roster-status-filter');
+    const filterRows = () => {
+      const q = (searchInp?.value || '').toLowerCase().trim();
+      const statusFilter = filterSelect?.value || '';
+      tabContent.querySelectorAll('.staff-row').forEach(row => {
+        const name = row.dataset.name || '';
+        const email = row.dataset.email || '';
+        const tgi = row.dataset.tgi || '';
+        const rowStatus = row.dataset.status || '';
+
+        const matchesQuery = !q || name.includes(q) || email.includes(q) || tgi.includes(q);
+        const matchesStatus = !statusFilter || (statusFilter === rowStatus);
+
+        row.style.display = (matchesQuery && matchesStatus) ? '' : 'none';
+      });
+    };
+    if (searchInp) searchInp.addEventListener('input', filterRows);
+    if (filterSelect) filterSelect.addEventListener('change', filterRows);
+
+    UIComponents.refreshIcons();
+  }
+
+  /**
+   * Modal dialog to Add or Edit an Onboarding Question.
+   */
+  static openQuestionEditorModal(existingQ = null, config = null) {
+    const isEdit = !!existingQ;
+    const q = existingQ || {
+      id: 'q_' + Date.now().toString(36),
+      label: '',
+      type: 'text',
+      required: true,
+      placeholder: '',
+      options: '',
+      subtext: ''
+    };
+
+    const bodyHtml = `
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        <div class="form-group" style="margin:0;">
+          <label class="form-label" style="font-weight:600; font-size:0.85rem;">Question / Field Label *</label>
+          <input class="form-input" id="qe-label" value="${esc(q.label)}" placeholder="e.g. Highest Educational Qualification" required style="border-radius:8px;">
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div class="form-group" style="margin:0;">
+            <label class="form-label" style="font-weight:600; font-size:0.85rem;">Field Type</label>
+            <select class="form-select" id="qe-type" style="border-radius:8px;">
+              <option value="text" ${q.type === 'text' ? 'selected' : ''}>Single-line Text</option>
+              <option value="textarea" ${q.type === 'textarea' ? 'selected' : ''}>Multi-line Paragraph</option>
+              <option value="select" ${q.type === 'select' ? 'selected' : ''}>Dropdown Select List</option>
+              <option value="date" ${q.type === 'date' ? 'selected' : ''}>Date Picker</option>
+              <option value="number" ${q.type === 'number' ? 'selected' : ''}>Numeric</option>
+            </select>
+          </div>
+
+          <div class="form-group" style="margin:0;">
+            <label class="form-label" style="font-weight:600; font-size:0.85rem;">Mandatory Field?</label>
+            <label style="display:flex; align-items:center; gap:8px; margin-top:8px; cursor:pointer;">
+              <input type="checkbox" id="qe-required" ${q.required !== false ? 'checked' : ''} style="width:16px;height:16px;">
+              <span style="font-size:0.85rem; font-weight:600; color:#0f172a;">Required for staff</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="form-group" id="qe-options-group" style="margin:0; display:${q.type === 'select' ? 'block' : 'none'};">
+          <label class="form-label" style="font-weight:600; font-size:0.85rem;">Dropdown Options (Comma-separated) *</label>
+          <input class="form-input" id="qe-options" value="${esc(Array.isArray(q.options) ? q.options.join(', ') : (q.options || ''))}" placeholder="e.g. Bachelor Degree, Master Degree, Doctorate, Diploma">
+          <div style="font-size:0.72rem; color:#64748b; margin-top:4px;">Separate choices with commas</div>
+        </div>
+
+        <div class="form-group" style="margin:0;">
+          <label class="form-label" style="font-weight:600; font-size:0.85rem;">Placeholder Text</label>
+          <input class="form-input" id="qe-placeholder" value="${esc(q.placeholder || '')}" placeholder="e.g. e.g. M.Ed, B.Sc Mathematics" style="border-radius:8px;">
+        </div>
+
+        <div class="form-group" style="margin:0;">
+          <label class="form-label" style="font-weight:600; font-size:0.85rem;">Help / Explanatory Subtext</label>
+          <input class="form-input" id="qe-subtext" value="${esc(q.subtext || '')}" placeholder="e.g. Degree or professional title" style="border-radius:8px;">
+        </div>
+      </div>
+    `;
+
+    const footerHtml = `
+      <button class="btn btn-secondary" id="qe-cancel" style="border-radius:8px; padding:8px 16px;">Cancel</button>
+      <button class="btn btn-primary" id="qe-save" style="background:#059669; border-color:#059669; border-radius:8px; padding:8px 18px; display:flex; align-items:center; gap:6px;">
+        <i data-lucide="check"></i> <span>${isEdit ? 'Update Question' : 'Add Question'}</span>
+      </button>
+    `;
+
+    UIComponents.openModal({
+      title: isEdit ? 'Edit Onboarding Question' : 'Add New Onboarding Question',
+      bodyHtml,
+      footerHtml,
+      maxWidth: '520px'
+    });
+
+    const typeSelect = document.getElementById('qe-type');
+    const optionsGroup = document.getElementById('qe-options-group');
+    if (typeSelect && optionsGroup) {
+      typeSelect.addEventListener('change', () => {
+        optionsGroup.style.display = typeSelect.value === 'select' ? 'block' : 'none';
+      });
+    }
+
+    safeOn('qe-cancel', 'click', () => UIComponents.closeModal());
+
+    safeOn('qe-save', 'click', async () => {
+      const label = (document.getElementById('qe-label')?.value || '').trim();
+      if (!label) {
+        UIComponents.showToast('Please enter a question label.', 'warning');
+        return;
+      }
+
+      const type = document.getElementById('qe-type')?.value || 'text';
+      const required = document.getElementById('qe-required')?.checked || false;
+      const placeholder = (document.getElementById('qe-placeholder')?.value || '').trim();
+      const subtext = (document.getElementById('qe-subtext')?.value || '').trim();
+      const optionsRaw = (document.getElementById('qe-options')?.value || '').trim();
+
+      const newQ = {
+        id: q.id || ('q_' + Date.now().toString(36)),
+        label,
+        type,
+        required,
+        placeholder,
+        subtext,
+        options: type === 'select' ? optionsRaw : ''
+      };
+
+      const currConfig = config || await OnboardingService.getConfig();
+      if (!currConfig.questions) currConfig.questions = [];
+
+      if (isEdit) {
+        const idx = currConfig.questions.findIndex(x => x.id === q.id);
+        if (idx !== -1) currConfig.questions[idx] = newQ;
+        else currConfig.questions.push(newQ);
+      } else {
+        currConfig.questions.push(newQ);
+      }
+
+      await OnboardingService.saveConfig(currConfig);
+      await auditService.log(isEdit ? 'STAFF_ONBOARDING_QUESTION_UPDATED' : 'STAFF_ONBOARDING_QUESTION_CREATED', 'GOVERNANCE', { questionId: newQ.id, label: newQ.label });
+
+      UIComponents.showToast(`Question "${label}" saved successfully!`, 'success');
+      UIComponents.closeModal();
+      this.renderTab('staff-onboarding');
+    });
+
+    UIComponents.refreshIcons();
   }
 
   static async renderBrandingTab(tabContent) {

@@ -60,6 +60,7 @@ const REDIRECTS = {
   '/teacher.html': '/teacher',
   '/faculty': '/teacher',
   '/faculty.html': '/teacher',
+  '/dashboard.html': '/dashboard',
   '/login.html': '/login',
   '/admin.html': '/admin',
   '/index.html': '/'
@@ -67,7 +68,7 @@ const REDIRECTS = {
 
 const ROUTE_ALIASES = {
   '/': '/index.html',
-  '/dashboard': '/index.html',
+  '/dashboard': '/dashboard.html',
   '/login': '/login.html',
   '/admin': '/admin.html',
   '/admission': '/admission.html',

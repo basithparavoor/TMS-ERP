@@ -24,7 +24,8 @@
 ```text
 THAIBA MODEL SCHOOL ERP/
 ├── 🌐 Clean Professional Portals & Routes
-│   ├── /                           # Main ERP Dashboard (index.html)
+│   ├── /                           # Official Institutional Website Home Page (index.html)
+│   ├── /dashboard                  # Main Enterprise Campus ERP Dashboard (dashboard.html)
 │   ├── /login                      # Universal Authentication Gateway (login.html)
 │   ├── /admission                  # Public Online Admission & A4 Gateway (admission.html)
 │   ├── /student                    # Student Learner & Timetable Portal (student.html)

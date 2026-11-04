@@ -130,7 +130,7 @@
       const allowed = user && [TMS_CONFIG.roles.PARENT, TMS_CONFIG.roles.ADMIN].includes(user.role);
 
       if (!allowed) {
-        window.location.href = user ? '/#/dashboard' : '/login';
+        window.location.href = user ? '/dashboard' : '/login';
         return;
       }
 

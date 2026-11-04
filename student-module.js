@@ -11,6 +11,24 @@ import { downloadCsv, formatPdfFilename } from './export-utils.js';
 import { TMS_LOGO } from './logo.js';
 import { admissionService } from './admission-service.js';
 
+
+export const STUDENT_IMPORT_FIELDS = [
+  { key: 'admissionNo', label: 'Admission No', default: true, required: false, sample1: 'TMS/2022/012', sample2: 'TMS/2023/045', keywords: ['admission no', 'adm no', 'admission', 'id'] },
+  { key: 'rollNo', label: 'Roll No', default: true, required: false, sample1: '01', sample2: '02', keywords: ['roll', 'roll no'] },
+  { key: 'fullName', label: 'Full Name', default: true, required: true, sample1: 'Aayan Khan', sample2: 'Fatima Zahra', keywords: ['full name', 'name', 'student name', 'candidate name'] },
+  { key: 'grade', label: 'Class / Grade', default: true, required: true, sample1: 'Grade 4', sample2: 'Grade 2', keywords: ['grade', 'class', 'standard'] },
+  { key: 'section', label: 'Section', default: true, required: false, sample1: 'A', sample2: 'B', keywords: ['section', 'sec'] },
+  { key: 'gender', label: 'Gender', default: true, required: false, sample1: 'Male', sample2: 'Female', keywords: ['gender', 'sex'] },
+  { key: 'dob', label: 'Date of Birth (YYYY-MM-DD)', default: true, required: false, sample1: '2015-04-12', sample2: '2017-08-23', keywords: ['dob', 'date of birth', 'birth'] },
+  { key: 'guardianName', label: 'Guardian / Father Name', default: true, required: false, sample1: 'Tariq Khan', sample2: 'Irfan Zahra', keywords: ['guardian name', 'parent name', 'father', 'guardian'] },
+  { key: 'guardianPhone', label: 'Guardian Phone', default: true, required: false, sample1: '+91 98311 00001', sample2: '+91 98311 00002', keywords: ['guardian phone', 'phone', 'contact', 'mobile'] },
+  { key: 'bloodGroup', label: 'Blood Group', default: true, required: false, sample1: 'O+', sample2: 'A+', keywords: ['blood group', 'blood'] },
+  { key: 'address', label: 'Residential Address', default: true, required: false, sample1: 'Malda Town', sample2: 'Harirampur', keywords: ['address', 'village', 'city'] },
+  { key: 'status', label: 'Enrollment Status', default: true, required: false, sample1: 'Active', sample2: 'Active', keywords: ['status', 'enrollment status'] },
+  { key: 'allergies', label: 'Medical Notes / Allergies', default: false, required: false, sample1: 'None', sample2: 'Asthma', keywords: ['allergies', 'medical'] },
+  { key: 'emergencyContact', label: 'Emergency Contact', default: false, required: false, sample1: '+91 98311 00099', sample2: '+91 98311 00088', keywords: ['emergency', 'alt phone'] }
+];
+
 export class StudentModule {
   static async render(container) {
     const students = await dbService.select('students');
@@ -1753,126 +1771,207 @@ export class StudentModule {
   }
 
   /**
-   * Download CSV Import Template
+   * Get currently active or user-selected student bulk import fields
    */
-  static downloadImportTemplate() {
-    const header = [
-      'Admission No',
-      'Roll No',
-      'Full Name',
-      'Grade',
-      'Section',
-      'Gender',
-      'DOB',
-      'Guardian Name',
-      'Guardian Phone',
-      'Blood Group',
-      'Address',
-      'Status',
-      'Allergies'
-    ];
-    const sample1 = [
-      'TMS/2022/012',
-      '01',
-      'Aayan Khan',
-      'Grade 4',
-      'A',
-      'Male',
-      '2015-04-12',
-      'Tariq Khan',
-      '+91 98311 00001',
-      'O+',
-      'Malda Town',
-      'Active',
-      'None'
-    ];
-    const sample2 = [
-      'TMS/2023/045',
-      '02',
-      'Fatima Zahra',
-      'Grade 2',
-      'B',
-      'Female',
-      '2017-08-23',
-      'Irfan Zahra',
-      '+91 98311 00002',
-      'A+',
-      'Harirampur',
-      'Active',
-      'Asthma'
-    ];
-    downloadCsv('TMS_Students_Import_Template.csv', [header, sample1, sample2]);
-    UIComponents.showToast('Import template downloaded.', 'success');
+  static getSelectedImportFieldKeys() {
+    try {
+      const stored = localStorage.getItem('tms_bulk_student_fields');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (e) {}
+    // Default selected fields
+    return STUDENT_IMPORT_FIELDS.filter(f => f.default).map(f => f.key);
   }
 
   /**
-   * Bulk CSV Import Modal: Parse, validate, preview, and batch-insert historical records
+   * Download CSV Import Template with dynamically selected fields
+   */
+  static downloadImportTemplate(selectedKeys = null) {
+    const keys = selectedKeys && selectedKeys.length > 0
+      ? selectedKeys
+      : this.getSelectedImportFieldKeys();
+
+    const activeFields = STUDENT_IMPORT_FIELDS.filter(f => keys.includes(f.key));
+    if (!activeFields.length) {
+      UIComponents.showToast('Please select at least one field for the template.', 'warning');
+      return;
+    }
+
+    const header = activeFields.map(f => f.label);
+    const sample1 = activeFields.map(f => f.sample1);
+    const sample2 = activeFields.map(f => f.sample2);
+
+    downloadCsv('TMS_Students_Import_Template.csv', [header, sample1, sample2]);
+    UIComponents.showToast(`Import template downloaded with ${activeFields.length} selected fields.`, 'success');
+  }
+
+  /**
+   * Bulk CSV Import Modal: Interactive field selection, dynamic template generation, parse, validate & batch-insert
    */
   static openBulkImportModal(container) {
+    const esc = (v) => UIComponents.escapeHtml(v);
+    const savedKeys = new Set(this.getSelectedImportFieldKeys());
+
+    // Ensure required fields are always included
+    STUDENT_IMPORT_FIELDS.forEach(f => {
+      if (f.required) savedKeys.add(f.key);
+    });
+
     const bodyHtml = `
-      <div style="margin-bottom:16px;">
-        <div style="font-size:0.86rem; color:var(--text-secondary); margin-bottom:12px;">
-          Import students who took admission in previous years or fresh batches from an Excel/CSV spreadsheet.
-        </div>
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; padding:10px 14px; background:rgba(37,99,235,0.06); border:1px solid #bfdbfe; border-radius:8px;">
-          <div>
-            <div style="font-weight:700; font-size:0.86rem; color:#1e40af;">Need the standard format?</div>
-            <div style="font-size:0.75rem; color:var(--text-muted);">Download the sample template with pre-filled headers and examples.</div>
+      <div style="font-family:inherit;">
+        <!-- Step 1: Field Selection & Template Download Card -->
+        <div class="card" style="margin-bottom:16px; border:1px solid #bfdbfe; background:#f8fafc; border-radius:10px; padding:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px; margin-bottom:12px;">
+            <div>
+              <h4 style="font-size:0.95rem; font-weight:800; color:#1e40af; margin:0 0 4px 0; display:flex; align-items:center; gap:6px;">
+                <i data-lucide="sliders" style="width:16px;height:16px;"></i> 1. Choose Data Fields for Template &amp; Bulk Upload
+              </h4>
+              <div style="font-size:0.78rem; color:#475569;">
+                Select the exact data columns you want in your student spreadsheet. The downloaded CSV template will contain these exact fields.
+              </div>
+            </div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-select-all-flds" style="font-size:0.75rem; padding:4px 8px;">Select All</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-select-std-flds" style="font-size:0.75rem; padding:4px 8px;">Standard Fields</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-select-min-flds" style="font-size:0.75rem; padding:4px 8px;">Minimal (Core Only)</button>
+            </div>
           </div>
-          <button type="button" class="btn btn-secondary btn-sm" id="btn-dl-import-template">
-            <i data-lucide="download"></i> Download CSV Template
-          </button>
+
+          <!-- Checkbox Grid -->
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap:8px 12px; background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:12px; max-height:220px; overflow-y:auto;" id="bulk-field-checklist">
+            ${STUDENT_IMPORT_FIELDS.map(f => {
+              const isChecked = savedKeys.has(f.key);
+              const isReq = f.required === true;
+              return `
+                <label style="display:flex; align-items:center; gap:8px; font-size:0.8rem; cursor:${isReq ? 'default' : 'pointer'}; color:${isReq ? '#0f172a' : '#334155'}; font-weight:${isReq ? '700' : '500'};">
+                  <input type="checkbox" class="import-fld-chk" data-fkey="${esc(f.key)}" ${isChecked ? 'checked' : ''} ${isReq ? 'disabled' : ''} style="width:15px; height:15px;">
+                  <span>${esc(f.label)} ${isReq ? '<span style="color:#ef4444; font-size:0.7rem;">(Required)</span>' : ''}</span>
+                </label>
+              `;
+            }).join('')}
+          </div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-top:12px; padding-top:10px; border-top:1px dashed #cbd5e1;">
+            <div style="font-size:0.78rem; font-weight:600; color:#1e40af;">
+              <span id="import-fields-count">${savedKeys.size}</span> fields configured for template
+            </div>
+            <button type="button" class="btn btn-primary btn-sm" id="btn-dl-import-template" style="background:#2563eb; border-color:#2563eb; display:inline-flex; align-items:center; gap:6px;">
+              <i data-lucide="download"></i> Download CSV Template with Selected Fields
+            </button>
+          </div>
         </div>
-      </div>
 
-      <div style="margin-bottom:16px;">
-        <label class="form-label" style="font-weight:700;">Select or Drag CSV File (.csv)</label>
-        <input type="file" id="bulk-import-file-input" accept=".csv,text/csv" class="form-input" style="padding:10px;">
-      </div>
+        <!-- Step 2: Upload CSV File Card -->
+        <div class="card" style="margin-bottom:16px; border:1px solid var(--border-color); border-radius:10px; padding:16px;">
+          <h4 style="font-size:0.95rem; font-weight:800; color:#0f172a; margin:0 0 6px 0; display:flex; align-items:center; gap:6px;">
+            <i data-lucide="file-up" style="width:16px;height:16px;color:#059669;"></i> 2. Upload Completed CSV Spreadsheet (.csv)
+          </h4>
+          <div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:10px;">
+            Fill your data in the downloaded CSV template and upload it here. You can drag and drop the file.
+          </div>
+          <input type="file" id="bulk-import-file-input" accept=".csv,text/csv" class="form-input" style="padding:10px; border-radius:8px;">
+          <div id="detected-columns-strip" style="display:none; margin-top:8px; font-size:0.78rem; color:#15803d; font-weight:600; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:6px; padding:6px 12px;"></div>
+        </div>
 
-      <div id="import-preview-area" style="display:none;">
-        <div id="import-stats-bar" style="display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap;"></div>
-        <div style="font-weight:700; font-size:0.85rem; margin-bottom:6px;">Preview First 10 Records:</div>
-        <div class="table-responsive" style="max-height:260px; overflow-y:auto; border:1px solid var(--border-color); border-radius:8px;">
-          <table class="tms-table" style="font-size:0.78rem;" id="import-preview-table">
-            <thead>
-              <tr>
-                <th>Status</th>
-                <th>Admission No</th>
-                <th>Full Name</th>
-                <th>Grade & Section</th>
-                <th>Roll</th>
-                <th>Guardian</th>
-                <th>Phone</th>
-              </tr>
-            </thead>
-            <tbody id="import-preview-tbody"></tbody>
-          </table>
+        <!-- Step 3: Preview Area -->
+        <div id="import-preview-area" style="display:none;">
+          <div id="import-stats-bar" style="display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap;"></div>
+          <div style="font-weight:700; font-size:0.85rem; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
+            <span>Preview First 10 Records:</span>
+            <span style="font-size:0.72rem; color:var(--text-muted); font-weight:400;">Columns automatically matched from your uploaded file</span>
+          </div>
+          <div class="table-responsive" style="max-height:260px; overflow-y:auto; border:1px solid var(--border-color); border-radius:8px;">
+            <table class="tms-table" style="font-size:0.78rem;" id="import-preview-table">
+              <thead id="import-preview-thead">
+                <tr>
+                  <th>Status</th>
+                  <th>Admission No</th>
+                  <th>Full Name</th>
+                  <th>Grade &amp; Section</th>
+                  <th>Roll</th>
+                  <th>Guardian</th>
+                  <th>Phone</th>
+                </tr>
+              </thead>
+              <tbody id="import-preview-tbody"></tbody>
+            </table>
+          </div>
         </div>
       </div>
     `;
 
     const footerHtml = `
       <button class="btn btn-secondary" onclick="document.getElementById('global-modal-close').click()">Cancel</button>
-      <button class="btn btn-primary" id="btn-confirm-bulk-import" disabled><i data-lucide="upload-cloud"></i> Import Students</button>
+      <button class="btn btn-primary" id="btn-confirm-bulk-import" disabled style="display:inline-flex; align-items:center; gap:6px;">
+        <i data-lucide="upload-cloud"></i> Import Students
+      </button>
     `;
 
     UIComponents.openModal({
-      title: 'Bulk Import Students (Previous Years / New Batches)',
+      title: 'Bulk Import Students (Configurable Template & Batch Upload)',
       bodyHtml,
       footerHtml,
-      maxWidth: '850px'
+      maxWidth: '880px'
     });
 
-    document.getElementById('btn-dl-import-template').addEventListener('click', () => {
-      StudentModule.downloadImportTemplate();
+    // Helper: Read currently checked fields
+    const getActiveKeys = () => {
+      const keys = [];
+      document.querySelectorAll('.import-fld-chk').forEach(chk => {
+        if (chk.checked || chk.disabled) keys.push(chk.dataset.fkey);
+      });
+      return keys;
+    };
+
+    const updateFieldsCounter = () => {
+      const keys = getActiveKeys();
+      const countEl = document.getElementById('import-fields-count');
+      if (countEl) countEl.innerText = keys.length;
+      try {
+        localStorage.setItem('tms_bulk_student_fields', JSON.stringify(keys));
+      } catch (e) {}
+    };
+
+    // Checkbox change listener
+    document.querySelectorAll('.import-fld-chk').forEach(chk => {
+      chk.addEventListener('change', updateFieldsCounter);
+    });
+
+    // Quick selection presets
+    document.getElementById('btn-select-all-flds')?.addEventListener('click', () => {
+      document.querySelectorAll('.import-fld-chk').forEach(chk => chk.checked = true);
+      updateFieldsCounter();
+    });
+
+    document.getElementById('btn-select-std-flds')?.addEventListener('click', () => {
+      document.querySelectorAll('.import-fld-chk').forEach(chk => {
+        const f = STUDENT_IMPORT_FIELDS.find(x => x.key === chk.dataset.fkey);
+        chk.checked = f ? (f.default || f.required) : true;
+      });
+      updateFieldsCounter();
+    });
+
+    document.getElementById('btn-select-min-flds')?.addEventListener('click', () => {
+      const minKeys = ['admissionNo', 'fullName', 'grade', 'section', 'guardianPhone'];
+      document.querySelectorAll('.import-fld-chk').forEach(chk => {
+        chk.checked = minKeys.includes(chk.dataset.fkey) || chk.disabled;
+      });
+      updateFieldsCounter();
+    });
+
+    // Download CSV Template with selected fields
+    document.getElementById('btn-dl-import-template')?.addEventListener('click', () => {
+      const selectedKeys = getActiveKeys();
+      StudentModule.downloadImportTemplate(selectedKeys);
     });
 
     let parsedStudentsToImport = [];
 
     const fileInput = document.getElementById('bulk-import-file-input');
-    fileInput.addEventListener('change', async (e) => {
-      const file = e.target.files[0];
+    fileInput?.addEventListener('change', async (e) => {
+      const file = e.target.files && e.target.files[0];
       if (!file) return;
 
       const text = await file.text();
@@ -1887,8 +1986,8 @@ export class StudentModule {
 
       const idxAdm = findIdx(['admission no', 'adm no', 'admission', 'id']);
       const idxRoll = findIdx(['roll', 'roll no']);
-      const idxName = findIdx(['full name', 'name', 'student name']);
-      const idxGrade = findIdx(['grade', 'class']);
+      const idxName = findIdx(['full name', 'name', 'student name', 'candidate name']);
+      const idxGrade = findIdx(['grade', 'class', 'standard']);
       const idxSec = findIdx(['section', 'sec']);
       const idxGender = findIdx(['gender', 'sex']);
       const idxDob = findIdx(['dob', 'date of birth', 'birth']);
@@ -1896,10 +1995,38 @@ export class StudentModule {
       const idxPhone = findIdx(['guardian phone', 'phone', 'contact', 'mobile']);
       const idxBlood = findIdx(['blood group', 'blood']);
       const idxAddr = findIdx(['address', 'village', 'city']);
-      const idxStatus = findIdx(['status']);
+      const idxStatus = findIdx(['status', 'enrollment status']);
       const idxAllergies = findIdx(['allergies', 'medical']);
+      const idxEmerg = findIdx(['emergency', 'alt phone']);
 
-      const existingStudents = await dbService.select('students');
+      // Show detected columns strip
+      const detectedStrip = document.getElementById('detected-columns-strip');
+      if (detectedStrip) {
+        const detectedLabels = [];
+        if (idxName !== -1) detectedLabels.push('Full Name');
+        if (idxGrade !== -1) detectedLabels.push('Class / Grade');
+        if (idxAdm !== -1) detectedLabels.push('Admission No');
+        if (idxRoll !== -1) detectedLabels.push('Roll No');
+        if (idxSec !== -1) detectedLabels.push('Section');
+        if (idxGender !== -1) detectedLabels.push('Gender');
+        if (idxDob !== -1) detectedLabels.push('DOB');
+        if (idxGuard !== -1) detectedLabels.push('Guardian Name');
+        if (idxPhone !== -1) detectedLabels.push('Phone');
+        if (idxBlood !== -1) detectedLabels.push('Blood Group');
+        if (idxAddr !== -1) detectedLabels.push('Address');
+        if (idxStatus !== -1) detectedLabels.push('Status');
+        if (idxAllergies !== -1) detectedLabels.push('Allergies');
+        if (idxEmerg !== -1) detectedLabels.push('Emergency Contact');
+
+        detectedStrip.style.display = 'block';
+        detectedStrip.innerHTML = `<i data-lucide="check-circle-2" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Detected ${detectedLabels.length} columns in file: <strong>${esc(detectedLabels.join(', '))}</strong>`;
+      }
+
+      let existingStudents = [];
+      try {
+        existingStudents = await dbService.select('students');
+      } catch (e) { existingStudents = []; }
+
       const existingAdmNos = new Set(existingStudents.map(s => String(s.admissionNo || '').toLowerCase().trim()));
 
       parsedStudentsToImport = [];
@@ -1923,14 +2050,15 @@ export class StudentModule {
         const address = idxAddr !== -1 ? (r[idxAddr] || '').trim() : '';
         const status = idxStatus !== -1 ? (r[idxStatus] || '').trim() || 'Active' : 'Active';
         const allergies = idxAllergies !== -1 ? (r[idxAllergies] || '').trim() : '';
+        const emergencyContact = idxEmerg !== -1 ? (r[idxEmerg] || '').trim() : '';
 
-        // If no admission no provided, assign temporary sequential ID
+        // If no admission no provided, assign sequential ID
         if (!admNo) {
           admNo = `TMS-IMP-${Date.now().toString(36).toUpperCase()}-${i}`;
         }
 
-        let isDuplicate = existingAdmNos.has(admNo.toLowerCase());
-        let isInvalid = !name || !grade;
+        const isDuplicate = existingAdmNos.has(admNo.toLowerCase());
+        const isInvalid = !name || !grade;
 
         if (isDuplicate) duplicateCount++;
         if (isInvalid) missingCount++;
@@ -1949,6 +2077,7 @@ export class StudentModule {
           address,
           status,
           allergies,
+          emergencyContact,
           isDuplicate,
           isInvalid
         });
@@ -1965,7 +2094,7 @@ export class StudentModule {
         statsBar.innerHTML = `
           <span class="badge badge-success" style="font-size:0.82rem; padding:4px 10px;">✓ ${validList.length} Ready to Import</span>
           ${duplicateCount ? `<span class="badge badge-warning" style="font-size:0.82rem; padding:4px 10px;">⚠ ${duplicateCount} Duplicate Admission Nos</span>` : ''}
-          ${missingCount ? `<span class="badge badge-danger" style="font-size:0.82rem; padding:4px 10px;">✕ ${missingCount} Incomplete Rows</span>` : ''}
+          ${missingCount ? `<span class="badge badge-danger" style="font-size:0.82rem; padding:4px 10px;">✕ ${missingCount} Incomplete Rows (Missing Name or Class)</span>` : ''}
         `;
       }
 
@@ -1977,12 +2106,12 @@ export class StudentModule {
                 : p.isDuplicate ? '<span class="badge badge-warning">Duplicate ID</span>'
                 : '<span class="badge badge-success">Valid</span>'}
             </td>
-            <td class="font-mono">${UIComponents.escapeHtml(p.admissionNo)}</td>
-            <td style="font-weight:600;">${UIComponents.escapeHtml(p.fullName)}</td>
-            <td>${UIComponents.escapeHtml(p.grade)} - ${UIComponents.escapeHtml(p.section)}</td>
-            <td class="font-mono">${UIComponents.escapeHtml(p.rollNo || '—')}</td>
-            <td>${UIComponents.escapeHtml(p.guardianName || '—')}</td>
-            <td class="font-mono">${UIComponents.escapeHtml(p.guardianPhone || '—')}</td>
+            <td class="font-mono">${esc(p.admissionNo)}</td>
+            <td style="font-weight:600;">${esc(p.fullName)}</td>
+            <td>${esc(p.grade)} - ${esc(p.section)}</td>
+            <td class="font-mono">${esc(p.rollNo || '—')}</td>
+            <td>${esc(p.guardianName || '—')}</td>
+            <td class="font-mono">${esc(p.guardianPhone || '—')}</td>
           </tr>
         `).join('');
       }
@@ -1990,11 +2119,11 @@ export class StudentModule {
       if (confirmBtn) {
         confirmBtn.disabled = validList.length === 0;
         confirmBtn.innerHTML = `<i data-lucide="upload-cloud"></i> Import ${validList.length} Valid Students`;
-        UIComponents.refreshIcons();
       }
+      UIComponents.refreshIcons();
     });
 
-    document.getElementById('btn-confirm-bulk-import').addEventListener('click', async () => {
+    document.getElementById('btn-confirm-bulk-import')?.addEventListener('click', async () => {
       const validList = parsedStudentsToImport.filter(p => !p.isInvalid && !p.isDuplicate);
       if (!validList.length) return;
 
@@ -2032,8 +2161,6 @@ export class StudentModule {
 
     UIComponents.refreshIcons();
   }
-
 }
-
 
 export default StudentModule;

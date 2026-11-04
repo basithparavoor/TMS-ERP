@@ -2,6 +2,9 @@
  * THAIBA MODEL SCHOOL — UI Components & Theme Engine
  */
 
+import { enhanceSelect, enhanceAllSelects, startGlobalSelectObserver } from './dropdown-enhancer.js';
+import { enhanceDatePicker, enhanceAllDatePickers, startGlobalDatePickerObserver } from './datepicker-enhancer.js';
+
 export class UIComponents {
   /**
    * Escape untrusted values before interpolating them into HTML templates.
@@ -30,6 +33,32 @@ export class UIComponents {
     localStorage.setItem('tms_color_theme', activeColor);
 
     this.installGlobalInterceptors();
+    startGlobalSelectObserver();
+    startGlobalDatePickerObserver();
+  }
+
+  static enhanceSelect(el) {
+    enhanceSelect(el);
+  }
+
+  static enhanceAllSelects(root = document) {
+    enhanceAllSelects(root);
+  }
+
+  static initCustomSelects() {
+    startGlobalSelectObserver();
+  }
+
+  static enhanceDatePicker(el) {
+    enhanceDatePicker(el);
+  }
+
+  static enhanceAllDatePickers(root = document) {
+    enhanceAllDatePickers(root);
+  }
+
+  static initDatePickers() {
+    startGlobalDatePickerObserver();
   }
 
   static installGlobalInterceptors() {
@@ -244,12 +273,12 @@ export class UIComponents {
     const esc = this.escapeHtml;
     const breadcrumbsHtml = breadcrumbs.length ? `
       <nav class="tms-breadcrumbs" aria-label="Breadcrumb">
-        <ol style="display:flex; align-items:center; gap:6px; list-style:none; padding:0; margin:0 0 6px 0; font-size:0.78rem; color:var(--text-secondary);">
-          <li><a href="#/dashboard" style="color:var(--text-secondary); font-weight:500; display:inline-flex; align-items:center; gap:4px;"><i data-lucide="home" style="width:13px; height:13px;"></i> TMS ERP</a></li>
+        <ol class="tms-breadcrumbs-list">
+          <li><a href="#/dashboard" class="tms-breadcrumb-link"><i data-lucide="home" style="width:13px; height:13px;"></i> TMS ERP</a></li>
           ${breadcrumbs.map((b, idx) => `
-            <li style="display:inline-flex; align-items:center; gap:6px;">
+            <li class="tms-breadcrumb-item">
               <i data-lucide="chevron-right" style="width:12px; height:12px; opacity:0.5;"></i>
-              ${b.href && idx < breadcrumbs.length - 1 ? `<a href="${esc(b.href)}" style="color:var(--text-secondary); font-weight:500;">${esc(b.label)}</a>` : `<span style="color:var(--text-primary); font-weight:600;">${esc(b.label)}</span>`}
+              ${b.href && idx < breadcrumbs.length - 1 ? `<a href="${esc(b.href)}" class="tms-breadcrumb-link">${esc(b.label)}</a>` : `<span class="tms-breadcrumb-current">${esc(b.label)}</span>`}
             </li>
           `).join('')}
         </ol>
@@ -257,19 +286,19 @@ export class UIComponents {
     ` : '';
 
     return `
-      <div class="tms-page-header" style="margin-bottom: 24px;">
-        <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
-          <div>
+      <div class="tms-page-header">
+        <div class="tms-page-header-row">
+          <div class="tms-page-header-content">
             ${breadcrumbsHtml}
-            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-              <h1 class="tms-page-title" style="font-size: 1.75rem; font-weight: 800; color: var(--text-primary); letter-spacing:-0.02em; margin:0;">
+            <div class="tms-page-title-wrap">
+              <h1 class="tms-page-title">
                 ${esc(title)}
               </h1>
-              ${badge ? `<span class="badge badge-success" style="font-size:0.75rem;">${badge}</span>` : ''}
+              ${badge ? `<span class="badge badge-success tms-page-badge">${badge}</span>` : ''}
             </div>
-            ${subtitle ? `<p class="tms-page-subtitle" style="color: var(--text-secondary); font-size: 0.88rem; margin: 4px 0 0 0;">${esc(subtitle)}</p>` : ''}
+            ${subtitle ? `<p class="tms-page-subtitle">${esc(subtitle)}</p>` : ''}
           </div>
-          ${actionsHtml ? `<div class="tms-page-actions" style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">${actionsHtml}</div>` : ''}
+          ${actionsHtml ? `<div class="tms-page-actions">${actionsHtml}</div>` : ''}
         </div>
       </div>
     `;
@@ -281,25 +310,23 @@ export class UIComponents {
   static renderToolbar({ searchId = '', searchPlaceholder = 'Search records...', filtersHtml = '', actionsHtml = '' }) {
     const esc = this.escapeHtml;
     return `
-      <div class="tms-filter-toolbar" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:16px; background:#ffffff; padding:12px 16px; border-radius:12px; border:1px solid var(--border-color); box-shadow:var(--shadow-xs);">
-        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; flex:1; min-width:260px;">
+      <div class="tms-filter-toolbar">
+        <div class="tms-toolbar-left">
           ${searchId ? `
-            <div class="tms-toolbar-search" style="position:relative; min-width:240px; flex:1; max-width:400px;">
-              <i data-lucide="search" style="position:absolute; left:12px; top:50%; transform:translateY(-50%); width:16px; height:16px; color:var(--text-secondary);"></i>
-              <input type="text" class="form-input" id="${esc(searchId)}" placeholder="${esc(searchPlaceholder)}" style="padding-left:36px; padding-top:8px; padding-bottom:8px; font-size:0.85rem; border-radius:8px;">
+            <div class="tms-toolbar-search">
+              <i data-lucide="search" class="tms-search-icon"></i>
+              <input type="text" class="form-input tms-search-input" id="${esc(searchId)}" placeholder="${esc(searchPlaceholder)}">
             </div>
           ` : ''}
-          ${filtersHtml}
+          ${filtersHtml ? `<div class="tms-toolbar-filters">${filtersHtml}</div>` : ''}
         </div>
-        ${actionsHtml ? `<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">${actionsHtml}</div>` : ''}
+        ${actionsHtml ? `<div class="tms-toolbar-actions">${actionsHtml}</div>` : ''}
       </div>
     `;
   }
 
   /**
-   * Render illustrated Empty State with icon, title, description and call to action.
-   */
-  static renderEmptyState({ icon = 'inbox', title = 'No records found', description = 'There are no records matching your selected filters or criteria.', actionHtml = '' }) {
+   * Render illustrated Empty State', title = 'No records found', description = 'There are no records matching your selected filters or criteria.', actionHtml = '' }) {
     const esc = this.escapeHtml;
     return `
       <div class="tms-empty-state" style="padding: 48px 24px; text-align: center; background: #ffffff; border-radius: 16px; border: 1.5px dashed var(--border-color); margin: 16px 0;">
