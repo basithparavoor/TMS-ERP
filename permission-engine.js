@@ -311,9 +311,10 @@ export class PermissionEngine {
         return true;
       case 'reports':
         return [TMS_CONFIG.roles.COORDINATOR, TMS_CONFIG.roles.FINANCE].includes(role);
+      case 'users':
       case 'administration':
       case 'institution':
-        return [TMS_CONFIG.roles.ADMIN].includes(role);
+        return [TMS_CONFIG.roles.ADMIN, TMS_CONFIG.roles.PRINCIPAL].includes(role);
       default:
         return false;
     }
