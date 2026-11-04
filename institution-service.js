@@ -215,7 +215,7 @@ class InstitutionService {
           </div>
         </div>
 
-        <!-- Section 4: Head Of Institution (Replaced Super Administrator per requirements) -->
+        <!-- Section 4: Head Of Institution -->
         <div style="border-top:1px solid #f1f5f9; padding:13px 0 2px 0; display:flex; align-items:flex-start; gap:14px;">
           <div style="width:28px; height:28px; border-radius:8px; background:#faf5ff; color:#9333ea; display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:2px;">
             <i data-lucide="user" style="width:16px; height:16px;"></i>
