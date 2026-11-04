@@ -2241,6 +2241,7 @@
   <script type="module">
     import { websiteService } from './website-service.js';
     import { brandingService } from './branding-service.js';
+    import { institutionService } from './institution-service.js';
     import { authService } from './auth-service.js';
     import { TMS_CONFIG } from './config.js';
     import { UIComponents } from './ui-components.js';
@@ -2249,6 +2250,8 @@
     const esc = (s) => (s == null ? '' : String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'));
 
     async function initWebsite() {
+      institutionService.refresh();
+
       // 1. Initial render from cache for immediate response
       const initialConfig = websiteService.getConfig();
       renderWebsiteData(initialConfig);
