@@ -963,8 +963,9 @@ export class StudentModule {
     container.querySelectorAll('.btn-view-profile').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         const id = e.currentTarget.dataset.id;
-        const students = await dbService.select('students');
-        const s = students.find(item => item.id === id);
+        const students = (this._students && this._students.length) ? this._students : ((await dbService.select('students')) || []);
+        const allStudents = students.length ? students : SAMPLE_STUDENTS;
+        const s = allStudents.find(item => item.id === id);
         if (!s) return;
         await StudentModule.openStudentProfileModal(s, container);
       });
