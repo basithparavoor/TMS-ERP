@@ -1342,7 +1342,7 @@ export class StudentModule {
   static async openStudentIdCardModal(s) {
     let photoUrl = '';
     if (s.photo) {
-      photoUrl = (await admissionService.getSignedUrl('admission-docs', s.photo, 3600)) || '';
+      photoUrl = admissionService.getPublicUrl('admission-docs', s.photo) || s.photo;
     }
 
     const cardMarkup = StudentModule.renderIdCardMarkup(s, photoUrl, 'single-id-qr');
