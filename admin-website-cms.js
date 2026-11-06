@@ -1323,9 +1323,14 @@ export class AdminWebsiteCms {
           if (slider) slider.style.backgroundColor = '#cbd5e1';
         }
 
+        try {
+          localStorage.setItem('tms_hostel_explicitly_toggled', 'true');
+        } catch (_) {}
+
         // Auto save toggle change
         await websiteService.saveConfig(this._config);
-        UIComponents.showToast(val ? 'Hostel Button turned ON on school website!' : 'Hostel Button turned OFF on school website', val ? 'success' : 'info');
+        window.dispatchEvent(new CustomEvent('tms_hostel_toggled', { detail: { enabled: val } }));
+        UIComponents.showToast(val ? 'Hostel turned ON (Visible on Website & ERP)!' : 'Hostel turned OFF (Hidden from Website & ERP)', val ? 'success' : 'info');
       });
     }
 

@@ -202,8 +202,8 @@ export const DEFAULT_WEBSITE_CONFIG = {
 
   // 7b. Hostel & Residential Campus Setup (Toggleable by Admin)
   hostel: {
-    enabled: true,              // Admin turn on/off toggle for hostel module & section
-    showNavButton: true,        // Admin turn on/off toggle for "Hostel" navbar button
+    enabled: false,              // Admin turn on/off toggle for hostel module & section (Default: OFF)
+    showNavButton: false,        // Admin turn on/off toggle for "Hostel" navbar button (Default: OFF)
     navButtonText: 'Hostel',
     badge: 'RESIDENTIAL CAMPUS & BOARDING',
     title: 'Student Hostel & Residential Dormitories',
@@ -432,6 +432,12 @@ class WebsiteService {
       if (stored) {
         const parsed = JSON.parse(stored);
         const merged = this.deepMerge(DEFAULT_WEBSITE_CONFIG, parsed);
+        // If not explicitly toggled by admin yet, respect default OFF state
+        if (!localStorage.getItem('tms_hostel_explicitly_toggled')) {
+          if (!merged.hostel) merged.hostel = {};
+          merged.hostel.enabled = false;
+          merged.hostel.showNavButton = false;
+        }
         // Automatic migration of legacy defaults
         if (merged.meta && merged.meta.loginButtonText === 'Institutional Login') {
           merged.meta.loginButtonText = 'Login';
@@ -480,6 +486,12 @@ class WebsiteService {
 
   getConfig() {
     return this.data || JSON.parse(JSON.stringify(DEFAULT_WEBSITE_CONFIG));
+  }
+
+  isHostelEnabled() {
+    const cfg = this.getConfig();
+    const h = (cfg && cfg.hostel) || {};
+    return h.enabled === true;
   }
 
   applyThemeVars() {

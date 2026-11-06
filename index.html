@@ -809,16 +809,17 @@
 
     .facility-card {
       background: #ffffff;
-      border: 1px solid #e2e8f0;
-      border-radius: 16px;
-      padding: 24px;
-      transition: all 0.25s ease;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 18px;
+      padding: 24px 22px;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
       position: relative;
+      box-shadow: 0 4px 18px rgba(15, 23, 42, 0.03);
     }
 
     .facility-card:hover {
       border-color: var(--brand-theme-primary);
-      box-shadow: 0 10px 28px rgba(22, 163, 74, 0.08);
+      box-shadow: 0 12px 30px rgba(22, 163, 74, 0.12);
       transform: translateY(-4px);
     }
 
@@ -826,21 +827,24 @@
       position: absolute;
       top: 18px;
       right: 18px;
-      font-size: 0.7rem;
-      font-weight: 700;
-      background: #f1f5f9;
-      color: #475569;
-      padding: 3px 8px;
+      font-size: 0.72rem;
+      font-weight: 800;
+      background: #f0fdf4;
+      color: #15803d;
+      border: 1px solid #bbf7d0;
+      padding: 4px 10px;
       border-radius: 999px;
       text-transform: uppercase;
+      letter-spacing: 0.05em;
     }
 
     .facility-icon {
-      width: 44px;
-      height: 44px;
-      border-radius: 12px;
-      background: #f0fdf4;
-      color: var(--brand-theme-primary);
+      width: 48px;
+      height: 48px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+      color: #15803d;
+      border: 1px solid #bbf7d0;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -849,16 +853,72 @@
 
     .facility-title {
       font-family: var(--font-display);
-      font-size: 1.05rem;
-      font-weight: 700;
+      font-size: 1.15rem;
+      font-weight: 800;
       color: #0f172a;
       margin-bottom: 8px;
+      line-height: 1.3;
+      letter-spacing: -0.01em;
     }
 
     .facility-desc {
-      font-size: 0.85rem;
-      color: #64748b;
-      line-height: 1.55;
+      font-size: 0.92rem;
+      color: #334155;
+      line-height: 1.62;
+      font-weight: 400;
+    }
+
+    /* Hostel Specific Typography & Cards */
+    .hostel-ribbon-card {
+      background: #ffffff;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 20px 16px;
+      text-align: center;
+      box-shadow: 0 4px 16px rgba(15, 23, 42, 0.04);
+      transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .hostel-ribbon-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+      border-color: #cbd5e1;
+    }
+
+    .hostel-ribbon-num {
+      font-family: var(--font-display);
+      font-size: 1.75rem;
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -0.01em;
+      margin-bottom: 6px;
+    }
+
+    .hostel-ribbon-lbl {
+      font-size: 0.78rem;
+      font-weight: 800;
+      color: #334155;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      line-height: 1.25;
+    }
+
+    .hostel-wing-card {
+      margin: 0;
+      border: 1.5px solid #e2e8f0;
+      border-radius: 18px;
+      padding: 26px;
+      background: #ffffff;
+      box-shadow: 0 4px 20px rgba(15, 23, 42, 0.04);
+      position: relative;
+      overflow: hidden;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .hostel-wing-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 12px 32px rgba(15, 23, 42, 0.09);
+      border-color: #cbd5e1;
     }
 
     /* Notice Board Section */
@@ -2256,45 +2316,70 @@
   <section class="inst-section" id="hostel" style="background:#ffffff; border-top:1px solid #e2e8f0; display:none;">
     <div class="inst-container">
       <div class="section-header-center">
-        <span class="section-tag" id="hostel-section-tag">RESIDENTIAL CAMPUS &amp; BOARDING</span>
-        <h2 class="section-title" id="hostel-section-title">Student Hostel &amp; Residential Dormitories</h2>
-        <p class="section-subtitle" id="hostel-section-subtitle">
+        <span class="section-tag" id="hostel-section-tag" style="background:#ecfdf5; color:#15803d; border:1.5px solid #a7f3d0; font-size:0.80rem; font-weight:800; padding:6px 16px; border-radius:999px; letter-spacing:0.06em; margin-bottom:14px; display:inline-flex; align-items:center; gap:6px;">
+          <i data-lucide="home" style="width:14px; height:14px; color:#16a34a;"></i>
+          <span>RESIDENTIAL CAMPUS &amp; BOARDING</span>
+        </span>
+        <h2 class="section-title" id="hostel-section-title" style="font-family:var(--font-display); font-size:clamp(2rem, 3.8vw, 2.75rem); font-weight:800; color:#0f172a; line-height:1.2; letter-spacing:-0.02em; margin-bottom:14px;">
+          Student Hostel &amp; <span class="highlight-text" style="color:var(--brand-theme-primary, #16a34a);">Residential Dormitories</span>
+        </h2>
+        <p class="section-subtitle" id="hostel-section-subtitle" style="font-size:1.06rem; color:#475569; line-height:1.68; max-width:720px; margin:0 auto 34px; font-weight:500;">
           A secure, disciplined and nurturing home away from home with round-the-clock pastoral care, guided evening study, and nutritious dining.
         </p>
       </div>
 
       <!-- Live Capacity & Highlight Ribbon -->
       <div class="hostel-highlights-ribbon" style="display:grid; grid-template-columns:repeat(4, 1fr); gap:16px; margin-bottom:32px;">
-        <div class="hostel-ribbon-card" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:18px; text-align:center;">
-          <div style="font-size:1.6rem; font-weight:800; color:var(--brand-theme-primary); font-family:var(--font-display);" id="hostel-stat-capacity">150 Beds</div>
-          <div style="font-size:0.75rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">Total Boarding Capacity</div>
+        <div class="hostel-ribbon-card" style="border-top:3.5px solid #16a34a;">
+          <div class="hostel-ribbon-num" style="color:#15803d;" id="hostel-stat-capacity">150 Beds</div>
+          <div class="hostel-ribbon-lbl">Total Boarding Capacity</div>
         </div>
-        <div class="hostel-ribbon-card" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:18px; text-align:center;">
-          <div style="font-size:1.6rem; font-weight:800; color:#3b82f6; font-family:var(--font-display);">2 Separate Wings</div>
-          <div style="font-size:0.75rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">Boys &amp; Girls Dormitories</div>
+        <div class="hostel-ribbon-card" style="border-top:3.5px solid #2563eb;">
+          <div class="hostel-ribbon-num" style="color:#1d4ed8;">2 Separate Wings</div>
+          <div class="hostel-ribbon-lbl">Boys &amp; Girls Dormitories</div>
         </div>
-        <div class="hostel-ribbon-card" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:18px; text-align:center;">
-          <div style="font-size:1.6rem; font-weight:800; color:#f59e0b; font-family:var(--font-display);">3-Hour Study Hall</div>
-          <div style="font-size:0.75rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">Teacher Mentored Routine</div>
+        <div class="hostel-ribbon-card" style="border-top:3.5px solid #d97706;">
+          <div class="hostel-ribbon-num" style="color:#b45309;">3-Hour Study Hall</div>
+          <div class="hostel-ribbon-lbl">Teacher Mentored Routine</div>
         </div>
-        <div class="hostel-ribbon-card" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:18px; text-align:center;">
-          <div style="font-size:1.6rem; font-weight:800; color:#10b981; font-family:var(--font-display);">100% Halal Dining</div>
-          <div style="font-size:0.75rem; font-weight:700; color:#64748b; text-transform:uppercase; letter-spacing:0.5px; margin-top:2px;">4 Fresh Meals Daily</div>
+        <div class="hostel-ribbon-card" style="border-top:3.5px solid #059669;">
+          <div class="hostel-ribbon-num" style="color:#047857;">100% Halal Dining</div>
+          <div class="hostel-ribbon-lbl">4 Fresh Meals Daily</div>
         </div>
       </div>
 
-      <!-- Dormitory Wings Grid -->
-      <h3 style="font-family:var(--font-display); font-size:1.25rem; font-weight:800; color:var(--text-main); margin:0 0 16px;">
-        Residential Wings &amp; Living Spaces
-      </h3>
+      <!-- Dormitory Wings Subhead Banner -->
+      <div class="hostel-subhead-banner" style="display:flex; align-items:center; gap:12px; margin:36px 0 20px; padding-bottom:12px; border-bottom:1.5px solid #f1f5f9;">
+        <div style="width:38px; height:38px; border-radius:10px; background:linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); color:#15803d; display:flex; align-items:center; justify-content:center; border:1px solid #bbf7d0; flex-shrink:0;">
+          <i data-lucide="building-2" style="width:20px; height:20px;"></i>
+        </div>
+        <div>
+          <h3 style="font-family:var(--font-display); font-size:1.32rem; font-weight:800; color:#0f172a; margin:0; line-height:1.2; letter-spacing:-0.01em;">
+            Residential Wings &amp; Living Spaces
+          </h3>
+          <p style="font-size:0.85rem; color:#64748b; margin:3px 0 0 0; font-weight:500;">
+            Dedicated, fully segregated boarding facilities equipped with private study desks, wardrobes &amp; round-the-clock warden care.
+          </p>
+        </div>
+      </div>
       <div class="hostel-wings-grid" id="hostel-wings-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:22px; margin-bottom:36px;">
         <!-- Injected dynamically via JS -->
       </div>
 
-      <!-- 6 Key Amenities & Care Grid -->
-      <h3 style="font-family:var(--font-display); font-size:1.25rem; font-weight:800; color:var(--text-main); margin:0 0 16px;">
-        Hostel Facilities, Amenities &amp; Pastoral Care
-      </h3>
+      <!-- 6 Key Amenities & Care Grid Subhead Banner -->
+      <div class="hostel-subhead-banner" style="display:flex; align-items:center; gap:12px; margin:40px 0 20px; padding-bottom:12px; border-bottom:1.5px solid #f1f5f9;">
+        <div style="width:38px; height:38px; border-radius:10px; background:linear-gradient(135deg, #ecfdf5 0%, #a7f3d0 100%); color:#047857; display:flex; align-items:center; justify-content:center; border:1px solid #6ee7b7; flex-shrink:0;">
+          <i data-lucide="sparkles" style="width:20px; height:20px;"></i>
+        </div>
+        <div>
+          <h3 style="font-family:var(--font-display); font-size:1.32rem; font-weight:800; color:#0f172a; margin:0; line-height:1.2; letter-spacing:-0.01em;">
+            Hostel Facilities, Amenities &amp; Pastoral Care
+          </h3>
+          <p style="font-size:0.85rem; color:#64748b; margin:3px 0 0 0; font-weight:500;">
+            A comprehensive boarding ecosystem focused on student comfort, academic rigor, nutrition, and ethical character.
+          </p>
+        </div>
+      </div>
       <div class="facilities-grid" id="hostel-features-grid" style="margin-bottom:36px;">
         <!-- Injected dynamically via JS -->
       </div>
@@ -2558,7 +2643,7 @@
                   <option value="Middle (6-8)">Middle School (Grades 6 – 8)</option>
                   <option value="Secondary (9-10)">Secondary (Grades 9 – 10)</option>
                   <option value="Higher Secondary (11-12)">Senior Secondary (Grades 11 – 12)</option>
-                  <option value="Hostel & Residential Wing">Hostel &amp; Residential Wing</option>
+                  <option value="Hostel & Residential Wing" id="inq-hostel-opt">Hostel &amp; Residential Wing</option>
                   <option value="Moral Wing">Islamic &amp; Moral Studies Wing</option>
                 </select>
               </div>
@@ -2954,11 +3039,12 @@
 
       // Hostel Section & Button Handling (Toggleable by Admin)
       const h = cfg.hostel || {};
-      const hostelActive = h.enabled !== false && h.showNavButton !== false;
+      const hostelActive = h.enabled === true && h.showNavButton !== false;
       const navHostel = document.getElementById('nav-hostel-link');
       const mobileHostel = document.getElementById('mobile-nav-hostel-link');
       const footerHostel = document.getElementById('footer-hostel-link');
       const hostelSection = document.getElementById('hostel');
+      const inqHostelOpt = document.getElementById('inq-hostel-opt');
 
       if (hostelActive) {
         if (navHostel) {
@@ -2971,42 +3057,66 @@
         }
         if (footerHostel) footerHostel.style.display = 'block';
         if (hostelSection) hostelSection.style.display = 'block';
+        if (inqHostelOpt) inqHostelOpt.style.display = '';
 
         // Update Section Headers & Counters
         const hTag = document.getElementById('hostel-section-tag');
         const hTitle = document.getElementById('hostel-section-title');
         const hSub = document.getElementById('hostel-section-subtitle');
         const hCap = document.getElementById('hostel-stat-capacity');
-        if (hTag) hTag.innerText = h.badge || 'RESIDENTIAL CAMPUS & BOARDING';
-        if (hTitle) hTitle.innerText = h.title || 'Student Hostel & Residential Dormitories';
-        if (hSub) hSub.innerText = h.subtitle || '';
+        if (hTag) hTag.innerHTML = `<i data-lucide="home" style="width:14px; height:14px; color:#16a34a;"></i> <span>${esc(h.badge || 'RESIDENTIAL CAMPUS & BOARDING')}</span>`;
+        if (hTitle) {
+          const rawTitle = h.title || 'Student Hostel & Residential Dormitories';
+          hTitle.innerHTML = esc(rawTitle).replace(/Residential Dormitories|Dormitories/gi, (m) => `<span class="highlight-text" style="color:var(--brand-theme-primary, #16a34a);">${m}</span>`);
+        }
+        if (hSub) hSub.innerText = h.subtitle || 'A secure, disciplined and nurturing home away from home with round-the-clock pastoral care, guided evening study, and nutritious dining.';
         if (hCap) hCap.innerText = (h.totalCapacity || 150) + ' Beds';
 
         // Render Wings
         const wingsGrid = document.getElementById('hostel-wings-grid');
         if (wingsGrid && Array.isArray(h.wings)) {
-          wingsGrid.innerHTML = h.wings.map(w => `
-            <div class="card" style="margin:0; border:1px solid #e2e8f0; border-radius:14px; padding:22px; position:relative; overflow:hidden;">
-              <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
-                <span class="badge ${w.gender === 'Girls' ? 'badge-warning' : 'badge-info'}" style="font-size:0.75rem; font-weight:700;">
-                  ${esc(w.gender || 'Wing')} &bull; ${esc(w.rooms || 'Dormitory')}
-                </span>
-                <span style="font-size:0.8rem; font-weight:700; color:#16a34a; background:#dcfce7; padding:2px 8px; border-radius:6px;">
-                  ${w.occupied || 0} / ${w.capacity || 0} Beds Occupied
-                </span>
+          wingsGrid.innerHTML = h.wings.map(w => {
+            const isGirls = (w.gender || '').toLowerCase().includes('girl');
+            const wingBadgeStyle = isGirls
+              ? 'background:#fdf2f8; color:#be185d; border:1px solid #fbcfe8;'
+              : 'background:#eff6ff; color:#1d4ed8; border:1px solid #bfdbfe;'
+            const wingIcon = isGirls ? 'heart-handshake' : 'shield';
+
+            return `
+              <div class="card hostel-wing-card" style="margin:0; border:1.5px solid #e2e8f0; border-radius:18px; padding:26px; background:#ffffff; box-shadow:0 4px 20px rgba(15, 23, 42, 0.04); position:relative; overflow:hidden; transition:all 0.25s ease;">
+                <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:14px;">
+                  <span style="${wingBadgeStyle} font-size:0.78rem; font-weight:800; padding:4px 11px; border-radius:8px; display:inline-flex; align-items:center; gap:5px; text-transform:uppercase; letter-spacing:0.04em;">
+                    <i data-lucide="${wingIcon}" style="width:13px; height:13px;"></i>
+                    <span>${esc(w.gender || 'Wing')} &bull; ${esc(w.rooms || 'Dormitory')}</span>
+                  </span>
+                  <span style="font-size:0.80rem; font-weight:800; color:#15803d; background:#dcfce7; border:1px solid #bbf7d0; padding:4px 11px; border-radius:999px; display:inline-flex; align-items:center; gap:5px;">
+                    <span style="width:7px; height:7px; border-radius:50%; background:#16a34a; display:inline-block;"></span>
+                    <span>${w.occupied || 0} / ${w.capacity || 0} Beds Occupied</span>
+                  </span>
+                </div>
+                <h4 style="font-family:var(--font-display); font-size:1.35rem; font-weight:800; color:#0f172a; margin:0 0 10px; line-height:1.25; letter-spacing:-0.01em;">
+                  ${esc(w.name)}
+                </h4>
+                <p style="font-size:0.95rem; color:#334155; margin:0 0 20px; line-height:1.65; font-weight:450;">
+                  ${esc(w.description || '')}
+                </p>
+                <div style="font-size:0.84rem; color:#1e293b; background:#f8fafc; padding:12px 16px; border-radius:12px; border:1.5px solid #e2e8f0; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+                  <div style="display:flex; align-items:center; gap:10px;">
+                    <div style="width:32px; height:32px; border-radius:8px; background:#dcfce7; color:#15803d; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                      <i data-lucide="user-check" style="width:16px; height:16px;"></i>
+                    </div>
+                    <div>
+                      <span style="font-size:0.72rem; color:#64748b; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; display:block; line-height:1.2;">Wardens &amp; Pastoral Care</span>
+                      <strong style="color:#0f172a; font-size:0.90rem;">${esc(w.supervisor || 'Resident Superintendent')}</strong>
+                    </div>
+                  </div>
+                  <span style="font-size:0.74rem; font-weight:700; color:#16a34a; background:#f0fdf4; border:1px solid #bbf7d0; padding:4px 10px; border-radius:6px; white-space:nowrap;">
+                    24/7 On Campus
+                  </span>
+                </div>
               </div>
-              <h4 style="font-family:var(--font-display); font-size:1.15rem; font-weight:800; color:var(--text-main); margin:0 0 6px;">
-                ${esc(w.name)}
-              </h4>
-              <p style="font-size:0.85rem; color:#64748b; margin:0 0 12px; line-height:1.5;">
-                ${esc(w.description || '')}
-              </p>
-              <div style="font-size:0.8rem; color:#475569; background:#f8fafc; padding:8px 12px; border-radius:8px; border:1px solid #f1f5f9; display:flex; align-items:center; gap:6px;">
-                <i data-lucide="user-check" style="width:14px; height:14px; color:#16a34a;"></i>
-                <span>Supervisor: <strong>${esc(w.supervisor || 'Resident Superintendent')}</strong></span>
-              </div>
-            </div>
-          `).join('');
+            `;
+          }).join('');
         }
 
         // Render Amenities
@@ -3016,7 +3126,7 @@
             <div class="facility-card">
               ${f.badge ? `<span class="facility-badge">${esc(f.badge)}</span>` : ''}
               <div class="facility-icon">
-                <i data-lucide="${esc(f.icon || 'home')}" style="width:22px; height:22px;"></i>
+                <i data-lucide="${esc(f.icon || 'home')}" style="width:24px; height:24px;"></i>
               </div>
               <h4 class="facility-title">${esc(f.title)}</h4>
               <p class="facility-desc">${esc(f.desc)}</p>
@@ -3028,13 +3138,13 @@
         const routineList = document.getElementById('hostel-routine-list');
         if (routineList && Array.isArray(h.dailyRoutine)) {
           routineList.innerHTML = h.dailyRoutine.map(r => `
-            <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px; display:flex; align-items:center; gap:12px;">
-              <div style="width:36px; height:36px; border-radius:8px; background:#e0e7ff; color:#4338ca; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                <i data-lucide="${esc(r.icon || 'clock')}" style="width:18px; height:18px;"></i>
+            <div style="background:#ffffff; border:1.5px solid #e2e8f0; border-radius:12px; padding:14px 16px; display:flex; align-items:center; gap:14px; box-shadow:0 2px 8px rgba(15, 23, 42, 0.03);">
+              <div style="width:40px; height:40px; border-radius:10px; background:linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); color:#3730a3; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <i data-lucide="${esc(r.icon || 'clock')}" style="width:20px; height:20px;"></i>
               </div>
               <div>
-                <div style="font-size:0.75rem; font-weight:700; color:#64748b;">${esc(r.time)}</div>
-                <div style="font-size:0.86rem; font-weight:700; color:var(--text-main);">${esc(r.activity)}</div>
+                <div style="font-size:0.78rem; font-weight:800; color:#16a34a; letter-spacing:0.02em;">${esc(r.time)}</div>
+                <div style="font-size:0.92rem; font-weight:700; color:#0f172a; line-height:1.35; margin-top:2px;">${esc(r.activity)}</div>
               </div>
             </div>
           `).join('');
@@ -3123,14 +3233,20 @@
         if (mobileHostel) mobileHostel.style.display = 'none';
         if (footerHostel) footerHostel.style.display = 'none';
         if (hostelSection) hostelSection.style.display = 'none';
+        if (inqHostelOpt) inqHostelOpt.style.display = 'none';
       }
 
       // Smooth scroll if URL hash is #hostel
-      if (window.location.hash === '#hostel' && hostelActive) {
-        setTimeout(() => {
-          const el = document.getElementById('hostel');
-          if (el) el.scrollIntoView({ behavior: 'smooth' });
-        }, 150);
+      if (window.location.hash === '#hostel') {
+        if (hostelActive) {
+          setTimeout(() => {
+            const el = document.getElementById('hostel');
+            if (el) el.scrollIntoView({ behavior: 'smooth' });
+          }, 150);
+        } else {
+          // If hostel is turned off, do not scroll to hidden section
+          window.location.hash = '#academics';
+        }
       }
 
       // Notices
