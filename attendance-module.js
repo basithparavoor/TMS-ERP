@@ -17,6 +17,8 @@ import { WhatsAppService } from './whatsapp-service.js';
 import { ClassroomModal, DAYS_CONFIG } from './classroom-modal.js';
 import { SAMPLE_STUDENTS } from './student-module.js';
 import { BiometricCredentialModal } from './biometric-credential-modal.js';
+import { StudentLeaveService } from './student-leave-service.js';
+import { authService } from './auth-service.js';
 
 export const DEFAULT_CLASSROOMS = [
   {
@@ -273,15 +275,17 @@ export class AttendanceModule {
     this._selectedTeacherFilter = this._selectedTeacherFilter || 'all';
 
     // Fetch live datasets
-    const [allStudents, allRecords, allClassrooms] = await Promise.all([
+    const [allStudents, allRecords, allClassrooms, allLeaves] = await Promise.all([
       dbService.select('students'),
       dbService.select('attendance_records'),
-      dbService.select('academic_classes')
+      dbService.select('academic_classes'),
+      StudentLeaveService.getLeaves()
     ]);
 
     this._students = (allStudents && allStudents.length) ? allStudents : SAMPLE_STUDENTS;
     this._records = allRecords || [];
     this._classrooms = (allClassrooms && allClassrooms.length) ? allClassrooms : DEFAULT_CLASSROOMS;
+    this._leaves = allLeaves || [];
 
     // Recalculate stats for selected date
     const stats = this.computeStatsForDate(this._selectedDate);
@@ -297,6 +301,9 @@ export class AttendanceModule {
           actionsHtml: `
             <div style="display:inline-flex; align-items:center; gap:8px;">
               <input type="date" id="att-global-date-input" class="form-input" value="${this._selectedDate}" style="font-weight:700; border-radius:12px; padding:6px 12px; font-size:0.86rem; background:#FFFFFF; border:1.5px solid #CBD5E1; color:#0F172A; width:auto; cursor:pointer;" title="Change Attendance Date">
+              <button type="button" class="btn btn-secondary" id="btn-open-leave-desk" style="color:#B45309; border-color:#FCD34D; background:#FEF3C7; font-weight:700;">
+                <i data-lucide="plane-takeoff"></i> Student Leave Desk
+              </button>
               <button type="button" class="btn btn-secondary" id="btn-open-enrollment-kiosk">
                 <i data-lucide="radio"></i> Smart Biometrics &amp; NFC
               </button>
@@ -779,6 +786,12 @@ export class AttendanceModule {
             </thead>
             <tbody>
               ${students.map(s => {
+                const activeLeave = (this._leaves || []).find(l => 
+                  (l.studentId === s.id || l.admissionNo === s.admissionNo) && 
+                  l.status === 'APPROVED_ON_LEAVE' && 
+                  !l.actualReturn && 
+                  this._selectedDate >= l.fromDate
+                );
                 const currentStatus = existingStatusMap.get(s.id) || 'present';
                 return `
                   <tr style="border-bottom:1px solid #F1F5F9;" data-student-id="${esc(s.id)}" class="session-roll-row">
@@ -796,12 +809,21 @@ export class AttendanceModule {
                     <td style="padding:10px 14px;"><span class="tms-id-badge" style="font-size:0.75rem;">${esc(s.admissionNo)}</span></td>
                     <td style="padding:10px 14px;"><span class="tms-category-badge" style="font-size:0.7rem;">${esc(s.category || 'GENERAL')}</span></td>
                     <td style="padding:10px 14px; text-align:center;">
-                      <div style="display:inline-flex; gap:6px;">
-                        <button type="button" class="att-status-btn btn-p ${currentStatus === 'present' ? 'active' : ''}" data-status="present" title="Present">P</button>
-                        <button type="button" class="att-status-btn btn-a ${currentStatus === 'absent' ? 'active' : ''}" data-status="absent" title="Absent">A</button>
-                        <button type="button" class="att-status-btn btn-l ${currentStatus === 'late' ? 'active' : ''}" data-status="late" title="Late">L</button>
-                        <button type="button" class="att-status-btn btn-e ${currentStatus === 'excused' ? 'active' : ''}" data-status="excused" title="Excused">E</button>
-                      </div>
+                      ${activeLeave ? `
+                        <div style="display:inline-flex; flex-direction:column; align-items:center; gap:2px;">
+                          <span class="badge" style="background:#FEF3C7; color:#92400E; border:1px solid #FCD34D; font-weight:800; font-size:0.74rem; padding:3px 10px; border-radius:9999px;">
+                            <i data-lucide="plane-takeoff" style="width:11px; height:11px;"></i> ON LEAVE
+                          </span>
+                          <span style="font-size:0.68rem; color:#B45309; font-family:monospace; font-weight:600;">${esc(activeLeave.gatePassNo || 'Gate Pass Active')}</span>
+                        </div>
+                      ` : `
+                        <div style="display:inline-flex; gap:6px;">
+                          <button type="button" class="att-status-btn btn-p ${currentStatus === 'present' ? 'active' : ''}" data-status="present" title="Present">P</button>
+                          <button type="button" class="att-status-btn btn-a ${currentStatus === 'absent' ? 'active' : ''}" data-status="absent" title="Absent">A</button>
+                          <button type="button" class="att-status-btn btn-l ${currentStatus === 'late' ? 'active' : ''}" data-status="late" title="Late">L</button>
+                          <button type="button" class="att-status-btn btn-e ${currentStatus === 'excused' ? 'active' : ''}" data-status="excused" title="Excused">E</button>
+                        </div>
+                      `}
                     </td>
                   </tr>
                 `;
@@ -883,6 +905,15 @@ export class AttendanceModule {
         const studentId = row.dataset.studentId;
         const student = students.find(s => s.id === studentId);
         if (!student) continue;
+
+        // Skip students on active leave (leave locks attendance until marked returned)
+        const activeLeave = (this._leaves || []).find(l => 
+          (l.studentId === student.id || l.admissionNo === student.admissionNo) && 
+          l.status === 'APPROVED_ON_LEAVE' && 
+          !l.actualReturn && 
+          this._selectedDate >= l.fromDate
+        );
+        if (activeLeave) continue;
 
         const activeBtn = row.querySelector('.att-status-btn.active');
         const status = activeBtn ? activeBtn.dataset.status : 'present';
@@ -1080,6 +1111,58 @@ export class AttendanceModule {
       );
 
       if (student) {
+        // Check if student has an active leave
+        const activeLeave = (this._leaves || []).find(l => 
+          (l.studentId === student.id || l.admissionNo === student.admissionNo) && 
+          l.status === 'APPROVED_ON_LEAVE' && 
+          !l.actualReturn && 
+          this._selectedDate >= l.fromDate
+        );
+
+        if (activeLeave) {
+          AttendanceAudio.playError();
+          feedback.innerHTML = `
+            <div style="display:flex; align-items:center; gap:14px; text-align:left; width:100%;">
+              <div class="tms-student-avatar" style="width:52px; height:52px; border:2px solid #F59E0B;">
+                ${student.photo ? `<img src="${esc(student.photo)}">` : (student.gender === 'Girl' ? '👧' : '👦')}
+              </div>
+              <div style="flex:1;">
+                <div style="font-weight:800; font-size:1.05rem; color:#92400E;">
+                  ⚠️ STUDENT CURRENTLY ON LEAVE: ${esc(student.fullName)}
+                </div>
+                <div style="color:#B45309; font-weight:700; font-size:0.8rem; margin-top:2px;">
+                  Gate Pass: <span class="font-mono">${esc(activeLeave.gatePassNo || 'GP-ISSUED')}</span> • ${esc(activeLeave.fromDate)} to ${esc(activeLeave.toDate)} (${esc(activeLeave.leaveType || 'Leave')})
+                </div>
+                <div style="font-size:0.75rem; color:#78350F; margin-top:2px;">
+                  Attendance taking is locked until Assigned Staff or Authority marks student return.
+                </div>
+              </div>
+              <button type="button" class="btn btn-sm btn-primary btn-kiosk-mark-returned" data-leave-id="${esc(activeLeave.id)}" style="background:#0E623B; border-color:#0E623B; font-weight:700; border-radius:8px; white-space:nowrap;">
+                <i data-lucide="corner-down-left"></i> Mark Returned
+              </button>
+            </div>
+          `;
+          feedback.style.background = '#FEF3C7';
+          feedback.style.borderColor = '#F59E0B';
+
+          feedback.querySelector('.btn-kiosk-mark-returned')?.addEventListener('click', async () => {
+            const staffUser = authService.getCurrentUser();
+            await StudentLeaveService.markAsReturned(activeLeave.id, { returnedMarkedBy: staffUser?.name || 'Gate Officer' });
+            this._leaves = await StudentLeaveService.getLeaves();
+            AttendanceAudio.playSuccess();
+            UIComponents.showToast(`Marked ${student.fullName} as RETURNED. Recording punch now.`, 'success');
+            await AttendanceModule.recordAttendanceEntry({
+              student,
+              status: 'present',
+              method: 'QR_SCAN',
+              remarks: 'Gate 01 Kiosk Scan (Return from Leave)'
+            });
+            renderQrFeed();
+          });
+          UIComponents.refreshIcons();
+          return;
+        }
+
         // Save to Database
         await AttendanceModule.recordAttendanceEntry({
           student,
@@ -1329,6 +1412,59 @@ export class AttendanceModule {
 
       const student = this._students.find(s => s.admissionNo === targetId || s.id === targetId);
       if (student) {
+        // Check if student has an active leave
+        const activeLeave = (this._leaves || []).find(l => 
+          (l.studentId === student.id || l.admissionNo === student.admissionNo) && 
+          l.status === 'APPROVED_ON_LEAVE' && 
+          !l.actualReturn && 
+          this._selectedDate >= l.fromDate
+        );
+
+        if (activeLeave) {
+          AttendanceAudio.playError();
+          feedback.innerHTML = `
+            <div style="display:flex; align-items:center; gap:14px; text-align:left; width:100%;">
+              <div class="tms-student-avatar" style="width:52px; height:52px; border:2px solid #F59E0B;">
+                ${student.photo ? `<img src="${esc(student.photo)}">` : (student.gender === 'Girl' ? '👧' : '👦')}
+              </div>
+              <div style="flex:1;">
+                <div style="font-weight:800; font-size:1.05rem; color:#92400E;">
+                  ⚠️ NFC TAP BLOCKED: ${esc(student.fullName)} IS ON LEAVE
+                </div>
+                <div style="color:#B45309; font-weight:700; font-size:0.8rem; margin-top:2px;">
+                  Gate Pass: <span class="font-mono">${esc(activeLeave.gatePassNo || 'GP-ISSUED')}</span> • ${esc(activeLeave.fromDate)} to ${esc(activeLeave.toDate)}
+                </div>
+                <div style="font-size:0.75rem; color:#78350F; margin-top:2px;">
+                  Leave is active. Attendance disabled until verified return by Staff or Authority.
+                </div>
+              </div>
+              <button type="button" class="btn btn-sm btn-primary btn-nfc-mark-returned" data-leave-id="${esc(activeLeave.id)}" style="background:#0E623B; border-color:#0E623B; font-weight:700; border-radius:8px; white-space:nowrap;">
+                <i data-lucide="corner-down-left"></i> Mark Returned
+              </button>
+            </div>
+          `;
+          feedback.style.background = '#FEF3C7';
+          feedback.style.borderColor = '#F59E0B';
+
+          feedback.querySelector('.btn-nfc-mark-returned')?.addEventListener('click', async () => {
+            const staffUser = authService.getCurrentUser();
+            await StudentLeaveService.markAsReturned(activeLeave.id, { returnedMarkedBy: staffUser?.name || 'Gate Officer' });
+            this._leaves = await StudentLeaveService.getLeaves();
+            AttendanceAudio.playSuccess();
+            UIComponents.showToast(`Marked ${student.fullName} as RETURNED. Recording NFC tap now.`, 'success');
+            await AttendanceModule.recordAttendanceEntry({
+              student,
+              status: 'present',
+              method: 'NFC_TAP',
+              rfidUid: rfidUid || 'UID: 04:A2:8F:B1',
+              remarks: 'Contactless NFC Sensor (Return from Leave)'
+            });
+            renderNfcFeed();
+          });
+          UIComponents.refreshIcons();
+          return;
+        }
+
         const uid = rfidUid || `UID: 04:${Math.random().toString(16).substring(2, 6).toUpperCase()}:${Math.random().toString(16).substring(2, 6).toUpperCase()}`;
 
         // Save to Database
@@ -1551,6 +1687,59 @@ export class AttendanceModule {
       const student = this._students.find(s => s.admissionNo === targetId || s.id === targetId);
 
       if (student) {
+        // Check if student has an active leave
+        const activeLeave = (this._leaves || []).find(l => 
+          (l.studentId === student.id || l.admissionNo === student.admissionNo) && 
+          l.status === 'APPROVED_ON_LEAVE' && 
+          !l.actualReturn && 
+          this._selectedDate >= l.fromDate
+        );
+
+        if (activeLeave) {
+          AttendanceAudio.playError();
+          feedback.innerHTML = `
+            <div style="display:flex; align-items:center; gap:16px; text-align:left; width:100%; background:#FEF3C7; border:2px solid #F59E0B; padding:12px 16px; border-radius:12px;">
+              <div class="tms-student-avatar" style="width:54px; height:54px; border:2px solid #F59E0B;">
+                ${student.photo ? `<img src="${esc(student.photo)}">` : (student.gender === 'Girl' ? '👧' : '👦')}
+              </div>
+              <div style="flex:1;">
+                <div style="font-weight:800; font-size:1.05rem; color:#92400E;">
+                  ⚠️ FACE SCAN BLOCKED: ${esc(student.fullName)} IS ON LEAVE
+                </div>
+                <div style="color:#B45309; font-weight:700; font-size:0.8rem; margin-top:2px;">
+                  Gate Pass: <span class="font-mono">${esc(activeLeave.gatePassNo || 'GP-ISSUED')}</span> • ${esc(activeLeave.fromDate)} to ${esc(activeLeave.toDate)}
+                </div>
+                <div style="font-size:0.75rem; color:#78350F; margin-top:2px;">
+                  Student is registered on active leave. Attendance locked until staff records return.
+                </div>
+              </div>
+              <button type="button" class="btn btn-sm btn-primary btn-face-mark-returned" data-leave-id="${esc(activeLeave.id)}" style="background:#0E623B; border-color:#0E623B; font-weight:700; border-radius:8px; white-space:nowrap;">
+                <i data-lucide="corner-down-left"></i> Mark Returned
+              </button>
+            </div>
+          `;
+          feedback.style.background = '#FEF3C7';
+          feedback.style.borderColor = '#F59E0B';
+
+          feedback.querySelector('.btn-face-mark-returned')?.addEventListener('click', async () => {
+            const staffUser = authService.getCurrentUser();
+            await StudentLeaveService.markAsReturned(activeLeave.id, { returnedMarkedBy: staffUser?.name || 'Gate Officer' });
+            this._leaves = await StudentLeaveService.getLeaves();
+            AttendanceAudio.playSuccess();
+            UIComponents.showToast(`Marked ${student.fullName} as RETURNED. Recording facial punch now.`, 'success');
+            await AttendanceModule.recordAttendanceEntry({
+              student,
+              status: 'present',
+              method: 'FACE_RECOGNITION',
+              confidence: explicitConfidence || '99.4%',
+              remarks: 'AI Facial Vision Biometrics (Return from Leave)'
+            });
+            renderFaceFeed();
+          });
+          UIComponents.refreshIcons();
+          return;
+        }
+
         // Shutter Sound & Flash Animation
         AttendanceAudio.playShutter();
         if (reticleBox) {
@@ -1667,6 +1856,16 @@ export class AttendanceModule {
 
     const stats = this.computeStatsForDate(this._selectedDate);
 
+    // Calculate active leaves count for today
+    const activeLeavesCount = this._students.filter(s => 
+      (this._leaves || []).some(l => 
+        (l.studentId === s.id || l.admissionNo === s.admissionNo) && 
+        l.status === 'APPROVED_ON_LEAVE' && 
+        !l.actualReturn && 
+        this._selectedDate >= l.fromDate
+      )
+    ).length;
+
     viewport.innerHTML = `
       <div class="card">
         <!-- Register Top Controls & Institutional Counters -->
@@ -1686,7 +1885,7 @@ export class AttendanceModule {
         </div>
 
         <!-- Ledger KPI Summary Chips -->
-        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:10px; margin-bottom:16px;">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(120px, 1fr)); gap:10px; margin-bottom:16px;">
           <div style="background:#F8FAFC; border:1px solid #E2E8F0; border-radius:12px; padding:10px; text-align:center;">
             <div style="font-size:0.7rem; color:#64748B; font-weight:700; text-transform:uppercase;">Enrolled</div>
             <div style="font-size:1.25rem; font-weight:800; color:#0F172A;">${stats.totalEnrolled}</div>
@@ -1698,6 +1897,10 @@ export class AttendanceModule {
           <div style="background:#FEF2F2; border:1px solid #FECACA; border-radius:12px; padding:10px; text-align:center;">
             <div style="font-size:0.7rem; color:#991B1B; font-weight:700; text-transform:uppercase;">Absent</div>
             <div style="font-size:1.25rem; font-weight:800; color:#DC2626;">${stats.absentCount}</div>
+          </div>
+          <div style="background:#FFFBEB; border:1px solid #FCD34D; border-radius:12px; padding:10px; text-align:center;">
+            <div style="font-size:0.7rem; color:#92400E; font-weight:700; text-transform:uppercase;">On Leave</div>
+            <div style="font-size:1.25rem; font-weight:800; color:#D97706;">${activeLeavesCount}</div>
           </div>
           <div style="background:#FFFBEB; border:1px solid #FDE68A; border-radius:12px; padding:10px; text-align:center;">
             <div style="font-size:0.7rem; color:#92400E; font-weight:700; text-transform:uppercase;">Late</div>
@@ -1738,15 +1941,22 @@ export class AttendanceModule {
             </thead>
             <tbody>
               ${filteredStudents.length ? filteredStudents.map(s => {
+                const activeLeave = (this._leaves || []).find(l => 
+                  (l.studentId === s.id || l.admissionNo === s.admissionNo) && 
+                  l.status === 'APPROVED_ON_LEAVE' && 
+                  !l.actualReturn && 
+                  this._selectedDate >= l.fromDate
+                );
+
                 const rec = studentStatusMap.get(s.id) || { status: 'present', method: 'MANUAL', time: '' };
                 const st = (rec.status || 'present').toLowerCase();
                 const methodBadgeClass = rec.method === 'QR_SCAN' ? 'method-qr' : (rec.method === 'NFC_TAP' ? 'method-nfc' : (rec.method === 'FACE_RECOGNITION' ? 'method-face' : 'method-roll'));
 
                 return `
-                  <tr style="border-bottom:1px solid #F1F5F9;" data-student-id="${esc(s.id)}" class="reg-student-row">
+                  <tr style="border-bottom:1px solid #F1F5F9; ${activeLeave ? 'background:rgba(254,243,199,0.2);' : ''}" data-student-id="${esc(s.id)}" class="reg-student-row">
                     <td style="padding:12px 14px;">
                       <div style="display:flex; align-items:center; gap:10px;">
-                        <div class="tms-student-avatar" style="width:36px; height:36px;">
+                        <div class="tms-student-avatar" style="width:36px; height:36px; ${activeLeave ? 'border:2px solid #F59E0B;' : ''}">
                           ${s.photo ? `<img src="${esc(s.photo)}">` : (s.gender === 'Girl' ? '👧' : '👦')}
                         </div>
                         <div>
@@ -1758,16 +1968,20 @@ export class AttendanceModule {
                     <td style="padding:12px 14px;"><span class="tms-id-badge">${esc(s.admissionNo)}</span></td>
                     <td style="padding:12px 14px;"><strong>${esc(s.grade)}</strong></td>
                     <td style="padding:12px 14px;">
-                      ${rec.method ? `
+                      ${activeLeave ? `
+                        <span class="badge" style="background:#FEF3C7; color:#92400E; border:1px solid #FCD34D; font-size:0.74rem; font-weight:700; padding:3px 8px; border-radius:6px; display:inline-flex; align-items:center; gap:4px;">
+                          <i data-lucide="shield-alert" style="width:11px; height:11px;"></i> GATE PASS ISSUED
+                        </span>
+                      ` : (rec.method ? `
                         <span class="kiosk-activity-badge ${methodBadgeClass}">
                           ${esc(rec.method.replace('_', ' '))} ${rec.time ? `• ${esc(rec.time)}` : ''}
                         </span>
-                      ` : '<span style="color:#94A3B8; font-size:0.76rem;">—</span>'}
+                      ` : '<span style="color:#94A3B8; font-size:0.76rem;">—</span>')}
                     </td>
                     <td style="padding:12px 14px;">
                       <div style="display:flex; align-items:center; gap:6px;">
                         <span>${esc(s.guardianPhone || '—')}</span>
-                        ${st === 'absent' && s.guardianPhone ? `
+                        ${st === 'absent' && s.guardianPhone && !activeLeave ? `
                           <button type="button" class="btn btn-xs btn-outline btn-whatsapp-alert" data-id="${esc(s.id)}" title="Send WhatsApp Absence Alert" style="color:#25D366; border-color:#25D366; border-radius:6px; padding:2px 6px;">
                             <i data-lucide="message-circle" style="width:12px; height:12px;"></i>
                           </button>
@@ -1775,12 +1989,26 @@ export class AttendanceModule {
                       </div>
                     </td>
                     <td style="padding:12px 14px; text-align:center;">
-                      <div style="display:inline-flex; gap:6px;">
-                        <button type="button" class="att-status-btn btn-p ${st === 'present' ? 'active' : ''}" data-status="present" title="Present">P</button>
-                        <button type="button" class="att-status-btn btn-a ${st === 'absent' ? 'active' : ''}" data-status="absent" title="Absent">A</button>
-                        <button type="button" class="att-status-btn btn-l ${st === 'late' ? 'active' : ''}" data-status="late" title="Late">L</button>
-                        <button type="button" class="att-status-btn btn-e ${st === 'excused' ? 'active' : ''}" data-status="excused" title="Excused">E</button>
-                      </div>
+                      ${activeLeave ? `
+                        <div style="display:inline-flex; flex-direction:column; align-items:center; gap:4px;">
+                          <span class="badge" style="background:#FEF3C7; color:#92400E; border:1.5px solid #FCD34D; font-weight:800; font-size:0.76rem; padding:4px 12px; border-radius:9999px; display:inline-flex; align-items:center; gap:5px; box-shadow:0 1px 3px rgba(180,83,9,0.1);">
+                            <i data-lucide="plane-takeoff" style="width:13px; height:13px;"></i> ON LEAVE (${esc(activeLeave.leaveType ? activeLeave.leaveType.split('/')[0].trim() : 'Leave')})
+                          </span>
+                          <div style="font-size:0.7rem; color:#B45309; font-weight:600;">
+                            Pass: <span class="font-mono" style="font-weight:700;">${esc(activeLeave.gatePassNo || 'GP-ACTIVE')}</span> • ${esc(activeLeave.fromDate)} to ${esc(activeLeave.toDate)}
+                          </div>
+                          <button type="button" class="btn btn-xs btn-outline btn-mark-returned-reg" data-leave-id="${esc(activeLeave.id)}" style="background:#FFFFFF; color:#0E623B; border:1px solid #0E623B; font-weight:700; border-radius:6px; padding:2px 10px; font-size:0.72rem; cursor:pointer; margin-top:2px;" title="Assigned staff marks student return">
+                            <i data-lucide="corner-down-left" style="width:11px; height:11px;"></i> Mark Returned
+                          </button>
+                        </div>
+                      ` : `
+                        <div style="display:inline-flex; gap:6px;">
+                          <button type="button" class="att-status-btn btn-p ${st === 'present' ? 'active' : ''}" data-status="present" title="Present">P</button>
+                          <button type="button" class="att-status-btn btn-a ${st === 'absent' ? 'active' : ''}" data-status="absent" title="Absent">A</button>
+                          <button type="button" class="att-status-btn btn-l ${st === 'late' ? 'active' : ''}" data-status="late" title="Late">L</button>
+                          <button type="button" class="att-status-btn btn-e ${st === 'excused' ? 'active' : ''}" data-status="excused" title="Excused">E</button>
+                        </div>
+                      `}
                     </td>
                   </tr>
                 `;
@@ -2020,6 +2248,16 @@ export class AttendanceModule {
     }
 
     // Header Actions
+    container.querySelector('#btn-open-leave-desk')?.addEventListener('click', () => {
+      StudentLeaveService.openManageLeavesModal({
+        staffUser: authService.getCurrentUser(),
+        onComplete: async () => {
+          this._leaves = await StudentLeaveService.getLeaves();
+          this.renderActiveModeView(container);
+        }
+      });
+    });
+
     container.querySelector('#btn-add-new-classroom')?.addEventListener('click', () => {
       ClassroomModal.open({
         onSave: async (created) => {

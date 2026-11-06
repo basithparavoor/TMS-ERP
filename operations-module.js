@@ -29,7 +29,7 @@ export class OperationsModule {
         <div class="kpi-grid">
           ${UIComponents.renderKpiCard({ title: 'Library Catalogued Books', value: '—', icon: 'library', color: 'blue', subtitle: 'No Records Available' })}
           ${UIComponents.renderKpiCard({ title: 'School Bus Fleet', value: '—', icon: 'bus', color: 'emerald', subtitle: 'No Records Available' })}
-          ${UIComponents.renderKpiCard({ title: 'Hostel Residents', value: '126 / 150', icon: 'home', color: 'amber', subtitle: '84% Occupancy' })}
+          ${websiteService.isHostelEnabled() ? UIComponents.renderKpiCard({ title: 'Hostel Residents', value: '126 / 150', icon: 'home', color: 'amber', subtitle: '84% Occupancy' }) : ''}
           ${UIComponents.renderKpiCard({ title: 'Tracked Campus Assets', value: '—', icon: 'package', color: 'rose', subtitle: 'No Records Available' })}
         </div>
 
@@ -44,10 +44,11 @@ export class OperationsModule {
               <i data-lucide="bus"></i>
               <span>Transport &amp; Bus Routes</span>
             </button>
+            ${websiteService.isHostelEnabled() ? `
             <button class="tms-tab-pill ops-tab" data-tab="hostel">
               <i data-lucide="home"></i>
               <span>Hostel &amp; Dormitories</span>
-            </button>
+            </button>` : ''}
             <button class="tms-tab-pill ops-tab" data-tab="inventory">
               <i data-lucide="package"></i>
               <span>Asset Inventory</span>
@@ -65,6 +66,14 @@ export class OperationsModule {
   }
 
   static renderTab(tabKey, container) {
+    if (tabKey === 'hostel' && !websiteService.isHostelEnabled()) {
+      tabKey = 'library';
+      const libTab = container.querySelector('.ops-tab[data-tab="library"]');
+      if (libTab) {
+        container.querySelectorAll('.ops-tab').forEach(b => b.classList.remove('active'));
+        libTab.classList.add('active');
+      }
+    }
     const content = container.querySelector('#ops-tab-content');
     if (!content) return;
 
@@ -297,6 +306,11 @@ export class OperationsModule {
   }
 
   static bindEvents(container) {
+    window.addEventListener('tms_hostel_toggled', () => {
+      if (document.body.contains(container)) {
+        this.render(container);
+      }
+    });
     container.querySelectorAll('.ops-tab').forEach(btn => {
       btn.addEventListener('click', (e) => {
         container.querySelectorAll('.ops-tab').forEach(b => {

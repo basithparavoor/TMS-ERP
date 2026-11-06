@@ -33,6 +33,7 @@ import { IdCardsModule } from './id-cards-module.js';
 import { CalendarModule } from './calendar-module.js';
 import { HomeworkModule } from './homework-module.js';
 import { WhatsAppService } from './whatsapp-service.js';
+import { websiteService } from './website-service.js';
 import { admissionService } from './admission-service.js';
 import { OnboardingService } from './onboarding-service.js';
 import { brandingService } from './branding-service.js';
@@ -227,6 +228,10 @@ export class AppController {
 
     this.populateSidebarNav();
 
+    window.addEventListener('tms_hostel_toggled', () => {
+      this.populateSidebarNav();
+    });
+
     // Bind avatar click in topbar to profile
     document.getElementById('topbar-user-avatar')?.addEventListener('click', () => this.openMyProfile());
 
@@ -295,7 +300,7 @@ export class AppController {
           { id: 'calendar', label: 'Academic Calendar', icon: 'calendar', module: 'calendar' },
           { id: 'examinations', label: 'Exams & Reports', icon: 'award', module: 'examinations' },
           { id: 'certificates', label: 'Certificates (TC & Merit)', icon: 'file-check', module: 'certificates' },
-          { id: 'operations', label: 'Hostel & Operations', icon: 'home', module: 'operations' }
+          { id: 'operations', label: websiteService.isHostelEnabled() ? 'Hostel & Operations' : 'Campus Operations', icon: websiteService.isHostelEnabled() ? 'home' : 'truck', module: 'operations' }
         ]
       },
       {

@@ -162,7 +162,7 @@ export class AdminModule {
             <i data-lucide="globe"></i>
             <span>Institutional Website</span>
           </button>
-          <button class="tms-tab-pill" data-group="hostel">
+          <button class="tms-tab-pill" data-group="hostel" id="admin-group-tab-hostel" style="${websiteService.isHostelEnabled() ? '' : 'display:none;'}">
             <i data-lucide="home"></i>
             <span>Hostel Management</span>
           </button>
@@ -348,6 +348,11 @@ export class AdminModule {
   }
 
   static switchGroup(groupKey, targetSubtab = null) {
+    if (groupKey === 'hostel' && !websiteService.isHostelEnabled()) {
+      groupKey = 'website';
+      targetSubtab = targetSubtab || 'website-hostel';
+    }
+
     const primaryTabs = document.getElementById('admin-primary-tabs');
     if (primaryTabs) {
       primaryTabs.querySelectorAll('.tms-tab-pill').forEach(b => {
@@ -501,6 +506,17 @@ export class AdminModule {
 
     const bell = container.querySelector('#btn-new-notification');
     if (bell) bell.addEventListener('click', () => this.openNotificationModal());
+
+    window.addEventListener('tms_hostel_toggled', (e) => {
+      const isEnabled = !!(e.detail && e.detail.enabled);
+      const hostelPill = container.querySelector('#admin-group-tab-hostel');
+      if (hostelPill) {
+        hostelPill.style.display = isEnabled ? 'inline-flex' : 'none';
+      }
+      if (!isEnabled && this._activeGroup === 'hostel') {
+        this.switchGroup('website', 'website-hostel');
+      }
+    });
   }
 
   static async renderTab(tabKey) {
