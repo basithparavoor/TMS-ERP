@@ -19,7 +19,7 @@ import { MyWorkModule } from './my-work-module.js';
 import { AttendanceModule } from './attendance-module.js';
 import { StudentModule } from './student-module.js';
 import { StaffModule } from './staff-module.js';
-import { AcademicModule } from './academic-module.js';
+import { AcademicModule, syncActiveAcademicSession } from './academic-module.js';
 import { ExaminationModule } from './examination-module.js';
 import { FinanceModule } from './finance-module.js';
 import { CommunicationModule } from './communication-module.js';
@@ -180,7 +180,7 @@ export class AppController {
             <div class="topbar-right">
               <div class="ticker-badge" title="Campus Active">
                 <span style="width: 7px; height: 7px; border-radius: 50%; background: #16a34a; display: inline-block; animation: badgePulse 2s infinite;"></span>
-                <span>Session ${TMS_CONFIG.academic.currentYear} Active</span>
+                <span id="topbar-active-session-text">Session ${TMS_CONFIG.academic.currentYear} Active</span>
               </div>
 
               <button class="icon-btn notification-bell-btn" id="notification-bell" title="Notifications & Announcements" style="position: relative;">

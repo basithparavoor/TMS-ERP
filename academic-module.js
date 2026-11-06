@@ -1,3 +1,27 @@
+/**
+ * Synchronize the active campus academic session from database and local storage.
+ */
+export async function syncActiveAcademicSession() {
+  const local = localStorage.getItem('tms_active_session');
+  if (local) {
+    TMS_CONFIG.academic.currentYear = local;
+  }
+  try {
+    const sessions = await dbService.select('academic_sessions');
+    if (Array.isArray(sessions) && sessions.length > 0) {
+      const active = sessions.find(s => s.isCurrent === true || s.status === 'Active') || sessions[0];
+      if (active && active.sessionName) {
+        TMS_CONFIG.academic.currentYear = active.sessionName;
+        localStorage.setItem('tms_active_session', active.sessionName);
+        return active.sessionName;
+      }
+    }
+  } catch (e) {
+    console.warn('Could not sync active academic session:', e);
+  }
+  return TMS_CONFIG.academic.currentYear;
+}
+
 import { ClassroomModal } from './classroom-modal.js';
 /**
  * THAIBA MODEL SCHOOL — Academic & Curriculum Management Module
@@ -78,6 +102,8 @@ export class AcademicModule {
     this._selectedSubj = this._selectedSubj || 'Mathematics';
 
     const currentSessionObj = this._sessions.find(s => s.isCurrent) || this._sessions[0] || { sessionName: TMS_CONFIG.academic.currentYear };
+    TMS_CONFIG.academic.currentYear = currentSessionObj.sessionName;
+    localStorage.setItem('tms_active_session', currentSessionObj.sessionName);
 
     container.innerHTML = `
       <div class="tms-content-wrapper">
