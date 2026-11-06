@@ -564,6 +564,142 @@ class WebsiteService {
     }
     return brandingService.getLogoUrl() || TMS_LOGO.getCustomLogo() || './tms-logo.png';
   }
+
+  /* ================================================================== */
+  /* Admission Inquiries Engine & Cloud Sync                            */
+  /* ================================================================== */
+
+  /**
+   * List all admission inquiries
+   */
+  async listInquiries() {
+    let inquiries = [];
+    try {
+      const rows = await dbService.select('admission_inquiries', null, true);
+      if (Array.isArray(rows) && rows.length > 0) {
+        inquiries = rows;
+      }
+    } catch (e) {
+      console.warn('Admission inquiries DB query notice:', e);
+    }
+
+    if (inquiries.length === 0) {
+      try {
+        const raw = localStorage.getItem('tms_admission_inquiries');
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed) && parsed.length > 0) inquiries = parsed;
+        }
+      } catch (e) {}
+    }
+
+    // Try cloud backup in app_settings if still empty
+    if (inquiries.length === 0) {
+      try {
+        const rows = await dbService.select('app_settings');
+        const backupRow = rows.find(r => r.id === 'tms_admission_inquiries_backup' || r.key === 'tms_admission_inquiries_backup');
+        if (backupRow && Array.isArray(backupRow.value) && backupRow.value.length > 0) {
+          inquiries = backupRow.value;
+          localStorage.setItem('tms_admission_inquiries', JSON.stringify(inquiries));
+        }
+      } catch (e) {}
+    }
+
+    return inquiries.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  }
+
+  /**
+   * Save or insert a new admission inquiry
+   */
+  async saveInquiry(inquiry) {
+    const item = {
+      id: inquiry.id || ('INQ-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6).toUpperCase()),
+      guardianName: String(inquiry.guardianName || '').trim(),
+      phone: String(inquiry.phone || '').trim(),
+      grade: inquiry.grade || 'General Admission',
+      email: String(inquiry.email || '').trim(),
+      message: String(inquiry.message || '').trim(),
+      status: inquiry.status || 'new', // 'new' | 'contacted' | 'admitted' | 'closed'
+      source: inquiry.source || 'Institutional Website',
+      notes: inquiry.notes || '',
+      createdAt: inquiry.createdAt || new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    // 1. Update localStorage cache
+    let list = [];
+    try {
+      const raw = localStorage.getItem('tms_admission_inquiries');
+      list = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(list)) list = [];
+    } catch (e) { list = []; }
+
+    const idx = list.findIndex(i => i.id === item.id);
+    if (idx !== -1) {
+      list[idx] = { ...list[idx], ...item };
+    } else {
+      list.unshift(item);
+    }
+    try {
+      localStorage.setItem('tms_admission_inquiries', JSON.stringify(list));
+    } catch (e) {}
+
+    // 2. Persist to database
+    try {
+      await dbService.upsert('admission_inquiries', item);
+    } catch (e) {
+      console.warn('Database upsert for admission_inquiries:', e);
+    }
+
+    // 3. Cloud app_settings backup so inquiries sync across devices
+    try {
+      await dbService.upsert('app_settings', {
+        id: 'tms_admission_inquiries_backup',
+        value: list,
+        updated_at: new Date().toISOString()
+      });
+    } catch (e) {}
+
+    window.dispatchEvent(new CustomEvent('tms_inquiry_added', { detail: item }));
+    return item;
+  }
+
+  /**
+   * Update inquiry status and admin notes
+   */
+  async updateInquiry(id, updates = {}) {
+    const inquiries = await this.listInquiries();
+    const target = inquiries.find(i => i.id === id);
+    if (!target) return null;
+    const updated = {
+      ...target,
+      ...updates,
+      updatedAt: new Date().toISOString()
+    };
+    return this.saveInquiry(updated);
+  }
+
+  /**
+   * Delete an inquiry
+   */
+  async deleteInquiry(id) {
+    let list = await this.listInquiries();
+    list = list.filter(i => i.id !== id);
+    try {
+      localStorage.setItem('tms_admission_inquiries', JSON.stringify(list));
+    } catch (e) {}
+    try {
+      await dbService.delete('admission_inquiries', id);
+    } catch (e) {}
+    try {
+      await dbService.upsert('app_settings', {
+        id: 'tms_admission_inquiries_backup',
+        value: list,
+        updated_at: new Date().toISOString()
+      });
+    } catch (e) {}
+    return true;
+  }
 }
 
 export const websiteService = new WebsiteService();

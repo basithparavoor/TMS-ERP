@@ -8,6 +8,7 @@
 import { TMS_CONFIG } from './config.js';
 import { dbService } from './supabase-client.js';
 import { createUserViaRpc, describeAccountError } from './account-utils.js';
+import { websiteService } from './website-service.js';
 
 const STATUS = TMS_CONFIG.admissionStatuses;
 
@@ -367,36 +368,36 @@ class AdmissionService {
     if (typeof path === 'string' && (path.startsWith('data:') || path.startsWith('blob:') || path.startsWith('http://') || path.startsWith('https://'))) {
       return path;
     }
+    const cleanPath = String(path).replace(/^\/+/, '');
+    const supabaseUrl = (TMS_CONFIG.supabase && TMS_CONFIG.supabase.url) || 'https://rzcihdpzqrnzcaupjfla.supabase.co';
+
+    // Public buckets always resolve directly to public URL (instant 0ms, zero signing network errors)
+    if (bucket === 'admission-docs' || bucket === 'admissions' || bucket === 'avatars') {
+      return `${supabaseUrl}/storage/v1/object/public/${bucket}/${cleanPath}`;
+    }
+
     const client = dbService.getClient();
-    if (!client) return null;
+    if (!client) return `${supabaseUrl}/storage/v1/object/public/${bucket}/${cleanPath}`;
+
     try {
-      // Prioritize public URL for public buckets (admission-docs & avatars) for 0ms latency and avoiding signing errors
-      if (bucket === 'admission-docs' || bucket === 'admissions' || bucket === 'avatars') {
-        const pub = client.storage.from(bucket).getPublicUrl(path);
-        if (pub && pub.data && pub.data.publicUrl) return pub.data.publicUrl;
+      const { data, error } = await client.storage.from(bucket).createSignedUrl(cleanPath, expiresIn);
+      if (error || !data || !data.signedUrl) {
+        return `${supabaseUrl}/storage/v1/object/public/${bucket}/${cleanPath}`;
       }
-      const { data, error } = await client.storage.from(bucket).createSignedUrl(path, expiresIn);
-      if (error) {
-        try {
-          const pub = client.storage.from(bucket).getPublicUrl(path);
-          if (pub && pub.data && pub.data.publicUrl) return pub.data.publicUrl;
-        } catch (_) {}
-        return null;
-      }
-      return data ? data.signedUrl : null;
-    } catch (e) {
-      return null;
+      return data.signedUrl;
+    } catch (_) {
+      return `${supabaseUrl}/storage/v1/object/public/${bucket}/${cleanPath}`;
     }
   }
 
   getPublicUrl(bucket, path) {
-    const client = dbService.getClient();
-    if (!client || !path) return null;
-    try {
-      return client.storage.from(bucket).getPublicUrl(path).data.publicUrl;
-    } catch (e) {
-      return null;
+    if (!path) return null;
+    if (typeof path === 'string' && (path.startsWith('data:') || path.startsWith('blob:') || path.startsWith('http://') || path.startsWith('https://'))) {
+      return path;
     }
+    const cleanPath = String(path).replace(/^\/+/, '');
+    const supabaseUrl = (TMS_CONFIG.supabase && TMS_CONFIG.supabase.url) || 'https://rzcihdpzqrnzcaupjfla.supabase.co';
+    return `${supabaseUrl}/storage/v1/object/public/${bucket}/${cleanPath}`;
   }
 
   /* ---------------- Credentials ---------------- */
@@ -952,6 +953,24 @@ class AdmissionService {
       return scoreB - scoreA;
     });
     return filtered;
+  }
+
+  /* ---------------- Website Admission Inquiries ---------------- */
+
+  async listInquiries() {
+    return websiteService.listInquiries();
+  }
+
+  async saveInquiry(inquiry) {
+    return websiteService.saveInquiry(inquiry);
+  }
+
+  async updateInquiry(id, updates) {
+    return websiteService.updateInquiry(id, updates);
+  }
+
+  async deleteInquiry(id) {
+    return websiteService.deleteInquiry(id);
   }
 }
 

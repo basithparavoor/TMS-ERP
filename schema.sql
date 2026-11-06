@@ -1179,3 +1179,29 @@ DROP POLICY IF EXISTS "syllabus_topics_read" ON syllabus_topics;
 CREATE POLICY "syllabus_topics_read" ON syllabus_topics FOR SELECT TO anon, authenticated USING (true);
 DROP POLICY IF EXISTS "syllabus_topics_manage" ON syllabus_topics;
 CREATE POLICY "syllabus_topics_manage" ON syllabus_topics FOR ALL TO authenticated USING (true);
+
+-- Campus Multi-Modal Attendance Records
+CREATE TABLE IF NOT EXISTS attendance_records (
+    id TEXT PRIMARY KEY,
+    student_id TEXT,
+    admission_no TEXT,
+    student_name TEXT,
+    class_id TEXT,
+    class_name TEXT,
+    grade TEXT,
+    date DATE NOT NULL,
+    status TEXT NOT NULL DEFAULT 'present',
+    time TEXT,
+    method TEXT,
+    confidence TEXT,
+    rfid_uid TEXT,
+    remarks TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE attendance_records ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "attendance_records_read" ON attendance_records;
+CREATE POLICY "attendance_records_read" ON attendance_records FOR SELECT TO anon, authenticated USING (true);
+DROP POLICY IF EXISTS "attendance_records_manage" ON attendance_records;
+CREATE POLICY "attendance_records_manage" ON attendance_records FOR ALL TO anon, authenticated USING (true);
+

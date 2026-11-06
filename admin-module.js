@@ -588,9 +588,13 @@ export class AdminModule {
     body.innerHTML = rows.map((a) => {
       const pld = a.payload || {};
       const photoName = pld.photo || pld.candidatePassportPhoto || pld.passportPhoto || pld.studentPassportPhoto || pld.studentProfilePhoto || pld.candidatePhoto;
-      const photoSrc = photoName && (photoName.startsWith('http') || photoName.startsWith('data:')) ? photoName : '';
-      const photoCell = photoName
-        ? `<img class="app-photo-thumb" data-path="${esc(photoName)}" alt="Applicant photo"
+      const photoSrc = photoName
+        ? ((photoName.startsWith('http') || photoName.startsWith('data:'))
+            ? photoName
+            : admissionService.getPublicUrl('admission-docs', photoName))
+        : '';
+      const photoCell = photoSrc
+        ? `<img class="app-photo-thumb" src="${esc(photoSrc)}" data-path="${esc(photoName)}" alt="Applicant photo"
              style="width:30px;height:36px;object-fit:cover;border:1px solid var(--border-color);border-radius:4px;background:#f1f5f9;cursor:pointer;"
              onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'30\' height=\'36\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%2394a3b8\' stroke-width=\'2\'><path d=\'M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2\'/><circle cx=\'12\' cy=\'7\' r=\'4\'/></svg>';"
              title="Click to view the photographed applicant">`
@@ -641,12 +645,7 @@ export class AdminModule {
         await this.deleteApplications([id]);
       }));
 
-    // Hydrate applicant photo thumbnails with signed URLs (private bucket).
-    body.querySelectorAll('.app-photo-thumb').forEach((img) =>
-      admissionService.getSignedUrl('admission-docs', img.dataset.path, 3600).then((url) => {
-        if (url) img.src = url;
-        else img.style.display = 'none';
-      }));
+    // Click applicant photo thumbnail to open preview modal
     body.querySelectorAll('.app-photo-thumb').forEach((img) =>
       img.addEventListener('click', () => {
         const app = rows.find((a) => (a.payload || {}).photo === img.dataset.path);
@@ -1219,22 +1218,21 @@ export class AdminModule {
       });
     }
 
-    // Applicant photo (signed URL from the private bucket).
+    // Applicant photo
     if (photoPath) {
-      admissionService.getSignedUrl('admission-docs', photoPath).then((url) => {
-        const img = document.getElementById('app-photo-img');
-        if (img && url) {
-          img.src = url;
-          img.onerror = () => { img.style.display = 'none'; };
-        }
-      });
+      const url = admissionService.getPublicUrl('admission-docs', photoPath);
+      const img = document.getElementById('app-photo-img');
+      if (img && url) {
+        img.src = url;
+        img.onerror = () => { img.style.display = 'none'; };
+      }
     }
 
-    // Document links open via short-lived signed URLs.
+    // Document links open via direct URL
     document.querySelectorAll('.doc-link').forEach((link) =>
       link.addEventListener('click', async (e) => {
         e.preventDefault();
-        const url = await admissionService.getSignedUrl('admission-docs', link.dataset.path);
+        const url = admissionService.getPublicUrl('admission-docs', link.dataset.path);
         if (url) window.open(url, '_blank');
         else UIComponents.showToast('Could not open the document (storage not configured).', 'warning');
       }));
@@ -1662,7 +1660,7 @@ export class AdminModule {
     const photoPath = (app.payload || {})[photoKey] || '';
     let photoUrl = '';
     if (photoPath) {
-      photoUrl = (await admissionService.getSignedUrl('admission-docs', photoPath, 3600)) || '';
+      photoUrl = admissionService.getPublicUrl('admission-docs', photoPath) || '';
     }
     const photoBox = `
       <div style="width:105px;height:128px;border:1.5px solid #0f172a;margin-left:auto;display:flex;align-items:center;justify-content:center;overflow:hidden;text-align:center;font-size:8.5px;background:#fafafa;padding:2px;border-radius:4px;">

@@ -217,9 +217,12 @@ class SupabaseDataService {
         this.client.from(collection).select('*').then(({ data, error }) => {
           if (!error && Array.isArray(data)) {
             const mapped = data.map(rowFromDb);
-            this._memCache.set(collection, mapped);
-            this._memCacheTime.set(collection, Date.now());
-            this.setLocal(collection, mapped);
+            const currentLocal = this.getLocal(collection);
+            if (mapped.length > 0 || currentLocal.length === 0) {
+              this._memCache.set(collection, mapped);
+              this._memCacheTime.set(collection, Date.now());
+              this.setLocal(collection, mapped);
+            }
           }
         }).catch(() => {});
       }
@@ -234,10 +237,12 @@ class SupabaseDataService {
         if (error) throw error;
         if (Array.isArray(data)) {
           const mapped = data.map(rowFromDb);
-          this._memCache.set(collection, mapped);
-          this._memCacheTime.set(collection, now);
-          this.setLocal(collection, mapped);
-          return filterFn ? mapped.filter(filterFn) : [...mapped];
+          if (mapped.length > 0 || localData.length === 0) {
+            this._memCache.set(collection, mapped);
+            this._memCacheTime.set(collection, now);
+            this.setLocal(collection, mapped);
+            return filterFn ? mapped.filter(filterFn) : [...mapped];
+          }
         }
       } catch (err) {
         console.warn(`Supabase select failed for ${collection}, using local cache:`, err.message);

@@ -2558,6 +2558,7 @@
                   <option value="Middle (6-8)">Middle School (Grades 6 – 8)</option>
                   <option value="Secondary (9-10)">Secondary (Grades 9 – 10)</option>
                   <option value="Higher Secondary (11-12)">Senior Secondary (Grades 11 – 12)</option>
+                  <option value="Hostel & Residential Wing">Hostel &amp; Residential Wing</option>
                   <option value="Moral Wing">Islamic &amp; Moral Studies Wing</option>
                 </select>
               </div>
@@ -3339,19 +3340,90 @@
       // Quick Inquiry Form Submission
       const inqForm = document.getElementById('inquiry-form');
       if (inqForm) {
-        inqForm.addEventListener('submit', (e) => {
+        inqForm.addEventListener('submit', async (e) => {
           e.preventDefault();
-          const name = document.getElementById('inq-name').value;
-          const phone = document.getElementById('inq-phone').value;
-          const grade = document.getElementById('inq-grade').value;
+          const nameEl = document.getElementById('inq-name');
+          const phoneEl = document.getElementById('inq-phone');
+          const gradeEl = document.getElementById('inq-grade');
+          const emailEl = document.getElementById('inq-email');
+          const msgEl = document.getElementById('inq-msg');
           const status = document.getElementById('inquiry-status');
+          const submitBtn = inqForm.querySelector('button[type="submit"]');
 
-          if (status) {
-            status.style.display = 'block';
-            status.style.color = '#16a34a';
-            status.innerHTML = `<strong>Thank you, ${esc(name)}!</strong> Your admission inquiry for ${esc(grade)} has been received. Our desk will contact ${esc(phone)} shortly.`;
+          const name = nameEl ? nameEl.value.trim() : '';
+          const phone = phoneEl ? phoneEl.value.trim() : '';
+          const grade = gradeEl ? gradeEl.value : 'General Admission';
+          const email = emailEl ? emailEl.value.trim() : '';
+          const msg = msgEl ? msgEl.value.trim() : '';
+
+          if (!name || !phone) {
+            if (status) {
+              status.style.display = 'block';
+              status.style.color = '#dc2626';
+              status.innerText = 'Please provide both Guardian Name and Contact Phone.';
+            }
+            return;
           }
-          inqForm.reset();
+
+          if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i data-lucide="loader" class="spin"></i> Submitting...';
+            if (window.lucide) window.lucide.createIcons();
+          }
+
+          const inquiry = {
+            id: 'INQ-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6).toUpperCase(),
+            guardianName: name,
+            phone: phone,
+            grade: grade,
+            email: email,
+            message: msg,
+            status: 'new',
+            source: 'Website Contact Form',
+            notes: '',
+            createdAt: new Date().toISOString()
+          };
+
+          try {
+            await websiteService.saveInquiry(inquiry);
+            if (status) {
+              status.style.display = 'block';
+              status.style.background = '#ecfdf5';
+              status.style.border = '1.5px solid #a7f3d0';
+              status.style.borderRadius = '10px';
+              status.style.padding = '14px 16px';
+              status.style.color = '#15803d';
+              status.style.textAlign = 'left';
+              status.innerHTML = `
+                <div style="font-weight:800; font-size:1rem; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+                  <i data-lucide="check-circle" style="width:18px; height:18px; color:#16a34a;"></i>
+                  <span>Inquiry Received Successfully!</span>
+                </div>
+                <div style="font-size:0.86rem; color:#166534; line-height:1.5;">
+                  Thank you, <strong>${esc(name)}</strong>. Your admission inquiry for <strong>${esc(grade)}</strong> has been registered. Our admissions desk will call you at <strong>${esc(phone)}</strong> shortly.
+                </div>
+              `;
+              if (window.lucide) window.lucide.createIcons();
+            }
+            inqForm.reset();
+          } catch (err) {
+            console.error('Failed to save inquiry:', err);
+            if (status) {
+              status.style.display = 'block';
+              status.style.background = '#fef2f2';
+              status.style.border = '1px solid #fecaca';
+              status.style.borderRadius = '10px';
+              status.style.padding = '12px 14px';
+              status.style.color = '#b91c1c';
+              status.innerHTML = 'Unable to send inquiry online. Please contact our campus office directly at <strong>+91 8653382851</strong>.';
+            }
+          } finally {
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.innerHTML = '<i data-lucide="send" style="width:16px; height:16px;"></i> Submit Inquiry';
+              if (window.lucide) window.lucide.createIcons();
+            }
+          }
         });
       }
     }
