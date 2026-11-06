@@ -43,7 +43,7 @@ import { checkMigration } from './migration-check.js';
 const esc = (v) => UIComponents.escapeHtml(v);
 const DEFAULT_AVATAR = 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150';
 
-class AppController {
+export class AppController {
   constructor() {
     this.currentRoute = '';
     this.init();

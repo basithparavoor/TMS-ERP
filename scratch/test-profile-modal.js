@@ -52,8 +52,8 @@ class CDPClient {
 }
 
 async function run() {
-  const CDP_PORT = 9392;
-  const profileDir = path.join(artifactDir, 'scratch', 'edge-profile-modal-2');
+  const CDP_PORT = 9398;
+  const profileDir = path.join(artifactDir, 'scratch', 'edge-profile-modal-3');
   const edgeProc = spawn(edgePath, [
     `--remote-debugging-port=${CDP_PORT}`,
     `--user-data-dir=${profileDir}`,
@@ -73,26 +73,29 @@ async function run() {
     await client.send('Runtime.enable');
     await client.send('DOM.enable');
 
-    console.log('Navigating to http://localhost:3000/ ...');
-    await client.send('Page.navigate', { url: 'http://localhost:3000/' });
-    await wait(1000);
+    console.log('Navigating to http://localhost:3000/dashboard.html ...');
+    await client.send('Page.navigate', { url: 'http://localhost:3000/dashboard.html' });
+    await wait(1500);
 
-    // Seed mock staff session
-    const mockUser = {
-      id: 'mock-user-cmbasith',
-      name: 'C. M. Basith',
-      email: 'cmbasith786@gmail.com',
-      role: 'super_admin',
-      title: 'Executive Director & Super Admin',
-      department: 'Executive Governance & Leadership',
-      phone: '+91 98470 55667',
-      avatar: './icons/tms-logo.png'
-    };
+    const evalRes = await client.send('Runtime.evaluate', {
+      expression: `(async () => {
+        const { AppController } = await import('./app.js');
+        const { authService } = await import('./auth-service.js');
+        const { OnboardingService } = await import('./onboarding-service.js');
 
-    await client.send('Runtime.evaluate', {
-      expression: `
-        localStorage.setItem('tms_auth_session', JSON.stringify(${JSON.stringify(mockUser)}));
-        localStorage.setItem('tms_staff_meta_mock-user-cmbasith', JSON.stringify({
+        const mockUser = {
+          id: 'test-admin-basith',
+          name: 'C. M. Basith',
+          email: 'cmbasith786@gmail.com',
+          role: 'super_admin',
+          title: 'Executive Director & Super Admin',
+          department: 'Executive Governance & Leadership',
+          phone: '+91 98470 55667',
+          avatar: './icons/tms-logo.png'
+        };
+
+        authService.currentUser = mockUser;
+        localStorage.setItem('tms_staff_meta_test-admin-basith', JSON.stringify({
           tgiId: '001',
           bloodGroup: 'O+',
           answers: {
@@ -101,23 +104,15 @@ async function run() {
             q_address: 'Baghait, Tapan, Dakshin Dinajpur'
           }
         }));
-      `
-    });
 
-    console.log('Navigating to http://localhost:3000/dashboard.html ...');
-    await client.send('Page.navigate', { url: 'http://localhost:3000/dashboard.html' });
-    await wait(2500);
-
-    // Trigger openMyProfile directly
-    const evalRes = await client.send('Runtime.evaluate', {
-      expression: `(async () => {
-        const mini = document.getElementById('user-mini-card') || document.getElementById('topbar-user-avatar');
-        if (mini) mini.click();
+        // Create controller and call openMyProfile without re-running init()
+        const ctrl = Object.create(AppController.prototype);
+        await ctrl.openMyProfile();
 
         await new Promise(r => setTimeout(r, 600));
 
         const modal = document.querySelector('.modal-dialog, .modal-content, .inst-profile-modal-body');
-        if (!modal) return { error: 'Modal not opened' };
+        if (!modal) return { error: 'Modal not opened in DOM' };
 
         const hero = document.querySelector('.inst-profile-hero-card');
         const heroName = hero?.querySelector('.inst-hero-name')?.textContent;
@@ -128,7 +123,7 @@ async function run() {
         }));
 
         return {
-          modalFound: true,
+          success: true,
           heroName,
           heroBadges,
           creds,
@@ -141,7 +136,7 @@ async function run() {
       returnByValue: true
     });
 
-    console.log('Profile Modal Audit Result:', JSON.stringify(evalRes.result.value, null, 2));
+    console.log('Profile Modal Result:', JSON.stringify(evalRes.result.value, null, 2));
 
     const shot = await client.send('Page.captureScreenshot', { format: 'png' });
     const shotPath = path.join(artifactDir, 'profile-modal-fixed-preview.png');
