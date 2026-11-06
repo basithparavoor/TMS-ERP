@@ -265,8 +265,16 @@ class SupabaseDataService {
         const { data, error } = await this.client.from(collection).select('*');
         if (error) throw error;
         if (Array.isArray(data)) {
-          const mapped = data.map(rowFromDb);
+          let mapped = data.map(rowFromDb);
           if (mapped.length > 0 || localData.length === 0) {
+            // Preserve locally saved records that may not yet exist on the remote database
+            if (localData && localData.length > 0) {
+              const mappedIds = new Set(mapped.map(m => m.id));
+              const localUnsynced = localData.filter(loc => loc && loc.id && !mappedIds.has(loc.id));
+              if (localUnsynced.length > 0) {
+                mapped = [...mapped, ...localUnsynced];
+              }
+            }
             this._memCache.set(collection, mapped);
             this._memCacheTime.set(collection, now);
             this.setLocal(collection, mapped);

@@ -118,6 +118,64 @@ export class AdminWebsiteCms {
     UIComponents.refreshIcons();
   }
 
+  static harvestActiveInputs() {
+    if (!this._config) return;
+    const getVal = (id) => {
+      const el = document.getElementById(id);
+      return el ? el.value : null;
+    };
+
+    // General / Identity
+    if (!this._config.meta) this._config.meta = {};
+    const metaName = getVal('meta-name'); if (metaName !== null) this._config.meta.name = metaName;
+    const metaRunBy = getVal('meta-runby'); if (metaRunBy !== null) this._config.meta.runBy = metaRunBy;
+    const metaRegNo = getVal('meta-regno'); if (metaRegNo !== null) this._config.meta.regNo = metaRegNo;
+    const metaYear = getVal('meta-year'); if (metaYear !== null) this._config.meta.foundedYear = metaYear;
+    const metaAff = getVal('meta-affiliation'); if (metaAff !== null) this._config.meta.affiliation = metaAff;
+    const metaLogin = getVal('meta-loginbtn'); if (metaLogin !== null) this._config.meta.loginButtonText = metaLogin;
+
+    // Theme
+    if (!this._config.theme) this._config.theme = {};
+    const themePrim = getVal('theme-primary-txt') || getVal('theme-primary'); if (themePrim !== null) this._config.theme.primaryColor = themePrim;
+    const themeAcc = getVal('theme-accent-txt') || getVal('theme-accent'); if (themeAcc !== null) this._config.theme.accentColor = themeAcc;
+    const themeLogo = getVal('theme-logourl'); if (themeLogo !== null) this._config.theme.customLogoUrl = themeLogo;
+
+    // Hero
+    if (!this._config.hero) this._config.hero = {};
+    const hBadge = getVal('hero-badge'); if (hBadge !== null) this._config.hero.badge = hBadge;
+    const hHead = getVal('hero-headline'); if (hHead !== null) this._config.hero.headline = hHead;
+    const hSub = getVal('hero-subheadline'); if (hSub !== null) this._config.hero.subheadline = hSub;
+    const hCta1 = getVal('hero-cta1-txt'); if (hCta1 !== null) this._config.hero.primaryCtaText = hCta1;
+    const hCta1U = getVal('hero-cta1-url'); if (hCta1U !== null) this._config.hero.primaryCtaUrl = hCta1U;
+    const hCta2 = getVal('hero-cta2-txt'); if (hCta2 !== null) this._config.hero.secondaryCtaText = hCta2;
+    const hCta2U = getVal('hero-cta2-url'); if (hCta2U !== null) this._config.hero.secondaryCtaUrl = hCta2U;
+    const hImg = getVal('hero-imgurl'); if (hImg !== null) this._config.hero.heroImageUrl = hImg;
+    const s1v = getVal('hero-s1-val'); if (s1v !== null) this._config.hero.stat1Number = s1v;
+    const s1l = getVal('hero-s1-lbl'); if (s1l !== null) this._config.hero.stat1Label = s1l;
+    const s2v = getVal('hero-s2-val'); if (s2v !== null) this._config.hero.stat2Number = s2v;
+    const s2l = getVal('hero-s2-lbl'); if (s2l !== null) this._config.hero.stat2Label = s2l;
+    const s3v = getVal('hero-s3-val'); if (s3v !== null) this._config.hero.stat3Number = s3v;
+    const s3l = getVal('hero-s3-lbl'); if (s3l !== null) this._config.hero.stat3Label = s3l;
+
+    // About
+    if (!this._config.about) this._config.about = {};
+    const abEye = getVal('about-eyebrow'); if (abEye !== null) this._config.about.eyebrow = abEye;
+    const abTit = getVal('about-title'); if (abTit !== null) this._config.about.title = abTit;
+    const abBody = getVal('about-body'); if (abBody !== null) this._config.about.body = abBody;
+    const abQuo = getVal('lead-quote'); if (abQuo !== null) this._config.about.quote = abQuo;
+    const abAut = getVal('lead-author'); if (abAut !== null) this._config.about.quoteAuthor = abAut;
+    const abRol = getVal('lead-role'); if (abRol !== null) this._config.about.quoteRole = abRol;
+    const abImg = getVal('lead-imgurl'); if (abImg !== null) this._config.about.leaderImageUrl = abImg;
+
+    // Contact
+    if (!this._config.contact) this._config.contact = {};
+    const cPhone = getVal('contact-phone'); if (cPhone !== null) this._config.contact.phone = cPhone;
+    const cAlt = getVal('contact-altphone'); if (cAlt !== null) this._config.contact.secondaryPhone = cAlt;
+    const cEmail = getVal('contact-email'); if (cEmail !== null) this._config.contact.email = cEmail;
+    const cHours = getVal('contact-hours'); if (cHours !== null) this._config.contact.hours = cHours;
+    const cMap = getVal('contact-mapembed'); if (cMap !== null) this._config.contact.mapEmbed = cMap;
+  }
+
   static bindHeaderActions() {
     const openSecBtn = document.getElementById('btn-cms-open-sections');
     if (openSecBtn) {
@@ -130,6 +188,7 @@ export class AdminWebsiteCms {
     const saveBtn = document.getElementById('btn-cms-save-all');
     if (saveBtn) {
       saveBtn.addEventListener('click', async () => {
+        this.harvestActiveInputs();
         saveBtn.disabled = true;
         saveBtn.innerHTML = `<span class="spinner" style="width:14px; height:14px; border:2px solid #fff; border-top-color:transparent; border-radius:50%; display:inline-block; animation:spin 1s linear infinite;"></span> Saving...`;
 
@@ -139,7 +198,9 @@ export class AdminWebsiteCms {
         UIComponents.refreshIcons();
 
         if (res.error) {
-          UIComponents.showToast('Save warning: ' + res.error, 'warning');
+          UIComponents.showToast('Save error: ' + res.error, 'error');
+        } else if (res.warning) {
+          UIComponents.showToast('Saved to website! (Offline/Cloud notice: ' + res.warning + ')', 'info');
         } else {
           UIComponents.showToast('Institutional website updated & published live!', 'success');
         }

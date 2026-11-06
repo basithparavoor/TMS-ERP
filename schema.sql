@@ -83,7 +83,11 @@ CREATE OR REPLACE FUNCTION public.has_role(roles TEXT[])
 RETURNS BOOLEAN LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   SELECT EXISTS (
     SELECT 1 FROM public.profiles
-    WHERE id = auth.uid() AND is_active AND role = ANY(roles)
+    WHERE id = auth.uid() AND is_active AND (
+      role = ANY(roles) OR
+      role = 'super_admin' OR
+      is_super_admin = true
+    )
   );
 $$;
 
@@ -982,8 +986,8 @@ CREATE POLICY "app_settings_read" ON app_settings
 DROP POLICY IF EXISTS "app_settings_manage" ON app_settings;
 CREATE POLICY "app_settings_manage" ON app_settings
   FOR ALL TO authenticated
-  USING (public.has_role(ARRAY['admin','principal']))
-  WITH CHECK (public.has_role(ARRAY['admin','principal']));
+  USING (public.has_role(ARRAY['admin','principal','super_admin']))
+  WITH CHECK (public.has_role(ARRAY['admin','principal','super_admin']));
 
 -- ============================================================================
 -- 30. Let HR (alongside admin/principal) maintain user profiles, so appointing

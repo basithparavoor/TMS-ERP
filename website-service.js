@@ -510,8 +510,9 @@ class WebsiteService {
       if (stored) {
         const parsed = JSON.parse(stored);
         const merged = this.deepMerge(DEFAULT_WEBSITE_CONFIG, parsed);
-        // If not explicitly toggled by admin yet, respect default OFF state
-        if (!localStorage.getItem('tms_hostel_explicitly_toggled')) {
+        // Only default hostel to false if it was NEVER explicitly set in the saved config
+        const wasExplicitlyConfigured = parsed.hostel && typeof parsed.hostel.enabled === 'boolean';
+        if (!wasExplicitlyConfigured && !localStorage.getItem('tms_hostel_explicitly_toggled')) {
           if (!merged.hostel) merged.hostel = {};
           merged.hostel.enabled = false;
           merged.hostel.showNavButton = false;
@@ -571,7 +572,7 @@ class WebsiteService {
   }
 
   getConfig() {
-    return this.data || JSON.parse(JSON.stringify(DEFAULT_WEBSITE_CONFIG));
+    return this.data || this.readCache();
   }
 
   isHostelEnabled() {
@@ -605,19 +606,56 @@ class WebsiteService {
    * Re-fetch the website config from the database (best effort)
    */
   async refresh() {
+    const cached = this.readCache();
     try {
       const rows = await dbService.select('app_settings');
       const row = rows.find((r) => r.id === SETTINGS_ID);
       if (row && row.value && Object.keys(row.value).length > 0) {
-        this.data = this.deepMerge(DEFAULT_WEBSITE_CONFIG, row.value);
-        this.writeCache(this.data);
+        // Compare save timestamps if available
+        const remoteTime = new Date(row.value._savedAt || row.updated_at || 0).getTime();
+        const localTime = new Date((cached && cached._savedAt) || 0).getTime();
+
+        // If local has newer un-synced edits, keep local and sync to cloud
+        if (localTime > remoteTime && cached) {
+          this.data = this.deepMerge(DEFAULT_WEBSITE_CONFIG, cached);
+          this.writeCache(this.data);
+          try {
+            dbService.upsert('app_settings', {
+              id: SETTINGS_ID,
+              value: this.data,
+              updated_at: new Date().toISOString()
+            }).catch(() => {});
+          } catch (_) {}
+        } else {
+          this.data = this.deepMerge(DEFAULT_WEBSITE_CONFIG, row.value);
+          this.writeCache(this.data);
+        }
       } else {
-        // If not in database yet, persist default config so it's ready
-        this.data = JSON.parse(JSON.stringify(DEFAULT_WEBSITE_CONFIG));
-        this.writeCache(this.data);
+        // Cloud does not have the website_cms row yet!
+        // CRITICAL: NEVER wipe the user's cached edits!
+        const hasCustomData = cached && (
+          Boolean(cached._savedAt) ||
+          JSON.stringify(cached) !== JSON.stringify(DEFAULT_WEBSITE_CONFIG)
+        );
+        if (hasCustomData) {
+          this.data = cached;
+          this.writeCache(this.data);
+          // Attempt to bootstrap remote row so all devices can see it
+          try {
+            dbService.upsert('app_settings', {
+              id: SETTINGS_ID,
+              value: this.data,
+              updated_at: new Date().toISOString()
+            }).catch(() => {});
+          } catch (_) {}
+        } else {
+          this.data = JSON.parse(JSON.stringify(DEFAULT_WEBSITE_CONFIG));
+          this.writeCache(this.data);
+        }
       }
     } catch (e) {
       console.warn('WebsiteService.refresh offline or error:', e);
+      if (!this.data) this.data = cached;
     }
     this.applyThemeVars();
     window.dispatchEvent(new CustomEvent('tms_website_config_changed', { detail: this.data }));
@@ -629,7 +667,10 @@ class WebsiteService {
    */
   async saveConfig(nextConfig) {
     try {
-      const merged = this.deepMerge(this.data, nextConfig);
+      const current = this.data || this.readCache();
+      const merged = this.deepMerge(current, nextConfig);
+      merged._savedAt = new Date().toISOString();
+
       // Synchronize hostel enabled flag with sections.hostel
       if (merged.sections && merged.sections.hostel !== undefined) {
         if (!merged.hostel) merged.hostel = {};
@@ -643,7 +684,20 @@ class WebsiteService {
       }
       this.data = merged;
       this.writeCache(merged);
+      try {
+        localStorage.setItem('tms_hostel_explicitly_toggled', 'true');
+      } catch (e) {}
       this.applyThemeVars();
+
+      // Instant live cross-tab broadcast
+      try {
+        window.dispatchEvent(new CustomEvent('tms_website_config_changed', { detail: merged }));
+        if (typeof BroadcastChannel !== 'undefined') {
+          const bc = new BroadcastChannel('tms_website_cms_channel');
+          bc.postMessage({ type: 'config_updated', config: merged });
+          bc.close();
+        }
+      } catch (_) {}
 
       const saved = await dbService.upsert('app_settings', {
         id: SETTINGS_ID,
@@ -652,10 +706,9 @@ class WebsiteService {
       });
 
       if (saved && saved._syncError) {
-        return { data: merged, warning: 'Saved locally. Remote sync pending: ' + saved._syncError };
+        return { data: merged, success: true, warning: 'Saved locally in browser cache. Cloud sync notice: ' + saved._syncError };
       }
 
-      window.dispatchEvent(new CustomEvent('tms_website_config_changed', { detail: merged }));
       return { data: merged, success: true };
     } catch (e) {
       console.error('Failed to save website CMS configuration:', e);
