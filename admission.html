@@ -438,14 +438,22 @@
         control = `<select class="form-select" id="${id}" ${req}><option value="">— Select ${esc(f.label)} —</option>${opts}</select>`;
       } else if (type === 'checkbox') {
         control = `<label style="display:flex;gap:8px;align-items:center;font-size:0.88rem;cursor:pointer;"><input type="checkbox" id="${id}" class="admission-checkbox"> ${esc(f.helpText || f.label)}</label>`;
-      } else if (type === 'file') {
+      } else if (type === 'file' || type === 'photo' || type === 'image') {
+        const isPhoto = type === 'photo' || type === 'image';
+        const accept = isPhoto ? 'image/*' : 'image/*,.pdf';
+        const icon = isPhoto ? 'camera' : 'upload-cloud';
+        const browseTitle = isPhoto ? 'Click to select / upload photo' : 'Click to browse document';
+        const helpHint = isPhoto ? 'JPG or PNG up to 2 MB' : 'PDF, JPG, or PNG up to 2 MB';
         control = `
           <div class="file-upload-dropzone" style="border: 1.5px dashed var(--border-color); border-radius: var(--radius-md); padding: 12px 16px; background: var(--bg-subtle); display:flex; align-items:center; gap:12px; cursor:pointer;" onclick="document.getElementById('${id}').click()">
-            <i data-lucide="upload-cloud" style="width:24px;height:24px;color:#16a34a;flex-shrink:0;"></i>
+            <i data-lucide="${icon}" style="width:24px;height:24px;color:#16a34a;flex-shrink:0;"></i>
             <div style="flex:1;min-width:0;">
-              <input type="file" id="${id}" accept="image/*,.pdf" ${req} style="display:none;">
-              <div style="font-size:0.84rem;font-weight:600;color:var(--text-main);">Click to browse document</div>
-              <span class="file-name" data-for="${id}" style="font-size:0.75rem;color:var(--text-subtle);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">PDF, JPG, or PNG up to 2 MB</span>
+              <input type="file" id="${id}" data-key="${esc(f.fieldKey)}" class="${isPhoto ? 'admission-photo-input' : ''}" accept="${accept}" ${req} style="display:none;">
+              <div style="font-size:0.84rem;font-weight:600;color:var(--text-main);">${browseTitle}</div>
+              <span class="file-name" data-for="${id}" style="font-size:0.75rem;color:var(--text-subtle);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(f.placeholder || f.helpText || helpHint)}</span>
+            </div>
+            <div id="preview-box-${id}" style="display:none;width:40px;height:40px;border-radius:6px;overflow:hidden;border:1px solid #cbd5e1;flex-shrink:0;">
+              <img id="img-preview-${id}" alt="Preview" style="width:100%;height:100%;object-fit:cover;">
             </div>
           </div>
           <span class="file-preview" data-for="${id}"></span>
@@ -1128,7 +1136,7 @@
             ` : `
               <div class="wizard-review-grid">
                 ${secFields.map(f => {
-                  const isFile = (f.fieldType || 'text') === 'file';
+                  const isFile = (f.fieldType || 'text') === 'file' || f.fieldType === 'photo' || f.fieldType === 'image';
                   let displayVal = '—';
                   if (isFile) {
                     const inp = document.getElementById(`fld-${f.fieldKey}`);
@@ -1211,7 +1219,7 @@
 
       activeFields.forEach((f) => {
         const type = f.fieldType || 'text';
-        if (type === 'file') return;
+        if (type === 'file' || type === 'photo' || type === 'image') return;
         const el = document.getElementById(`fld-${f.fieldKey}`);
         if (!el) return;
         if (type === 'checkbox') values[f.fieldKey] = el.checked ? 'Yes' : 'No';
@@ -1262,7 +1270,7 @@
         list.forEach((f) => {
           if ((f.fieldType === 'file' || f.fieldType === 'photo' || f.fieldType === 'image') && (f.fieldKey === 'photo' || /photo|photograph|passport/i.test(f.label))) return;
           const val = values[f.fieldKey];
-          const isFile = (f.fieldType || 'text') === 'file';
+          const isFile = (f.fieldType || 'text') === 'file' || f.fieldType === 'photo' || f.fieldType === 'image';
           const shown = isFile
             ? (val ? String(val).split('/').pop() : 'Not attached')
             : (val ? esc(val) : '—');

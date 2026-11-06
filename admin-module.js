@@ -2207,6 +2207,35 @@ export class AdminModule {
       this.renderTab('form-builder');
     });
 
+    // Add photo question global
+    safeOn('btn-add-photo-field', 'click', () => {
+      this.openFieldModal({
+        fieldType: 'photo',
+        label: 'Candidate Passport Photograph',
+        fieldKey: 'candidatePassportPhoto',
+        placeholder: 'Recent colour passport-size photograph (JPG or PNG up to 2 MB). Required for admit card.',
+        helpText: 'Recent colour passport-size photograph (JPG or PNG up to 2 MB). Required for admit card.',
+        required: true,
+        isActive: true
+      }, 'Photo & Documents');
+    });
+
+    // Add photo to specific section
+    tabContent.querySelectorAll('.btn-add-photo-to-sec').forEach((b) => {
+      b.addEventListener('click', () => {
+        const secName = b.dataset.section || 'General Information';
+        this.openFieldModal({
+          fieldType: 'photo',
+          label: 'Photograph',
+          fieldKey: 'photo_' + Date.now().toString(36),
+          placeholder: 'Recent colour photograph (JPG or PNG up to 2 MB)',
+          helpText: 'Recent colour photograph (JPG or PNG up to 2 MB)',
+          required: false,
+          isActive: true
+        }, secName);
+      });
+    });
+
     // Add field global
     safeOn('btn-add-field', 'click', () => this.openFieldModal(null));
 
@@ -2300,7 +2329,7 @@ export class AdminModule {
             <div class="form-group">
               <label class="form-label">Response Type</label>
               <select class="form-select" id="new-sec-fld-type">
-                ${['text', 'textarea', 'number', 'date', 'tel', 'email', 'select', 'checkbox', 'file'].map(t => `<option>${t}</option>`).join('')}
+                ${['text', 'photo', 'file', 'textarea', 'number', 'date', 'tel', 'email', 'select', 'checkbox'].map(t => `<option>${t}</option>`).join('')}
               </select>
             </div>
             <label style="display:flex; gap:8px; align-items:center; grid-column:1/-1;">
@@ -2475,7 +2504,61 @@ export class AdminModule {
       <button class="btn btn-primary" id="fld-save"><i data-lucide="save"></i> Save Question</button>
     `;
 
-    UIComponents.openModal({ title: field ? 'Edit Question' : 'Add Question', bodyHtml, footerHtml });
+    const modalTitle = (field && field.id) ? 'Edit Question' : ((f.fieldType === 'photo' || f.fieldType === 'image') ? 'Add Photo Question' : 'Add Question');
+    UIComponents.openModal({ title: modalTitle, bodyHtml, footerHtml });
+
+    // Quick Photo Preset template buttons
+    document.querySelectorAll('.btn-photo-preset').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const labelInp = document.getElementById('fld-label');
+        const keyInp = document.getElementById('fld-key');
+        const typeSel = document.getElementById('fld-type');
+        const helpInp = document.getElementById('fld-placeholder');
+        const secInp = document.getElementById('fld-section');
+        if (labelInp) labelInp.value = btn.dataset.label || '';
+        if (keyInp) {
+          keyInp.value = btn.dataset.key || '';
+          keyInp.dataset.userEdited = 'true';
+        }
+        if (typeSel) typeSel.value = 'photo';
+        if (helpInp && btn.dataset.help) helpInp.value = btn.dataset.help;
+        if (secInp && (!secInp.value || secInp.value === 'General Information')) {
+          secInp.value = 'Photo & Documents';
+        }
+        UIComponents.showToast(`Applied template: ${btn.dataset.label}`, 'info');
+      });
+    });
+
+    // Auto-generate unique field key from question label for new questions
+    const labelInp = document.getElementById('fld-label');
+    const keyInp = document.getElementById('fld-key');
+    if (labelInp && keyInp && (!field || !field.id)) {
+      labelInp.addEventListener('input', () => {
+        if (!keyInp.dataset.userEdited) {
+          const words = labelInp.value.trim().replace(/[^a-zA-Z0-9\s]/g, '').split(/\s+/).filter(Boolean);
+          if (words.length > 0) {
+            keyInp.value = words[0].toLowerCase() + words.slice(1).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('');
+          } else {
+            keyInp.value = '';
+          }
+        }
+      });
+      keyInp.addEventListener('input', () => {
+        keyInp.dataset.userEdited = 'true';
+      });
+    }
+
+    // Response type change helper
+    const typeSel = document.getElementById('fld-type');
+    if (typeSel) {
+      typeSel.addEventListener('change', () => {
+        const helpInp = document.getElementById('fld-placeholder');
+        if ((typeSel.value === 'photo' || typeSel.value === 'image') && helpInp && !helpInp.value) {
+          helpInp.value = 'Recent passport-size colour photograph (JPG or PNG up to 2 MB)';
+        }
+      });
+    }
+
     document.getElementById('fld-cancel').addEventListener('click', () => UIComponents.closeModal());
     document.getElementById('fld-save').addEventListener('click', async () => {
       const options = document.getElementById('fld-options').value.split(',').map((s) => s.trim()).filter(Boolean);
@@ -2498,6 +2581,7 @@ export class AdminModule {
           displayOrder: Number(document.getElementById('fld-order').value || 1),
           options,
           placeholder: document.getElementById('fld-placeholder').value.trim(),
+          helpText: document.getElementById('fld-placeholder').value.trim(),
           required: document.getElementById('fld-required').checked,
           isActive: document.getElementById('fld-active').checked
         });
