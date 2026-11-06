@@ -3,7 +3,7 @@
  * Robust Network-First Offline Caching
  */
 
-const CACHE_NAME = 'tms-erp-cache-v11';
+const CACHE_NAME = 'tms-erp-cache-v12';
 const PRECACHE_URLS = [
   './',
   './index.html',
