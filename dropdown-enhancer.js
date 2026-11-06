@@ -197,9 +197,8 @@ const CHEVRON_SVG = `
   </svg>
 `;
 
-function closeWrapper(w, reason = 'unknown') {
+function closeWrapper(w) {
   if (!w) return;
-  console.log('[DEBUG closeWrapper]', reason);
   w.classList.remove('is-open', 'is-open-above');
   w.style.removeProperty('z-index');
   const trig = w.querySelector('.tms-custom-select-trigger');
@@ -226,10 +225,10 @@ function closeWrapper(w, reason = 'unknown') {
   }
 }
 
-function closeAllCustomSelects(exceptWrapper = null, reason = 'unknown') {
+function closeAllCustomSelects(exceptWrapper = null) {
   document.querySelectorAll('.tms-custom-select-wrapper.is-open').forEach((w) => {
     if (w !== exceptWrapper) {
-      closeWrapper(w, 'closeAllCustomSelects: ' + reason);
+      closeWrapper(w);
     }
   });
 
@@ -245,7 +244,7 @@ function closeAllCustomSelects(exceptWrapper = null, reason = 'unknown') {
 if (typeof document !== 'undefined') {
   document.addEventListener('click', (e) => {
     if (!e.target.closest('.tms-custom-select-wrapper') && !e.target.closest('.tms-custom-select-menu')) {
-      closeAllCustomSelects(null, 'document click outside');
+      closeAllCustomSelects();
     }
   });
 
@@ -403,13 +402,13 @@ export function enhanceSelect(select) {
   // Floating Position Calculation
   function repositionMenu() {
     if (!document.contains(wrapper) || !document.contains(trigger)) {
-      closeWrapper(wrapper, 'not in document');
+      closeWrapper(wrapper);
       return;
     }
 
     const rect = trigger.getBoundingClientRect();
-    if (rect.bottom < 0 || rect.top > window.innerHeight) {
-      closeWrapper(wrapper, 'trigger out of viewport: rect.bottom=' + rect.bottom + ', rect.top=' + rect.top + ', innerHeight=' + window.innerHeight);
+    if (rect.bottom < -80 || rect.top > window.innerHeight + 80) {
+      closeWrapper(wrapper);
       return;
     }
 
