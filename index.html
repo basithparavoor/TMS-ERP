@@ -90,131 +90,79 @@
       100% { transform: scale(1.15) translate(30px, 20px); opacity: 1; }
     }
 
-    /* Topbar Mini-Banner */
-    .inst-topbar {
-      background: #0f172a;
-      color: #94a3b8;
-      font-size: 0.82rem;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-      position: relative;
-      z-index: 50;
-    }
-
-    .inst-topbar-inner {
-      max-width: 1280px;
-      margin: 0 auto;
-      padding: 8px 24px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
-
-    .inst-topbar-left {
-      display: flex;
-      align-items: center;
-      gap: 20px;
-      flex-wrap: wrap;
-    }
-
-    .inst-topbar-item {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .inst-topbar-item a {
-      color: #cbd5e1;
-      text-decoration: none;
-      transition: color 0.2s;
-    }
-
-    .inst-topbar-item a:hover {
-      color: #22c55e;
-    }
-
-    .inst-topbar-alert {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: rgba(22, 163, 74, 0.15);
-      border: 1px solid rgba(22, 163, 74, 0.35);
-      color: #86efac;
-      padding: 3px 10px;
-      border-radius: 999px;
-      font-weight: 600;
-      font-size: 0.75rem;
-      text-decoration: none;
-    }
-
     /* Sticky Navigation Header */
     .inst-nav-header {
       position: sticky;
       top: 0;
-      z-index: 100;
-      background: rgba(255, 255, 255, 0.94);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
       border-bottom: 1px solid rgba(226, 232, 240, 0.85);
       box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.04);
-      transition: all 0.3s ease;
+      transition: all 0.25s ease;
     }
 
     .inst-nav-inner {
-      max-width: 1280px;
+      max-width: 1320px;
       margin: 0 auto;
-      padding: 12px 24px;
+      padding: 0 28px;
+      height: 72px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 20px;
+      gap: 24px;
     }
 
     .inst-brand {
       display: flex;
       align-items: center;
-      gap: 14px;
+      gap: 12px;
       text-decoration: none;
       color: inherit;
       cursor: pointer;
+      flex-shrink: 0;
     }
 
     .inst-brand-logo-wrap {
-      width: 48px;
-      height: 48px;
+      width: 44px;
+      height: 44px;
       display: flex;
       align-items: center;
       justify-content: center;
-      position: relative;
+      flex-shrink: 0;
     }
 
     .inst-brand-logo-img {
-      max-width: 48px;
-      max-height: 48px;
+      max-width: 44px;
+      max-height: 44px;
       object-fit: contain;
     }
 
     .inst-brand-titles {
       display: flex;
       flex-direction: column;
+      justify-content: center;
     }
 
     .inst-brand-name {
       font-family: var(--font-display);
-      font-size: 1.25rem;
+      font-size: 1.18rem;
       font-weight: 800;
       color: #0f172a;
       letter-spacing: 0.02em;
       line-height: 1.15;
+      white-space: nowrap;
     }
 
     .inst-brand-tagline {
-      font-size: 0.72rem;
+      font-size: 0.68rem;
       font-weight: 700;
       color: var(--brand-theme-primary);
       text-transform: uppercase;
       letter-spacing: 0.05em;
+      white-space: nowrap;
+      margin-top: 2px;
     }
 
     .inst-nav-links {
@@ -1483,6 +1431,517 @@
       .footer-grid { grid-template-columns: 1fr; }
       .hero-meta-row { flex-direction: column; align-items: flex-start; }
     }
+  
+    /* Mobile Drawer */
+    .mobile-nav-drawer {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: #ffffff;
+      border-bottom: 2px solid rgba(22, 163, 74, 0.25);
+      box-shadow: 0 20px 45px rgba(15, 23, 42, 0.14);
+      padding: 16px 20px 22px;
+      border-radius: 0 0 20px 20px;
+      max-height: calc(100vh - 75px);
+      overflow-y: auto;
+      z-index: 999;
+      animation: drawerSlideDown 0.22s ease-out;
+    }
+
+    @keyframes drawerSlideDown {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .mobile-nav-links-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .mobile-nav-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 14px;
+      border-radius: 10px;
+      color: #1e293b;
+      font-weight: 600;
+      font-size: 0.95rem;
+      text-decoration: none;
+      transition: all 0.15s ease;
+      background: transparent;
+    }
+
+    .mobile-nav-link:hover, .mobile-nav-link:active {
+      background: #f0fdf4;
+      color: var(--brand-theme-primary);
+    }
+
+    .mobile-nav-icon {
+      width: 22px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--brand-theme-primary);
+      flex-shrink: 0;
+    }
+
+    .mobile-nav-icon i {
+      width: 18px;
+      height: 18px;
+    }
+
+    .mobile-nav-text {
+      flex: 1;
+    }
+
+    .mobile-nav-arr {
+      width: 16px;
+      height: 16px;
+      color: #94a3b8;
+    }
+
+    .mobile-nav-actions-bottom {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #f1f5f9;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .mobile-drawer-btn {
+      width: 100% !important;
+      justify-content: center;
+      padding: 12px !important;
+      font-size: 0.95rem !important;
+      border-radius: 12px !important;
+    }
+
+    .mobile-drawer-apply-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 12px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 0.92rem;
+      background: #f8fafc;
+      border: 1.5px solid #e2e8f0;
+      color: #0f172a;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+
+    .mobile-drawer-apply-btn:hover {
+      background: #f0fdf4;
+      border-color: var(--brand-theme-primary);
+      color: var(--brand-theme-primary);
+    }
+
+    /* Upgraded Allover Mobile Responsiveness */
+    @media (max-width: 1100px) {
+      .inst-nav-links { gap: 12px; }
+      .inst-nav-links a { font-size: 0.84rem; padding: 6px 8px; }
+    }
+
+    @media (max-width: 992px) {
+      .inst-nav-links { display: none !important; }
+      .mobile-menu-toggle { display: inline-flex !important; }
+      .inst-hero-inner { grid-template-columns: 1fr; gap: 40px; }
+      .stats-ribbon-grid { grid-template-columns: repeat(2, 1fr); gap: 20px; }
+      .about-grid { grid-template-columns: 1fr; gap: 36px; }
+      .facilities-grid { grid-template-columns: repeat(2, 1fr); }
+      .footer-grid { grid-template-columns: 1fr 1fr; gap: 32px; }
+      .contact-grid { grid-template-columns: 1fr; gap: 32px; }
+    }
+
+    @media (max-width: 768px) {
+      .inst-nav-inner {
+        height: 62px;
+        padding: 0 16px;
+      }
+      .inst-brand-logo-wrap {
+        width: 38px;
+        height: 38px;
+      }
+      .inst-brand-logo-img {
+        max-width: 38px;
+        max-height: 38px;
+      }
+      .inst-brand-name {
+        font-size: 1.02rem;
+      }
+      .inst-brand-tagline {
+        font-size: 0.62rem;
+      }
+      .btn-inst-login {
+        padding: 7px 16px;
+        font-size: 0.82rem;
+        gap: 6px;
+      }
+      .btn-inst-login i {
+        width: 14px;
+        height: 14px;
+      }
+      .mobile-menu-toggle {
+        width: 38px;
+        height: 38px;
+      }
+
+      /* Hero section mobile */
+      .inst-hero {
+        padding: 32px 16px 48px;
+      }
+      .hero-title {
+        font-size: clamp(2rem, 7.5vw, 2.5rem);
+        line-height: 1.15;
+        margin-bottom: 14px;
+      }
+      .hero-desc {
+        font-size: 0.95rem;
+        line-height: 1.55;
+        margin-bottom: 24px;
+      }
+      .hero-cta-group {
+        flex-direction: column;
+        width: 100%;
+        gap: 12px;
+        margin-bottom: 24px;
+      }
+      .hero-cta-login, .hero-cta-secondary {
+        width: 100%;
+        justify-content: center;
+        padding: 13px 20px;
+        font-size: 0.96rem;
+        min-height: 48px;
+        border-radius: 12px;
+      }
+      .hero-meta-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+        padding-top: 18px;
+        width: 100%;
+      }
+      .hero-meta-item {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 10px 6px;
+        text-align: center;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .hero-meta-icon {
+        width: 28px;
+        height: 28px;
+        margin: 0 auto;
+      }
+      .hero-meta-icon i {
+        width: 15px;
+        height: 15px;
+      }
+      .hero-meta-val {
+        font-size: 1rem;
+        line-height: 1.1;
+      }
+      .hero-meta-lbl {
+        font-size: 0.65rem;
+        line-height: 1.15;
+      }
+
+      /* Hero visual card */
+      .hero-visual-card {
+        border-radius: 18px;
+        margin-top: 10px;
+      }
+      .hero-visual-img {
+        height: 250px;
+      }
+      .hero-overlay-tag {
+        top: 12px;
+        left: 12px;
+        padding: 6px 12px;
+        font-size: 0.72rem;
+      }
+      .hero-floating-stat {
+        bottom: 12px;
+        left: 12px;
+        right: 12px;
+        padding: 10px 14px;
+        border-radius: 14px;
+      }
+      .hero-floating-stat > div:first-child > div:last-child > div:first-child {
+        font-size: 1rem !important;
+      }
+
+      /* Section Spacing */
+      .inst-section {
+        padding: 48px 16px;
+      }
+      .section-header-center {
+        margin-bottom: 30px;
+      }
+      .section-tag {
+        font-size: 0.72rem;
+        padding: 4px 12px;
+        margin-bottom: 8px;
+      }
+      .section-title {
+        font-size: 1.75rem;
+        line-height: 1.22;
+        margin-bottom: 10px;
+      }
+      .section-subtitle {
+        font-size: 0.92rem;
+        line-height: 1.5;
+      }
+
+      /* Stats Ribbon on mobile */
+      .inst-stats-ribbon {
+        padding: 24px 16px;
+      }
+      .stats-ribbon-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .stat-ribbon-card {
+        padding: 12px 10px;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.04);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .stat-ribbon-icon-wrap {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+      }
+      .stat-ribbon-icon-wrap i {
+        width: 20px;
+        height: 20px;
+      }
+      .stat-ribbon-number {
+        font-size: 1.5rem;
+      }
+      .stat-ribbon-label {
+        font-size: 0.75rem;
+      }
+
+      /* About Section */
+      .about-principal-card {
+        padding: 20px 18px;
+        border-radius: 16px;
+      }
+      .about-principal-avatar {
+        width: 58px;
+        height: 58px;
+      }
+      .about-principal-header h4 {
+        font-size: 1.05rem !important;
+      }
+      .about-message-text {
+        font-size: 0.92rem;
+        line-height: 1.55;
+        margin-bottom: 16px;
+      }
+      .values-grid {
+        grid-template-columns: 1fr;
+        gap: 10px;
+        margin-top: 20px;
+      }
+
+      /* Programs Grid */
+      .programs-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+      .program-card {
+        padding: 22px 18px;
+        border-radius: 16px;
+      }
+      .program-title {
+        font-size: 1.22rem;
+      }
+
+      /* Facilities Grid on Mobile */
+      .facilities-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .facility-card {
+        padding: 16px 12px;
+        border-radius: 14px;
+      }
+      .facility-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        margin-bottom: 10px;
+      }
+      .facility-icon i {
+        width: 18px;
+        height: 18px;
+      }
+      .facility-title {
+        font-size: 0.92rem;
+        margin-bottom: 4px;
+      }
+      .facility-desc {
+        font-size: 0.76rem;
+        line-height: 1.4;
+      }
+      .facility-badge {
+        font-size: 0.62rem;
+        top: 12px;
+        right: 12px;
+        padding: 2px 6px;
+      }
+
+      /* Notices on Mobile */
+      .notices-filter-bar {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        scrollbar-width: none;
+        padding: 12px 16px;
+        gap: 8px;
+        -webkit-overflow-scrolling: touch;
+      }
+      .notice-chip {
+        flex-shrink: 0;
+        padding: 6px 12px;
+        font-size: 0.76rem;
+      }
+      .notice-row {
+        padding: 16px;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+      }
+      .notice-left {
+        gap: 12px;
+      }
+      .notice-date-box {
+        width: 50px;
+        height: 50px;
+      }
+      .notice-date-day {
+        font-size: 1.1rem;
+      }
+      .notice-title {
+        font-size: 0.95rem;
+      }
+      .notice-excerpt {
+        font-size: 0.82rem;
+      }
+      .notice-row > button {
+        width: 100%;
+        justify-content: center;
+        min-height: 40px;
+      }
+
+      /* Gallery & Reviews */
+      .gallery-grid {
+        grid-template-columns: 1fr;
+        gap: 14px;
+      }
+      .gallery-card {
+        height: 220px;
+        border-radius: 16px;
+      }
+      .testimonials-grid {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+      .testimonial-card {
+        padding: 20px 18px;
+        border-radius: 16px;
+      }
+
+      /* Admission CTA Banner on Mobile */
+      .admission-cta-banner {
+        flex-direction: column;
+        text-align: center;
+        padding: 32px 20px;
+        border-radius: 18px;
+        gap: 24px;
+      }
+      .admission-cta-title {
+        font-size: 1.55rem;
+        line-height: 1.25;
+      }
+      .admission-cta-desc {
+        font-size: 0.92rem;
+      }
+      .admission-cta-actions {
+        flex-direction: column;
+        width: 100%;
+        gap: 12px;
+      }
+      .btn-cta-white, .admission-cta-actions .btn-inst-login {
+        width: 100%;
+        justify-content: center;
+        min-height: 46px;
+      }
+
+      /* Contact & Inquiry on Mobile */
+      .contact-info-card, .contact-form-card {
+        padding: 22px 18px;
+        border-radius: 16px;
+      }
+      .contact-form-grid {
+        grid-template-columns: 1fr;
+        gap: 12px;
+      }
+      .form-input {
+        font-size: 16px !important; /* Prevents auto-zoom on iOS */
+      }
+
+      /* Footer on Mobile */
+      .inst-footer {
+        padding: 48px 16px 24px;
+      }
+      .footer-grid {
+        grid-template-columns: 1fr;
+        gap: 28px;
+        margin-bottom: 30px;
+      }
+      .footer-bottom {
+        flex-direction: column;
+        text-align: center;
+        gap: 10px;
+      }
+
+      /* Portals Modal on Mobile */
+      .portal-cards-grid {
+        grid-template-columns: 1fr;
+        padding: 16px;
+        gap: 10px;
+      }
+      .portal-modal-header {
+        padding: 20px 18px;
+      }
+      .portal-modal-header h2 {
+        font-size: 1.35rem !important;
+      }
+      .portal-card-btn {
+        padding: 14px 12px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .facilities-grid {
+        grid-template-columns: 1fr;
+      }
+      .inst-brand-tagline {
+        display: none;
+      }
+    }
   </style>
 </head>
 <body>
@@ -1494,32 +1953,7 @@
     }
   </script>
 
-  <!-- Top Announcement Bar -->
-  <aside class="inst-topbar" id="website-topbar">
-    <div class="inst-topbar-inner">
-      <div class="inst-topbar-left">
-        <span class="inst-topbar-item" id="topbar-reg">
-          <i data-lucide="shield-check" style="width:14px; height:14px; color:#22c55e;"></i>
-          <span>Regd. No. IV 01894/2011 • Run by Thaiba Heritage, Kolkata</span>
-        </span>
-        <span class="inst-topbar-item">
-          <i data-lucide="phone" style="width:14px; height:14px; color:#22c55e;"></i>
-          <a href="tel:+918653382851" id="topbar-phone">+91 8653382851</a>
-        </span>
-        <span class="inst-topbar-item desktop-only">
-          <i data-lucide="clock" style="width:14px; height:14px; color:#22c55e;"></i>
-          <span id="topbar-hours">Mon–Sat: 8:30 AM – 4:00 PM</span>
-        </span>
-      </div>
-      <div class="inst-topbar-right">
-        <a href="/admission" class="inst-topbar-alert" id="topbar-alert-badge">
-          <span style="display:inline-block; width:6px; height:6px; border-radius:50%; background:#22c55e;"></span>
-          <span id="topbar-alert-text">Admissions Open 2026-27</span>
-          <i data-lucide="arrow-right" style="width:12px; height:12px;"></i>
-        </a>
-      </div>
-    </div>
-  </aside>
+  
 
   <!-- Navigation Header -->
   <header class="inst-nav-header" id="website-header">
@@ -1549,37 +1983,70 @@
 
       <!-- Action Buttons -->
       <div class="inst-nav-actions">
-        <div id="session-user-slot" style="display:none;"></div>
-        <a href="/admission" class="btn-inst-apply desktop-only" id="nav-apply-btn">
-          <i data-lucide="pen-tool" style="width:16px; height:16px; color:var(--brand-theme-primary);"></i>
-          <span>Apply Online</span>
-        </a>
-        <button class="btn-inst-login" id="btn-open-institutional-login" title="Institutional Sign-in & Portal Access">
-          <i data-lucide="lock" style="width:16px; height:16px;"></i>
+        <button class="btn-inst-login" id="btn-open-institutional-login" title="Institutional Login">
+          <i data-lucide="lock" style="width:15px; height:15px;"></i>
           <span id="nav-login-btn-text">Institutional Login</span>
         </button>
-        <button class="mobile-menu-toggle" id="mobile-menu-btn" title="Toggle Navigation Menu">
+        <button class="mobile-menu-toggle" id="mobile-menu-btn" title="Toggle Navigation Menu" aria-label="Open Navigation Menu">
           <i data-lucide="menu" style="width:20px; height:20px;"></i>
         </button>
       </div>
     </div>
 
     <!-- Mobile Dropdown Navigation -->
-    <div id="mobile-nav-panel" style="display:none; background:#ffffff; border-top:1px solid #e2e8f0; padding:16px 24px; box-shadow:0 10px 20px rgba(0,0,0,0.05);">
-      <div style="display:flex; flex-direction:column; gap:12px; font-weight:600; font-size:0.95rem;">
-        <a href="#about" class="mobile-nav-link" style="color:#0f172a; text-decoration:none; padding:8px 0;">About Us</a>
-        <a href="#academics" class="mobile-nav-link" style="color:#0f172a; text-decoration:none; padding:8px 0;">Academics &amp; Wings</a>
-        <a href="#facilities" class="mobile-nav-link" style="color:#0f172a; text-decoration:none; padding:8px 0;">Campus Facilities</a>
-        <a href="#hostel" class="mobile-nav-link" id="mobile-nav-hostel-link" style="display:none; color:var(--brand-theme-primary); text-decoration:none; padding:8px 0; font-weight:700;">🏠 Hostel &amp; Dormitories</a>
-        <a href="#notices" class="mobile-nav-link" style="color:#0f172a; text-decoration:none; padding:8px 0;">Live Notice Board</a>
-        <a href="#gallery" class="mobile-nav-link" style="color:#0f172a; text-decoration:none; padding:8px 0;">Campus Gallery</a>
-        <a href="#testimonials" class="mobile-nav-link" style="color:#0f172a; text-decoration:none; padding:8px 0;">Testimonials</a>
-        <a href="#contact" class="mobile-nav-link" style="color:#0f172a; text-decoration:none; padding:8px 0;">Contact &amp; Location</a>
-        <a href="/admission" style="color:var(--brand-theme-primary); text-decoration:none; padding:10px 0; font-weight:700; border-top:1px solid #f1f5f9;">📝 Online Admission Portal</a>
-        <button id="btn-mobile-login" class="btn-inst-login" style="justify-content:center; width:100%; margin-top:8px;">
+    <div id="mobile-nav-panel" class="mobile-nav-drawer" style="display:none;">
+      <div class="mobile-nav-links-wrap">
+        <a href="#about" class="mobile-nav-link">
+          <span class="mobile-nav-icon"><i data-lucide="info"></i></span>
+          <span class="mobile-nav-text">About Institution</span>
+          <i data-lucide="chevron-right" class="mobile-nav-arr"></i>
+        </a>
+        <a href="#academics" class="mobile-nav-link">
+          <span class="mobile-nav-icon"><i data-lucide="graduation-cap"></i></span>
+          <span class="mobile-nav-text">Academics &amp; Wings</span>
+          <i data-lucide="chevron-right" class="mobile-nav-arr"></i>
+        </a>
+        <a href="#facilities" class="mobile-nav-link">
+          <span class="mobile-nav-icon"><i data-lucide="building-2"></i></span>
+          <span class="mobile-nav-text">Campus Facilities</span>
+          <i data-lucide="chevron-right" class="mobile-nav-arr"></i>
+        </a>
+        <a href="#hostel" class="mobile-nav-link" id="mobile-nav-hostel-link" style="display:none;">
+          <span class="mobile-nav-icon"><i data-lucide="home"></i></span>
+          <span class="mobile-nav-text">Hostel &amp; Dormitories</span>
+          <i data-lucide="chevron-right" class="mobile-nav-arr"></i>
+        </a>
+        <a href="#notices" class="mobile-nav-link">
+          <span class="mobile-nav-icon"><i data-lucide="bell"></i></span>
+          <span class="mobile-nav-text">Live Notice Board</span>
+          <i data-lucide="chevron-right" class="mobile-nav-arr"></i>
+        </a>
+        <a href="#gallery" class="mobile-nav-link">
+          <span class="mobile-nav-icon"><i data-lucide="image"></i></span>
+          <span class="mobile-nav-text">Campus Gallery</span>
+          <i data-lucide="chevron-right" class="mobile-nav-arr"></i>
+        </a>
+        <a href="#testimonials" class="mobile-nav-link">
+          <span class="mobile-nav-icon"><i data-lucide="message-square"></i></span>
+          <span class="mobile-nav-text">Reviews &amp; Testimonials</span>
+          <i data-lucide="chevron-right" class="mobile-nav-arr"></i>
+        </a>
+        <a href="#contact" class="mobile-nav-link">
+          <span class="mobile-nav-icon"><i data-lucide="phone"></i></span>
+          <span class="mobile-nav-text">Contact &amp; Location</span>
+          <i data-lucide="chevron-right" class="mobile-nav-arr"></i>
+        </a>
+      </div>
+
+      <div class="mobile-nav-actions-bottom">
+        <button id="btn-mobile-login" class="btn-inst-login mobile-drawer-btn">
           <i data-lucide="lock" style="width:16px; height:16px;"></i>
           <span>Institutional Login</span>
         </button>
+        <a href="/admission" class="mobile-drawer-apply-btn">
+          <i data-lucide="pen-tool" style="width:16px; height:16px;"></i>
+          <span>Apply Online (2026–2027)</span>
+        </a>
       </div>
     </div>
   </header>
@@ -2274,7 +2741,7 @@
       await authService.init();
       if (authService.isAuthenticated()) {
         const currentUser = authService.getCurrentUser() || {};
-        setupAuthenticatedUserUI(currentUser);
+        /* Session active - keep clean institutional header */
       }
 
       // 5. Bind modal and interactive events
@@ -2289,40 +2756,7 @@
       if (footerLogo && logoUrl) footerLogo.src = logoUrl;
     }
 
-    function setupAuthenticatedUserUI(user) {
-      const loginBtnText = document.getElementById('nav-login-btn-text');
-      const heroLoginText = document.getElementById('hero-login-text');
-      const navLoginBtn = document.getElementById('btn-open-institutional-login');
-      const heroLoginBtn = document.getElementById('hero-login-btn');
-      const sessionSlot = document.getElementById('session-user-slot');
-
-      if (loginBtnText) loginBtnText.innerText = 'Go to Dashboard →';
-      if (heroLoginText) heroLoginText.innerText = 'Open ERP Dashboard →';
-
-      if (sessionSlot) {
-        sessionSlot.style.display = 'block';
-        sessionSlot.innerHTML = `
-          <div class="active-session-pill" title="Signed in as ${esc(user.name || user.email)}">
-            <span style="width:6px; height:6px; border-radius:50%; background:#16a34a;"></span>
-            <span>${esc(user.name || user.email || 'Staff')} (${esc(user.role || 'Member')})</span>
-          </div>
-        `;
-      }
-
-      // If user is already authenticated, clicking the button takes them directly to the ERP dashboard
-      if (navLoginBtn) {
-        navLoginBtn.onclick = (e) => {
-          e.preventDefault();
-          window.location.href = '/dashboard';
-        };
-      }
-      if (heroLoginBtn) {
-        heroLoginBtn.onclick = (e) => {
-          e.preventDefault();
-          window.location.href = '/dashboard';
-        };
-      }
-    }
+    
 
     function renderWebsiteData(cfg) {
       if (!cfg) return;
@@ -2792,13 +3226,11 @@
         if (modal) modal.classList.remove('open');
       };
 
-      if (!authService.isAuthenticated()) {
-        if (openBtn) openBtn.addEventListener('click', openModal);
-        if (heroBtn) heroBtn.addEventListener('click', openModal);
-        if (ctaLoginBtn) ctaLoginBtn.addEventListener('click', openModal);
-        if (footerLoginBtn) footerLoginBtn.addEventListener('click', openModal);
-        if (mobileLoginBtn) mobileLoginBtn.addEventListener('click', openModal);
-      }
+      if (openBtn) openBtn.addEventListener('click', openModal);
+      if (heroBtn) heroBtn.addEventListener('click', openModal);
+      if (ctaLoginBtn) ctaLoginBtn.addEventListener('click', openModal);
+      if (footerLoginBtn) footerLoginBtn.addEventListener('click', openModal);
+      if (mobileLoginBtn) mobileLoginBtn.addEventListener('click', openModal);
 
       if (closeBtn) closeBtn.addEventListener('click', closeModal);
       if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
