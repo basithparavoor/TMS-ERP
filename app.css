@@ -7985,3 +7985,87 @@ a {
   flex-shrink: 0 !important;
   white-space: nowrap !important;
 }
+
+
+/* ==========================================================================
+   SUBTAB RAIL WITH SCROLL CONTROLS & VISIBLE SCROLLBAR
+   ========================================================================== */
+.tms-subtab-container-wrap {
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  width: 100% !important;
+  margin-bottom: 16px !important;
+}
+
+.tms-subtab-nav-btn {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 50% !important;
+  background: #ffffff !important;
+  border: 1.5px solid #cbd5e1 !important;
+  color: #334155 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  flex-shrink: 0 !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  z-index: 5 !important;
+}
+
+.tms-subtab-nav-btn:hover {
+  background: #f8fafc !important;
+  color: #0f172a !important;
+  border-color: #94a3b8 !important;
+  transform: scale(1.08) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12) !important;
+}
+
+.tms-subtab-nav-btn:active {
+  transform: scale(0.95) !important;
+}
+
+.tms-subtab-nav-btn i,
+.tms-subtab-nav-btn svg {
+  width: 16px !important;
+  height: 16px !important;
+}
+
+.tms-subtab-rail {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  scroll-behavior: smooth !important;
+  -webkit-overflow-scrolling: touch !important;
+  padding: 4px 4px 10px 4px !important;
+  margin-bottom: 0 !important;
+  border-bottom: 1.5px solid #e2e8f0 !important;
+  width: 100% !important;
+  scrollbar-width: thin !important;
+  scrollbar-color: #cbd5e1 transparent !important;
+}
+
+.tms-subtab-rail::-webkit-scrollbar {
+  height: 6px !important;
+  display: block !important;
+}
+
+.tms-subtab-rail::-webkit-scrollbar-track {
+  background: #f1f5f9 !important;
+  border-radius: 9999px !important;
+}
+
+.tms-subtab-rail::-webkit-scrollbar-thumb {
+  background: #cbd5e1 !important;
+  border-radius: 9999px !important;
+  transition: background 0.2s ease !important;
+}
+
+.tms-subtab-rail::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8 !important;
+}

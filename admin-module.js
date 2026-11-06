@@ -180,8 +180,16 @@ export class AdminModule {
         </div>
       </div>
 
-      <!-- Secondary Subtabs Rail -->
-      <div class="tms-subtab-rail" id="admin-subtab-rail"></div>
+      <!-- Secondary Subtabs Rail with Navigation Controls -->
+      <div class="tms-subtab-container-wrap">
+        <button type="button" class="tms-subtab-nav-btn tms-subtab-nav-prev" id="admin-subtab-scroll-prev" aria-label="Scroll left" style="display:none;" title="Scroll subtabs left">
+          <i data-lucide="chevron-left"></i>
+        </button>
+        <div class="tms-subtab-rail" id="admin-subtab-rail"></div>
+        <button type="button" class="tms-subtab-nav-btn tms-subtab-nav-next" id="admin-subtab-scroll-next" aria-label="Scroll right" style="display:none;" title="Scroll subtabs right">
+          <i data-lucide="chevron-right"></i>
+        </button>
+      </div>
 
       <div id="admin-tab-content"></div>
     </div>
@@ -340,6 +348,13 @@ export class AdminModule {
   }
 
   static switchGroup(groupKey, targetSubtab = null) {
+    const primaryTabs = document.getElementById('admin-primary-tabs');
+    if (primaryTabs) {
+      primaryTabs.querySelectorAll('.tms-tab-pill').forEach(b => {
+        b.classList.toggle('active', b.dataset.group === groupKey);
+      });
+    }
+
     const currentUser = authService.getCurrentUser();
     const isSuperAdmin = currentUser?.isSuperAdmin === true || (currentUser?.email || '').toLowerCase() === (TMS_CONFIG.superAdminEmail || '').toLowerCase();
 
@@ -415,12 +430,64 @@ export class AdminModule {
       btn.addEventListener('click', (e) => {
         subRail.querySelectorAll('.tms-subtab-pill').forEach(b => b.classList.remove('active'));
         e.currentTarget.classList.add('active');
+        e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
         this.renderTab(e.currentTarget.dataset.tab);
+        setTimeout(updateSubtabScrollState, 200);
       });
     });
 
+    // Setup horizontal scroll controls and wheel scrolling
+    const updateSubtabScrollState = () => {
+      if (!subRail) return;
+      const prevBtn = document.getElementById('admin-subtab-scroll-prev');
+      const nextBtn = document.getElementById('admin-subtab-scroll-next');
+      const hasOverflow = subRail.scrollWidth > subRail.clientWidth + 6;
+      if (!hasOverflow) {
+        if (prevBtn) prevBtn.style.display = 'none';
+        if (nextBtn) nextBtn.style.display = 'none';
+        return;
+      }
+      if (prevBtn) prevBtn.style.display = subRail.scrollLeft > 10 ? 'inline-flex' : 'none';
+      if (nextBtn) nextBtn.style.display = (subRail.scrollLeft + subRail.clientWidth) < (subRail.scrollWidth - 10) ? 'inline-flex' : 'none';
+    };
+
+    if (!subRail._scrollInitialized) {
+      subRail._scrollInitialized = true;
+      subRail.addEventListener('scroll', updateSubtabScrollState, { passive: true });
+      window.addEventListener('resize', updateSubtabScrollState, { passive: true });
+
+      subRail.addEventListener('wheel', (e) => {
+        if (e.deltaY !== 0 && subRail.scrollWidth > subRail.clientWidth) {
+          e.preventDefault();
+          subRail.scrollLeft += e.deltaY;
+          updateSubtabScrollState();
+        }
+      }, { passive: false });
+
+      const prevBtn = document.getElementById('admin-subtab-scroll-prev');
+      const nextBtn = document.getElementById('admin-subtab-scroll-next');
+      if (prevBtn) {
+        prevBtn.addEventListener('click', () => {
+          subRail.scrollBy({ left: -260, behavior: 'smooth' });
+          setTimeout(updateSubtabScrollState, 300);
+        });
+      }
+      if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+          subRail.scrollBy({ left: 260, behavior: 'smooth' });
+          setTimeout(updateSubtabScrollState, 300);
+        });
+      }
+    }
+
     UIComponents.refreshIcons();
     this.renderTab(activeSubKey);
+
+    const activePill = subRail.querySelector(`.tms-subtab-pill[data-tab="${activeSubKey}"]`);
+    if (activePill) {
+      activePill.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+    setTimeout(updateSubtabScrollState, 150);
   }
 
   static bindEvents(container) {
