@@ -592,6 +592,7 @@ export class AdminModule {
       const photoCell = photoName
         ? `<img class="app-photo-thumb" data-path="${esc(photoName)}" alt="Applicant photo"
              style="width:30px;height:36px;object-fit:cover;border:1px solid var(--border-color);border-radius:4px;background:#f1f5f9;cursor:pointer;"
+             onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'30\' height=\'36\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%2394a3b8\' stroke-width=\'2\'><path d=\'M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2\'/><circle cx=\'12\' cy=\'7\' r=\'4\'/></svg>';"
              title="Click to view the photographed applicant">`
         : '<span style="color:var(--text-subtle);">—</span>';
       return `
@@ -1222,7 +1223,10 @@ export class AdminModule {
     if (photoPath) {
       admissionService.getSignedUrl('admission-docs', photoPath).then((url) => {
         const img = document.getElementById('app-photo-img');
-        if (img && url) img.src = url;
+        if (img && url) {
+          img.src = url;
+          img.onerror = () => { img.style.display = 'none'; };
+        }
       });
     }
 
@@ -3672,6 +3676,36 @@ export class AdminModule {
   /* Reference: https://tpsh.vercel.app/#users                                 */
   /* ========================================================================== */
 
+  
+  /**
+   * High-res institutional avatar renderer with fallback to two-letter gradient badge
+   */
+  static _renderUserAvatar(p, size = 34) {
+    const esc = (v) => UIComponents.escapeHtml(v || '');
+    const currentUser = authService.getCurrentUser();
+    const isCurrent = p.email && currentUser?.email && p.email.toLowerCase() === currentUser.email.toLowerCase();
+    const avatarUrl = p.avatar || p.avatar_url || (isCurrent ? (currentUser?.avatar || currentUser?.avatar_url) : '') || '';
+    const nameStr = p.name || p.email || 'User';
+    const initials = nameStr.split(' ').filter(Boolean).map(s => s[0]).slice(0, 2).join('').toUpperCase() || 'U';
+
+    if (avatarUrl) {
+      return `
+        <div style="width:${size}px; height:${size}px; border-radius:50%; position:relative; flex-shrink:0;">
+          <img src="${esc(avatarUrl)}" alt="${esc(nameStr)}" style="width:${size}px; height:${size}px; border-radius:50%; object-fit:cover; border:1.5px solid var(--border-color, #E2E8F0); background:#F1F5F9; display:block;" onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='flex';">
+          <div style="display:none; width:${size}px; height:${size}px; border-radius:50%; background: linear-gradient(135deg, #10B981 0%, #047857 100%); color:#FFFFFF; align-items:center; justify-content:center; font-weight:800; font-size:${Math.round(size * 0.42)}px; letter-spacing:0.02em; border:1.5px solid #A7F3D0; box-shadow:0 2px 6px rgba(16, 185, 129, 0.2);">
+            ${esc(initials)}
+          </div>
+        </div>
+      `;
+    }
+
+    return `
+      <div style="width:${size}px; height:${size}px; border-radius:50%; background: linear-gradient(135deg, #10B981 0%, #047857 100%); color:#FFFFFF; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:${Math.round(size * 0.42)}px; letter-spacing:0.02em; border:1.5px solid #A7F3D0; box-shadow:0 2px 6px rgba(16, 185, 129, 0.2); flex-shrink:0;">
+        ${esc(initials)}
+      </div>
+    `;
+  }
+
   static async renderUsersTab(tabContent) {
     const currentUser = authService.getCurrentUser();
     const isSuperAdmin = currentUser?.isSuperAdmin === true || (currentUser?.email || '').toLowerCase() === (TMS_CONFIG.superAdminEmail || '').toLowerCase();
@@ -3681,6 +3715,15 @@ export class AdminModule {
       profiles = await dbService.select('profiles');
     } catch (e) {
       profiles = [];
+    }
+
+    // Enrich profiles with active session data (avatar, department)
+    for (const p of profiles) {
+      if (p.email && currentUser?.email && p.email.toLowerCase() === currentUser.email.toLowerCase()) {
+        p.avatar = p.avatar || currentUser?.avatar || currentUser?.avatar_url;
+        p.department = p.department || currentUser?.department;
+        p.title = p.title || currentUser?.title;
+      }
     }
 
     // Admin-visible login identifiers issued to staff and parents
@@ -3886,7 +3929,7 @@ export class AdminModule {
           return `
             <div class="user-card-item">
               <div class="user-card-header">
-                <img src="${esc(p.avatar || '')}" alt="" style="width:40px;height:40px;border-radius:10px;object-fit:cover;background:#f1f5f9;">
+                ${this._renderUserAvatar(p, 40)}
                 <div>
                   <div class="user-card-name">${esc(p.name || 'Pending Applicant')}</div>
                   <div style="font-size:0.75rem; color:var(--text-muted);">${esc(p.email || '—')}</div>
@@ -4007,14 +4050,14 @@ export class AdminModule {
                 return `
                   <tr data-id="${esc(p.id)}">
                     <td style="font-weight:600;">
-                      <div style="display:flex; align-items:center; gap:8px;">
-                        <img src="${esc(p.avatar || '')}" alt="" style="width:32px;height:32px;border-radius:50%;object-fit:cover;border:1px solid var(--border-color);background:#f1f5f9;">
+                      <div style="display:flex; align-items:center; gap:10px;">
+                        ${this._renderUserAvatar(p, 34)}
                         <div>
-                          <div style="display:flex; align-items:center; gap:5px;">
-                            <span>${esc(p.name || '—')}</span>
-                            ${isTargetSuper ? '<span class="badge" style="background:#0F172A; color:#FFFFFF; font-size:0.6rem; padding:2px 5px; font-weight:700;">SUPER ADMIN</span>' : ''}
+                          <div style="display:flex; align-items:center; gap:6px;">
+                            <span style="font-size:0.88rem; font-weight:700; color:#0F172A;">${esc(p.name || '—')}</span>
+                            ${isTargetSuper ? '<span class="badge" style="background:#0F172A; color:#FFFFFF; font-size:0.6rem; padding:2px 6px; font-weight:800; border-radius:9999px;">SUPER ADMIN</span>' : ''}
                           </div>
-                          <div class="font-mono" style="font-size:0.75rem; color:var(--text-muted);">${esc(p.email || '—')}</div>
+                          <div class="font-mono" style="font-size:0.75rem; color:var(--text-muted); margin-top:1px;">${esc(p.email || '—')}</div>
                         </div>
                       </div>
                     </td>
@@ -4025,11 +4068,13 @@ export class AdminModule {
                     </td>
                     <td>
                       ${hasCustom ? `
-                        <span class="badge" style="background:#d1fae5; color:#065f46; border:1px solid #a7f3d0; font-weight:700; font-size:0.65rem;" title="Individual window permissions active">
+                        <span class="badge" style="background:#d1fae5; color:#065f46; border:1px solid #a7f3d0; font-weight:700; font-size:0.68rem;" title="Individual window permissions active">
                           CUSTOM PERMS
                         </span>
                       ` : `
-                        <span style="font-size:0.75rem; color:var(--text-muted);">(Role Default)</span>
+                        <span class="badge" style="background:#F1F5F9; color:#475569; border:1px solid #E2E8F0; font-weight:700; font-size:0.7rem;">
+                          <i data-lucide="shield" style="width:10px; height:10px; color:#059669;"></i> Role Default ${isTargetSuper ? '(Full Access)' : ''}
+                        </span>
                       `}
                     </td>
                     <td style="font-size:0.78rem;">
@@ -4051,9 +4096,28 @@ export class AdminModule {
                             ` : ''}
                           </div>
                         </div>
+                      ` : isTargetSuper ? `
+                        <div style="display:flex; flex-direction:column; gap:2px;">
+                          <span class="badge" style="background:#EFF6FF; color:#1D4ED8; border:1px solid #BFDBFE; font-size:0.72rem; font-weight:700;">
+                            <i data-lucide="shield-check" style="width:11px; height:11px;"></i> Super Admin Root
+                          </span>
+                          <span class="font-mono" style="font-size:0.72rem; color:#64748B;">${esc(p.email)}</span>
+                        </div>
+                      ` : p.email ? `
+                        <div style="display:flex; flex-direction:column; gap:2px;">
+                          <span class="badge" style="background:#F8FAFC; color:#475569; border:1px solid #E2E8F0; font-size:0.7rem; font-weight:700;">
+                            <i data-lucide="mail" style="width:10px; height:10px;"></i> Direct Email Auth
+                          </span>
+                          <span class="font-mono" style="font-size:0.72rem; color:#64748B;">${esc(p.email)}</span>
+                        </div>
                       ` : '<span style="color:var(--text-muted);">—</span>'}
                     </td>
-                    <td style="font-size:0.78rem;">${esc([p.assignedClass, p.assignedSection].filter(Boolean).join(' / ') || '—')}</td>
+                    <td style="font-size:0.78rem;">
+                      <span style="display:inline-flex; align-items:center; gap:5px; font-weight:600; color:#334155;">
+                        <i data-lucide="${p.assignedClass ? 'graduation-cap' : 'building-2'}" style="width:13px; height:13px; color:#16a34a;"></i>
+                        ${esc([p.assignedClass, p.assignedSection].filter(Boolean).join(' / ') || p.department || p.title || (isTargetSuper ? 'Executive Governance & Leadership' : 'Campus Operations'))}
+                      </span>
+                    </td>
                     <td>
                       ${p.isActive !== false ? `
                         <span style="display:inline-flex; align-items:center; gap:5px; font-size:0.75rem; color:#059669; font-weight:600;">
@@ -4107,7 +4171,7 @@ export class AdminModule {
             return `
               <div class="user-card-item">
                 <div class="user-card-header">
-                  <img src="${esc(p.avatar || '')}" alt="" style="width:40px;height:40px;border-radius:10px;object-fit:cover;background:#f1f5f9;">
+                  ${this._renderUserAvatar(p, 42)}
                   <div style="flex:1; min-width:0;">
                     <div class="user-card-name-row">
                       <span class="user-card-name">${esc(p.name || 'User')}</span>
@@ -4709,7 +4773,7 @@ export class AdminModule {
         <!-- User Info Strip -->
         <div style="background:#f8fafc; border:1px solid var(--border-color); border-radius:10px; padding:0.75rem 1rem; display:flex; align-items:center; justify-content:space-between; gap:10px;">
           <div style="display:flex; align-items:center; gap:8px;">
-            <img src="${esc(p.avatar || '')}" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;background:#f1f5f9;">
+            ${this._renderUserAvatar(p, 36)}
             <div>
               <strong style="font-size:0.92rem; color:var(--text-main);">${esc(p.name || 'User Account')}</strong>
               <div style="font-size:0.75rem; color:var(--text-muted);">${esc(p.email || '—')}</div>

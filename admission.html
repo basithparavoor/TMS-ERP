@@ -1237,7 +1237,7 @@
         if (!file) { values[f.fieldKey] = ''; continue; }
         const path = `${folder}/${f.fieldKey}-${Date.now()}-${admissionService.sanitizeFileName(file.name)}`;
         try {
-          const res = await admissionService.uploadFile('admissions', path, file);
+          const res = await admissionService.uploadFile('admission-docs', path, file);
           values[f.fieldKey] = res.publicUrl || res.path || path;
         } catch (e) {
           console.warn(`Upload failed for ${f.fieldKey}: ${e.message}`);

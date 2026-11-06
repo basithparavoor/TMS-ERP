@@ -370,6 +370,11 @@ class AdmissionService {
     const client = dbService.getClient();
     if (!client) return null;
     try {
+      // Prioritize public URL for public buckets (admission-docs & avatars) for 0ms latency and avoiding signing errors
+      if (bucket === 'admission-docs' || bucket === 'admissions' || bucket === 'avatars') {
+        const pub = client.storage.from(bucket).getPublicUrl(path);
+        if (pub && pub.data && pub.data.publicUrl) return pub.data.publicUrl;
+      }
       const { data, error } = await client.storage.from(bucket).createSignedUrl(path, expiresIn);
       if (error) {
         try {

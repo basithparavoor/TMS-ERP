@@ -7580,3 +7580,37 @@ a {
   color: #0f172a !important;
   line-height: 1.3 !important;
 }
+
+/* ==========================================================================
+   USER ACCOUNTS & RBAC RESPONSIVE LAYOUT (TABLE VS MOBILE CARDS)
+   ========================================================================== */
+.tab-label-short {
+  display: none !important;
+}
+
+.desktop-user-table {
+  display: block !important;
+  width: 100%;
+  overflow-x: auto;
+}
+
+.mobile-user-cards {
+  display: none !important;
+}
+
+@media (max-width: 768px) {
+  .desktop-user-table {
+    display: none !important;
+  }
+  .mobile-user-cards {
+    display: flex !important;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .tab-label-full {
+    display: none !important;
+  }
+  .tab-label-short {
+    display: inline !important;
+  }
+}
