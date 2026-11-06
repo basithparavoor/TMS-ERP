@@ -4525,23 +4525,31 @@ export class AdminModule {
         <!-- Main Card Panel with Sub-Tabs -->
         <div class="card" style="padding:0; overflow:hidden;">
           <div class="card-header" style="padding:0.75rem 1rem; border-bottom:1px solid var(--border-color); background:var(--bg-surface);">
-            <div class="user-sub-tabs-bar" style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
-              <button class="btn ${currentTab === 'pending' ? 'btn-primary' : 'btn-secondary'} btn-sm tab-sub-btn" data-subtab="pending">
-                <span class="tab-label-full">Pending Approvals (${pendingList.length})</span>
-                <span class="tab-label-short">Pending (${pendingList.length})</span>
+            <div class="tms-tab-scroll-wrapper" style="margin-bottom:0;">
+              <button type="button" class="tms-tab-nav-btn tms-tab-nav-prev" aria-label="Scroll left" title="Scroll tabs left">
+                <i data-lucide="chevron-left"></i>
               </button>
-              <button class="btn ${currentTab === 'active' ? 'btn-primary' : 'btn-secondary'} btn-sm tab-sub-btn" data-subtab="active">
-                <span class="tab-label-full">Active Accounts (${approvedList.length})</span>
-                <span class="tab-label-short">Active (${approvedList.length})</span>
-              </button>
-              <button class="btn ${currentTab === 'suspended' ? 'btn-primary' : 'btn-secondary'} btn-sm tab-sub-btn" data-subtab="suspended">
-                <span class="tab-label-full">Suspended Accounts (${suspendedList.length})</span>
-                <span class="tab-label-short">Suspended (${suspendedList.length})</span>
-              </button>
-              <button class="btn ${currentTab === 'rbac' ? 'btn-primary' : 'btn-secondary'} btn-sm tab-sub-btn" data-subtab="rbac" style="display:inline-flex; align-items:center; gap:5px;">
-                <i data-lucide="shield-check" style="width:14px;height:14px;"></i>
-                <span class="tab-label-full">Assign Windows (RBAC)</span>
-                <span class="tab-label-short">RBAC</span>
+              <div class="user-sub-tabs-bar tms-tab-scroll-rail" style="display:inline-flex; gap:6px; align-items:center; overflow-x:auto;">
+                <button class="btn ${currentTab === 'pending' ? 'btn-primary' : 'btn-secondary'} btn-sm tab-sub-btn" data-subtab="pending">
+                  <span class="tab-label-full">Pending Approvals (${pendingList.length})</span>
+                  <span class="tab-label-short">Pending (${pendingList.length})</span>
+                </button>
+                <button class="btn ${currentTab === 'active' ? 'btn-primary' : 'btn-secondary'} btn-sm tab-sub-btn" data-subtab="active">
+                  <span class="tab-label-full">Active Accounts (${approvedList.length})</span>
+                  <span class="tab-label-short">Active (${approvedList.length})</span>
+                </button>
+                <button class="btn ${currentTab === 'suspended' ? 'btn-primary' : 'btn-secondary'} btn-sm tab-sub-btn" data-subtab="suspended">
+                  <span class="tab-label-full">Suspended Accounts (${suspendedList.length})</span>
+                  <span class="tab-label-short">Suspended (${suspendedList.length})</span>
+                </button>
+                <button class="btn ${currentTab === 'rbac' ? 'btn-primary' : 'btn-secondary'} btn-sm tab-sub-btn" data-subtab="rbac" style="display:inline-flex; align-items:center; gap:5px;">
+                  <i data-lucide="shield-check" style="width:14px;height:14px;"></i>
+                  <span class="tab-label-full">Assign Windows (RBAC)</span>
+                  <span class="tab-label-short">RBAC</span>
+                </button>
+              </div>
+              <button type="button" class="tms-tab-nav-btn tms-tab-nav-next" aria-label="Scroll right" title="Scroll tabs right">
+                <i data-lucide="chevron-right"></i>
               </button>
             </div>
           </div>

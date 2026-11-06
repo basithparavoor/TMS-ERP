@@ -217,13 +217,21 @@ export class CalendarModule {
           </div>
 
           <!-- Category Filter Pills Bar -->
-          <div class="cal-filters-row">
-            ${EVENT_CATEGORIES.map(cat => `
-              <button type="button" class="btn ${this._selectedCategory === cat.id ? 'btn-primary active' : 'btn-secondary'} btn-sm btn-filter-cat" data-cat="${cat.id}" style="font-size: 0.75rem; padding: 5px 12px; white-space: nowrap; border-radius: 9999px;">
-                <i data-lucide="${cat.icon || 'tag'}" style="width: 13px; height: 13px;"></i>
-                ${cat.name}
-              </button>
-            `).join('')}
+          <div class="tms-tab-scroll-wrapper" style="margin-bottom: 12px;">
+            <button type="button" class="tms-tab-nav-btn tms-tab-nav-prev" id="cal-filter-scroll-prev" aria-label="Scroll left" title="Scroll left">
+              <i data-lucide="chevron-left"></i>
+            </button>
+            <div class="cal-filters-row tms-tab-scroll-rail" id="cal-filters-rail">
+              ${EVENT_CATEGORIES.map(cat => `
+                <button type="button" class="btn ${this._selectedCategory === cat.id ? 'btn-primary active' : 'btn-secondary'} btn-sm btn-filter-cat" data-cat="${cat.id}" style="font-size: 0.75rem; padding: 5px 12px; white-space: nowrap; border-radius: 9999px;">
+                  <i data-lucide="${cat.icon || 'tag'}" style="width: 13px; height: 13px;"></i>
+                  ${cat.name}
+                </button>
+              `).join('')}
+            </div>
+            <button type="button" class="tms-tab-nav-btn tms-tab-nav-next" id="cal-filter-scroll-next" aria-label="Scroll right" title="Scroll right">
+              <i data-lucide="chevron-right"></i>
+            </button>
           </div>
 
           <!-- MAIN SECTION: CALENDAR GRID + AGENDA (SIDE-BY-SIDE ON DESKTOP) -->

@@ -1,3 +1,111 @@
+/**
+ * THAIBA MODEL SCHOOL — UI Components & Theme Engine
+ */
+
+import { enhanceSelect, enhanceAllSelects, startGlobalSelectObserver } from './dropdown-enhancer.js';
+import { enhanceDatePicker, enhanceAllDatePickers, startGlobalDatePickerObserver } from './datepicker-enhancer.js';
+
+export class UIComponents {
+  /**
+   * Escape untrusted values before interpolating them into HTML templates.
+   * Prevents stored/reflected XSS from user- or staff-supplied data.
+   */
+  static escapeHtml(value) {
+    if (value === null || value === undefined) return '';
+    return String(value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  static initTheme() {
+    // Enforce Pro-Max Luxury Light Theme (Dark mode completely removed as requested)
+    document.body.classList.remove('dark');
+    localStorage.setItem('tms_theme', 'light');
+
+    const savedColor = localStorage.getItem('tms_color_theme') || 'emerald';
+    const activeColor = (savedColor === 'oled') ? 'emerald' : savedColor;
+
+    document.documentElement.setAttribute('data-theme', activeColor);
+    document.body.setAttribute('data-theme', activeColor);
+    localStorage.setItem('tms_color_theme', activeColor);
+
+    this.installGlobalInterceptors();
+    startGlobalSelectObserver();
+    startGlobalDatePickerObserver();
+  }
+
+  static enhanceSelect(el) {
+    enhanceSelect(el);
+  }
+
+  static enhanceAllSelects(root = document) {
+    enhanceAllSelects(root);
+  }
+
+  static initCustomSelects() {
+    startGlobalSelectObserver();
+  }
+
+  static enhanceDatePicker(el) {
+    enhanceDatePicker(el);
+  }
+
+  static enhanceAllDatePickers(root = document) {
+    enhanceAllDatePickers(root);
+  }
+
+  static initDatePickers() {
+    startGlobalDatePickerObserver();
+  }
+
+  static installGlobalInterceptors() {
+    if (typeof window === 'undefined' || window._tmsPopupsInstalled) return;
+    window._tmsPopupsInstalled = true;
+
+    // Intercept native browser alert with luxury UIComponents modal
+    window.alert = (message) => {
+      this.alert({
+        title: 'Campus Notification',
+        message: String(message || ''),
+        buttonText: 'Got It',
+        type: 'info',
+        icon: 'info'
+      });
+    };
+  }
+
+  static setColorTheme(themeName) {
+    const valid = ['emerald', 'sapphire', 'burgundy'];
+    const chosen = valid.includes(themeName) ? themeName : 'emerald';
+    
+    document.body.classList.remove('dark');
+    localStorage.setItem('tms_theme', 'light');
+    document.documentElement.setAttribute('data-theme', chosen);
+    document.body.setAttribute('data-theme', chosen);
+    localStorage.setItem('tms_color_theme', chosen);
+
+    const names = {
+      emerald: 'Thaiba Emerald (Classic Institutional)',
+      sapphire: 'Royal Sapphire (Academic Blue)',
+      burgundy: 'Noble Burgundy (Regal Crimson)'
+    };
+    this.showToast(`Active Theme: ${names[chosen]} (Premium Light Edition)`, 'success');
+  }
+
+  static toggleTheme() {
+    // Cycle between luxury light palettes
+    const current = localStorage.getItem('tms_color_theme') || 'emerald';
+    const next = current === 'emerald' ? 'sapphire' : (current === 'sapphire' ? 'burgundy' : 'emerald');
+    this.setColorTheme(next);
+  }
+
+  static updateThemeButton() {
+    // No-op for dark mode button
+  }
+
   /**
    * Universal Tab Rail Enhancer
    * Equips every tab bar and sub-tab rail with circular < and > buttons,
@@ -5,7 +113,7 @@
    */
   static initTabRails(root = document) {
     if (!root) return;
-    const rails = root.querySelectorAll('.tms-segmented-tabs, .tms-subtab-rail, .user-sub-tabs-bar, [data-tms-scroll-rail]');
+    const rails = root.querySelectorAll('.tms-segmented-tabs, .tms-subtab-rail, .user-sub-tabs-bar, .cal-filters-row, .tms-tab-scroll-rail, [data-tms-scroll-rail]');
     rails.forEach((rail) => {
       let wrapper = rail.closest('.tms-tab-scroll-wrapper, .tms-subtab-container-wrap, .tms-tab-rail-wrapper');
       
@@ -109,8 +217,8 @@
       if (this._iconRaf) cancelAnimationFrame(this._iconRaf);
       this._iconRaf = requestAnimationFrame(() => {
         try { 
-          window.lucide.createIcons(); 
           this.initTabRails();
+          window.lucide.createIcons(); 
         } catch (e) { /* ignore */ }
       });
     }

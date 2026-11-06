@@ -4,7 +4,7 @@ node_modules/
 .env.local
 
 # Browser testing profiles & temporary runtimes
-scratch/edge-profile*/
+scratch/
 .playwright/
 test-results/
 
