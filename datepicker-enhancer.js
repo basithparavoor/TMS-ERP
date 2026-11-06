@@ -4,7 +4,7 @@
  * - 3D Emerald Calendar Badge with metallic white rings and selected day
  * - Pill selectors for Month (Nov ▾) and Year (2026 ▾)
  * - SUN-SAT weekday headers with emerald SUN
- * - 7-column days grid with dark green selected day (#0f5132) & scale animations
+ * - 7-column days grid with dark green selected day (#16A34A) & scale animations
  * - Prominent emerald "Confirm" button
  * - Month view (Select Month YYYY) with 3x4 grid cards and Back to Days link
  * - Year view (Decade window) with 3x4 grid cards and Back to Days link
@@ -58,12 +58,12 @@ function ensureStyles() {
 }
 
 .tps-date-input-field:hover {
-  border-color: #10B981 !important;
+  border-color: #22C55E !important;
   background-color: #FAFAFA !important;
 }
 
 .tps-date-input-field:focus {
-  border-color: #10B981 !important;
+  border-color: #22C55E !important;
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15) !important;
 }
 
@@ -72,7 +72,7 @@ function ensureStyles() {
   right: 14px !important;
   top: 50% !important;
   transform: translateY(-50%) !important;
-  color: #10B981 !important;
+  color: #22C55E !important;
   pointer-events: none !important;
   display: flex !important;
   align-items: center !important;
@@ -133,14 +133,12 @@ function ensureStyles() {
   display: inline-flex !important;
   align-items: center !important;
   gap: 0.4rem !important;
-  background: #F1F5F9 !important;
-  border: 1px solid #E2E8F0 !important;
+  background: #F0FDF4 !important; border: 1.5px solid #BBF7D0 !important; color: #15803D !important;
   border-radius: 12px !important;
   padding: 0.45rem 0.8rem !important;
   font-size: 0.85rem !important;
   font-weight: 700 !important;
-  color: #1E293B !important;
-  cursor: pointer !important;
+  color: #15803D !important; cursor: pointer !important;
   transition: all 0.15s ease !important;
   outline: none !important;
   font-family: inherit !important;
@@ -149,7 +147,7 @@ function ensureStyles() {
 .tps-cal-pill-btn:hover {
   background: #E2E8F0 !important;
   border-color: #CBD5E1 !important;
-  color: #0F5132 !important;
+  color: #16A34A !important;
 }
 
 .tps-cal-pill-btn svg {
@@ -158,7 +156,7 @@ function ensureStyles() {
 }
 
 .tps-cal-pill-btn:hover svg {
-  color: #0F5132 !important;
+  color: #16A34A !important;
   transform: translateY(1px) !important;
 }
 
@@ -166,7 +164,8 @@ function ensureStyles() {
   position: relative !important;
   width: 62px !important;
   height: 64px !important;
-  background: linear-gradient(145deg, #10B981, #059669 45%, #0F5132) !important;
+  background: linear-gradient(145deg, #22C55E 0%, #16A34A 55%, #15803D 100%) !important;
+  box-shadow: 0 8px 20px rgba(22, 163, 74, 0.32), inset 0 1px 1px rgba(255, 255, 255, 0.5) !important;
   border-radius: 16px !important;
   display: flex !important;
   align-items: center !important;
@@ -219,7 +218,7 @@ function ensureStyles() {
 }
 
 .tps-cal-weekdays span.weekday-sun {
-  color: #059669 !important;
+  color: #16A34A !important;
   font-weight: 800 !important;
 }
 
@@ -256,27 +255,27 @@ function ensureStyles() {
 }
 
 .tps-cal-day.col-sun:not(.selected):not(.other-month) {
-  color: #059669 !important;
+  color: #16A34A !important;
   font-weight: 700 !important;
 }
 
 .tps-cal-day:hover:not(.selected) {
   background: #ECFDF5 !important;
-  color: #047857 !important;
+  color: #15803D !important;
   transform: scale(1.06) !important;
 }
 
 .tps-cal-day.selected {
-  background: #0F5132 !important;
+  background: linear-gradient(135deg, #22C55E 0%, #16A34A 100%) !important;
   color: #FFFFFF !important;
   font-weight: 800 !important;
   border-radius: 12px !important;
-  box-shadow: 0 6px 14px rgba(15, 81, 50, 0.4) !important;
+  box-shadow: 0 6px 16px rgba(22, 163, 74, 0.45) !important;
   transform: scale(1.04) !important;
 }
 
 .tps-cal-day.today:not(.selected) {
-  color: #059669 !important;
+  color: #16A34A !important;
   font-weight: 800 !important;
 }
 
@@ -286,7 +285,7 @@ function ensureStyles() {
   bottom: 3px !important;
   width: 14px !important;
   height: 2.5px !important;
-  background: #059669 !important;
+  background: #16A34A !important;
   border-radius: 2px !important;
 }
 
@@ -297,7 +296,8 @@ function ensureStyles() {
 }
 
 .tps-cal-confirm-btn {
-  background: linear-gradient(135deg, #059669, #0F5132) !important;
+  background: linear-gradient(135deg, #22C55E 0%, #16A34A 55%, #15803D 100%) !important;
+  box-shadow: 0 8px 22px rgba(22, 163, 74, 0.35) !important;
   color: #FFFFFF !important;
   font-family: inherit !important;
   font-size: 0.95rem !important;
@@ -316,7 +316,7 @@ function ensureStyles() {
 .tps-cal-confirm-btn:hover {
   transform: translateY(-2px) !important;
   box-shadow: 0 14px 28px rgba(15, 81, 50, 0.42) !important;
-  background: linear-gradient(135deg, #10B981, #047857) !important;
+  background: linear-gradient(135deg, #22C55E, #15803D) !important;
 }
 
 .tps-cal-confirm-btn:active {
@@ -390,14 +390,14 @@ function ensureStyles() {
 .tps-cal-grid-item:hover {
   background: #ECFDF5 !important;
   border-color: #A7F3D0 !important;
-  color: #047857 !important;
+  color: #15803D !important;
   transform: translateY(-1px) !important;
 }
 
 .tps-cal-grid-item.selected {
-  background: #0F5132 !important;
+  background: #16A34A !important;
   color: #FFFFFF !important;
-  border-color: #0F5132 !important;
+  border-color: #16A34A !important;
   box-shadow: 0 4px 10px rgba(15, 81, 50, 0.3) !important;
 }
 
@@ -410,7 +410,7 @@ function ensureStyles() {
 .tps-cal-today-action {
   font-size: 0.85rem !important;
   font-weight: 700 !important;
-  color: #059669 !important;
+  color: #16A34A !important;
   background: transparent !important;
   border: none !important;
   cursor: pointer !important;
@@ -419,7 +419,7 @@ function ensureStyles() {
 }
 
 .tps-cal-today-action:hover {
-  color: #047857 !important;
+  color: #15803D !important;
   text-decoration: underline !important;
 }
 `;

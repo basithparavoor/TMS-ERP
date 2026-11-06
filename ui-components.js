@@ -321,6 +321,53 @@ export class UIComponents {
     }
   }
 
+  static showModal({
+    title,
+    content,
+    bodyHtml,
+    confirmText = 'Confirm',
+    cancelText = 'Cancel',
+    showConfirm = true,
+    showCancel = true,
+    onConfirm = null,
+    onCancel = null,
+    maxWidth = '680px'
+  }) {
+    const finalBody = content || bodyHtml || '';
+    const footerButtons = [];
+    if (showCancel) {
+      footerButtons.push(`<button type="button" class="btn btn-secondary" id="tms-modal-btn-cancel">${this.escapeHtml(cancelText)}</button>`);
+    }
+    if (showConfirm) {
+      footerButtons.push(`<button type="button" class="btn btn-primary" id="tms-modal-btn-confirm">${this.escapeHtml(confirmText)}</button>`);
+    }
+    this.openModal({
+      title,
+      bodyHtml: finalBody,
+      footerHtml: footerButtons.join(' '),
+      maxWidth
+    });
+
+    const cancelBtn = document.getElementById('tms-modal-btn-cancel');
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', () => {
+        this.closeModal();
+        if (typeof onCancel === 'function') onCancel();
+      });
+    }
+
+    const confirmBtn = document.getElementById('tms-modal-btn-confirm');
+    if (confirmBtn) {
+      confirmBtn.addEventListener('click', async () => {
+        if (typeof onConfirm === 'function') {
+          const res = await onConfirm();
+          if (res === false) return;
+        }
+        this.closeModal();
+      });
+    }
+  }
+
   static renderLoading(message = 'Loading verified records...') {
     return `
       <div class="tms-animated-loader" style="padding: 48px 20px; text-align: center;">
@@ -440,22 +487,24 @@ export class UIComponents {
 
     return `
       <div class="tms-page-header">
-        <div class="tms-page-header-row">
-          <div class="tms-page-header-content">
+        ${breadcrumbsHtml ? `
+          <div class="tms-page-header-topbar">
             ${breadcrumbsHtml}
-            <div class="tms-page-title-row">
-              ${headerIcon ? `
-                <div class="tms-page-header-icon">
-                  <i data-lucide="${esc(headerIcon)}"></i>
-                </div>
-              ` : ''}
-              <div class="tms-page-title-text-wrap">
-                <div class="tms-page-title-wrap">
-                  <h1 class="tms-page-title">${esc(title)}</h1>
-                  ${badge ? `<span class="badge badge-success tms-page-badge">${badge}</span>` : ''}
-                </div>
-                ${cleanSubtitle ? `<p class="tms-page-subtitle">${esc(cleanSubtitle)}</p>` : ''}
+          </div>
+        ` : ''}
+        <div class="tms-page-header-main">
+          <div class="tms-page-header-identity">
+            ${headerIcon ? `
+              <div class="tms-page-header-icon" title="${esc(title)}">
+                <i data-lucide="${esc(headerIcon)}"></i>
               </div>
+            ` : ''}
+            <div class="tms-page-header-headings">
+              <div class="tms-page-title-row">
+                <h1 class="tms-page-title">${esc(title)}</h1>
+                ${badge ? `<span class="tms-page-badge">${badge}</span>` : ''}
+              </div>
+              ${cleanSubtitle ? `<p class="tms-page-subtitle">${esc(cleanSubtitle)}</p>` : ''}
             </div>
           </div>
           ${finalActions ? `<div class="tms-page-actions">${finalActions}</div>` : ''}

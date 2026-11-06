@@ -475,6 +475,33 @@ class WebsiteService {
   constructor() {
     this.data = this.readCache();
     this.applyThemeVars();
+    this.initSyncListeners();
+  }
+
+  initSyncListeners() {
+    try {
+      if (typeof window !== 'undefined') {
+        window.addEventListener('storage', (e) => {
+          if (e.key === CACHE_KEY && e.newValue) {
+            try {
+              this.data = this.readCache();
+              this.applyThemeVars();
+              window.dispatchEvent(new CustomEvent('tms_website_config_changed', { detail: this.data }));
+            } catch (_) {}
+          }
+        });
+        if (typeof BroadcastChannel !== 'undefined') {
+          this._bc = new BroadcastChannel('tms_website_cms_channel');
+          this._bc.onmessage = (msg) => {
+            if (msg.data && msg.data.type === 'config_updated' && msg.data.config) {
+              this.data = msg.data.config;
+              this.applyThemeVars();
+              window.dispatchEvent(new CustomEvent('tms_website_config_changed', { detail: this.data }));
+            }
+          };
+        }
+      }
+    } catch (_) {}
   }
 
   readCache() {

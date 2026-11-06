@@ -1,8 +1,13 @@
 /**
  * THAIBA MODEL SCHOOL — Institutional Event & Academic Calendar Planner
- * Visual Fluent Month Calendar, Multi-Day Continuous Pill Tracks, Working Days Customizer,
- * Quick Day Inspector & Override, and Smartphone iCal (.ics) Sync.
- * Inspired by TPSH Calendar System.
+ * Comprehensive Executive Academic Calendar Suite
+ * Features:
+ * - Structural: Unified executive layout, generous full-width grid, zero header clipping
+ * - Functional: Corrected weekend-off calculations, single-bar navigation, range selection,
+ *               quick 1-click day inspection & override, weekly working days customizer
+ * - UI: Apple/Fluent inspired cards, continuous pill tracks, live today beacon, refined chips
+ * - Layout: Responsive single-column workspace flow, fluid day cells, no awkward empty columns
+ * - Color Theme: Signature Thaiba Emerald palette with amber holidays, crimson breaks, purple exams, cobalt PTMs
  */
 
 import { TMS_CONFIG } from './config.js';
@@ -12,7 +17,7 @@ import { auditService } from './audit-service.js';
 import { TMS_LOGO } from './logo.js';
 
 export const EVENT_CATEGORIES = [
-  { id: 'all', name: 'All Categories', color: '#64748b', icon: 'layers' },
+  { id: 'all', name: 'All Categories', color: '#64748b', trackColor: '#f1f5f9', badgeClass: 'is-all', icon: 'layers' },
   { id: 'holiday', name: 'Official Holiday', color: '#f59e0b', trackColor: '#fef3c7', badgeClass: 'is-holiday', icon: 'sun' },
   { id: 'hostel_leave', name: 'School / Hostel Break', color: '#ef4444', trackColor: '#fee2e2', badgeClass: 'is-hostel-leave', icon: 'plane-takeoff' },
   { id: 'exam', name: 'Examinations & Tests', color: '#9333ea', trackColor: '#f3e8ff', badgeClass: 'is-exam', icon: 'award' },
@@ -22,50 +27,50 @@ export const EVENT_CATEGORIES = [
   { id: 'fee', name: 'Fee Collection Deadline', color: '#d97706', trackColor: '#fef3c7', badgeClass: 'is-fee', icon: 'credit-card' }
 ];
 
-const DEFAULT_CALENDAR_STORE = {
+export const DEFAULT_CALENDAR_STORE = {
   academic_year: '2026-2027',
   weekly_working_days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
   events: [
-    { id: 'cal-1', date: '2026-10-02', name: 'Gandhi Jayanti', type: 'holiday', is_all_day: true },
-    { id: 'cal-2a', date: '2026-10-12', name: 'Puja Vacation', type: 'holiday', range_id: 'range-puja-26', is_all_day: true },
-    { id: 'cal-2b', date: '2026-10-13', name: 'Puja Vacation', type: 'holiday', range_id: 'range-puja-26', is_all_day: true },
-    { id: 'cal-2c', date: '2026-10-14', name: 'Puja Vacation', type: 'holiday', range_id: 'range-puja-26', is_all_day: true },
-    { id: 'cal-2d', date: '2026-10-15', name: 'Puja Vacation', type: 'holiday', range_id: 'range-puja-26', is_all_day: true },
-    { id: 'cal-3a', date: '2026-10-19', name: 'Deepavali Break', type: 'hostel_leave', range_id: 'range-diwali-26', is_all_day: true },
-    { id: 'cal-3b', date: '2026-10-20', name: 'Deepavali Break', type: 'hostel_leave', range_id: 'range-diwali-26', is_all_day: true },
-    { id: 'cal-3c', date: '2026-10-21', name: 'Deepavali Break', type: 'hostel_leave', range_id: 'range-diwali-26', is_all_day: true },
+    { id: 'cal-1', date: '2026-10-02', name: 'Gandhi Jayanti Observance', type: 'holiday', is_all_day: true },
+    { id: 'cal-2a', date: '2026-10-12', name: 'Puja Vacation / Dussehra Recess', type: 'holiday', range_id: 'range-puja-26', is_all_day: true },
+    { id: 'cal-2b', date: '2026-10-13', name: 'Puja Vacation / Dussehra Recess', type: 'holiday', range_id: 'range-puja-26', is_all_day: true },
+    { id: 'cal-2c', date: '2026-10-14', name: 'Puja Vacation / Dussehra Recess', type: 'holiday', range_id: 'range-puja-26', is_all_day: true },
+    { id: 'cal-2d', date: '2026-10-15', name: 'Puja Vacation / Dussehra Recess', type: 'holiday', range_id: 'range-puja-26', is_all_day: true },
+    { id: 'cal-3a', date: '2026-10-19', name: 'Deepavali Institutional Break', type: 'hostel_leave', range_id: 'range-diwali-26', is_all_day: true },
+    { id: 'cal-3b', date: '2026-10-20', name: 'Deepavali Institutional Break', type: 'hostel_leave', range_id: 'range-diwali-26', is_all_day: true },
+    { id: 'cal-3c', date: '2026-10-21', name: 'Deepavali Institutional Break', type: 'hostel_leave', range_id: 'range-diwali-26', is_all_day: true },
     { id: 'cal-4a', date: '2026-11-16', name: 'Term-1 Mid-Term Assessments', type: 'exam', range_id: 'range-exam-t1', is_all_day: true },
     { id: 'cal-4b', date: '2026-11-17', name: 'Term-1 Mid-Term Assessments', type: 'exam', range_id: 'range-exam-t1', is_all_day: true },
     { id: 'cal-4c', date: '2026-11-18', name: 'Term-1 Mid-Term Assessments', type: 'exam', range_id: 'range-exam-t1', is_all_day: true },
     { id: 'cal-4d', date: '2026-11-19', name: 'Term-1 Mid-Term Assessments', type: 'exam', range_id: 'range-exam-t1', is_all_day: true },
     { id: 'cal-4e', date: '2026-11-20', name: 'Term-1 Mid-Term Assessments', type: 'exam', range_id: 'range-exam-t1', is_all_day: true },
     { id: 'cal-4f', date: '2026-11-21', name: 'Term-1 Mid-Term Assessments', type: 'exam', range_id: 'range-exam-t1', is_all_day: true },
-    { id: 'cal-5', date: '2026-11-28', name: 'Institutional PTM & Progress Report Meet', type: 'ptm', is_all_day: true },
-    { id: 'cal-6a', date: '2026-12-24', name: 'Winter Vacation & Hostel Exit', type: 'hostel_leave', range_id: 'range-winter-26', is_all_day: true },
+    { id: 'cal-5', date: '2026-11-28', name: 'Parent-Teacher Meeting & Progress Report Meet', type: 'ptm', is_all_day: true },
+    { id: 'cal-6a', date: '2026-12-24', name: 'Winter Vacation & Hostel Exit Window', type: 'hostel_leave', range_id: 'range-winter-26', is_all_day: true },
     { id: 'cal-6b', date: '2026-12-25', name: 'Christmas Day', type: 'holiday', range_id: 'range-winter-26', is_all_day: true },
-    { id: 'cal-6c', date: '2026-12-26', name: 'Winter Vacation & Hostel Exit', type: 'hostel_leave', range_id: 'range-winter-26', is_all_day: true },
-    { id: 'cal-6d', date: '2026-12-27', name: 'Winter Vacation & Hostel Exit', type: 'hostel_leave', range_id: 'range-winter-26', is_all_day: true },
-    { id: 'cal-6e', date: '2026-12-28', name: 'Winter Vacation & Hostel Exit', type: 'hostel_leave', range_id: 'range-winter-26', is_all_day: true },
-    { id: 'cal-6f', date: '2026-12-29', name: 'Winter Vacation & Hostel Exit', type: 'hostel_leave', range_id: 'range-winter-26', is_all_day: true },
-    { id: 'cal-6g', date: '2026-12-30', name: 'Winter Vacation & Hostel Exit', type: 'hostel_leave', range_id: 'range-winter-26', is_all_day: true },
-    { id: 'cal-6h', date: '2026-12-31', name: 'Winter Vacation & Hostel Exit', type: 'hostel_leave', range_id: 'range-winter-26', is_all_day: true },
+    { id: 'cal-6c', date: '2026-12-26', name: 'Winter Vacation & Hostel Exit Window', type: 'hostel_leave', range_id: 'range-winter-26', is_all_day: true },
+    { id: 'cal-6d', date: '2026-12-27', name: 'Winter Vacation & Hostel Exit Window', type: 'hostel_leave', range_id: 'range-winter-26', is_all_day: true },
+    { id: 'cal-6e', date: '2026-12-28', name: 'Winter Vacation & Hostel Exit Window', type: 'hostel_leave', range_id: 'range-winter-26', is_all_day: true },
+    { id: 'cal-6f', date: '2026-12-29', name: 'Winter Vacation & Hostel Exit Window', type: 'hostel_leave', range_id: 'range-winter-26', is_all_day: true },
+    { id: 'cal-6g', date: '2026-12-30', name: 'Winter Vacation & Hostel Exit Window', type: 'hostel_leave', range_id: 'range-winter-26', is_all_day: true },
+    { id: 'cal-6h', date: '2026-12-31', name: 'Winter Vacation & Hostel Exit Window', type: 'hostel_leave', range_id: 'range-winter-26', is_all_day: true },
     { id: 'cal-6i', date: '2027-01-01', name: 'New Year Day', type: 'holiday', range_id: 'range-winter-26', is_all_day: true },
-    { id: 'cal-6j', date: '2027-01-02', name: 'Winter Vacation & Hostel Exit', type: 'hostel_leave', range_id: 'range-winter-26', is_all_day: true },
-    { id: 'cal-7', date: '2027-01-26', name: 'Republic Day Celebration', type: 'holiday', is_all_day: true },
-    { id: 'cal-8a', date: '2027-02-12', name: 'Annual Sports & Athletic Meet', type: 'sports', range_id: 'range-sports-27', is_all_day: true },
-    { id: 'cal-8b', date: '2027-02-13', name: 'Annual Sports & Athletic Meet', type: 'sports', range_id: 'range-sports-27', is_all_day: true },
-    { id: 'cal-8c', date: '2027-02-14', name: 'Annual Sports Prize Distribution', type: 'sports', range_id: 'range-sports-27', is_all_day: true },
-    { id: 'cal-9a', date: '2027-03-20', name: 'Ramadan & Eid Vacation Break', type: 'hostel_leave', range_id: 'range-eid-27', is_all_day: true },
-    { id: 'cal-9b', date: '2027-03-21', name: 'Ramadan & Eid Vacation Break', type: 'hostel_leave', range_id: 'range-eid-27', is_all_day: true },
-    { id: 'cal-9c', date: '2027-03-22', name: 'Ramadan & Eid Vacation Break', type: 'hostel_leave', range_id: 'range-eid-27', is_all_day: true },
-    { id: 'cal-9d', date: '2027-03-23', name: 'Ramadan & Eid Vacation Break', type: 'hostel_leave', range_id: 'range-eid-27', is_all_day: true },
-    { id: 'cal-9e', date: '2027-03-24', name: 'Ramadan & Eid Vacation Break', type: 'hostel_leave', range_id: 'range-eid-27', is_all_day: true },
-    { id: 'cal-9f', date: '2027-03-25', name: 'Ramadan & Eid Vacation Break', type: 'hostel_leave', range_id: 'range-eid-27', is_all_day: true },
-    { id: 'cal-9g', date: '2027-03-26', name: 'Ramadan & Eid Vacation Break', type: 'hostel_leave', range_id: 'range-eid-27', is_all_day: true },
-    { id: 'cal-9h', date: '2027-03-27', name: 'Ramadan & Eid Vacation Break', type: 'hostel_leave', range_id: 'range-eid-27', is_all_day: true },
-    { id: 'cal-9i', date: '2027-03-28', name: 'Ramadan & Eid Vacation Break', type: 'hostel_leave', range_id: 'range-eid-27', is_all_day: true },
-    { id: 'cal-9j', date: '2027-03-29', name: 'Ramadan & Eid Vacation Break', type: 'hostel_leave', range_id: 'range-eid-27', is_all_day: true },
-    { id: 'cal-9k', date: '2027-03-30', name: 'Ramadan & Eid Vacation Break', type: 'hostel_leave', range_id: 'range-eid-27', is_all_day: true },
+    { id: 'cal-6j', date: '2027-01-02', name: 'Winter Vacation & Hostel Exit Window', type: 'hostel_leave', range_id: 'range-winter-26', is_all_day: true },
+    { id: 'cal-7', date: '2027-01-26', name: 'Republic Day Institutional Celebration', type: 'holiday', is_all_day: true },
+    { id: 'cal-8a', date: '2027-02-12', name: 'Annual Sports & Athletics Meet', type: 'sports', range_id: 'range-sports-27', is_all_day: true },
+    { id: 'cal-8b', date: '2027-02-13', name: 'Annual Sports & Athletics Meet', type: 'sports', range_id: 'range-sports-27', is_all_day: true },
+    { id: 'cal-8c', date: '2027-02-14', name: 'Annual Sports Prize Distribution & Cultural Meet', type: 'sports', range_id: 'range-sports-27', is_all_day: true },
+    { id: 'cal-9a', date: '2027-03-20', name: 'Ramadan & Eid-ul-Fitr Vacation Break', type: 'hostel_leave', range_id: 'range-eid-27', is_all_day: true },
+    { id: 'cal-9b', date: '2027-03-21', name: 'Ramadan & Eid-ul-Fitr Vacation Break', type: 'hostel_leave', range_id: 'range-eid-27', is_all_day: true },
+    { id: 'cal-9c', date: '2027-03-22', name: 'Ramadan & Eid-ul-Fitr Vacation Break', type: 'hostel_leave', range_id: 'range-eid-27', is_all_day: true },
+    { id: 'cal-9d', date: '2027-03-23', name: 'Ramadan & Eid-ul-Fitr Vacation Break', type: 'hostel_leave', range_id: 'range-eid-27', is_all_day: true },
+    { id: 'cal-9e', date: '2027-03-24', name: 'Ramadan & Eid-ul-Fitr Vacation Break', type: 'hostel_leave', range_id: 'range-eid-27', is_all_day: true },
+    { id: 'cal-9f', date: '2027-03-25', name: 'Ramadan & Eid-ul-Fitr Vacation Break', type: 'hostel_leave', range_id: 'range-eid-27', is_all_day: true },
+    { id: 'cal-9g', date: '2027-03-26', name: 'Ramadan & Eid-ul-Fitr Vacation Break', type: 'hostel_leave', range_id: 'range-eid-27', is_all_day: true },
+    { id: 'cal-9h', date: '2027-03-27', name: 'Ramadan & Eid-ul-Fitr Vacation Break', type: 'hostel_leave', range_id: 'range-eid-27', is_all_day: true },
+    { id: 'cal-9i', date: '2027-03-28', name: 'Ramadan & Eid-ul-Fitr Vacation Break', type: 'hostel_leave', range_id: 'range-eid-27', is_all_day: true },
+    { id: 'cal-9j', date: '2027-03-29', name: 'Ramadan & Eid-ul-Fitr Vacation Break', type: 'hostel_leave', range_id: 'range-eid-27', is_all_day: true },
+    { id: 'cal-9k', date: '2027-03-30', name: 'Ramadan & Eid-ul-Fitr Vacation Break', type: 'hostel_leave', range_id: 'range-eid-27', is_all_day: true },
     { id: 'cal-9l', date: '2027-03-31', name: 'Eid-ul-Fitr Observance', type: 'holiday', range_id: 'range-eid-27', is_all_day: true }
   ]
 };
@@ -106,37 +111,45 @@ export class CalendarModule {
     const esc = (v) => UIComponents.escapeHtml(v || '');
 
     container.innerHTML = `
-      <div class="tms-content-wrapper" style="padding-bottom: 2.5rem;">
+      <div class="tms-content-wrapper cal-page-wrapper">
         
         <!-- INSTITUTIONAL EXECUTIVE PAGE HEADER -->
-        ${UIComponents.renderPageHeader({
-          title: 'Academic Calendar',
-          subtitle: 'Institutional schedule, working days, official holidays & hostel leaves',
-          icon: 'calendar',
-          badge: 'Academic Operations',
-          breadcrumbs: [
-            { label: 'Campus Core' },
-            { label: 'Academics & Operations' },
-            { label: 'Academic Calendar', active: true }
-          ],
-          actions: `
-            <button type="button" class="btn btn-secondary btn-sm" id="btn-open-working-schedule" title="Configure weekly active working days">
+        <div class="cal-executive-header">
+          <div class="cal-header-left">
+            <div class="cal-header-brand-icon">
+              <i data-lucide="calendar"></i>
+            </div>
+            <div class="cal-header-text">
+              <div class="cal-header-title-row">
+                <h1 class="cal-header-title">Academic Calendar</h1>
+                <span class="cal-badge-pill">Academic Operations</span>
+                <span class="cal-badge-session">Session ${esc(this._calendarStore.academic_year || TMS_CONFIG.academic?.currentYear || '2026-2027')}</span>
+              </div>
+              <p class="cal-header-subtitle">
+                Institutional schedule, weekly working days, official holidays, assessment cycles &amp; hostel leaves
+              </p>
+            </div>
+          </div>
+
+          <!-- Header Toolbar Actions -->
+          <div class="cal-header-actions">
+            <button type="button" class="btn btn-secondary btn-sm cal-action-btn" id="btn-open-working-schedule" title="Configure weekly active working days">
               <i data-lucide="settings-2"></i> Working Days
             </button>
-            <button type="button" class="btn ${this._rangeMode ? 'btn-primary' : 'btn-secondary'} btn-sm" id="btn-toggle-range-mode" title="Toggle range selection to click start and end dates">
+            <button type="button" class="btn ${this._rangeMode ? 'btn-primary active' : 'btn-secondary'} btn-sm cal-action-btn" id="btn-toggle-range-mode" title="Click start and end date to select a range">
               <i data-lucide="arrow-left-right"></i> Range Mode ${this._rangeMode ? '(ON)' : ''}
             </button>
-            <button type="button" class="btn btn-secondary btn-sm" id="btn-export-ics" title="Export .ics calendar to add to Google/iPhone Calendar">
+            <button type="button" class="btn btn-secondary btn-sm cal-action-btn" id="btn-export-ics" title="Export .ics calendar for Google/Apple Calendar">
               <i data-lucide="download"></i> Sync (.ics)
             </button>
-            <button type="button" class="btn btn-secondary btn-sm" id="btn-print-academic-cal" title="Print official A4 academic calendar">
+            <button type="button" class="btn btn-secondary btn-sm cal-action-btn" id="btn-print-academic-cal" title="Print official A4 academic calendar">
               <i data-lucide="printer"></i> Print A4
             </button>
-            <button type="button" class="btn btn-primary btn-sm" id="btn-add-cal-holiday">
+            <button type="button" class="btn btn-primary btn-sm cal-action-btn btn-add-main" id="btn-add-cal-holiday">
               <i data-lucide="plus"></i> Add Event
             </button>
-          `
-        })}
+          </div>
+        </div>
 
         <!-- UNIFIED WORKSPACE LAYOUT -->
         <div class="cal-workspace-layout">
@@ -148,10 +161,10 @@ export class CalendarModule {
             <div class="cal-today-card">
               <div class="cal-today-header">
                 <span class="cal-today-schedule-title">
-                  <span class="m-hero-live-indicator"></span> TODAY'S INSTITUTIONAL SCHEDULE
+                  <span class="cal-radar-beacon"></span> TODAY'S INSTITUTIONAL SCHEDULE
                 </span>
                 <span class="cal-today-badge">
-                  ${todayInfo.isActive ? 'Active Session' : 'Campus Recess'}
+                  ${todayInfo.isActive ? 'Active Academic Day' : 'Campus Recess / Off'}
                 </span>
               </div>
               <div class="cal-today-body">
@@ -173,10 +186,10 @@ export class CalendarModule {
             <div class="cal-overview-card">
               <div class="cal-overview-header">
                 <h4 class="cal-overview-title">
-                  <i data-lucide="bar-chart-3" style="width: 17px; height: 17px; color: #2563EB;"></i>
+                  <i data-lucide="bar-chart-3"></i>
                   ${monthName} ${year} Overview
                 </h4>
-                <span class="badge badge-secondary" style="font-size: 0.74rem; font-weight: 700;">
+                <span class="badge badge-secondary cal-total-days-badge">
                   ${metrics.totalDays} Total Days
                 </span>
               </div>
@@ -203,215 +216,258 @@ export class CalendarModule {
 
               <!-- Segmented Progress Bar -->
               <div class="cal-progress-track">
-                <div style="background: #10B981; width: ${metrics.workingPercent}%;" title="Working Days: ${metrics.workingPercent}%"></div>
-                <div style="background: #F59E0B; width: ${metrics.holidayPercent}%;" title="Holidays: ${metrics.holidayPercent}%"></div>
-                <div style="background: #EF4444; width: ${metrics.leavePercent}%;" title="Breaks & Leaves: ${metrics.leavePercent}%"></div>
+                <div class="cal-progress-bar-segment segment-working" style="width: ${metrics.workingPercent}%;" title="Working Days: ${metrics.workingPercent}%"></div>
+                <div class="cal-progress-bar-segment segment-holiday" style="width: ${metrics.holidayPercent}%;" title="Holidays: ${metrics.holidayPercent}%"></div>
+                <div class="cal-progress-bar-segment segment-weekend" style="width: ${metrics.weekendPercent}%;" title="Weekend Offs: ${metrics.weekendPercent}%"></div>
               </div>
               <div class="cal-progress-labels">
-                <span>⚡ ${metrics.workingPercent}% Working Days</span>
-                <span>🌴 ${metrics.holidayPercent}% Holidays &amp; Recesses</span>
-                <span>🏖️ ${metrics.weekendPercent}% Weekend Offs</span>
+                <span class="label-working">⚡ ${metrics.workingPercent}% Working Days</span>
+                <span class="label-holiday">🌴 ${metrics.holidayPercent}% Holidays &amp; Recesses</span>
+                <span class="label-weekend">🏖️ ${metrics.weekendPercent}% Weekend Offs</span>
               </div>
             </div>
 
           </div>
 
-          <!-- Category Filter Pills Bar -->
-          <div class="tms-tab-scroll-wrapper" style="margin-bottom: 12px;">
-            <button type="button" class="tms-tab-nav-btn tms-tab-nav-prev" id="cal-filter-scroll-prev" aria-label="Scroll left" title="Scroll left">
-              <i data-lucide="chevron-left"></i>
-            </button>
-            <div class="cal-filters-row tms-tab-scroll-rail" id="cal-filters-rail">
-              ${EVENT_CATEGORIES.map(cat => `
-                <button type="button" class="btn ${this._selectedCategory === cat.id ? 'btn-primary active' : 'btn-secondary'} btn-sm btn-filter-cat" data-cat="${cat.id}" style="font-size: 0.75rem; padding: 5px 12px; white-space: nowrap; border-radius: 9999px;">
-                  <i data-lucide="${cat.icon || 'tag'}" style="width: 13px; height: 13px;"></i>
-                  ${cat.name}
-                </button>
-              `).join('')}
+          <!-- Category Filter Pills Rail -->
+          <div class="cal-filter-rail-wrapper">
+            <div class="cal-filters-rail" id="cal-filters-rail">
+              ${EVENT_CATEGORIES.map(cat => {
+                const isActive = this._selectedCategory === cat.id;
+                let countBadge = '';
+                if (cat.id === 'all') {
+                  countBadge = `<span class="cal-pill-count">${(this._calendarStore.events || []).length}</span>`;
+                } else {
+                  const cCount = (this._calendarStore.events || []).filter(e => e.type === cat.id).length;
+                  if (cCount > 0) countBadge = `<span class="cal-pill-count">${cCount}</span>`;
+                }
+
+                return `
+                  <button type="button" class="cal-filter-pill ${isActive ? 'active' : ''}" data-cat="${cat.id}">
+                    <i data-lucide="${cat.icon || 'tag'}"></i>
+                    <span>${cat.name}</span>
+                    ${countBadge}
+                  </button>
+                `;
+              }).join('')}
             </div>
-            <button type="button" class="tms-tab-nav-btn tms-tab-nav-next" id="cal-filter-scroll-next" aria-label="Scroll right" title="Scroll right">
-              <i data-lucide="chevron-right"></i>
-            </button>
           </div>
 
-          <!-- MAIN SECTION: CALENDAR GRID + AGENDA (SIDE-BY-SIDE ON DESKTOP) -->
-          <div class="cal-main-grid">
-
-            <!-- COMPONENT A: FLUENT MONTH CALENDAR CARD (TPSH STYLE) -->
-            <div class="cal-fluent-grid-card">
-              
-              <!-- Card Top Header -->
-              <div class="cal-fluent-top-header">
-                <div style="display: flex; align-items: center; gap: 0.65rem;">
-                  <div class="cal-fluent-icon-badge">
-                    <i data-lucide="calendar-check-2" style="width: 18px; height: 18px;"></i>
-                  </div>
-                  <div>
-                    <h3 class="cal-fluent-title">
-                      Event Calendar
-                    </h3>
-                    <p class="cal-fluent-desc">
-                      Institutional working days, light yellow holidays, red hostel leaves &amp; exam windows
-                    </p>
-                  </div>
+          <!-- COMPONENT A: FLUENT MONTH CALENDAR CARD (FULL WIDTH SPACIOUS GRID) -->
+          <div class="cal-fluent-grid-card">
+            
+            <!-- Card Top Header with Unified Navigation -->
+            <div class="cal-fluent-top-header">
+              <div class="cal-fluent-title-group">
+                <div class="cal-fluent-icon-badge">
+                  <i data-lucide="calendar-check-2"></i>
                 </div>
-                <div style="display: flex; align-items: center; gap: 6px;">
-                  <select id="cal-jump-month" class="form-select form-select-sm" style="font-size: 0.76rem; padding: 3px 8px; height: 32px; border-radius: 8px;">
+                <div>
+                  <h3 class="cal-fluent-title">Event Calendar</h3>
+                  <p class="cal-fluent-desc">
+                    Institutional working schedule, continuous holiday tracks, assessment windows &amp; hostel leaves
+                  </p>
+                </div>
+              </div>
+
+              <!-- Integrated Month & Year Jump Dropdowns -->
+              <div class="cal-jump-controls">
+                <div class="cal-select-wrap">
+                  <select id="cal-jump-month" class="cal-nav-select" title="Jump to month">
                     ${MONTH_NAMES.map((m, idx) => `
                       <option value="${idx + 1}" ${idx + 1 === month ? 'selected' : ''}>${m}</option>
                     `).join('')}
                   </select>
-                  <select id="cal-jump-year" class="form-select form-select-sm" style="font-size: 0.76rem; padding: 3px 8px; height: 32px; border-radius: 8px;">
+                  <i data-lucide="chevron-down" class="cal-select-chevron"></i>
+                </div>
+                <div class="cal-select-wrap">
+                  <select id="cal-jump-year" class="cal-nav-select" title="Jump to year">
                     ${[year - 1, year, year + 1, year + 2].map(y => `
                       <option value="${y}" ${y === year ? 'selected' : ''}>${y}</option>
                     `).join('')}
                   </select>
+                  <i data-lucide="chevron-down" class="cal-select-chevron"></i>
                 </div>
               </div>
-
-              <!-- Month & Year Navigation Bar -->
-              <div class="cal-month-nav-bar">
-                <button type="button" class="cal-nav-btn" id="cal-btn-prev-month" title="Previous Month">
-                  <i data-lucide="chevron-left" style="width: 16px; height: 16px;"></i>
-                </button>
-                <div style="display: flex; align-items: center; gap: 0.65rem;">
-                  <span class="cal-month-nav-title">
-                    ${monthName} ${year}
-                  </span>
-                  <button type="button" class="cal-today-pill" id="cal-btn-today" title="Jump to Today">
-                    Today
-                  </button>
-                </div>
-                <button type="button" class="cal-nav-btn" id="cal-btn-next-month" title="Next Month">
-                  <i data-lucide="chevron-right" style="width: 16px; height: 16px;"></i>
-                </button>
-              </div>
-
-              <!-- 7-Day Weekday Header (MO, TU, WE, TH, FR, SA, SU) -->
-              <div class="cal-weekday-header">
-                ${['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'].map(d => `
-                  <div><span>${d}</span></div>
-                `).join('')}
-              </div>
-
-              <!-- Fluent Month Grid with Continuous Pill Tracks -->
-              <div class="cal-month-grid">
-                ${this._renderMonthGridCells(year, month)}
-              </div>
-
-              <!-- Card Footer: Status Summary & Interactive Legend -->
-              <div class="cal-fluent-footer">
-                <div id="cal-range-display-text" style="font-size: 0.8rem; font-weight: 600; color: #1F2937;">
-                  ${this._getSelectionStatusText(year, month)}
-                </div>
-
-                <!-- Legend Indicators -->
-                <div class="cal-legend-row">
-                  <span style="display: inline-flex; align-items: center; gap: 0.35rem; color: #B45309; font-weight: 700;">
-                    <span style="width: 9px; height: 9px; border-radius: 50%; background: #F59E0B;"></span>
-                    Holiday (Yellow)
-                  </span>
-                  <span style="display: inline-flex; align-items: center; gap: 0.35rem; color: #DC2626; font-weight: 700;">
-                    <span style="width: 9px; height: 9px; border-radius: 50%; background: #EF4444;"></span>
-                    Hostel / Break (Red)
-                  </span>
-                  <span style="display: inline-flex; align-items: center; gap: 0.35rem; color: #7E22CE; font-weight: 700;">
-                    <span style="width: 9px; height: 9px; border-radius: 50%; background: #9333EA;"></span>
-                    Exam (Purple)
-                  </span>
-                  <span style="display: inline-flex; align-items: center; gap: 0.35rem; color: #047857; font-weight: 700;">
-                    <span style="width: 9px; height: 9px; border-radius: 50%; background: #10B981;"></span>
-                    Working Day (Green)
-                  </span>
-                </div>
-              </div>
-
-              <!-- If Range Selected: Floating Range Action Bar -->
-              ${this._rangeStart ? `
-                <div style="padding: 0.6rem 1.15rem; background: #EFF6FF; border-top: 1.5px solid #BFDBFE; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
-                  <div style="font-size: 0.82rem; font-weight: 700; color: #1E40AF;">
-                    Range Selected: <span class="font-mono">${this._rangeStart}</span> to <span class="font-mono">${this._rangeEnd || this._rangeStart}</span>
-                  </div>
-                  <div style="display: flex; gap: 0.4rem;">
-                    <button type="button" class="btn btn-primary btn-xs" id="btn-action-add-holiday-range" style="font-size: 0.76rem; padding: 3px 10px;">
-                      + Add Event for Range
-                    </button>
-                    <button type="button" class="btn btn-secondary btn-xs" id="btn-action-clear-range" style="font-size: 0.76rem; padding: 3px 8px;">
-                      Clear Selection
-                    </button>
-                  </div>
-                </div>
-              ` : ''}
-
             </div>
 
-            <!-- COMPONENT B: SCHEDULED HOLIDAYS, EVENTS & BREAKS AGENDA -->
-            <div class="cal-agenda-card-box">
-              <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.85rem; flex-wrap: wrap; gap: 0.5rem;">
-                <h4 style="font-weight: 800; font-size: 0.95rem; color: #0F172A; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
-                  <span>🌴</span>
-                  <span>Scheduled Holidays &amp; Events</span>
-                  <span class="badge" style="background: #FEF3C7; color: #92400E; font-size: 0.72rem; font-weight: 800; padding: 2px 7px;">
-                    ${consolidatedEvents.length}
-                  </span>
-                </h4>
-                <button type="button" class="btn btn-ghost btn-sm" id="btn-add-cal-holiday-inline" style="color: #059669; font-weight: 700; font-size: 0.78rem; padding: 2px 8px;">
+            <!-- Month & Year Navigation Bar -->
+            <div class="cal-month-nav-bar">
+              <button type="button" class="cal-nav-btn" id="cal-btn-prev-month" title="Previous Month">
+                <i data-lucide="chevron-left"></i>
+              </button>
+              <div class="cal-month-center-group">
+                <span class="cal-month-nav-title">
+                  ${monthName} ${year}
+                </span>
+                <button type="button" class="cal-today-pill" id="cal-btn-today" title="Jump to Today">
+                  Today
+                </button>
+              </div>
+              <button type="button" class="cal-nav-btn" id="cal-btn-next-month" title="Next Month">
+                <i data-lucide="chevron-right"></i>
+              </button>
+            </div>
+
+            <!-- 7-Day Weekday Header (Mon, Tue, Wed, Thu, Fri, Sat, Sun) -->
+            <div class="cal-weekday-header">
+              <div class="cal-wd-col"><span>Mon</span></div>
+              <div class="cal-wd-col"><span>Tue</span></div>
+              <div class="cal-wd-col"><span>Wed</span></div>
+              <div class="cal-wd-col"><span>Thu</span></div>
+              <div class="cal-wd-col"><span>Fri</span></div>
+              <div class="cal-wd-col"><span>Sat</span></div>
+              <div class="cal-wd-col col-sun"><span>Sun</span></div>
+            </div>
+
+            <!-- Fluent Month Grid with Continuous Pill Tracks -->
+            <div class="cal-month-grid">
+              ${this._renderMonthGridCells(year, month)}
+            </div>
+
+            <!-- Card Footer: Status Summary & Interactive Legend -->
+            <div class="cal-fluent-footer">
+              <div id="cal-range-display-text" class="cal-footer-status">
+                ${this._getSelectionStatusText(year, month)}
+              </div>
+
+              <!-- Legend Indicators -->
+              <div class="cal-legend-row">
+                <span class="legend-item legend-holiday">
+                  <span class="legend-dot dot-holiday"></span>
+                  Official Holiday (Amber)
+                </span>
+                <span class="legend-item legend-break">
+                  <span class="legend-dot dot-break"></span>
+                  Hostel / Vacation (Red)
+                </span>
+                <span class="legend-item legend-exam">
+                  <span class="legend-dot dot-exam"></span>
+                  Exam Window (Purple)
+                </span>
+                <span class="legend-item legend-working">
+                  <span class="legend-dot dot-working"></span>
+                  Working Day (Green)
+                </span>
+              </div>
+            </div>
+
+            <!-- If Range Selected: Floating Range Action Bar -->
+            ${this._rangeStart ? `
+              <div class="cal-range-action-bar">
+                <div class="cal-range-info">
+                  <i data-lucide="check-circle-2" style="width: 16px; height: 16px; color: #2563EB;"></i>
+                  <span>Selected Date Span:</span>
+                  <span class="cal-range-dates font-mono">${this._rangeStart}</span>
+                  <span>to</span>
+                  <span class="cal-range-dates font-mono">${this._rangeEnd || this._rangeStart}</span>
+                  <span class="cal-range-count-badge">(${this._getRangeSpanDays()} Days)</span>
+                </div>
+                <div class="cal-range-btns">
+                  <button type="button" class="btn btn-primary btn-xs" id="btn-action-add-holiday-range">
+                    <i data-lucide="plus"></i> Add Event for Range
+                  </button>
+                  <button type="button" class="btn btn-secondary btn-xs" id="btn-action-clear-range">
+                    Clear
+                  </button>
+                </div>
+              </div>
+            ` : ''}
+
+          </div>
+
+          <!-- SCHEDULED HOLIDAYS, EVENTS & BREAKS AGENDA (FULL WIDTH EXPANDING CARD) -->
+          <div class="cal-agenda-card-box">
+            <div class="cal-agenda-header">
+              <div class="cal-agenda-title-group">
+                <div class="cal-agenda-icon-wrap">
+                  <i data-lucide="calendar-heart"></i>
+                </div>
+                <div>
+                  <h4 class="cal-agenda-title">
+                    <span>Scheduled Institutional Events &amp; Holidays</span>
+                    <span class="cal-agenda-count-badge">${consolidatedEvents.length}</span>
+                  </h4>
+                  <p class="cal-agenda-subtitle">
+                    ${this._selectedCategory === 'all' ? `All scheduled events for ${monthName} ${year}` : `Filtered by category: ${this._getCategoryName(this._selectedCategory)}`}
+                  </p>
+                </div>
+              </div>
+              <div class="cal-agenda-header-actions">
+                ${this._selectedCategory !== 'all' ? `
+                  <button type="button" class="btn btn-secondary btn-xs" id="btn-clear-category-filter">
+                    Show All
+                  </button>
+                ` : ''}
+                <button type="button" class="btn btn-primary btn-sm" id="btn-add-cal-holiday-inline">
                   <i data-lucide="plus"></i> Add Event
                 </button>
               </div>
-
-              <!-- Natural list: multi-day items grouped into a single card -->
-              <div style="display: flex; flex-direction: column; gap: 0.55rem; max-height: 520px; overflow-y: auto; padding-right: 2px;">
-                ${consolidatedEvents.length > 0 ? consolidatedEvents.map(item => {
-                  const catObj = EVENT_CATEGORIES.find(c => c.id === item.type) || EVENT_CATEGORIES[1];
-                  const isMulti = item.startDate !== item.endDate;
-                  const daysCount = item.allDates ? item.allDates.length : 1;
-                  const dateDisplay = isMulti ? `${item.startDate} — ${item.endDate}` : item.startDate;
-
-                  return `
-                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.7rem 0.85rem; border-radius: 12px; border: 1.5px solid ${catObj.trackColor || '#E2E8F0'}; background: ${catObj.trackColor ? catObj.trackColor + '40' : '#FFFFFF'}; transition: transform 0.15s ease;">
-                      <div style="min-width: 0; flex: 1;">
-                        <div style="display: flex; align-items: center; gap: 0.45rem; flex-wrap: wrap;">
-                          <span style="width: 8px; height: 8px; border-radius: 50%; background: ${catObj.color}; flex-shrink: 0;"></span>
-                          <span style="font-weight: 800; font-size: 0.88rem; color: #0F172A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                            ${esc(item.name)}
-                          </span>
-                          <span class="badge" style="background: ${catObj.trackColor || '#F1F5F9'}; color: ${catObj.color}; border: 1px solid ${catObj.color}40; font-size: 0.68rem; font-weight: 700; padding: 1px 6px;">
-                            ${esc(catObj.name)}
-                          </span>
-                          ${isMulti ? `<span class="badge" style="background: #FFFFFF; color: #475569; border: 1px solid #CBD5E1; font-size: 0.68rem; font-weight: 700;">(${daysCount} Days)</span>` : ''}
-                        </div>
-                        <div style="font-size: 0.75rem; color: #64748B; margin-top: 3px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                          <span class="font-mono">${dateDisplay}</span>
-                          ${!item.is_all_day && item.start_time && item.end_time ? `
-                            <span>• <i data-lucide="clock" style="width: 12px; height: 12px; display: inline;"></i> ${item.start_time} - ${item.end_time}</span>
-                          ` : '• Full Day'}
-                          ${item.description ? `<span>• <em>${esc(item.description)}</em></span>` : ''}
-                        </div>
-                      </div>
-
-                      <div style="display: flex; align-items: center; gap: 0.35rem; flex-shrink: 0;">
-                        <button type="button" class="btn btn-secondary btn-xs btn-edit-cal-event" data-event-id="${esc(item.id)}" data-event-name="${esc(item.name)}" data-event-type="${esc(item.type)}" data-start-date="${esc(item.startDate)}" data-end-date="${esc(item.endDate)}" data-start-time="${esc(item.start_time || '')}" data-end-time="${esc(item.end_time || '')}" data-is-all-day="${item.is_all_day !== false ? 'true' : 'false'}" data-range-id="${esc(item.range_id || '')}" data-all-dates="${esc((item.allDates || []).join(','))}" title="Edit event" style="padding: 3px 8px; font-size: 0.74rem;">
-                          <i data-lucide="edit-2" style="width: 12px; height: 12px;"></i> Edit
-                        </button>
-                        <button type="button" class="btn btn-secondary btn-xs btn-del-event" data-event-id="${esc(item.id)}" data-range-id="${esc(item.range_id || '')}" data-all-dates="${esc((item.allDates || []).join(','))}" title="Delete event" style="color: #EF4444; padding: 3px 6px; font-size: 0.74rem;">
-                          <i data-lucide="trash-2" style="width: 12px; height: 12px;"></i>
-                        </button>
-                      </div>
-                    </div>
-                  `;
-                }).join('') : `
-                  <div style="text-align: center; padding: 2rem 1rem; color: #94A3B8; font-size: 0.85rem; border: 1.5px dashed #E2E8F0; border-radius: 12px;">
-                    <i data-lucide="calendar" style="width: 32px; height: 32px; margin-bottom: 0.5rem; opacity: 0.5;"></i>
-                    <div>No institutional holidays or events scheduled for this period.</div>
-                    <div style="margin-top: 0.5rem;">
-                      <button type="button" class="btn btn-secondary btn-xs" id="btn-add-first-event" style="font-weight: 700;">+ Add an Event</button>
-                    </div>
-                  </div>
-                `}
-              </div>
             </div>
 
+            <!-- Natural list without forced scrollbars -->
+            <div class="cal-agenda-list">
+              ${consolidatedEvents.length > 0 ? consolidatedEvents.map(item => {
+                const catObj = EVENT_CATEGORIES.find(c => c.id === item.type) || EVENT_CATEGORIES[1];
+                const isMulti = item.startDate !== item.endDate;
+                const daysCount = item.allDates ? item.allDates.length : 1;
+                const dateDisplay = isMulti ? `${item.startDate} — ${item.endDate}` : item.startDate;
+
+                return `
+                  <div class="cal-agenda-item item-${catObj.id}" style="border-left-color: ${catObj.color};">
+                    <div class="cal-agenda-item-left">
+                      <div class="cal-agenda-item-title-row">
+                        <span class="cal-agenda-item-dot" style="background: ${catObj.color};"></span>
+                        <span class="cal-agenda-item-name">${esc(item.name)}</span>
+                        <span class="cal-agenda-category-badge" style="background: ${catObj.trackColor || '#F1F5F9'}; color: ${catObj.color}; border: 1px solid ${catObj.color}35;">
+                          ${esc(catObj.name)}
+                        </span>
+                        ${isMulti ? `<span class="cal-agenda-days-badge">(${daysCount} Days)</span>` : ''}
+                      </div>
+                      <div class="cal-agenda-item-meta">
+                        <span class="font-mono cal-agenda-date">${dateDisplay}</span>
+                        ${!item.is_all_day && item.start_time && item.end_time ? `
+                          <span class="cal-agenda-time">• <i data-lucide="clock"></i> ${item.start_time} - ${item.end_time}</span>
+                        ` : '<span class="cal-agenda-time">• Full Day Schedule</span>'}
+                        ${item.target_audience && item.target_audience !== 'all' ? `
+                          <span class="cal-agenda-audience">• Audience: <strong>${esc(item.target_audience)}</strong></span>
+                        ` : ''}
+                        ${item.description ? `<span class="cal-agenda-desc">• <em>${esc(item.description)}</em></span>` : ''}
+                      </div>
+                    </div>
+
+                    <div class="cal-agenda-item-actions">
+                      <button type="button" class="btn btn-secondary btn-xs btn-edit-cal-event" data-event-id="${esc(item.id)}" data-event-name="${esc(item.name)}" data-event-type="${esc(item.type)}" data-start-date="${esc(item.startDate)}" data-end-date="${esc(item.endDate)}" data-start-time="${esc(item.start_time || '')}" data-end-time="${esc(item.end_time || '')}" data-is-all-day="${item.is_all_day !== false ? 'true' : 'false'}" data-range-id="${esc(item.range_id || '')}" data-all-dates="${esc((item.allDates || []).join(','))}" title="Edit event">
+                        <i data-lucide="edit-2"></i> Edit
+                      </button>
+                      <button type="button" class="btn btn-secondary btn-xs btn-del-event" data-event-id="${esc(item.id)}" data-range-id="${esc(item.range_id || '')}" data-all-dates="${esc((item.allDates || []).join(','))}" title="Delete event">
+                        <i data-lucide="trash-2"></i>
+                      </button>
+                    </div>
+                  </div>
+                `;
+              }).join('') : `
+                <div class="cal-agenda-empty">
+                  <div class="cal-empty-icon">
+                    <i data-lucide="calendar"></i>
+                  </div>
+                  <div class="cal-empty-title">No events scheduled for ${monthName} ${year}</div>
+                  <p class="cal-empty-desc">
+                    ${this._selectedCategory !== 'all' ? `No events match the "${this._getCategoryName(this._selectedCategory)}" filter.` : 'Regular academic working days and standard timetable are in session.'}
+                  </p>
+                  <div class="cal-empty-actions">
+                    <button type="button" class="btn btn-primary btn-sm" id="btn-add-first-event">
+                      <i data-lucide="plus"></i> Schedule an Event
+                    </button>
+                    ${this._selectedCategory !== 'all' ? `
+                      <button type="button" class="btn btn-secondary btn-sm" id="btn-reset-filters">
+                        View All Events
+                      </button>
+                    ` : ''}
+                  </div>
+                </div>
+              `}
+            </div>
           </div>
 
         </div>
@@ -452,6 +508,8 @@ export class CalendarModule {
       const hostelLeaveRole = this._getTrackRole(dateStr, 'hostel_leave');
       const examRole = this._getTrackRole(dateStr, 'exam');
       const specialWorkRole = this._getTrackRole(dateStr, 'working_day');
+      const ptmRole = this._getTrackRole(dateStr, 'ptm');
+      const sportsRole = this._getTrackRole(dateStr, 'sports');
       const rangeRole = this._getRangeRole(dateStr);
 
       cells.push({
@@ -463,12 +521,17 @@ export class CalendarModule {
         isHoliday: dayInfo.isHoliday,
         isHostelLeave: dayInfo.isHostelLeave,
         isExam: dayInfo.isExam,
+        isPtm: dayInfo.isPtm,
+        isSports: dayInfo.isSports,
         isSpecialWorking: dayInfo.isSpecialWorking,
+        isWeekendOff: dayInfo.isWeekendOff,
         title: dayInfo.title || '',
         holidayRole,
         hostelLeaveRole,
         examRole,
         specialWorkRole,
+        ptmRole,
+        sportsRole,
         rangeRole,
         isMonthFirst: day === 1,
         isMonthLast: day === totalDays
@@ -514,9 +577,16 @@ export class CalendarModule {
         classList.push(`is-exam-${cell.examRole}`);
       } else if (cell.specialWorkRole !== 'none') {
         classList.push(`is-special-work-${cell.specialWorkRole}`);
+      } else if (cell.ptmRole !== 'none') {
+        classList.push(`is-ptm-${cell.ptmRole}`);
+      } else if (cell.sportsRole !== 'none') {
+        classList.push(`is-sports-${cell.sportsRole}`);
+      } else if (cell.isWeekendOff) {
+        classList.push('is-weekend-off');
       }
 
-      const tooltip = `${cell.dateStr}: ${cell.title ? cell.title + ' — ' : ''}${cell.isHoliday ? 'Official Holiday' : cell.isHostelLeave ? 'Break/Leave' : cell.isWorkingDay ? 'Working Day' : 'Weekend Off'}`;
+      const statusDesc = cell.isHoliday ? 'Official Holiday' : cell.isHostelLeave ? 'Vacation Break' : cell.isExam ? 'Assessment Window' : cell.isSpecialWorking ? 'Special Working Day' : cell.isWorkingDay ? 'Working Day' : 'Weekend Off';
+      const tooltip = `${cell.dateStr}: ${cell.title ? cell.title + ' — ' : ''}${statusDesc}`;
 
       return `
         <div class="${classList.join(' ')}" data-date="${cell.dateStr}" role="button" tabindex="0" title="${UIComponents.escapeHtml(tooltip)}">
@@ -580,11 +650,21 @@ export class CalendarModule {
     });
 
     // Category filter pills
-    c.querySelectorAll('.btn-filter-cat').forEach(btn => {
+    c.querySelectorAll('.cal-filter-pill').forEach(btn => {
       btn.addEventListener('click', (e) => {
         this._selectedCategory = e.currentTarget.dataset.cat;
         this.render(c);
       });
+    });
+
+    c.querySelector('#btn-clear-category-filter')?.addEventListener('click', () => {
+      this._selectedCategory = 'all';
+      this.render(c);
+    });
+
+    c.querySelector('#btn-reset-filters')?.addEventListener('click', () => {
+      this._selectedCategory = 'all';
+      this.render(c);
     });
 
     // Day cell click: either range pick or quick day inspect modal
@@ -685,7 +765,7 @@ export class CalendarModule {
   }
 
   /**
-   * Quick Day Inspection & Override Modal (TPSH style)
+   * Quick Day Inspection & Override Modal
    */
   static _openDayInspectModal(dateStr) {
     const dayInfo = this._getCalendarDayInfo(dateStr);
@@ -694,46 +774,47 @@ export class CalendarModule {
     const formatted = `${dayName}, ${dateStr}`;
 
     const isHoliday = dayInfo.isHoliday;
+    const isLeave = dayInfo.isHostelLeave;
     const isWorking = dayInfo.isWorkingDay;
 
-    let bannerBg = isHoliday ? '#FFFBEB' : isWorking ? '#ECFDF5' : '#F8FAFC';
-    let bannerBorder = isHoliday ? '#FDE68A' : isWorking ? '#A7F3D0' : '#CBD5E1';
-    let bannerColor = isHoliday ? '#D97706' : isWorking ? '#059669' : '#475569';
-    let statusText = isHoliday ? 'Official Holiday' : isWorking ? (dayInfo.isSpecialWorking ? 'Special Working Day' : 'Standard Working Day') : 'Weekend Off';
-    let statusIcon = isHoliday ? '🌴' : isWorking ? '⚡' : '📅';
+    let bannerBg = isHoliday ? '#FFFBEB' : isLeave ? '#FEF2F2' : isWorking ? '#ECFDF5' : '#F8FAFC';
+    let bannerBorder = isHoliday ? '#FDE68A' : isLeave ? '#FECACA' : isWorking ? '#A7F3D0' : '#CBD5E1';
+    let bannerColor = isHoliday ? '#D97706' : isLeave ? '#DC2626' : isWorking ? '#059669' : '#475569';
+    let statusText = isHoliday ? 'Official Holiday' : isLeave ? 'School / Hostel Break' : isWorking ? (dayInfo.isSpecialWorking ? 'Special Working Day' : 'Standard Working Day') : 'Weekend Off';
+    let statusIcon = isHoliday ? '🌴' : isLeave ? '🚪' : isWorking ? '⚡' : '🏖️';
 
     const bodyHtml = `
       <div style="display: flex; flex-direction: column; gap: 1rem;">
         
         <!-- Header Banner -->
-        <div style="background: ${bannerBg}; border: 1.5px solid ${bannerBorder}; border-radius: 12px; padding: 0.95rem 1.15rem; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;">
+        <div style="background: ${bannerBg}; border: 1.5px solid ${bannerBorder}; border-radius: 14px; padding: 1rem 1.25rem; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;">
           <div>
             <span style="font-size: 0.72rem; font-weight: 800; color: ${bannerColor}; text-transform: uppercase; letter-spacing: 0.05em;">Institutional Schedule</span>
             <h4 style="margin: 2px 0 0 0; font-size: 1.15rem; font-weight: 800; color: #0F172A;">${formatted}</h4>
           </div>
-          <div style="width: 44px; height: 44px; border-radius: 50%; background: #FFFFFF; border: 1.5px solid ${bannerBorder}; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; color: ${bannerColor}; flex-shrink: 0;">
+          <div style="width: 44px; height: 44px; border-radius: 50%; background: #FFFFFF; border: 1.5px solid ${bannerBorder}; display: flex; align-items: center; justify-content: center; font-size: 1.35rem; color: ${bannerColor}; flex-shrink: 0; box-shadow: 0 2px 6px rgba(0,0,0,0.06);">
             ${statusIcon}
           </div>
         </div>
 
         <!-- Current Schedule Information -->
-        <div style="border: 1px solid #E2E8F0; border-radius: 12px; padding: 0.9rem 1.1rem; background: #FFFFFF;">
+        <div style="border: 1px solid #E2E8F0; border-radius: 12px; padding: 0.95rem 1.15rem; background: #FFFFFF;">
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.45rem; flex-wrap: wrap; gap: 0.5rem;">
             <span style="font-size: 0.74rem; font-weight: 700; color: #64748B; text-transform: uppercase;">Current Schedule State</span>
-            <span class="badge" style="background: ${bannerBg}; color: ${bannerColor}; border: 1.5px solid ${bannerBorder}; font-weight: 800; font-size: 0.8rem; padding: 3px 8px; border-radius: 6px;">
+            <span class="badge" style="background: ${bannerBg}; color: ${bannerColor}; border: 1.5px solid ${bannerBorder}; font-weight: 800; font-size: 0.8rem; padding: 3px 10px; border-radius: 6px;">
               ${statusIcon} ${statusText}
             </span>
           </div>
           <div style="font-size: 0.95rem; font-weight: 800; color: #0F172A; margin-bottom: 0.25rem;">
-            ${dayInfo.title ? `Event: ${UIComponents.escapeHtml(dayInfo.title)}` : isHoliday ? 'Institutional Holiday' : isWorking ? 'Standard Academic Working Day' : 'Weekly Off Day'}
+            ${dayInfo.title ? `Event: ${UIComponents.escapeHtml(dayInfo.title)}` : isHoliday ? 'Institutional Holiday' : isLeave ? 'Campus / Hostel Break' : isWorking ? 'Standard Academic Working Day' : 'Weekly Weekend Off Day'}
           </div>
-          <p style="font-size: 0.8rem; color: #64748B; margin: 0; line-height: 1.45;">
-            ${isHoliday ? 'Campus is officially closed for academic duties and regular class operations.' : isWorking ? 'Regular academic timetable, attendance sessions, and classes are in effect.' : 'Weekly weekend holiday observed as per institutional working calendar.'}
+          <p style="font-size: 0.82rem; color: #64748B; margin: 0; line-height: 1.45;">
+            ${isHoliday ? 'Campus is officially closed for academic duties and regular class operations.' : isLeave ? 'Hostel and academic operations are in recess.' : isWorking ? 'Regular academic timetable, attendance sessions, and classes are in effect.' : 'Weekly weekend holiday observed as per institutional working calendar.'}
           </p>
         </div>
 
         <!-- Quick 1-Click Schedule Override Controls -->
-        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 0.95rem 1.1rem;">
+        <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 1rem 1.15rem;">
           <label style="font-size: 0.82rem; font-weight: 800; color: #1E293B; display: block; margin-bottom: 0.45rem;">
             Quick Override / Edit for this Date:
           </label>
@@ -866,11 +947,11 @@ export class CalendarModule {
           <div>
             <label class="form-label">Category / Type *</label>
             <select class="form-select" id="ev-type">
-              <option value="holiday">Official Holiday (Campus Closed) - Light Yellow</option>
-              <option value="hostel_leave">School / Hostel Break - Red Shade</option>
-              <option value="exam">Examination &amp; Tests - Purple Shade</option>
-              <option value="ptm">Parent-Teacher Meeting (PTM) - Blue Shade</option>
-              <option value="sports">Sports &amp; Athletics Meet - Orange Shade</option>
+              <option value="holiday">Official Holiday (Campus Closed) - Amber</option>
+              <option value="hostel_leave">School / Hostel Break - Crimson</option>
+              <option value="exam">Examination &amp; Tests - Purple</option>
+              <option value="ptm">Parent-Teacher Meeting (PTM) - Cobalt Blue</option>
+              <option value="sports">Sports &amp; Athletics Meet - Orange</option>
               <option value="working_day">Special Working Day (Compensatory Session)</option>
               <option value="fee">Fee Collection Deadline</option>
             </select>
@@ -1037,11 +1118,11 @@ export class CalendarModule {
         <div>
           <label class="form-label">Category / Type *</label>
           <select class="form-select" id="edit-ev-type">
-            <option value="holiday" ${item.type === 'holiday' ? 'selected' : ''}>Official Holiday (Campus Closed) - Light Yellow</option>
-            <option value="hostel_leave" ${item.type === 'hostel_leave' ? 'selected' : ''}>School / Hostel Break - Red Shade</option>
-            <option value="exam" ${item.type === 'exam' ? 'selected' : ''}>Examination &amp; Tests - Purple Shade</option>
-            <option value="ptm" ${item.type === 'ptm' ? 'selected' : ''}>Parent-Teacher Meeting (PTM) - Blue Shade</option>
-            <option value="sports" ${item.type === 'sports' ? 'selected' : ''}>Sports &amp; Athletics Meet - Orange Shade</option>
+            <option value="holiday" ${item.type === 'holiday' ? 'selected' : ''}>Official Holiday (Campus Closed) - Amber</option>
+            <option value="hostel_leave" ${item.type === 'hostel_leave' ? 'selected' : ''}>School / Hostel Break - Crimson</option>
+            <option value="exam" ${item.type === 'exam' ? 'selected' : ''}>Examination &amp; Tests - Purple</option>
+            <option value="ptm" ${item.type === 'ptm' ? 'selected' : ''}>Parent-Teacher Meeting (PTM) - Cobalt Blue</option>
+            <option value="sports" ${item.type === 'sports' ? 'selected' : ''}>Sports &amp; Athletics Meet - Orange</option>
             <option value="working_day" ${item.type === 'working_day' ? 'selected' : ''}>Special Working Day (Compensatory Session)</option>
             <option value="fee" ${item.type === 'fee' ? 'selected' : ''}>Fee Collection Deadline</option>
           </select>
@@ -1165,6 +1246,12 @@ export class CalendarModule {
         <div style="background: #ECFDF5; border: 1px solid #A7F3D0; border-radius: 10px; padding: 0.75rem 0.95rem; font-size: 0.78rem; color: #065F46;">
           <strong>Tip:</strong> Selecting Mon–Sat configures a standard 6-day institutional week with Sunday off.
         </div>
+
+        <div style="border-top: 1px solid #E2E8F0; padding-top: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
+          <button type="button" class="btn btn-secondary btn-xs" id="btn-restore-default-calendar" style="color: #64748B;">
+            <i data-lucide="rotate-ccw"></i> Restore Default Session Events
+          </button>
+        </div>
       </div>
     `;
 
@@ -1204,6 +1291,15 @@ export class CalendarModule {
       await this.render(this._container);
     });
 
+    document.getElementById('btn-restore-default-calendar')?.addEventListener('click', async () => {
+      if (!confirm('Reset academic calendar to verified institutional default events for session 2026-2027?')) return;
+      this._calendarStore = JSON.parse(JSON.stringify(DEFAULT_CALENDAR_STORE));
+      await this._saveCalendar();
+      UIComponents.closeModal();
+      UIComponents.showToast('Academic calendar restored to institutional defaults.', 'success');
+      await this.render(this._container);
+    });
+
     UIComponents.refreshIcons();
   }
 
@@ -1239,7 +1335,8 @@ export class CalendarModule {
   }
 
   /**
-   * Computes metrics for the monthly overview card
+   * Computes accurate metrics for the monthly overview card
+   * Correctly distinguishes official holidays from weekly weekend offs
    */
   static _computeMonthMetrics(year, month) {
     const totalDays = new Date(year, month, 0).getDate();
@@ -1256,6 +1353,8 @@ export class CalendarModule {
         holidays++;
       } else if (info.isHostelLeave) {
         leaves++;
+      } else if (info.isWeekendOff) {
+        weekendOffs++;
       } else if (info.isWorkingDay) {
         workingDays++;
       } else {
@@ -1265,18 +1364,16 @@ export class CalendarModule {
 
     const workingPercent = Math.round((workingDays / totalDays) * 100);
     const holidayPercent = Math.round(((holidays + leaves) / totalDays) * 100);
-    const weekendPercent = 100 - workingPercent - holidayPercent;
+    const weekendPercent = Math.max(0, 100 - workingPercent - holidayPercent);
 
     return {
       totalDays,
       workingDays,
-      holidays,
-      leaves,
+      holidays: holidays + leaves,
       weekendOffs,
       workingPercent,
       holidayPercent,
-      leavePercent: Math.round((leaves / totalDays) * 100),
-      weekendPercent: Math.max(0, weekendPercent)
+      weekendPercent
     };
   }
 
@@ -1317,6 +1414,7 @@ export class CalendarModule {
           start_time: ev.start_time || null,
           end_time: ev.end_time || null,
           is_all_day: ev.is_all_day !== false,
+          target_audience: ev.target_audience || 'all',
           description: ev.description || ''
         };
         continue;
@@ -1350,6 +1448,7 @@ export class CalendarModule {
           start_time: ev.start_time || null,
           end_time: ev.end_time || null,
           is_all_day: ev.is_all_day !== false,
+          target_audience: ev.target_audience || 'all',
           description: ev.description || ''
         };
       }
@@ -1360,16 +1459,24 @@ export class CalendarModule {
   }
 
   /**
-   * Helper: Determines day status (working day, holiday, break, exam)
+   * Helper: Determines day status (working day, official holiday, break, exam, weekend off)
    */
   static _getCalendarDayInfo(dateStr) {
     if (!dateStr) {
-      return { isWorkingDay: false, isHoliday: false, isHostelLeave: false, isExam: false, isSpecialWorking: false, title: '', type: 'none' };
+      return { isWorkingDay: false, isHoliday: false, isHostelLeave: false, isExam: false, isSpecialWorking: false, isWeekendOff: false, title: '', type: 'none' };
     }
 
     const events = this._calendarStore.events || [];
     const event = events.find(e => e.date === dateStr);
     const isWorking = this._isDateWorkingDay(dateStr);
+
+    const parts = dateStr.split('-');
+    let isWeeklyOff = false;
+    if (parts.length === 3) {
+      const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+      const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()];
+      isWeeklyOff = !(this._calendarStore.weekly_working_days || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']).includes(dayName);
+    }
 
     if (event) {
       const isHoli = event.type === 'holiday';
@@ -1388,6 +1495,7 @@ export class CalendarModule {
         isPtm,
         isSports,
         isSpecialWorking: isSpecial,
+        isWeekendOff: isWeeklyOff && !isSpecial,
         title: event.name || '',
         type: event.type || 'holiday',
         start_time: event.start_time || null,
@@ -1397,17 +1505,16 @@ export class CalendarModule {
       };
     }
 
-    const [y, m, d] = dateStr.split('-').map(Number);
-    const dayOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date(y, m - 1, d).getDay()];
-    const isWeeklyOff = !(this._calendarStore.weekly_working_days || []).includes(dayOfWeek);
-
     return {
       date: dateStr,
       isWorkingDay: isWorking,
-      isHoliday: isWeeklyOff,
+      isHoliday: false,
       isHostelLeave: false,
       isExam: false,
+      isPtm: false,
+      isSports: false,
       isSpecialWorking: false,
+      isWeekendOff: isWeeklyOff,
       title: '',
       type: isWeeklyOff ? 'weekend_off' : 'working_day',
       start_time: null,
@@ -1482,17 +1589,30 @@ export class CalendarModule {
     return 'none';
   }
 
+  static _getRangeSpanDays() {
+    if (!this._rangeStart) return 1;
+    const s = new Date(this._rangeStart + 'T00:00:00');
+    const e = new Date((this._rangeEnd || this._rangeStart) + 'T00:00:00');
+    const diffTime = Math.abs(e - s);
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+  }
+
+  static _getCategoryName(id) {
+    const c = EVENT_CATEGORIES.find(x => x.id === id);
+    return c ? c.name : id;
+  }
+
   /**
    * Status text helper
    */
   static _getSelectionStatusText(year, month) {
     if (this._rangeStart && this._rangeEnd) {
-      return `Selected Range: ${this._rangeStart} to ${this._rangeEnd}`;
+      return `Selected Span: ${this._rangeStart} to ${this._rangeEnd} (${this._getRangeSpanDays()} Days)`;
     }
     if (this._rangeStart) {
       return `Selected Start Date: ${this._rangeStart} (Click another date to complete range)`;
     }
-    return `Active Academic Session ${this._calendarStore.academic_year || '2026-2027'} • Regular schedule in effect`;
+    return `Session ${this._calendarStore.academic_year || '2026-2027'} • Standard academic timetable in effect`;
   }
 
   /**
@@ -1580,7 +1700,7 @@ export class CalendarModule {
       console.warn('Failed parsing cached academic calendar:', e);
     }
 
-    if (!this._calendarStore || !this._calendarStore.events) {
+    if (!this._calendarStore || !Array.isArray(this._calendarStore.events) || this._calendarStore.events.length === 0) {
       this._calendarStore = JSON.parse(JSON.stringify(DEFAULT_CALENDAR_STORE));
     }
 
@@ -1588,13 +1708,10 @@ export class CalendarModule {
     try {
       const dbEvents = await dbService.select('calendar_events');
       if (Array.isArray(dbEvents) && dbEvents.length > 0) {
-        // Map dbEvents to calendar store format if any
         dbEvents.forEach(dbEv => {
           const s = dbEv.start_date || dbEv.date;
-          const e = dbEv.end_date || s;
           if (!s) return;
 
-          // If not already in store, add
           const exists = this._calendarStore.events.some(x => x.date === s && x.name === (dbEv.title || dbEv.name));
           if (!exists) {
             this._calendarStore.events.push({
@@ -1682,7 +1799,7 @@ export class CalendarModule {
     const blob = new Blob([ics.join('\r\n')], { type: 'text/calendar;charset=utf-8' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `TMS_Academic_Calendar_${(TMS_CONFIG?.academic?.currentYear || '2026-2027').replace(/\s+/g, '_')}.ics`;
+    link.download = `TMS_Academic_Calendar_${(this._calendarStore.academic_year || '2026-2027').replace(/\s+/g, '_')}.ics`;
     link.click();
     URL.revokeObjectURL(link.href);
 
@@ -1712,7 +1829,7 @@ export class CalendarModule {
           <div style="display:flex; justify-content:center; margin-bottom:4px;">${emblem}</div>
           <h2 style="font-size:1.35rem; font-weight:800; color:#166534; text-transform:uppercase; margin:0;">${esc(TMS_CONFIG?.institution?.name || 'Thaiba Model School')}</h2>
           <div style="font-size:0.8rem; font-weight:600; color:#15803d;">Run by : Thaiba Heritage, Kolkata</div>
-          <div style="font-size:0.75rem; color:#64748b;">ANNUAL INSTITUTIONAL ACADEMIC &amp; EVENT CALENDAR • SESSION ${esc(TMS_CONFIG?.academic?.currentYear || '2026-2027')}</div>
+          <div style="font-size:0.75rem; color:#64748b;">ANNUAL INSTITUTIONAL ACADEMIC &amp; EVENT CALENDAR • SESSION ${esc(this._calendarStore.academic_year || '2026-2027')}</div>
         </div>
 
         <table style="width:100%; border-collapse:collapse; font-size:0.75rem; border:1px solid #cbd5e1;">
