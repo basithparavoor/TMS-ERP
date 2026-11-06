@@ -65,6 +65,11 @@ export class AdminWebsiteCms {
           </div>
 
           <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+            <button class="tms-btn-cms-preview" id="btn-cms-open-sections" title="Toggle ON/OFF sections, tabs and elements across the public website" style="${subKey === 'website-sections' ? 'background:#ecfdf5; border-color:#10b981;' : ''}">
+              <i data-lucide="toggle-right" style="width: 15px; height: 15px; color: #059669;"></i>
+              <span>Sections Visibility (ON/OFF)</span>
+            </button>
+
             <a href="/" target="_blank" class="tms-btn-cms-preview">
               <i data-lucide="external-link" style="width: 15px; height: 15px; color: #059669;"></i>
               <span>Preview Live Website</span>
@@ -96,6 +101,7 @@ export class AdminWebsiteCms {
       const { AdminModule } = await import('./admin-module.js');
       await AdminModule.renderInquiriesTab(subContainer);
     }
+    else if (subKey === 'website-sections') this.renderSectionsTab(subContainer);
     else if (subKey === 'website-general') this.renderGeneralTab(subContainer);
     else if (subKey === 'website-hero') this.renderHeroTab(subContainer);
     else if (subKey === 'website-about') this.renderAboutTab(subContainer);
@@ -113,6 +119,14 @@ export class AdminWebsiteCms {
   }
 
   static bindHeaderActions() {
+    const openSecBtn = document.getElementById('btn-cms-open-sections');
+    if (openSecBtn) {
+      openSecBtn.addEventListener('click', async () => {
+        const { AdminModule } = await import('./admin-module.js');
+        AdminModule.renderTab('website-sections');
+      });
+    }
+
     const saveBtn = document.getElementById('btn-cms-save-all');
     if (saveBtn) {
       saveBtn.addEventListener('click', async () => {
@@ -161,6 +175,716 @@ export class AdminWebsiteCms {
             if (subContainer) this.render(document.getElementById('admin-tab-content'), this._activeSubtab);
           }
         });
+      });
+    }
+  }
+
+  /* ========================================================================== */
+  /* Section Definitions Registry for Complete Website Management               */
+  /* ========================================================================== */
+  static getSectionDefinitions() {
+    return [
+      {
+        group: 'header_nav',
+        groupLabel: 'Header Navigation & Public Tabs',
+        groupDesc: 'Control which tabs, buttons, and links appear in the top header and mobile navigation drawer.',
+        groupIcon: 'compass',
+        items: [
+          {
+            key: 'headerLoginBtn',
+            label: 'Header "Login" Button',
+            target: '#btn-open-institutional-login',
+            desc: 'Displays the primary Login button on the right side of the main header and in the mobile menu drawer.',
+            icon: 'lock',
+            shortcutTab: 'website-general'
+          },
+          {
+            key: 'navAbout',
+            label: '"About" Navigation Tab',
+            target: '#nav-about-link',
+            desc: 'Displays the "About" link in top navigation bar and mobile drawer.',
+            icon: 'info',
+            shortcutTab: 'website-about'
+          },
+          {
+            key: 'navAcademics',
+            label: '"Academics" Navigation Tab',
+            target: '#nav-academics-link',
+            desc: 'Displays the "Academics" link in top navigation bar and mobile drawer.',
+            icon: 'graduation-cap',
+            shortcutTab: 'website-academics'
+          },
+          {
+            key: 'navFacilities',
+            label: '"Facilities" Navigation Tab',
+            target: '#nav-facilities-link',
+            desc: 'Displays the "Facilities" link in top navigation bar and mobile drawer.',
+            icon: 'building-2',
+            shortcutTab: 'website-facilities'
+          },
+          {
+            key: 'navHostel',
+            label: '"Hostel" Navigation Tab',
+            target: '#nav-hostel-link',
+            desc: 'Displays the "Hostel" residential boarding tab in top navigation bar and mobile drawer.',
+            icon: 'home',
+            shortcutTab: 'website-hostel'
+          },
+          {
+            key: 'navNotices',
+            label: '"Notices" Navigation Tab',
+            target: '#nav-notices-link',
+            desc: 'Displays the "Notices" bulletin board link in top navigation bar and mobile drawer.',
+            icon: 'bell',
+            shortcutTab: 'website-notices'
+          },
+          {
+            key: 'navGallery',
+            label: '"Gallery" Navigation Tab',
+            target: '#nav-gallery-link',
+            desc: 'Displays the "Gallery" photo gallery link in top navigation bar and mobile drawer.',
+            icon: 'image',
+            shortcutTab: 'website-gallery'
+          },
+          {
+            key: 'navTestimonials',
+            label: '"Reviews" Navigation Tab',
+            target: '#nav-testimonials-link',
+            desc: 'Displays the "Reviews" testimonials link in top navigation bar and mobile drawer.',
+            icon: 'message-square',
+            shortcutTab: 'website-testimonials'
+          },
+          {
+            key: 'navAdmissions',
+            label: '"Admission" Navigation Tab',
+            target: '#nav-admissions-link',
+            desc: 'Displays the "Admission" link in top navigation bar and mobile drawer apply button.',
+            icon: 'sparkles',
+            shortcutTab: 'website-contact'
+          },
+          {
+            key: 'navContact',
+            label: '"Contact" Navigation Tab',
+            target: '#nav-contact-link',
+            desc: 'Displays the "Contact" link in top navigation bar and mobile drawer.',
+            icon: 'phone',
+            shortcutTab: 'website-contact'
+          }
+        ]
+      },
+
+      {
+        group: 'page_sections',
+        groupLabel: 'Major Landing Page Sections',
+        groupDesc: 'Show or completely hide full main sections on the public home page.',
+        groupIcon: 'layout',
+        items: [
+          {
+            key: 'hero',
+            label: 'Hero Main Showcase Section',
+            target: '#home',
+            desc: 'The prominent banner at the very top of the home page with headline, CTAs, and campus visual.',
+            icon: 'sparkles',
+            shortcutTab: 'website-hero'
+          },
+          {
+            key: 'quickStats',
+            label: 'Quick Stats Counter Ribbon',
+            target: '#quick-stats-ribbon',
+            desc: 'High-impact 4-counter bar (Active Students, Faculty, Results, Acres & Labs) below hero.',
+            icon: 'trending-up',
+            shortcutTab: 'website-general'
+          },
+          {
+            key: 'about',
+            label: 'About Our Institution & Heritage Section',
+            target: '#about',
+            desc: 'Heritage story, Principal message card, and 4 core values cards.',
+            icon: 'book-open',
+            shortcutTab: 'website-about'
+          },
+          {
+            key: 'academics',
+            label: 'Academic Programs & Wings Section',
+            target: '#academics',
+            desc: 'Comprehensive learning tracks: Pre-Primary, Primary, Middle, Secondary, and Moral Wing.',
+            icon: 'graduation-cap',
+            shortcutTab: 'website-academics'
+          },
+          {
+            key: 'facilities',
+            label: 'Campus Life & Facilities Section',
+            target: '#facilities',
+            desc: 'Grid of campus facilities (smart classrooms, science labs, IT lab, library, sports, etc.).',
+            icon: 'building',
+            shortcutTab: 'website-facilities'
+          },
+          {
+            key: 'hostel',
+            label: 'Student Hostel & Residential Dormitories Section',
+            target: '#hostel',
+            desc: 'Complete boarding module: residential wings, hostel facilities, daily routine, and mess menu.',
+            icon: 'home',
+            shortcutTab: 'website-hostel'
+          },
+          {
+            key: 'notices',
+            label: 'Live Notice Board & Bulletins Section',
+            target: '#notices',
+            desc: 'Public notices board with date tags, categories, filter pills, and popup bulletin view.',
+            icon: 'megaphone',
+            shortcutTab: 'website-notices'
+          },
+          {
+            key: 'gallery',
+            label: 'Campus Photo Gallery Section',
+            target: '#gallery',
+            desc: 'Visual photography gallery showcasing campus, activities, labs, sports, and cultural life.',
+            icon: 'image',
+            shortcutTab: 'website-gallery'
+          },
+          {
+            key: 'testimonials',
+            label: 'Reviews & Testimonials Section',
+            target: '#testimonials',
+            desc: 'Quotes and 5-star ratings from parents, guardians, educationists, and alumni.',
+            icon: 'message-square-quote',
+            shortcutTab: 'website-testimonials'
+          },
+          {
+            key: 'admissionCta',
+            label: 'Admissions Call-to-Action Banner',
+            target: '#admissions',
+            desc: 'Full-width high-contrast enrollment banner with "Apply Online Today" & "Login" buttons.',
+            icon: 'badge-percent',
+            shortcutTab: 'website-contact'
+          },
+          {
+            key: 'contact',
+            label: 'Campus Visit & Contact Helpdesk Section',
+            target: '#contact',
+            desc: 'Administrative office address, phone helplines, WhatsApp button, and inquiry form.',
+            icon: 'map-pin',
+            shortcutTab: 'website-contact'
+          }
+        ]
+      },
+
+      {
+        group: 'components',
+        groupLabel: 'Interactive Components & Action Buttons',
+        groupDesc: 'Fine-tune specific cards, form blocks, and call-to-action buttons inside sections.',
+        groupIcon: 'sliders',
+        items: [
+          {
+            key: 'heroBadge',
+            label: 'Hero "Admissions Open" Pill Badge',
+            target: '#hero-badge-pill',
+            desc: 'Pulse-dot badge pill displaying "★ ADMISSIONS OPEN FOR 2026–2027" above hero headline.',
+            icon: 'sparkles',
+            shortcutTab: 'website-hero'
+          },
+          {
+            key: 'heroApplyBtn',
+            label: 'Hero Primary "Apply for Admission" Button',
+            target: '#hero-apply-btn',
+            desc: 'Primary green action button in the hero section directing visitors to /admission.',
+            icon: 'pen-tool',
+            shortcutTab: 'website-hero'
+          },
+          {
+            key: 'heroExploreBtn',
+            label: 'Hero Secondary "Explore Programs" Button',
+            target: '#hero-explore-btn',
+            desc: 'Secondary outlined action button in the hero linking smoothly down to #academics.',
+            icon: 'compass',
+            shortcutTab: 'website-hero'
+          },
+          {
+            key: 'heroStats',
+            label: 'Hero Floating 3-Stats Row',
+            target: '#hero-meta-row',
+            desc: 'Displays the 100% Board Pass Rate, 25+ Years Legacy, and 15:1 Ratio row in hero.',
+            icon: 'award',
+            shortcutTab: 'website-hero'
+          },
+          {
+            key: 'heroVisualCard',
+            label: 'Hero Campus Photo Showcase Card',
+            target: '#hero-visual-card',
+            desc: 'Right-side photographic showcase card with Baghait Campus tag and active student pill.',
+            icon: 'image',
+            shortcutTab: 'website-hero'
+          },
+          {
+            key: 'aboutPrincipal',
+            label: 'About: Principal & Leadership Message Card',
+            target: '#about-principal-card',
+            desc: 'Card featuring the Principal photo, leadership quote, and ISO accreditation seal.',
+            icon: 'user-check',
+            shortcutTab: 'website-about'
+          },
+          {
+            key: 'aboutValues',
+            label: 'About: 4 Core Values Grid',
+            target: '#about-values-grid',
+            desc: 'Grid displaying Academic Rigor, Moral Ethics, STEM, and Holistic Development cards.',
+            icon: 'check-circle',
+            shortcutTab: 'website-about'
+          },
+          {
+            key: 'ctaApplyBtn',
+            label: 'Admission CTA "Apply Online Today" Button',
+            target: '#cta-btn',
+            desc: 'White action button in the enrollment banner directing parents to the online admission portal.',
+            icon: 'pen-tool',
+            shortcutTab: 'website-contact'
+          },
+          {
+            key: 'ctaLoginBtn',
+            label: 'Admission CTA "Login" Button',
+            target: '#cta-login-btn',
+            desc: 'Direct Login button in the enrollment banner directing users to /login.',
+            icon: 'lock',
+            shortcutTab: 'website-contact'
+          },
+          {
+            key: 'contactOfficeCard',
+            label: 'Contact: Administrative Office Info Card',
+            target: '#contact-info-card',
+            desc: 'Card with campus address, helplines, email, office hours, WhatsApp & Maps buttons.',
+            icon: 'building-2',
+            shortcutTab: 'website-contact'
+          },
+          {
+            key: 'contactInquiryForm',
+            label: 'Contact: "Send an Admission Inquiry" Form',
+            target: '#contact-form-card',
+            desc: 'Interactive public inquiry form that submits parent inquiries directly to Admin page.',
+            icon: 'send',
+            shortcutTab: 'website-contact'
+          },
+          {
+            key: 'contactWaBtn',
+            label: 'Contact: WhatsApp Support Helpdesk Button',
+            target: '#contact-wa-btn',
+            desc: 'Quick WhatsApp chat button for immediate mobile messaging with school administration.',
+            icon: 'message-circle',
+            shortcutTab: 'website-contact'
+          },
+          {
+            key: 'contactDirBtn',
+            label: 'Contact: Google Maps Directions Button',
+            target: '#contact-dir-btn',
+            desc: 'One-click navigation button opening Google Maps with directions to campus.',
+            icon: 'navigation',
+            shortcutTab: 'website-contact'
+          }
+        ]
+      },
+
+      {
+        group: 'footer',
+        groupLabel: 'Institutional Footer & Columns',
+        groupDesc: 'Control the visibility of footer columns, links, and bottom copyright bar.',
+        groupIcon: 'panel-bottom',
+        items: [
+          {
+            key: 'footer',
+            label: 'Entire Institutional Footer',
+            target: '#website-footer',
+            desc: 'Turns the entire dark institutional footer at the bottom of the page ON or OFF.',
+            icon: 'panel-bottom',
+            shortcutTab: 'website-contact'
+          },
+          {
+            key: 'footerAboutCol',
+            label: 'Footer: About School & Registration Column',
+            target: '#footer-about-col',
+            desc: 'First column with school emblem, registered society name, summary, and campus address.',
+            icon: 'shield-check',
+            shortcutTab: 'website-contact'
+          },
+          {
+            key: 'footerNavCol',
+            label: 'Footer: Navigation Links Column',
+            target: '#footer-nav-col',
+            desc: 'Second column with quick links to About, Academics, Facilities, Notices, Gallery, etc.',
+            icon: 'list',
+            shortcutTab: 'website-contact'
+          },
+          {
+            key: 'footerPortalsCol',
+            label: 'Footer: Institutional Portals Column',
+            target: '#footer-portals-col',
+            desc: 'Third column containing the direct Login and Admission Form buttons.',
+            icon: 'lock',
+            shortcutTab: 'website-contact'
+          },
+          {
+            key: 'footerTrustCol',
+            label: 'Footer: Trust & Governance Column',
+            target: '#footer-trust-col',
+            desc: 'Fourth column with society registration number and emergency helpline number.',
+            icon: 'landmark',
+            shortcutTab: 'website-contact'
+          },
+          {
+            key: 'footerBottom',
+            label: 'Footer: Bottom Copyright & Back to Top Bar',
+            target: '#footer-bottom-row',
+            desc: 'Bottom copyright disclaimer row with "Back to Top" navigation link.',
+            icon: 'copyright',
+            shortcutTab: 'website-contact'
+          }
+        ]
+      }
+    ];
+  }
+
+  /* ========================================================================== */
+  /* Subtab: Sections & Tabs Visibility (Master Toggle Center)                  */
+  /* ========================================================================== */
+  static renderSectionsTab(container) {
+    if (!this._config.sections) {
+      this._config.sections = JSON.parse(JSON.stringify(DEFAULT_WEBSITE_CONFIG.sections || {}));
+    }
+
+    const groups = this.getSectionDefinitions();
+    const allItems = groups.flatMap(g => g.items);
+    const activeCount = allItems.filter(it => this._config.sections[it.key] !== false).length;
+    const hiddenCount = allItems.length - activeCount;
+
+    container.innerHTML = `
+      <div style="max-width: 1200px; margin: 0 auto;">
+        <!-- Header Banner & Stats -->
+        <div class="card" style="margin-bottom: 24px; padding: 22px 24px; border: 1.5px solid #bbf7d0; background: linear-gradient(180deg, #f0fdf4 0%, #ffffff 100%); border-radius: 16px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; margin-bottom: 18px;">
+            <div style="display: flex; align-items: center; gap: 14px;">
+              <div style="width: 48px; height: 48px; border-radius: 12px; background: #ecfdf5; border: 1.5px solid #a7f3d0; display: flex; align-items: center; justify-content: center; color: #059669; flex-shrink: 0;">
+                <i data-lucide="sliders" style="width: 24px; height: 24px;"></i>
+              </div>
+              <div>
+                <h3 style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin: 0 0 4px;">
+                  Website Sections, Tabs &amp; Areas Manager
+                </h3>
+                <p style="font-size: 0.85rem; color: #64748b; margin: 0;">
+                  Turn ON or OFF any navigation tab, page section, CTA banner, button or footer area across the public website in real-time.
+                </p>
+              </div>
+            </div>
+
+            <!-- Quick Batch Controls -->
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-sec-enable-all" style="font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+                <i data-lucide="check-check" style="width: 15px; height: 15px; color: #16a34a;"></i>
+                <span>Turn All ON</span>
+              </button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-sec-reset-defaults" style="font-weight: 700; display: inline-flex; align-items: center; gap: 6px;">
+                <i data-lucide="rotate-ccw" style="width: 14px; height: 14px;"></i>
+                <span>Reset Recommended</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Statistics Badges & Search Filter Bar -->
+          <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; border-top: 1px solid #e2e8f0; padding-top: 16px;">
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+              <span class="badge" style="font-size: 0.80rem; font-weight: 800; background: #ffffff; border: 1.5px solid #cbd5e1; color: #334155; padding: 6px 12px; border-radius: 999px;">
+                Total Areas: <strong style="color: #0f172a;">${allItems.length}</strong>
+              </span>
+              <span class="badge" style="font-size: 0.80rem; font-weight: 800; background: #dcfce7; border: 1.5px solid #86efac; color: #15803d; padding: 6px 12px; border-radius: 999px;">
+                ● Visible (Active): <strong id="sec-active-count">${activeCount}</strong>
+              </span>
+              <span class="badge" style="font-size: 0.80rem; font-weight: 800; background: #fee2e2; border: 1.5px solid #fca5a5; color: #b91c1c; padding: 6px 12px; border-radius: 999px;">
+                ○ Hidden (Disabled): <strong id="sec-hidden-count">${hiddenCount}</strong>
+              </span>
+            </div>
+
+            <!-- Instant Search Input -->
+            <div style="position: relative; min-width: 260px; flex: 1; max-width: 380px;">
+              <i data-lucide="search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #94a3b8; pointer-events: none;"></i>
+              <input type="text" id="sec-search-input" class="form-input" placeholder="Search areas, tabs, buttons..." style="padding-left: 36px; height: 38px; border-radius: 999px; font-size: 0.85rem;">
+            </div>
+          </div>
+        </div>
+
+        <!-- Groups and Cards -->
+        <div id="sec-groups-container" style="display: flex; flex-direction: column; gap: 28px;">
+          ${groups.map(group => `
+            <div class="card sec-group-box" data-group-id="${group.group}" style="padding: 22px; border-radius: 14px; border: 1.5px solid #e2e8f0; background: #ffffff; box-shadow: 0 2px 10px rgba(0,0,0,0.02);">
+              <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; margin-bottom: 18px; border-bottom: 1.5px solid #f1f5f9; padding-bottom: 14px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <div style="width: 34px; height: 34px; border-radius: 9px; background: #f0fdf4; color: #16a34a; display: flex; align-items: center; justify-content: center;">
+                    <i data-lucide="${group.groupIcon}" style="width: 18px; height: 18px;"></i>
+                  </div>
+                  <div>
+                    <h4 style="font-size: 1.05rem; font-weight: 800; color: #0f172a; margin: 0;">${esc(group.groupLabel)}</h4>
+                    <p style="font-size: 0.78rem; color: #64748b; margin: 2px 0 0;">${esc(group.groupDesc)}</p>
+                  </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                  <button type="button" class="btn btn-secondary btn-sm btn-sec-group-all-on" data-group="${group.group}" style="padding: 3px 10px; font-size: 0.74rem; font-weight: 700;">All ON</button>
+                  <button type="button" class="btn btn-secondary btn-sm btn-sec-group-all-off" data-group="${group.group}" style="padding: 3px 10px; font-size: 0.74rem; font-weight: 700;">All OFF</button>
+                </div>
+              </div>
+
+              <!-- Grid of Section Cards in this Group -->
+              <div class="sec-items-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px;">
+                ${group.items.map(item => {
+                  const isChecked = this._config.sections[item.key] !== false;
+                  return `
+                    <div class="tms-section-toggle-card" data-key="${item.key}" data-title="${esc(item.label.toLowerCase())} ${esc(item.desc.toLowerCase())} ${esc(item.target.toLowerCase())}" style="border: 1.5px solid ${isChecked ? '#bbf7d0' : '#e2e8f0'}; background: ${isChecked ? '#ffffff' : '#f8fafc'}; border-radius: 12px; padding: 16px; display: flex; flex-direction: column; justify-content: space-between; gap: 12px; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);">
+                      <div>
+                        <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 8px;">
+                          <div style="display: flex; align-items: center; gap: 10px;">
+                            <div class="sec-item-icon-box" style="width: 36px; height: 36px; border-radius: 10px; background: ${isChecked ? '#ecfdf5' : '#e2e8f0'}; color: ${isChecked ? '#059669' : '#64748b'}; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                              <i data-lucide="${item.icon}" style="width: 18px; height: 18px;"></i>
+                            </div>
+                            <div>
+                              <div style="font-weight: 800; font-size: 0.90rem; color: #0f172a; line-height: 1.25;">${esc(item.label)}</div>
+                              <span class="badge" style="font-size: 0.68rem; font-family: monospace; background: ${isChecked ? '#dcfce7' : '#e2e8f0'}; color: ${isChecked ? '#15803d' : '#64748b'}; padding: 1px 6px; border-radius: 6px; margin-top: 3px; display: inline-block;">${esc(item.target)}</span>
+                            </div>
+                          </div>
+
+                          <!-- The Toggle Switch -->
+                          <label class="switch" style="cursor: pointer; flex-shrink: 0; margin: 0;">
+                            <input type="checkbox" class="tms-section-checkbox" data-key="${item.key}" ${isChecked ? 'checked' : ''}>
+                            <span class="slider round"></span>
+                          </label>
+                        </div>
+
+                        <p style="font-size: 0.80rem; color: #64748b; margin: 0; line-height: 1.45;">${esc(item.desc)}</p>
+                      </div>
+
+                      <div style="display: flex; align-items: center; justify-content: space-between; border-top: 1px solid ${isChecked ? '#f0fdf4' : '#e2e8f0'}; padding-top: 10px; margin-top: 4px;">
+                        <span class="sec-status-text" style="font-size: 0.72rem; font-weight: 800; color: ${isChecked ? '#15803d' : '#94a3b8'};">
+                          ${isChecked ? '● VISIBLE' : '○ HIDDEN'}
+                        </span>
+
+                        ${item.shortcutTab ? `
+                          <button type="button" class="btn btn-secondary btn-sm btn-sec-shortcut" data-subtab="${item.shortcutTab}" style="padding: 3px 9px; font-size: 0.72rem; font-weight: 700; display: inline-flex; align-items: center; gap: 4px; border-radius: 6px;">
+                            <span>Edit Content</span>
+                            <i data-lucide="chevron-right" style="width: 11px; height: 11px;"></i>
+                          </button>
+                        ` : ''}
+                      </div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+
+    this.bindSectionsEvents(container, groups);
+    UIComponents.refreshIcons();
+  }
+
+  static bindSectionsEvents(container, groups) {
+    const allItems = groups.flatMap(g => g.items);
+
+    const updateStats = () => {
+      const active = allItems.filter(it => this._config.sections[it.key] !== false).length;
+      const hidden = allItems.length - active;
+      const actEl = container.querySelector('#sec-active-count');
+      const hidEl = container.querySelector('#sec-hidden-count');
+      if (actEl) actEl.innerText = active;
+      if (hidEl) hidEl.innerText = hidden;
+    };
+
+    const applyCardStyles = (card, isChecked) => {
+      card.style.borderColor = isChecked ? '#bbf7d0' : '#e2e8f0';
+      card.style.background = isChecked ? '#ffffff' : '#f8fafc';
+      const iconBox = card.querySelector('.sec-item-icon-box');
+      if (iconBox) {
+        iconBox.style.background = isChecked ? '#ecfdf5' : '#e2e8f0';
+        iconBox.style.color = isChecked ? '#059669' : '#64748b';
+      }
+      const stText = card.querySelector('.sec-status-text');
+      if (stText) {
+        stText.innerText = isChecked ? '● VISIBLE' : '○ HIDDEN';
+        stText.style.color = isChecked ? '#15803d' : '#94a3b8';
+      }
+    };
+
+    // Checkbox change handlers
+    container.querySelectorAll('.tms-section-checkbox').forEach(chk => {
+      chk.addEventListener('change', async (e) => {
+        const key = e.target.dataset.key;
+        const val = e.target.checked;
+        const card = e.target.closest('.tms-section-toggle-card');
+
+        this._config.sections[key] = val;
+
+        // If hostel is toggled, synchronize hostel.enabled
+        if (key === 'hostel') {
+          if (!this._config.hostel) this._config.hostel = {};
+          this._config.hostel.enabled = val;
+          window.dispatchEvent(new CustomEvent('tms_hostel_toggled', { detail: { enabled: val } }));
+        }
+        if (key === 'navHostel') {
+          if (!this._config.hostel) this._config.hostel = {};
+          this._config.hostel.showNavButton = val;
+        }
+
+        if (card) applyCardStyles(card, val);
+        updateStats();
+
+        await websiteService.saveConfig(this._config);
+        const itemDef = allItems.find(it => it.key === key);
+        const name = itemDef ? itemDef.label : key;
+        UIComponents.showToast(`"${name}" is now ${val ? 'VISIBLE' : 'HIDDEN'} on the website.`, val ? 'success' : 'info');
+      });
+    });
+
+    // Search filter input
+    const searchInput = container.querySelector('#sec-search-input');
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => {
+        const q = (e.target.value || '').trim().toLowerCase();
+        container.querySelectorAll('.sec-group-box').forEach(groupBox => {
+          let visibleCardsInGroup = 0;
+          groupBox.querySelectorAll('.tms-section-toggle-card').forEach(card => {
+            const title = card.dataset.title || '';
+            const match = !q || title.includes(q);
+            card.style.display = match ? 'flex' : 'none';
+            if (match) visibleCardsInGroup++;
+          });
+          groupBox.style.display = visibleCardsInGroup > 0 ? 'block' : 'none';
+        });
+      });
+    }
+
+    // Turn All ON
+    const enableAllBtn = container.querySelector('#btn-sec-enable-all');
+    if (enableAllBtn) {
+      enableAllBtn.addEventListener('click', async () => {
+        allItems.forEach(it => {
+          this._config.sections[it.key] = true;
+        });
+        if (this._config.hostel) {
+          this._config.hostel.enabled = true;
+          this._config.hostel.showNavButton = true;
+          window.dispatchEvent(new CustomEvent('tms_hostel_toggled', { detail: { enabled: true } }));
+        }
+        await websiteService.saveConfig(this._config);
+        UIComponents.showToast('All website sections and tabs are now turned ON!', 'success');
+        this.renderSectionsTab(container);
+      });
+    }
+
+    // Reset Defaults
+    const resetDefBtn = container.querySelector('#btn-sec-reset-defaults');
+    if (resetDefBtn) {
+      resetDefBtn.addEventListener('click', async () => {
+        this._config.sections = JSON.parse(JSON.stringify(DEFAULT_WEBSITE_CONFIG.sections || {}));
+        if (this._config.hostel) {
+          this._config.hostel.enabled = false;
+          this._config.hostel.showNavButton = false;
+          window.dispatchEvent(new CustomEvent('tms_hostel_toggled', { detail: { enabled: false } }));
+        }
+        await websiteService.saveConfig(this._config);
+        UIComponents.showToast('Section visibility reset to recommended defaults.', 'info');
+        this.renderSectionsTab(container);
+      });
+    }
+
+    // Group-level All ON / All OFF
+    container.querySelectorAll('.btn-sec-group-all-on').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const grpId = e.currentTarget.dataset.group;
+        const grp = groups.find(g => g.group === grpId);
+        if (grp) {
+          grp.items.forEach(it => {
+            this._config.sections[it.key] = true;
+            if (it.key === 'hostel' && this._config.hostel) this._config.hostel.enabled = true;
+            if (it.key === 'navHostel' && this._config.hostel) this._config.hostel.showNavButton = true;
+          });
+          await websiteService.saveConfig(this._config);
+          UIComponents.showToast(`All "${grp.groupLabel}" turned ON!`, 'success');
+          this.renderSectionsTab(container);
+        }
+      });
+    });
+
+    container.querySelectorAll('.btn-sec-group-all-off').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const grpId = e.currentTarget.dataset.group;
+        const grp = groups.find(g => g.group === grpId);
+        if (grp) {
+          grp.items.forEach(it => {
+            this._config.sections[it.key] = false;
+            if (it.key === 'hostel' && this._config.hostel) this._config.hostel.enabled = false;
+            if (it.key === 'navHostel' && this._config.hostel) this._config.hostel.showNavButton = false;
+          });
+          await websiteService.saveConfig(this._config);
+          UIComponents.showToast(`All "${grp.groupLabel}" turned OFF!`, 'info');
+          this.renderSectionsTab(container);
+        }
+      });
+    });
+
+    // Shortcut button clicks
+    container.querySelectorAll('.btn-sec-shortcut').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const subtab = e.currentTarget.dataset.subtab;
+        if (subtab) {
+          const { AdminModule } = await import('./admin-module.js');
+          AdminModule.renderTab(subtab);
+        }
+      });
+    });
+  }
+
+  /* Helper to render instant visibility toggle banner at the top of specific section tabs */
+  static renderSectionVisibilityBanner(container, sectionKey, sectionTitle) {
+    if (!this._config.sections) {
+      this._config.sections = JSON.parse(JSON.stringify(DEFAULT_WEBSITE_CONFIG.sections || {}));
+    }
+    const isLive = this._config.sections[sectionKey] !== false;
+
+    const banner = document.createElement('div');
+    banner.className = 'card tms-sec-banner-card';
+    banner.style.cssText = `margin-bottom: 22px; border: 1.5px solid ${isLive ? '#bbf7d0' : '#e2e8f0'}; background: ${isLive ? 'linear-gradient(180deg, #f0fdf4 0%, #ffffff 100%)' : '#ffffff'}; padding: 16px 20px; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;`;
+    banner.innerHTML = `
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div style="width:38px; height:38px; border-radius:10px; background:${isLive ? '#ecfdf5' : '#f1f5f9'}; color:${isLive ? '#059669' : '#64748b'}; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+          <i data-lucide="eye" style="width:20px; height:20px;"></i>
+        </div>
+        <div>
+          <div style="font-weight:800; font-size:0.95rem; color:#0f172a;">${esc(sectionTitle)} Visibility</div>
+          <div style="font-size:0.76rem; color:#64748b;">Controls whether this entire section is displayed on the public institutional website.</div>
+        </div>
+      </div>
+      <div style="display:flex; align-items:center; gap:14px;">
+        <span class="badge" style="font-size:0.75rem; font-weight:800; background:${isLive ? '#dcfce7' : '#f1f5f9'}; color:${isLive ? '#15803d' : '#64748b'}; padding:5px 12px; border-radius:999px;">
+          ${isLive ? '● Currently Visible on Website' : '○ Currently Hidden from Public'}
+        </span>
+        <label class="switch" style="cursor:pointer; margin:0;">
+          <input type="checkbox" id="toggle-sec-banner-${sectionKey}" ${isLive ? 'checked' : ''}>
+          <span class="slider round"></span>
+        </label>
+      </div>
+    `;
+    container.prepend(banner);
+
+    const chk = banner.querySelector(`#toggle-sec-banner-${sectionKey}`);
+    if (chk) {
+      chk.addEventListener('change', async (e) => {
+        const val = e.target.checked;
+        this._config.sections[sectionKey] = val;
+        if (sectionKey === 'hostel') {
+          if (!this._config.hostel) this._config.hostel = {};
+          this._config.hostel.enabled = val;
+        }
+        await websiteService.saveConfig(this._config);
+        UIComponents.showToast(`${sectionTitle} is now ${val ? 'VISIBLE' : 'HIDDEN'} on the website.`, val ? 'success' : 'info');
+        banner.remove();
+        this.renderSectionVisibilityBanner(container, sectionKey, sectionTitle);
+        UIComponents.refreshIcons();
       });
     }
   }
@@ -426,6 +1150,7 @@ export class AdminWebsiteCms {
       if (el) el.addEventListener('input', (e) => { obj[key] = e.target.value; });
     };
 
+    this.renderSectionVisibilityBanner(container, 'hero', 'Hero Main Showcase Section');
     bindVal('hero-badge', this._config.hero, 'badge');
     bindVal('hero-headline', this._config.hero, 'headline');
     bindVal('hero-subheadline', this._config.hero, 'subheadline');
@@ -547,6 +1272,8 @@ export class AdminWebsiteCms {
       </div>
     `;
 
+    this.renderSectionVisibilityBanner(container, 'about', 'About Our Institution Section');
+
     const bindVal = (id, obj, key) => {
       const el = document.getElementById(id);
       if (el) el.addEventListener('input', (e) => { obj[key] = e.target.value; });
@@ -637,6 +1364,8 @@ export class AdminWebsiteCms {
         `).join('')}
       </div>
     `;
+
+    this.renderSectionVisibilityBanner(container, 'academics', 'Academic Programs & Wings Section');
 
     // Event listeners
     container.querySelectorAll('.prog-title').forEach(inp => {
@@ -741,6 +1470,8 @@ export class AdminWebsiteCms {
         `).join('')}
       </div>
     `;
+
+    this.renderSectionVisibilityBanner(container, 'facilities', 'Campus Life & Facilities Section');
 
     container.querySelectorAll('.fac-title').forEach(inp => {
       inp.addEventListener('input', (e) => {
@@ -1630,6 +2361,8 @@ export class AdminWebsiteCms {
       </div>
     `;
 
+    this.renderSectionVisibilityBanner(container, 'notices', 'Live Notice Board Section');
+
     container.querySelectorAll('.not-title').forEach(inp => {
       inp.addEventListener('input', (e) => {
         const i = parseInt(e.target.dataset.idx, 10);
@@ -1736,6 +2469,8 @@ export class AdminWebsiteCms {
       </div>
     `;
 
+    this.renderSectionVisibilityBanner(container, 'gallery', 'Campus Photo Gallery Section');
+
     container.querySelectorAll('.gal-title').forEach(inp => {
       inp.addEventListener('input', (e) => {
         const i = parseInt(e.target.dataset.idx, 10);
@@ -1832,6 +2567,8 @@ export class AdminWebsiteCms {
         `).join('')}
       </div>
     `;
+
+    this.renderSectionVisibilityBanner(container, 'testimonials', 'Reviews & Testimonials Section');
 
     container.querySelectorAll('.test-name').forEach(inp => {
       inp.addEventListener('input', (e) => {
@@ -1991,6 +2728,8 @@ export class AdminWebsiteCms {
         </div>
       </div>
     `;
+
+    this.renderSectionVisibilityBanner(container, 'contact', 'Campus Visit & Contact Helpdesk Section');
 
     const bindVal = (id, obj, key) => {
       const el = document.getElementById(id);
