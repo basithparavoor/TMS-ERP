@@ -105,10 +105,11 @@ export class AdminModule {
       <div class="tms-content-wrapper">
         ${UIComponents.renderPageHeader({
           title: 'School Administration & Governance',
-          subtitle: 'Admission form builder, fee & payment configuration, application review, notifications and audit trail.',
+          subtitle: 'Admissions hub, public website CMS, hostel setups, notifications, campus governance & disaster recovery.',
           breadcrumbs: [{ label: 'Administration' }],
           badge: isSuperAdmin ? 'Super Admin' : 'Admin Console',
           actionsHtml: `
+            <a href="#/users" class="btn btn-secondary"><i data-lucide="shield-check"></i> User &amp; Permissions</a>
             <a href="/admission" target="_blank" class="btn btn-secondary"><i data-lucide="external-link"></i> Public Admission Gateway</a>
             <button class="btn btn-primary" id="btn-new-notification"><i data-lucide="bell-plus"></i> New Notification</button>
           `
@@ -146,11 +147,6 @@ export class AdminModule {
             <span>Admissions Hub</span>
             <span class="tab-badge" id="admin-apps-badge">${stats.total}</span>
           </button>
-          <button class="tms-tab-pill" data-group="users">
-            <i data-lucide="shield-check"></i>
-            <span>Access & Security</span>
-            <span class="tab-badge" id="admin-pending-users-badge" style="display:none; background:#f59e0b; color:#fff;">0</span>
-          </button>
           <button class="tms-tab-pill" data-group="notices">
             <i data-lucide="bell"></i>
             <span>Notifications</span>
@@ -186,17 +182,126 @@ export class AdminModule {
 
     this.bindEvents(container);
     this.refreshPendingBadges();
-    const hash = (typeof window !== 'undefined' ? window.location.hash || '' : '').replace('#', '');
-    if (hash === 'users' || hash.startsWith('user')) {
-      const usersTab = container.querySelector('#admin-primary-tabs .tms-tab-pill[data-group="users"]');
-      if (usersTab) {
-        container.querySelectorAll('#admin-primary-tabs .tms-tab-pill').forEach(b => b.classList.remove('active'));
-        usersTab.classList.add('active');
-      }
-      this.switchGroup('users', 'users');
-    } else {
-      this.switchGroup('admissions', 'applications');
+    this.switchGroup('admissions', 'applications');
+  }
+
+  /* ================================================================== */
+  /* Dedicated User & Permissions Module View                           */
+  /* ================================================================== */
+
+  static async renderUsers(container, targetTab = 'users') {
+    const currentUser = authService.getCurrentUser();
+    const isSuperAdmin = currentUser?.isSuperAdmin === true || (currentUser?.email || '').toLowerCase() === (TMS_CONFIG.superAdminEmail || '').toLowerCase();
+
+    let profiles = [];
+    try {
+      profiles = await dbService.select('profiles');
+    } catch (e) {
+      profiles = [];
     }
+
+    const pendingList = profiles.filter((p) => p.role === 'pending' || p.approvalStatus === 'pending');
+    const approvedList = profiles.filter((p) => p.role !== 'pending' && p.role !== 'rejected' && p.isActive !== false);
+    const suspendedList = profiles.filter((p) => p.role === 'rejected' || p.approvalStatus === 'rejected' || p.isActive === false);
+
+    const pendingCount = pendingList.length;
+    const totalCount = profiles.length;
+    const activeCount = approvedList.length;
+    this._pendingApprovalsCount = pendingCount;
+
+    container.innerHTML = `
+      <div class="tms-content-wrapper">
+        ${UIComponents.renderPageHeader({
+          title: 'User & Permissions Management',
+          subtitle: 'Institutional identity governance, pending approval queue, role definitions, and customized window-level access control.',
+          breadcrumbs: [{ label: 'User & Permissions' }],
+          badge: isSuperAdmin ? 'Super Admin' : 'Security Console',
+          actionsHtml: `
+            <a href="#/administration" class="btn btn-secondary"><i data-lucide="settings"></i> School Administration</a>
+            <button class="btn btn-secondary" id="btn-refresh-users-page"><i data-lucide="refresh-cw"></i> Refresh</button>
+          `
+        })}
+
+        <div class="kpi-grid" style="margin-bottom: 22px;">
+          ${UIComponents.renderKpiCard({ title: 'Total Accounts', value: totalCount, icon: 'users', color: 'blue' })}
+          ${UIComponents.renderKpiCard({ title: 'Pending Approvals', value: pendingCount, icon: 'clock', color: pendingCount > 0 ? 'amber' : 'blue' })}
+          ${UIComponents.renderKpiCard({ title: 'Active Accounts', value: activeCount, icon: 'check-circle', color: 'emerald' })}
+          ${UIComponents.renderKpiCard({ title: 'Configured Roles', value: WINDOW_ROLES.length, icon: 'shield-check', color: 'purple' })}
+        </div>
+
+        <!-- Primary Segmented Tabs Rail for Users Module -->
+        <div class="tms-tab-rail-wrapper">
+          <div class="tms-segmented-tabs" id="users-primary-tabs">
+            <button class="tms-tab-pill ${targetTab === 'users' ? 'active' : ''}" data-tab="users">
+              <i data-lucide="users"></i>
+              <span>User Directory</span>
+            </button>
+            <button class="tms-tab-pill ${targetTab === 'rbac' ? 'active' : ''}" data-tab="rbac">
+              <i data-lucide="shield-check"></i>
+              <span>Assign Windows (RBAC)</span>
+            </button>
+            <button class="tms-tab-pill ${targetTab === 'google-approvals' ? 'active' : ''}" data-tab="google-approvals">
+              <i data-lucide="user-check"></i>
+              <span>Google Approvals</span>
+              ${pendingCount > 0 ? `<span class="tab-badge" style="background:#f59e0b; color:#fff;">${pendingCount}</span>` : ''}
+            </button>
+            <button class="tms-tab-pill ${targetTab === 'staff-onboarding' ? 'active' : ''}" data-tab="staff-onboarding">
+              <i data-lucide="user-cog"></i>
+              <span>Staff Onboarding</span>
+            </button>
+            <button class="tms-tab-pill ${targetTab === 'user-sessions' ? 'active' : ''}" data-tab="user-sessions">
+              <i data-lucide="history"></i>
+              <span>User Sessions</span>
+            </button>
+            <button class="tms-tab-pill ${targetTab === 'audit' ? 'active' : ''}" data-tab="audit">
+              <i data-lucide="shield-alert"></i>
+              <span>Security Audit Logs</span>
+            </button>
+          </div>
+        </div>
+
+        <div id="users-view-content" style="margin-top: 18px;"></div>
+      </div>
+    `;
+
+    const switchUsersTab = async (tabKey) => {
+      const contentEl = container.querySelector('#users-view-content');
+      if (!contentEl) return;
+      container.querySelectorAll('#users-primary-tabs .tms-tab-pill').forEach((b) => {
+        b.classList.toggle('active', b.dataset.tab === tabKey);
+      });
+      contentEl.innerHTML = '<div style="padding:2rem;text-align:center;"><div class="tms-spinner"></div></div>';
+      try {
+        if (tabKey === 'users') {
+          await this.renderUsersTab(contentEl);
+        } else if (tabKey === 'rbac') {
+          this.renderRbacMatrixView(contentEl, profiles, isSuperAdmin);
+        } else if (tabKey === 'google-approvals') {
+          await this.renderGoogleApprovalsTab(contentEl);
+        } else if (tabKey === 'staff-onboarding') {
+          await this.renderStaffOnboardingTab(contentEl);
+        } else if (tabKey === 'user-sessions') {
+          await this.renderUserSessionsTab(contentEl);
+        } else if (tabKey === 'audit') {
+          await this.renderAuditTab(contentEl);
+        }
+      } catch (err) {
+        contentEl.innerHTML = `<div class="card"><p style="color:#dc2626;">Failed to load section: ${esc(err.message)}</p></div>`;
+      }
+      UIComponents.refreshIcons();
+    };
+
+    container.querySelectorAll('#users-primary-tabs .tms-tab-pill').forEach((btn) => {
+      btn.addEventListener('click', () => switchUsersTab(btn.dataset.tab));
+    });
+
+    const refreshBtn = container.querySelector('#btn-refresh-users-page');
+    if (refreshBtn) {
+      refreshBtn.addEventListener('click', () => this.renderUsers(container, targetTab));
+    }
+
+    await switchUsersTab(targetTab);
+    UIComponents.refreshIcons();
   }
 
   static async refreshPendingBadges() {
@@ -276,12 +381,7 @@ export class AdminModule {
         { key: 'backup', label: 'JSON Disaster Recovery', icon: 'database' }
       ],
       superadmin: [
-        { key: 'google-approvals', label: '🛡️ Google Auth Approvals', icon: 'user-check', showPendingBadge: true },
-        { key: 'staff-onboarding', label: '👥 Staff Onboarding & Governance', icon: 'user-cog' },
-        { key: 'institution-details', label: '🏫 Institution Profile & Campus Status', icon: 'building-2' },
         { key: 'system-doctor', label: '🩺 System Doctor (Find & Fix)', icon: 'wrench' },
-        { key: 'user-sessions', label: '👤 User Login / Logout Sessions', icon: 'history' },
-        { key: 'audit', label: '🛡️ Security Audit Logs', icon: 'shield-alert' },
         { key: 'developer-tools', label: '⚡ Developer DB Explorer', icon: 'terminal' }
       ]
     };
@@ -3774,7 +3874,7 @@ export class AdminModule {
         await dbService.update('profiles', id, { role: 'rejected', approvalStatus: 'rejected', isActive: false });
         await auditService.log('USER_REJECTED', 'GOVERNANCE', { userId: id });
         UIComponents.showToast('Account application rejected', 'warning');
-        const mainContent = document.getElementById('tab-content');
+        const mainContent = document.getElementById('users-view-content') || document.getElementById('admin-tab-content');
         if (mainContent) this.renderUsersTab(mainContent);
       });
     });
@@ -4052,7 +4152,7 @@ export class AdminModule {
         await dbService.update('profiles', id, { isActive: willActivate, approvalStatus: willActivate ? 'approved' : 'suspended' });
         await auditService.log(willActivate ? 'USER_ACTIVATED' : 'USER_SUSPENDED', 'GOVERNANCE', { userId: id });
         UIComponents.showToast(`Account ${willActivate ? 'activated' : 'suspended'}.`, willActivate ? 'success' : 'warning');
-        const mainContent = document.getElementById('tab-content');
+        const mainContent = document.getElementById('users-view-content') || document.getElementById('admin-tab-content');
         if (mainContent) this.renderUsersTab(mainContent);
       });
     });
@@ -4509,7 +4609,7 @@ export class AdminModule {
       }
 
       UIComponents.closeModal();
-      const mainContent = document.getElementById('tab-content');
+      const mainContent = document.getElementById('users-view-content') || document.getElementById('admin-tab-content');
       if (mainContent) this.renderUsersTab(mainContent);
     });
   }
@@ -4645,7 +4745,7 @@ export class AdminModule {
       UIComponents.showToast(`Account ${isApprovalMode ? 'approved and assigned' : 'updated'}.`, 'success');
       UIComponents.closeModal();
 
-      const mainContent = document.getElementById('tab-content');
+      const mainContent = document.getElementById('users-view-content') || document.getElementById('admin-tab-content');
       if (mainContent) this.renderUsersTab(mainContent);
     });
   }

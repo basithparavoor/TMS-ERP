@@ -12,6 +12,7 @@ import { dbService } from './supabase-client.js';
 import { TMS_LOGO } from './logo.js';
 
 // Import Functional Modules
+import { UsersModule } from './users-module.js';
 import { AdminModule } from './admin-module.js';
 import { InstitutionModule } from './institution-module.js';
 import { MyWorkModule } from './my-work-module.js';
@@ -661,8 +662,8 @@ class AppController {
     const roleDisplayName = user.title || (user.role ? (user.role.charAt(0).toUpperCase() + user.role.slice(1).replace(/_/g, ' ')) : 'Staff Member');
     const authorityBadge = (user.role || 'STAFF').toUpperCase().replace(/_/g, ' ');
     const tgiIdRaw = staffMeta.tgiId || user.staffId || '';
-    const tgiIdBadge = tgiIdRaw ? `TGI-${tgiIdRaw}` : 'TGI•••';
-    const tgiIdDisplay = tgiIdRaw || '';
+    const staffIdDisplay = tgiIdRaw ? (tgiIdRaw.startsWith('TMS') ? tgiIdRaw : `TMS-${tgiIdRaw.replace(/^TGI-?/i, '')}`) : '';
+    const staffIdBadgeText = staffIdDisplay || 'Staff ID: Pending';
 
     // Phone parsing (extract last 10 digits and format 5-5)
     const rawPhoneDigits = (user.phone || staffMeta.phone || '').replace(/\D/g, '').slice(-10);
@@ -672,179 +673,234 @@ class AppController {
     const initialBloodGroup = staffMeta.bloodGroup || '';
     const bloodGroups = ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-'];
 
-    // Questions configured by School Admin
-    const questions = config.questions || [];
+    // Questions configured by School Admin (fix any placeholder typos)
+    const questions = (config.questions || []).map(q => {
+      let ph = q.placeholder || '';
+      ph = ph.replace(/Englisl/gi, 'English');
+      return { ...q, placeholder: ph };
+    });
     const answers = staffMeta.answers || {};
 
     const canEdit = eligibility.isEligible;
 
     const bodyHtml = `
-      <div class="inst-profile-modal-body" style="font-family: inherit;">
+      <div class="inst-profile-modal-body">
         ${isFirstLogin ? `
-        <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:12px; padding:12px 16px; display:flex; align-items:center; gap:12px; margin-bottom:16px;">
-          <div style="width:36px; height:36px; border-radius:50%; background:#dbeafe; color:#1d4ed8; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-            <i data-lucide="shield-check" style="width:20px;height:20px;"></i>
+        <div class="inst-first-login-banner">
+          <div class="inst-first-login-icon">
+            <i data-lucide="shield-check"></i>
           </div>
           <div>
-            <div style="font-weight:700; color:#1e40af; font-size:0.9rem;">Initial Staff Onboarding &amp; Profile Setup</div>
-            <div style="color:#1e3a8a; font-size:0.78rem; margin-top:2px;">
-              Welcome to Thaiba Group of Institutions (TGI). Please review and complete your profile details. As per administration policy, you have a <strong>${eligibility.daysRemaining}-day edit window</strong> from your initial login to update your data.
+            <div class="inst-first-login-title">Initial Staff Onboarding &amp; Profile Setup</div>
+            <div class="inst-first-login-desc">
+              Welcome to <strong>THAIBA MODEL SCHOOL</strong>. Please review and complete your institutional credentials. You have a <strong>${eligibility.daysRemaining}-day edit window</strong> from your initial login to update profile data.
             </div>
           </div>
         </div>
         ` : ''}
-        <!-- Header Identity Card -->
-        <div class="inst-profile-card">
+
+        <!-- Top Executive Identity Hero Card -->
+        <div class="inst-profile-hero-card">
           <div class="inst-avatar-wrapper">
-            <img id="pf-avatar" class="inst-avatar-img" src="${esc(user.avatar || DEFAULT_AVATAR)}" alt="Avatar">
+            <img id="pf-avatar" class="inst-avatar-img" src="${esc(user.avatar || DEFAULT_AVATAR)}" alt="Staff Avatar">
             ${canEdit ? `
-            <label for="pf-avatar-file" class="inst-avatar-camera-btn" title="Change Photo">
-              <i data-lucide="camera" style="width:14px;height:14px;"></i>
+            <label for="pf-avatar-file" class="inst-avatar-camera-btn" title="Change Profile Photograph">
+              <i data-lucide="camera"></i>
             </label>
             <input type="file" id="pf-avatar-file" accept="image/*" style="display:none;">
             ` : ''}
           </div>
-          <div style="flex:1; min-width:0;">
-            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-              <span class="inst-badge-role">${esc(authorityBadge)}</span>
-              <span class="inst-badge-tgi">${esc(tgiIdBadge)}</span>
+          <div class="inst-hero-details">
+            <div class="inst-hero-header-row">
+              <h3 class="inst-hero-name">${esc(user.name || 'Staff Member')}</h3>
+              <div class="inst-hero-badges">
+                <span class="inst-badge-role"><i data-lucide="shield-check"></i> ${esc(authorityBadge)}</span>
+                <span class="inst-badge-id font-mono">${esc(staffIdBadgeText)}</span>
+              </div>
             </div>
-            <div style="font-weight:700; color:#1e293b; font-size:1rem; margin-top:5px; word-break:break-all;">
-              ${esc(user.email || '—')}
+            <div class="inst-hero-email">
+              <i data-lucide="mail"></i>
+              <span>${esc(user.email || '—')}</span>
             </div>
-            <div style="color:#059669; font-weight:600; font-size:0.82rem; margin-top:2px;">
-              Thaiba Group of Institutions (TGI) • Member
+            <div class="inst-hero-affiliation">
+              <span class="inst-org-pill"><i data-lucide="school"></i> THAIBA MODEL SCHOOL • Enterprise Campus Core</span>
             </div>
           </div>
         </div>
 
-        <!-- Form Fields Grid -->
-        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap:16px;">
+        <!-- Section 1: Core Institutional Credentials -->
+        <div class="inst-section-divider">
+          <div class="inst-section-title">
+            <i data-lucide="user"></i>
+            <span>Institutional Credentials &amp; Identity</span>
+          </div>
+          <div class="inst-section-line"></div>
+        </div>
+
+        <div class="inst-form-grid">
           <!-- 1. Full Name -->
-          <div class="form-group" style="margin:0;">
-            <label class="form-label" style="font-weight:600; font-size:0.85rem;">Full Name <span style="color:#ef4444;">*</span></label>
-            <input class="form-input" id="pf-name" value="${esc(user.name || '')}" placeholder="Your full name" ${canEdit ? '' : 'disabled'} style="border-radius:10px; padding:10px 14px;">
+          <div class="form-group inst-field-group">
+            <label class="form-label inst-label" for="pf-name">Full Name <span class="req-star">*</span></label>
+            <input class="form-input inst-input" id="pf-name" value="${esc(user.name || '')}" placeholder="Enter your full name" ${canEdit ? '' : 'disabled'}>
           </div>
 
           <!-- 2. Institutional Role (Read-only as assigned by Super Admin) -->
-          <div class="form-group" style="margin:0;">
-            <label class="form-label" style="font-weight:600; font-size:0.85rem;">Institutional Role <span style="color:#ef4444;">*</span></label>
-            <div class="inst-field-pill" style="display:flex; align-items:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${esc(roleDisplayName)}">
-              ${esc(roleDisplayName)}
+          <div class="form-group inst-field-group">
+            <label class="form-label inst-label">Institutional Role <span class="req-star">*</span></label>
+            <div class="inst-readonly-box" title="${esc(roleDisplayName)}">
+              <i data-lucide="shield" class="inst-field-icon"></i>
+              <span class="inst-readonly-val">${esc(roleDisplayName)}</span>
+              <span class="inst-readonly-badge">Assigned by Admin</span>
             </div>
-            <div class="inst-subtext">Assigned by Super Admin (Read-only)</div>
+            <div class="inst-help-text">Read-only role managed by Administration</div>
           </div>
 
-          <!-- 3. TGI ID (Institutional Staff ID) (Read-only as allocated by School Admin) -->
-          <div class="form-group" style="margin:0;">
-            <label class="form-label" style="font-weight:600; font-size:0.85rem;">TGI ID (Institutional Staff ID)</label>
-            <div class="inst-addon-group">
-              <div class="inst-addon-prefix font-mono">TGI</div>
-              <input type="text" id="pf-tgi-display" class="form-input inst-addon-input font-mono" value="${esc(tgiIdDisplay)}" placeholder="${tgiIdDisplay ? '' : 'Not yet allocated (Assigned by School Admin)'}" readonly style="color:#334155; font-weight:700; background:#f8fafc; cursor:default;">
+          <!-- 3. Institutional Staff ID (Read-only as allocated by School Admin) -->
+          <div class="form-group inst-field-group">
+            <label class="form-label inst-label">Institutional Staff ID</label>
+            <div class="inst-input-addon-wrap">
+              <span class="inst-addon-label font-mono">TMS</span>
+              <input type="text" id="pf-tgi-display" class="form-input inst-addon-field font-mono" value="${esc(staffIdDisplay ? staffIdDisplay.replace(/^TMS-?/i, '') : '')}" placeholder="${staffIdDisplay ? '' : 'Pending assignment by School Admin'}" readonly>
+              <span class="inst-field-lock" title="Allocated by Admin"><i data-lucide="lock"></i></span>
             </div>
-            <div class="inst-subtext">Allocated by School Administration (Read-only — Set by Admin)</div>
+            <div class="inst-help-text">Official staff identification number</div>
           </div>
 
           <!-- 4. Phone Number (Auto-formatted 5-5 digits with fixed +91) -->
-          <div class="form-group" style="margin:0;">
-            <label class="form-label" style="font-weight:600; font-size:0.85rem;">Phone Number <span style="color:#ef4444;">*</span></label>
-            <div class="inst-addon-group">
-              <div class="inst-addon-prefix">
-                <span>🇮🇳</span> <span>+91</span>
-              </div>
-              <input type="tel" id="pf-phone" class="form-input inst-addon-input font-mono" maxlength="11" placeholder="98470 55667" value="${esc(initialPhoneFormatted)}" ${canEdit ? '' : 'disabled'}>
+          <div class="form-group inst-field-group">
+            <label class="form-label inst-label" for="pf-phone">Phone Number <span class="req-star">*</span></label>
+            <div class="inst-input-addon-wrap">
+              <span class="inst-addon-flag">🇮🇳 +91</span>
+              <input type="tel" id="pf-phone" class="form-input inst-addon-field font-mono" maxlength="11" placeholder="98470 55667" value="${esc(initialPhoneFormatted)}" ${canEdit ? '' : 'disabled'}>
             </div>
-            <div class="inst-subtext">Country code +91 is fixed. Formatted automatically as 5–5 digits</div>
+            <div class="inst-help-text">Standard 10-digit mobile (formatted 5–5)</div>
           </div>
 
           <!-- 5. Blood Group -->
-          <div class="form-group" style="margin:0;">
-            <label class="form-label" style="font-weight:600; font-size:0.85rem;">Blood Group <span style="color:#ef4444;">*</span></label>
-            <select class="form-select inst-field-pill" id="pf-blood-group" ${canEdit ? '' : 'disabled'}>
-              <option value="">Select Blood Group</option>
+          <div class="form-group inst-field-group">
+            <label class="form-label inst-label" for="pf-blood-group">Blood Group <span class="req-star">*</span></label>
+            <select class="form-select inst-select" id="pf-blood-group" ${canEdit ? '' : 'disabled'}>
+              <option value="">— Select Blood Group —</option>
               ${bloodGroups.map(bg => `<option value="${bg}" ${initialBloodGroup === bg ? 'selected' : ''}>${bg}</option>`).join('')}
             </select>
+            <div class="inst-help-text">For campus medical emergency register</div>
+          </div>
+
+          <!-- 6. Department / Wing (Read-only) -->
+          <div class="form-group inst-field-group">
+            <label class="form-label inst-label">Department / Wing</label>
+            <div class="inst-readonly-box">
+              <i data-lucide="building-2" class="inst-field-icon"></i>
+              <span class="inst-readonly-val">${esc(user.department || 'Campus Operations & Faculty')}</span>
+            </div>
+            <div class="inst-help-text">Institutional wing or faculty department</div>
           </div>
         </div>
 
-        <!-- 6. Dynamic Admin-Configured Onboarding Questions -->
+        <!-- Section 2: Dynamic Admin-Configured Onboarding Questions -->
         ${questions.length > 0 ? `
-        <div style="margin-top:20px; border-top:1px dashed #e2e8f0; padding-top:16px;">
-          <div style="font-weight:700; font-size:0.88rem; color:#0f172a; margin-bottom:12px; display:flex; align-items:center; gap:6px;">
-            <i data-lucide="help-circle" style="width:16px;height:16px;color:#059669;"></i> Institutional Onboarding Details
+        <div class="inst-section-divider">
+          <div class="inst-section-title">
+            <i data-lucide="file-badge"></i>
+            <span>Professional &amp; Onboarding Details</span>
           </div>
-          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap:14px;">
-            ${questions.map((q) => {
-              const val = answers[q.id] || '';
-              const isReq = q.required === true;
-              const reqAsterisk = isReq ? '<span style="color:#ef4444;">*</span>' : '';
-              let inputHtml = '';
-              if (q.type === 'textarea') {
-                inputHtml = `<textarea class="form-input pf-question-inp" data-qid="${esc(q.id)}" data-req="${isReq}" rows="2" placeholder="${esc(q.placeholder || '')}" ${canEdit ? '' : 'disabled'} style="border-radius:10px; width:100%;">${esc(val)}</textarea>`;
-              } else if (q.type === 'select') {
-                const opts = Array.isArray(q.options) ? q.options : (q.options ? q.options.split(',').map(s => s.trim()) : []);
-                inputHtml = `
-                  <select class="form-select pf-question-inp" data-qid="${esc(q.id)}" data-req="${isReq}" ${canEdit ? '' : 'disabled'} style="border-radius:10px;">
-                    <option value="">Select ${esc(q.label)}</option>
-                    ${opts.map(o => `<option value="${esc(o)}" ${val === o ? 'selected' : ''}>${esc(o)}</option>`).join('')}
-                  </select>
-                `;
-              } else {
-                inputHtml = `<input type="${esc(q.type || 'text')}" class="form-input pf-question-inp" data-qid="${esc(q.id)}" data-req="${isReq}" value="${esc(val)}" placeholder="${esc(q.placeholder || '')}" ${canEdit ? '' : 'disabled'} style="border-radius:10px;">`;
-              }
-              return `
-                <div class="form-group" style="margin:0; ${q.type === 'textarea' ? 'grid-column:1/-1;' : ''}">
-                  <label class="form-label" style="font-weight:600; font-size:0.83rem;">${esc(q.label)} ${reqAsterisk}</label>
-                  ${inputHtml}
-                  ${q.subtext ? `<div class="inst-subtext">${esc(q.subtext)}</div>` : ''}
-                </div>
+          <div class="inst-section-line"></div>
+        </div>
+
+        <div class="inst-form-grid">
+          ${questions.map((q) => {
+            const val = answers[q.id] || '';
+            const isReq = q.required === true;
+            const reqAsterisk = isReq ? '<span class="req-star">*</span>' : '';
+            let inputHtml = '';
+            if (q.type === 'textarea') {
+              inputHtml = `<textarea class="form-input inst-textarea pf-question-inp" data-qid="${esc(q.id)}" data-req="${isReq}" rows="2" placeholder="${esc(q.placeholder || '')}" ${canEdit ? '' : 'disabled'}>${esc(val)}</textarea>`;
+            } else if (q.type === 'select') {
+              const opts = Array.isArray(q.options) ? q.options : (q.options ? q.options.split(',').map(s => s.trim()) : []);
+              inputHtml = `
+                <select class="form-select inst-select pf-question-inp" data-qid="${esc(q.id)}" data-req="${isReq}" ${canEdit ? '' : 'disabled'}>
+                  <option value="">— Select ${esc(q.label)} —</option>
+                  ${opts.map(o => `<option value="${esc(o)}" ${val === o ? 'selected' : ''}>${esc(o)}</option>`).join('')}
+                </select>
               `;
-            }).join('')}
-          </div>
+            } else {
+              inputHtml = `<input type="${esc(q.type || 'text')}" class="form-input inst-input pf-question-inp" data-qid="${esc(q.id)}" data-req="${isReq}" value="${esc(val)}" placeholder="${esc(q.placeholder || '')}" ${canEdit ? '' : 'disabled'}>`;
+            }
+            return `
+              <div class="form-group inst-field-group ${q.type === 'textarea' ? 'full-width' : ''}">
+                <label class="form-label inst-label">${esc(q.label)} ${reqAsterisk}</label>
+                ${inputHtml}
+                ${q.subtext ? `<div class="inst-help-text">${esc(q.subtext)}</div>` : ''}
+              </div>
+            `;
+          }).join('')}
         </div>
         ` : ''}
 
-        <!-- 7. Institutional Verification Card -->
-        <div class="inst-verification-card">
-          <div>• Institutional Email: <strong style="color:#1e293b;">${esc(user.email || '—')}</strong></div>
-          <div>• Role Authority: <strong style="color:#0f172a;">${esc(authorityBadge)}</strong></div>
-          <div>• Account Status: <strong style="color:#059669;">Approved &amp; Active</strong></div>
-          <div>• Database Verification: <strong style="color:#2563eb;">Verified</strong></div>
+        <!-- Section 3: Verification & Governance Dashboard -->
+        <div class="inst-credential-grid">
+          <div class="inst-cred-item">
+            <span class="inst-cred-label"><i data-lucide="mail"></i> Registered Email</span>
+            <span class="inst-cred-val font-mono">${esc(user.email || '—')}</span>
+          </div>
+          <div class="inst-cred-item">
+            <span class="inst-cred-label"><i data-lucide="shield"></i> Authority Level</span>
+            <span class="inst-cred-val">${esc(authorityBadge)}</span>
+          </div>
+          <div class="inst-cred-item">
+            <span class="inst-cred-label"><i data-lucide="check-circle-2"></i> Account Status</span>
+            <span class="inst-cred-badge badge-active"><span class="badge-dot"></span> Approved &amp; Active</span>
+          </div>
+          <div class="inst-cred-item">
+            <span class="inst-cred-label"><i data-lucide="database"></i> System Verification</span>
+            <span class="inst-cred-badge badge-verified"><i data-lucide="check"></i> Verified</span>
+          </div>
         </div>
 
-        <!-- 8. Grace Period Notice Banner -->
+        <!-- Section 4: Grace Period / Editing Policy Banner -->
         ${isSuperAdmin ? `
-        <div style="margin-top:14px; padding:10px 14px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; font-size:0.8rem; color:#1e40af; display:flex; align-items:center; gap:8px;">
-          <i data-lucide="shield-check" style="width:16px;height:16px;color:#2563eb;flex-shrink:0;"></i>
-          <span><strong>Super Administrator Authority:</strong> Permanent editing and profile governance permissions active.</span>
+        <div class="inst-notice-card notice-admin">
+          <i data-lucide="shield-check" class="notice-icon"></i>
+          <div>
+            <strong>Super Administrator Authority:</strong> Permanent editing, access governance, and profile management permissions active.
+          </div>
         </div>
         ` : canEdit ? `
-        <div style="margin-top:14px; padding:10px 14px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; font-size:0.8rem; color:#166534; display:flex; align-items:center; gap:8px;">
-          <i data-lucide="clock" style="width:16px;height:16px;color:#16a34a;flex-shrink:0;"></i>
-          <span><strong>Profile Edit Window Active:</strong> You have <strong>${eligibility.daysRemaining} days remaining</strong> (until ${esc(eligibility.formattedDeadline)}) to complete or update your details.</span>
+        <div class="inst-notice-card notice-active">
+          <i data-lucide="clock" class="notice-icon"></i>
+          <div>
+            <strong>Profile Edit Window Active:</strong> You have <strong>${eligibility.daysRemaining} days remaining</strong> (until ${esc(eligibility.formattedDeadline)}) to review and complete your details.
+          </div>
         </div>
         ` : `
-        <div style="margin-top:14px; padding:10px 14px; background:#fef2f2; border:1px solid #fecaca; border-radius:10px; font-size:0.8rem; color:#991b1b; display:flex; align-items:center; gap:8px;">
-          <i data-lucide="lock" style="width:16px;height:16px;color:#dc2626;flex-shrink:0;"></i>
-          <span><strong>Profile Editing Period Expired:</strong> The allowed grace period for self-editing from initial login has ended. Profile details are locked. To request updates, please contact School Administration.</span>
+        <div class="inst-notice-card notice-locked">
+          <i data-lucide="lock" class="notice-icon"></i>
+          <div>
+            <strong>Profile Locked:</strong> The self-editing grace window from your initial login has ended. To update details, please contact School Administration.
+          </div>
         </div>
         `}
 
-        <!-- 9. Validation Banner (Excluded TGI ID from user check!) -->
-        <div id="pf-validation-warning" style="display:none; margin-top:14px; padding:10px 14px; background:#fef2f2; border:1px solid #fecaca; border-radius:10px; font-size:0.8rem; color:#991b1b; display:flex; align-items:center; gap:8px;">
-          <i data-lucide="alert-circle" style="width:16px;height:16px;flex-shrink:0;color:#dc2626;"></i>
+        <!-- Validation Warning Banner -->
+        <div id="pf-validation-warning" class="inst-warning-banner" style="display:none;">
+          <i data-lucide="alert-circle" class="warning-icon"></i>
           <span id="pf-validation-text"></span>
         </div>
 
-        <!-- 10. Collapsible Password Drawer -->
-        <div style="margin-top:16px; border-top:1px solid #f1f5f9; padding-top:10px;">
-          <button type="button" class="btn btn-secondary btn-sm" id="pf-toggle-pw" style="font-size:0.78rem; display:flex; align-items:center; gap:6px;">
-            <i data-lucide="key-round" style="width:14px;height:14px;"></i> Change Account Password
+        <!-- Section 5: Account Security & Password Drawer -->
+        <div class="inst-password-section">
+          <button type="button" class="btn btn-secondary btn-sm inst-pw-toggle-btn" id="pf-toggle-pw">
+            <i data-lucide="key-round"></i>
+            <span>Change Account Password</span>
+            <i data-lucide="chevron-down" class="toggle-arrow"></i>
           </button>
-          <div id="pf-pw-drawer" style="display:none; margin-top:10px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px;">
-            <div style="display:flex; gap:8px; flex-wrap:wrap;">
-              <input type="password" class="form-input" id="pf-new-password" placeholder="New password (min 6 characters)" style="flex:1; min-width:200px;">
-              <button class="btn btn-secondary" id="pf-change-password"><i data-lucide="check"></i> Update Password</button>
+          <div id="pf-pw-drawer" class="inst-pw-drawer" style="display:none;">
+            <div class="inst-pw-drawer-inner">
+              <input type="password" class="form-input inst-input" id="pf-new-password" placeholder="Enter new password (min 6 characters)">
+              <button class="btn btn-primary" id="pf-change-password">
+                <i data-lucide="check"></i>
+                <span>Update Password</span>
+              </button>
             </div>
           </div>
         </div>
@@ -852,13 +908,21 @@ class AppController {
     `;
 
     const footerHtml = `
-      <button class="btn btn-secondary" id="pf-cancel" style="border-radius:10px; padding:9px 20px;">Cancel</button>
-      <button class="btn btn-primary" id="pf-save" style="background:#059669; border-color:#059669; border-radius:10px; padding:9px 22px; display:flex; align-items:center; gap:8px;" ${canEdit ? '' : 'disabled'}>
-        <i data-lucide="save"></i> <span>Save Institutional Profile</span>
-      </button>
+      <div class="inst-modal-footer-wrap">
+        <button class="btn btn-secondary inst-btn-cancel" id="pf-cancel">Cancel</button>
+        <button class="btn btn-primary inst-btn-save" id="pf-save" ${canEdit ? '' : 'disabled'}>
+          <i data-lucide="save"></i>
+          <span>Save Institutional Profile</span>
+        </button>
+      </div>
     `;
 
-    UIComponents.openModal({ title: 'Institutional User Profile', bodyHtml, footerHtml, maxWidth: '680px' });
+    UIComponents.openModal({ 
+      title: '<div style="display:flex;align-items:center;gap:10px;"><i data-lucide="user-cog" style="color:#16a34a;width:22px;height:22px;"></i><span>Institutional User Profile</span></div>', 
+      bodyHtml, 
+      footerHtml, 
+      maxWidth: '740px' 
+    });
 
     // Handle Phone Auto-formatting (5-5 digits)
     const phoneInp = document.getElementById('pf-phone');
@@ -875,7 +939,10 @@ class AppController {
     const pwDrawer = document.getElementById('pf-pw-drawer');
     if (togglePwBtn && pwDrawer) {
       togglePwBtn.addEventListener('click', () => {
-        pwDrawer.style.display = pwDrawer.style.display === 'none' ? 'block' : 'none';
+        const isHidden = pwDrawer.style.display === 'none';
+        pwDrawer.style.display = isHidden ? 'block' : 'none';
+        const arr = togglePwBtn.querySelector('.toggle-arrow');
+        if (arr) arr.style.transform = isHidden ? 'rotate(180deg)' : 'rotate(0deg)';
       });
     }
 
@@ -905,7 +972,7 @@ class AppController {
       if (missing.length > 0) {
         if (warningBanner && warningText) {
           warningBanner.style.display = 'flex';
-          warningText.innerHTML = `Cannot save yet. Please complete: <strong>${esc(missing.join(', '))}</strong>`;
+          warningText.innerHTML = `Please complete required fields before saving: <strong>${esc(missing.join(', '))}</strong>`;
         }
         if (saveBtn && canEdit) saveBtn.disabled = true;
         return false;
@@ -1040,10 +1107,14 @@ class AppController {
     });
 
     UIComponents.refreshIcons();
+    // Enhance select inside modal if available
+    const modalEl = document.querySelector('.modal-content, .inst-profile-modal-body');
+    if (modalEl && typeof UIComponents.enhanceAllSelects === 'function') {
+      UIComponents.enhanceAllSelects(modalEl);
+    }
   }
 
-
-  initRouter() {
+    initRouter() {
     window.addEventListener('hashchange', () => this.handleRoute());
     if (!window.location.hash) {
       window.location.hash = '#/dashboard';
@@ -1181,8 +1252,9 @@ class AppController {
         await InstitutionModule.render(viewport);
         break;
       case 'users':
+        await UsersModule.render(viewport);
+        break;
       case 'administration':
-        window.location.hash = moduleName === 'users' ? '#users' : window.location.hash;
         await AdminModule.render(viewport);
         break;
       default:
