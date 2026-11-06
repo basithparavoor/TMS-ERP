@@ -52,8 +52,8 @@ class CDPClient {
 }
 
 async function run() {
-  const CDP_PORT = 9390;
-  const profileDir = path.join(artifactDir, 'scratch', 'edge-profile-modal');
+  const CDP_PORT = 9392;
+  const profileDir = path.join(artifactDir, 'scratch', 'edge-profile-modal-2');
   const edgeProc = spawn(edgePath, [
     `--remote-debugging-port=${CDP_PORT}`,
     `--user-data-dir=${profileDir}`,
@@ -73,34 +73,46 @@ async function run() {
     await client.send('Runtime.enable');
     await client.send('DOM.enable');
 
+    console.log('Navigating to http://localhost:3000/ ...');
+    await client.send('Page.navigate', { url: 'http://localhost:3000/' });
+    await wait(1000);
+
+    // Seed mock staff session
+    const mockUser = {
+      id: 'mock-user-cmbasith',
+      name: 'C. M. Basith',
+      email: 'cmbasith786@gmail.com',
+      role: 'super_admin',
+      title: 'Executive Director & Super Admin',
+      department: 'Executive Governance & Leadership',
+      phone: '+91 98470 55667',
+      avatar: './icons/tms-logo.png'
+    };
+
+    await client.send('Runtime.evaluate', {
+      expression: `
+        localStorage.setItem('tms_auth_session', JSON.stringify(${JSON.stringify(mockUser)}));
+        localStorage.setItem('tms_staff_meta_mock-user-cmbasith', JSON.stringify({
+          tgiId: '001',
+          bloodGroup: 'O+',
+          answers: {
+            q_highest_qualification: 'M.Ed, B.Sc Mathematics, B.A English',
+            q_emergency_contact: 'Spouse (+91 98470 55667)',
+            q_address: 'Baghait, Tapan, Dakshin Dinajpur'
+          }
+        }));
+      `
+    });
+
     console.log('Navigating to http://localhost:3000/dashboard.html ...');
     await client.send('Page.navigate', { url: 'http://localhost:3000/dashboard.html' });
-    await wait(2000);
+    await wait(2500);
 
-    // Trigger openMyProfile directly with mock session
+    // Trigger openMyProfile directly
     const evalRes = await client.send('Runtime.evaluate', {
       expression: `(async () => {
-        const { authService } = await import('./auth-service.js');
-        authService.currentUser = {
-          id: 'mock-user-1',
-          name: 'C. M. Basith',
-          email: 'cmbasith786@gmail.com',
-          role: 'super_admin',
-          title: 'Executive Director & Super Admin',
-          department: 'Executive Governance & Leadership',
-          phone: '+91 98470 55667',
-          avatar: './icons/tms-logo.png'
-        };
-        
-        // Call openMyProfile
-        const appModule = await import('./app.js');
-        if (window.app && typeof window.app.openMyProfile === 'function') {
-          await window.app.openMyProfile();
-        } else {
-          // Trigger via mini card or direct call
-          const mini = document.getElementById('user-mini-card') || document.getElementById('topbar-user-avatar');
-          if (mini) mini.click();
-        }
+        const mini = document.getElementById('user-mini-card') || document.getElementById('topbar-user-avatar');
+        if (mini) mini.click();
 
         await new Promise(r => setTimeout(r, 600));
 
