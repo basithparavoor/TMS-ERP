@@ -76,6 +76,9 @@ export class AppController {
       return;
     }
 
+    // Synchronize the currently active campus academic session
+    await syncActiveAcademicSession();
+
     // Load the institute logo (cached value already applied at import time).
     brandingService.refresh().then(() => {
       const logoHost = document.getElementById('shell-logo');
@@ -346,6 +349,17 @@ export class AppController {
   }
 
   bindGlobalEvents() {
+    window.addEventListener('tms_session_changed', (e) => {
+      const sess = e?.detail?.session;
+      if (sess) {
+        TMS_CONFIG.academic.currentYear = sess;
+        const topbarText = document.getElementById('topbar-active-session-text');
+        if (topbarText) {
+          topbarText.innerText = `Session ${sess} Active`;
+        }
+      }
+    });
+
     const sidebar = document.getElementById('app-sidebar');
     const backdrop = document.getElementById('sidebar-backdrop');
     const mobileHeaderBtn = document.getElementById('mobile-header-menu-btn');

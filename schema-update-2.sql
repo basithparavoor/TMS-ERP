@@ -689,3 +689,87 @@ CREATE POLICY "admission_inquiries_manage_auth" ON public.admission_inquiries
   FOR ALL TO authenticated USING (true) WITH CHECK (true);
 
 GRANT ALL ON TABLE public.admission_inquiries TO anon, authenticated, service_role;
+
+
+-- ============================================================================
+-- Section 33: Google / OAuth Sign-in Profiles Auto-Provision & Approval RLS
+-- ============================================================================
+
+-- Ensure profiles table has proper columns
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS avatar TEXT;
+
+-- 1. Allow authenticated users to insert their own profile as pending
+DROP POLICY IF EXISTS "profiles_insert_self_pending" ON public.profiles;
+CREATE POLICY "profiles_insert_self_pending" ON public.profiles
+  FOR INSERT TO authenticated
+  WITH CHECK (id = auth.uid());
+
+-- 2. Allow users to read their own profile or allow admins/principals/hr/superadmin to read all
+DROP POLICY IF EXISTS "profiles_select_self_or_admin" ON public.profiles;
+CREATE POLICY "profiles_select_self_or_admin" ON public.profiles
+  FOR SELECT TO authenticated
+  USING (
+    id = auth.uid() 
+    OR public.has_role(ARRAY['admin','principal','hr'])
+    OR lower(auth.jwt()->>'email') = lower('cmbasith786@gmail.com')
+  );
+
+-- 3. Allow admins or super administrator to update any profile, and users to update their own profile
+DROP POLICY IF EXISTS "profiles_update_admin_or_self" ON public.profiles;
+CREATE POLICY "profiles_update_admin_or_self" ON public.profiles
+  FOR UPDATE TO authenticated
+  USING (
+    id = auth.uid() 
+    OR public.has_role(ARRAY['admin'])
+    OR lower(auth.jwt()->>'email') = lower('cmbasith786@gmail.com')
+  )
+  WITH CHECK (
+    id = auth.uid() 
+    OR public.has_role(ARRAY['admin'])
+    OR lower(auth.jwt()->>'email') = lower('cmbasith786@gmail.com')
+  );
+
+-- 4. Automatic database trigger on auth.users for Google OAuth signups
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  v_role  TEXT;
+  v_scope TEXT;
+  v_title TEXT;
+BEGIN
+  IF lower(NEW.email) = lower('cmbasith786@gmail.com') THEN
+    v_role  := 'admin';
+    v_scope := 'school_wide';
+    v_title := 'Executive Director & Super Administrator';
+  ELSE
+    v_role  := 'pending';
+    v_scope := 'own_records';
+    v_title := 'Pending Google Verification';
+  END IF;
+
+  INSERT INTO public.profiles (id, email, name, role, scope, title, avatar, is_active)
+  VALUES (
+    NEW.id,
+    lower(NEW.email),
+    COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.raw_user_meta_data->>'name', split_part(NEW.email, '@', 1)),
+    v_role,
+    v_scope,
+    v_title,
+    COALESCE(NEW.raw_user_meta_data->>'avatar_url', NEW.raw_user_meta_data->>'picture', NULL),
+    true
+  )
+  ON CONFLICT (id) DO UPDATE SET
+    email = EXCLUDED.email,
+    name = COALESCE(public.profiles.name, EXCLUDED.name),
+    avatar = COALESCE(public.profiles.avatar, EXCLUDED.avatar);
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+NOTIFY pgrst, 'reload schema';

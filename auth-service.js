@@ -140,12 +140,35 @@ class AuthService {
         is_active: true
       };
       try {
-        await client.from('profiles').insert(pendingProfile);
-        data = pendingProfile;
+        const { error: insertErr } = await client.from('profiles').upsert(pendingProfile, { onConflict: 'id' });
+        if (insertErr) {
+          console.warn('Auto-upsert pending profile in profiles table note:', insertErr.message);
+        }
       } catch (insertErr) {
         console.warn('Auto-insert pending profile fallback:', insertErr);
-        data = pendingProfile;
       }
+
+      // Resilient fallback: Also log pending signup to audit_logs so Admin is guaranteed to see them
+      try {
+        const auditEntry = {
+          id: 'AUD-' + Date.now().toString(36).toUpperCase() + '-' + Math.random().toString(36).substr(2, 4).toUpperCase(),
+          timestamp: new Date().toISOString(),
+          user_id: authUser.id,
+          user_name: pendingProfile.name,
+          user_role: 'pending',
+          user_scope: 'own_records',
+          action: 'GOOGLE_SIGNUP_PENDING_APPROVAL',
+          category: 'AUTH',
+          entity_ref: email,
+          details: JSON.stringify(pendingProfile),
+          client_agent: typeof navigator !== 'undefined' ? navigator.userAgent : 'TMS-Auth-Service'
+        };
+        await client.from('audit_logs').insert(auditEntry);
+      } catch (auditErr) {
+        console.warn('Could not record pending signup in audit_logs:', auditErr);
+      }
+
+      data = pendingProfile;
     }
 
     if (!data) {
@@ -328,7 +351,7 @@ class AuthService {
     }
 
     try {
-      const redirectUrl = window.location.href.split('#')[0].split('?')[0];
+      const redirectUrl = `${window.location.origin}/login`;
       const { data, error } = await client.auth.signInWithOAuth({
         provider: 'google',
         options: {

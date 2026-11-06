@@ -82,16 +82,33 @@ export class AcademicModule {
 
     this._staff = staff || [];
     this._subjects = (dbSubjects && dbSubjects.length) ? dbSubjects : DEFAULT_SUBJECTS;
-    this._classes = (dbClasses && dbClasses.length) ? dbClasses : TMS_CONFIG.academic.classes.map((cls, idx) => ({
-      id: `cls-${idx + 1}`,
-      grade: cls,
-      section: 'A',
-      roomNo: `Room ${101 + idx}`,
-      capacity: 35,
-      teacher: (this._staff[idx % (this._staff.length || 1)]?.fullName) || 'Assigned Faculty',
-      periods: 35,
-      status: 'Active'
-    }));
+    const isClassesInitialized = localStorage.getItem('tms_classes_initialized') === 'true';
+    if (!dbClasses || dbClasses.length === 0) {
+      if (!isClassesInitialized) {
+        // First-time load: build and persist standard classes so they are real DB records
+        const defaultClasses = TMS_CONFIG.academic.classes.map((cls, idx) => ({
+          id: `cls-${idx + 1}`,
+          grade: cls,
+          name: cls,
+          section: 'A',
+          roomNo: `Room ${101 + idx}`,
+          capacity: 35,
+          teacher: (this._staff[idx % (this._staff.length || 1)]?.fullName) || 'Assigned Faculty',
+          periods: 35,
+          status: 'Active'
+        }));
+        this._classes = defaultClasses;
+        localStorage.setItem('tms_classes_initialized', 'true');
+        for (const c of defaultClasses) {
+          dbService.upsert('academic_classes', c).catch(() => {});
+        }
+      } else {
+        // User intentionally deleted classes
+        this._classes = [];
+      }
+    } else {
+      this._classes = dbClasses;
+    }
     this._periods = (dbPeriods && dbPeriods.length) ? dbPeriods.sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0)) : DEFAULT_PERIODS;
     this._sessions = (dbSessions && dbSessions.length) ? dbSessions : DEFAULT_SESSIONS;
     this._syllabus = (dbSyllabus && dbSyllabus.length) ? dbSyllabus : DEFAULT_SYLLABUS;
@@ -225,13 +242,21 @@ export class AcademicModule {
                 <i data-lucide="table"></i> Table
               </button>
             </div>
+            <button class="btn btn-secondary btn-sm" id="btn-restore-classes-default" title="Restore standard classes"><i data-lucide="rotate-ccw"></i> Restore Classes</button>
             <button class="btn btn-primary btn-sm" id="btn-add-class-inner"><i data-lucide="plus"></i> New Class</button>
           </div>
         </div>
 
         <!-- Cards View (Zero Side-Scroll) -->
         <div id="class-cards-container" class="tms-cards-grid" style="${viewMode === 'cards' ? '' : 'display: none;'}">
-          ${this._classes.map(c => `
+          ${this._classes.length === 0 ? `
+            <div style="grid-column: 1/-1; text-align: center; padding: 48px 20px; color: var(--text-muted);">
+              <i data-lucide="layers" style="width: 44px; height: 44px; margin: 0 auto 12px; color: var(--text-subtle); display: block;"></i>
+              <h4 style="color: var(--text-primary); margin-bottom: 4px;">No Classes Configured</h4>
+              <p style="font-size: 0.86rem; margin-bottom: 14px;">All classes have been removed or deleted. You can create a new class division or restore the standard curriculum classes.</p>
+              <button class="btn btn-secondary btn-sm" id="btn-empty-restore-classes"><i data-lucide="rotate-ccw"></i> Restore Standard Classes</button>
+            </div>
+          ` : this._classes.map(c => `
             <div class="tms-data-card" data-class-id="${esc(c.id)}">
               <div class="tms-data-card-header">
                 <div>
@@ -290,7 +315,9 @@ export class AcademicModule {
               </tr>
             </thead>
             <tbody>
-              ${this._classes.map(c => `
+              ${this._classes.length === 0 ? `
+                <tr><td colspan="8" style="text-align:center; padding: 36px 20px; color: var(--text-muted);">No classes configured. Click "New Class" or "Restore Classes".</td></tr>
+              ` : this._classes.map(c => `
                 <tr>
                   <td><strong>${esc(c.grade)}</strong></td>
                   <td><span class="badge badge-secondary">${esc(c.section || 'A')}</span></td>
@@ -338,6 +365,38 @@ export class AcademicModule {
 
     const addBtn = content.querySelector('#btn-add-class-inner');
     if (addBtn) addBtn.addEventListener('click', () => this.openAddClassModal());
+
+    const restoreHandler = async () => {
+      const ok = await UIComponents.confirm({
+        title: 'Restore Standard Classes',
+        message: 'This will restore the standard curriculum classes (Nursery to Grade 12). Continue?',
+        confirmText: 'Restore Classes',
+        type: 'primary',
+        icon: 'rotate-ccw'
+      });
+      if (!ok) return;
+      localStorage.removeItem('tms_classes_initialized');
+      const defaultClasses = TMS_CONFIG.academic.classes.map((cls, idx) => ({
+        id: `cls-${idx + 1}`,
+        grade: cls,
+        name: cls,
+        section: 'A',
+        roomNo: `Room ${101 + idx}`,
+        capacity: 35,
+        teacher: (this._staff[idx % (this._staff.length || 1)]?.fullName) || 'Assigned Faculty',
+        periods: 35,
+        status: 'Active'
+      }));
+      for (const c of defaultClasses) {
+        await dbService.upsert('academic_classes', c);
+      }
+      localStorage.setItem('tms_classes_initialized', 'true');
+      UIComponents.showToast('Standard classes restored!', 'success');
+      await this.render(this._container);
+    };
+
+    content.querySelector('#btn-restore-classes-default')?.addEventListener('click', restoreHandler);
+    content.querySelector('#btn-empty-restore-classes')?.addEventListener('click', restoreHandler);
 
     content.querySelectorAll('.btn-edit-class').forEach(btn => {
       btn.addEventListener('click', () => this.openEditClassModal(btn.dataset.id));
@@ -767,7 +826,7 @@ export class AcademicModule {
     if (!cls) return;
     const ok = await UIComponents.confirm({
       title: 'Delete Class Division',
-      message: `Are you sure you want to permanently delete ${cls.grade} - Section ${cls.section}? This will remove all division allocations.`,
+      message: `Are you sure you want to permanently delete ${cls.grade} - Section ${cls.section || 'A'}? This will remove all division allocations.`,
       confirmText: 'Delete Class',
       cancelText: 'Cancel',
       type: 'danger',
@@ -776,9 +835,20 @@ export class AcademicModule {
     if (!ok) return;
 
     try {
+      localStorage.setItem('tms_classes_initialized', 'true');
+      const remaining = this._classes.filter(c => c.id !== classId);
+      this._classes = remaining;
+
+      // Ensure all remaining classes are persisted in DB so default classes do not resurrect
+      for (const rem of remaining) {
+        await dbService.upsert('academic_classes', rem);
+      }
+
+      // Delete from DB and local cache
       await dbService.delete('academic_classes', classId);
-      await auditService.log('CLASS_DELETED', 'ACADEMIC', { grade: cls.grade, section: cls.section });
-      UIComponents.showToast(`Class ${cls.grade} (${cls.section}) deleted.`, 'success');
+
+      await auditService.log('CLASS_DELETED', 'ACADEMIC', { grade: cls.grade, section: cls.section || 'A' });
+      UIComponents.showToast(`Class ${cls.grade} (${cls.section || 'A'}) deleted successfully.`, 'success');
       await this.render(this._container);
     } catch (err) {
       UIComponents.showToast('Failed to delete: ' + err.message, 'error');
@@ -977,6 +1047,12 @@ export class AcademicModule {
         await dbService.upsert('academic_sessions', item);
       }
       TMS_CONFIG.academic.currentYear = s.sessionName;
+      localStorage.setItem('tms_active_session', s.sessionName);
+      window.dispatchEvent(new CustomEvent('tms_session_changed', { detail: { session: s.sessionName } }));
+      const topbarText = document.getElementById('topbar-active-session-text');
+      if (topbarText) {
+        topbarText.innerText = `Session ${s.sessionName} Active`;
+      }
       await auditService.log('SESSION_ACTIVATED', 'ACADEMIC', { sessionName: s.sessionName });
       UIComponents.showToast(`Session ${s.sessionName} is now the active campus session!`, 'success');
       await this.render(this._container);

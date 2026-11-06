@@ -2662,11 +2662,56 @@
         };
       }
 
-      // 4. Check user authentication status to dynamically personalize the Institutional Login button
+      // 4. Check user authentication status and handle OAuth callbacks
+      const hash = window.location.hash || '';
+      const search = window.location.search || '';
+      const isAuthCallback = hash.includes('access_token=') || hash.includes('refresh_token=') || search.includes('code=') || hash.includes('type=');
+
       await authService.init();
       if (authService.isAuthenticated()) {
         const currentUser = authService.getCurrentUser() || {};
-        /* Session active - keep clean institutional header */
+
+        // If user arrived via OAuth redirect from Supabase, route them immediately to their portal
+        if (isAuthCallback) {
+          if (currentUser.role === 'pending' || currentUser.isPending) {
+            window.location.replace('/login');
+            return;
+          }
+          if (currentUser.role === TMS_CONFIG.roles.PARENT) {
+            window.location.replace('/parent');
+            return;
+          }
+          if (currentUser.role === TMS_CONFIG.roles.STUDENT) {
+            window.location.replace('/student');
+            return;
+          }
+          window.location.replace('/dashboard');
+          return;
+        }
+
+        // For users viewing the website who are already logged in, upgrade Login buttons to "ERP Dashboard"
+        const navLoginBtn = document.getElementById('btn-open-institutional-login');
+        if (navLoginBtn) {
+          navLoginBtn.href = '/dashboard';
+          navLoginBtn.innerHTML = '<i data-lucide="layout-dashboard" style="width:16px; height:16px;"></i> <span>ERP Dashboard</span>';
+          navLoginBtn.title = `Signed in as ${currentUser.name || currentUser.email}`;
+        }
+        const mobLoginBtn = document.getElementById('btn-mobile-login');
+        if (mobLoginBtn) {
+          mobLoginBtn.href = '/dashboard';
+          mobLoginBtn.innerHTML = '<i data-lucide="layout-dashboard" style="width:16px; height:16px;"></i> ERP Dashboard';
+        }
+        const ctaLoginBtn = document.getElementById('cta-login-btn');
+        if (ctaLoginBtn) {
+          ctaLoginBtn.href = '/dashboard';
+          ctaLoginBtn.innerText = 'Go to ERP Dashboard';
+        }
+        const footerLoginBtn = document.getElementById('footer-login-btn');
+        if (footerLoginBtn) {
+          footerLoginBtn.href = '/dashboard';
+          footerLoginBtn.innerText = 'Open ERP Dashboard';
+        }
+        UIComponents.refreshIcons();
       }
 
       // 5. Bind modal and interactive events

@@ -5955,7 +5955,7 @@ a {
 
 .tms-custom-select-wrapper {
   position: relative !important;
-  display: block !important;
+  display: inline-block !important;
   width: 100% !important;
   box-sizing: border-box !important;
 }
@@ -5973,6 +5973,7 @@ a {
 .modal-body:has(.tms-custom-select-wrapper.is-open) {
   z-index: 9999 !important;
   position: relative !important;
+  overflow: visible !important;
 }
 
 .tms-custom-select-trigger {
@@ -5980,13 +5981,13 @@ a {
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
-  padding: 10px 18px !important;
+  padding: 8px 16px !important;
   background: #FFFFFF !important;
   border: 1.5px solid #E2E8F0 !important;
   border-radius: 9999px !important;
   color: #0F172A !important;
   font-family: inherit !important;
-  font-size: 0.92rem !important;
+  font-size: 0.88rem !important;
   font-weight: 600 !important;
   cursor: pointer !important;
   outline: none !important;
@@ -5994,16 +5995,18 @@ a {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
   box-sizing: border-box !important;
   text-align: left !important;
+  user-select: none !important;
 }
 
 .tms-custom-select-trigger:hover {
-  border-color: #10B981 !important;
-  background: #FAFAFA !important;
+  border-color: #16A34A !important;
+  background: #F8FAFC !important;
 }
 
 .tms-custom-select-wrapper.is-open .tms-custom-select-trigger {
-  border-color: #10B981 !important;
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15) !important;
+  border-color: #16A34A !important;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.18) !important;
+  background: #FFFFFF !important;
 }
 
 .tms-custom-select-label {
@@ -6023,8 +6026,9 @@ a {
   align-items: center !important;
   justify-content: center !important;
   margin-left: 8px !important;
-  transition: transform 0.2s ease !important;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
   flex-shrink: 0 !important;
+  color: #16A34A !important;
 }
 
 .tms-custom-select-wrapper.is-open .tms-custom-select-arrow {
@@ -6032,30 +6036,36 @@ a {
 }
 
 .tms-custom-select-menu {
-  display: none !important;
-  position: absolute !important;
-  top: calc(100% + 6px) !important;
-  left: 0 !important;
-  right: 0 !important;
-  z-index: 10050 !important;
+  display: none;
   background: #FFFFFF !important;
   border: 1.5px solid #E2E8F0 !important;
-  border-radius: 18px !important;
-  padding: 8px !important;
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(0, 0, 0, 0.06) !important;
+  border-radius: 16px !important;
+  padding: 6px !important;
+  box-shadow: 0 20px 45px -8px rgba(15, 23, 42, 0.22), 0 6px 16px -2px rgba(0, 0, 0, 0.08) !important;
   max-height: 280px !important;
   overflow-y: auto !important;
   box-sizing: border-box !important;
+  z-index: 999999 !important;
 }
 
+.tms-custom-select-menu.is-active-portal,
 .tms-custom-select-wrapper.is-open .tms-custom-select-menu {
   display: block !important;
-  animation: tmsSelectMenuFade 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  animation: tmsSelectMenuFade 0.16s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
-.tms-custom-select-wrapper.is-open-above .tms-custom-select-menu {
-  top: auto !important;
-  bottom: calc(100% + 6px) !important;
+.tms-custom-select-menu::-webkit-scrollbar {
+  width: 6px !important;
+}
+.tms-custom-select-menu::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+.tms-custom-select-menu::-webkit-scrollbar-thumb {
+  background: #CBD5E1 !important;
+  border-radius: 4px !important;
+}
+.tms-custom-select-menu::-webkit-scrollbar-thumb:hover {
+  background: #16A34A !important;
 }
 
 @keyframes tmsSelectMenuFade {
@@ -6067,24 +6077,27 @@ a {
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
-  padding: 10px 14px !important;
-  border-radius: 12px !important;
+  padding: 9px 12px !important;
+  border-radius: 10px !important;
   color: #1E293B !important;
-  font-size: 0.9rem !important;
-  font-weight: 600 !important;
+  font-size: 0.88rem !important;
+  font-weight: 500 !important;
   cursor: pointer !important;
   transition: all 0.12s ease !important;
   margin-bottom: 2px !important;
   user-select: none !important;
+  line-height: 1.35 !important;
 }
 
-.tms-custom-select-option:hover {
-  background: #F1F5F9 !important;
-  color: #0F172A !important;
+.tms-custom-select-option:hover,
+.tms-custom-select-option.is-highlighted {
+  background: #F0FDF4 !important;
+  color: #15803D !important;
+  font-weight: 600 !important;
 }
 
 .tms-custom-select-option.is-selected {
-  background: #E8F5E9 !important;
+  background: #DCFCE7 !important;
   color: #15803D !important;
   font-weight: 700 !important;
 }
@@ -6093,10 +6106,10 @@ a {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  color: #15803D !important;
+  color: #16A34A !important;
   margin-left: 8px !important;
+  flex-shrink: 0 !important;
 }
-
 
 /* TMS Custom Datepicker Engine Styles */
 .tps-date-input-wrapper{position:relative;display:flex;align-items:center;width:100%;min-width:0;box-sizing:border-box}

@@ -4026,9 +4026,45 @@ export class AdminModule {
 
     let profiles = [];
     try {
-      profiles = await dbService.select('profiles');
+      profiles = await dbService.select('profiles', null, true);
     } catch (e) {
       profiles = [];
+    }
+
+    // Resilient fallback: Also check audit_logs for any newly registered Google users awaiting approval
+    try {
+      const auditLogs = await dbService.select('audit_logs', null, true);
+      const pendingAuditLogs = (auditLogs || []).filter(
+        (log) => (log.action === 'GOOGLE_SIGNUP_PENDING_APPROVAL' || log.action === 'GOOGLE_SIGNUP_PENDING') && log.details
+      );
+      const existingProfileIds = new Set(profiles.map((p) => p.id));
+      const existingProfileEmails = new Set(profiles.map((p) => (p.email || '').toLowerCase().trim()));
+
+      for (const log of pendingAuditLogs) {
+        try {
+          const detail = typeof log.details === 'string' ? JSON.parse(log.details) : log.details;
+          const email = (detail.email || log.entity_ref || log.entityRef || '').toLowerCase().trim();
+          const userId = detail.id || log.user_id || log.userId;
+          if (email && !existingProfileEmails.has(email) && !existingProfileIds.has(userId)) {
+            profiles.push({
+              id: userId,
+              email: email,
+              name: detail.name || log.user_name || log.userName || email.split('@')[0],
+              avatar: detail.avatar || null,
+              role: 'pending',
+              scope: detail.scope || 'own_records',
+              title: detail.title || 'Pending Google Verification',
+              department: detail.department || 'Unassigned',
+              isActive: true,
+              isPending: true
+            });
+            existingProfileIds.add(userId);
+            existingProfileEmails.add(email);
+          }
+        } catch (pe) {}
+      }
+    } catch (auditErr) {
+      console.warn('Could not cross-reference audit logs for pending approvals:', auditErr);
     }
 
     // Categorize
@@ -4305,9 +4341,9 @@ export class AdminModule {
     // 3. Refresh button
     const refreshBtn = tabContent.querySelector('#btn-refresh-approvals');
     if (refreshBtn) {
-      refreshBtn.addEventListener('click', () => {
-        UIComponents.showToast('Refreshing accounts list...', 'info');
-        this.renderGoogleApprovalsTab(tabContent);
+      refreshBtn.addEventListener('click', async () => {
+        UIComponents.showToast('Refreshing accounts list from cloud...', 'info');
+        await this.renderGoogleApprovalsTab(tabContent);
       });
     }
 
@@ -4329,14 +4365,17 @@ export class AdminModule {
 
         try {
           const updates = {
+            id: userId,
+            email: userEmail,
             role: selectedRole,
             scope: selectedScope,
             title: title,
             department: dept,
-            isActive: true
+            isActive: true,
+            is_active: true
           };
 
-          await dbService.update('profiles', userId, updates);
+          await dbService.upsert('profiles', updates);
           await auditService.log('USER_APPROVED_BY_ADMIN', 'SECURITY', {
             userId,
             email: userEmail,
@@ -4523,8 +4562,8 @@ export class AdminModule {
         ` : ''}
 
         <!-- Main Card Panel with Sub-Tabs -->
-        <div class="card" style="padding:0; overflow:hidden;">
-          <div class="card-header" style="padding:0.75rem 1rem; border-bottom:1px solid var(--border-color); background:var(--bg-surface);">
+        <div class="card" style="padding:0; overflow:visible;">
+          <div class="card-header" style="padding:0.75rem 1rem; border-bottom:1px solid var(--border-color); background:var(--bg-surface); border-radius:16px 16px 0 0;">
             <div class="tms-tab-scroll-wrapper" style="margin-bottom:0;">
               <button type="button" class="tms-tab-nav-btn tms-tab-nav-prev" aria-label="Scroll left" title="Scroll tabs left">
                 <i data-lucide="chevron-left"></i>
@@ -4737,8 +4776,10 @@ export class AdminModule {
       <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:1rem; flex-wrap:wrap;">
         <div style="display:flex; gap:8px; align-items:center; flex:1; min-width:240px;">
           <input type="text" class="form-input" id="input-user-search" placeholder="Search by name, email or phone..." value="${esc(this._userFilterQuery)}" style="max-width:320px; font-size:0.85rem;">
-          <select class="form-select" id="select-user-role-filter" style="max-width:200px; font-size:0.85rem;">
-            <option value="all">All Roles (${list.length})</option>
+          <div style="min-width:180px; max-width:220px;">
+            <select class="form-select" id="select-user-role-filter" style="width:100%; font-size:0.85rem;">
+              <option value="all">All Roles (${list.length})</option>
+              <option value="super_admin" ${rf === 'super_admin' ? 'selected' : ''}>Super Administrator</option>
             ${WINDOW_ROLES.map((r) => `<option value="${r.key}" ${rf === r.key ? 'selected' : ''}>${r.label}</option>`).join('')}
             <option value="principal" ${rf === 'principal' ? 'selected' : ''}>Principal</option>
             <option value="coordinator" ${rf === 'coordinator' ? 'selected' : ''}>Coordinator</option>
@@ -4748,6 +4789,7 @@ export class AdminModule {
             <option value="operations" ${rf === 'operations' ? 'selected' : ''}>Operations</option>
             <option value="office_boy" ${rf === 'office_boy' ? 'selected' : ''}>Office Boy</option>
           </select>
+          </div>
         </div>
         <div style="font-size:0.8rem; color:var(--text-muted);">
           Showing <strong>${filtered.length}</strong> of ${list.length} accounts

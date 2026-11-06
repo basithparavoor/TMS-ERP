@@ -1,3 +1,6 @@
+// THAIBA MODEL SCHOOL ERP — Universal Custom Dropdown Engine
+// Replaces standard browser <select> dropdowns with modern pill-shaped triggers,
+// body-portal floating rounded menu cards, green checkmarks on selected options, and smooth animations.
 
 function ensureDropdownStyles() {
   if (typeof document === 'undefined') return;
@@ -22,7 +25,7 @@ function ensureDropdownStyles() {
 
 .tms-custom-select-wrapper {
   position: relative !important;
-  display: block !important;
+  display: inline-block !important;
   width: 100% !important;
   box-sizing: border-box !important;
 }
@@ -40,6 +43,7 @@ function ensureDropdownStyles() {
 .modal-body:has(.tms-custom-select-wrapper.is-open) {
   z-index: 9999 !important;
   position: relative !important;
+  overflow: visible !important;
 }
 
 .tms-custom-select-trigger {
@@ -47,13 +51,13 @@ function ensureDropdownStyles() {
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
-  padding: 10px 18px !important;
+  padding: 8px 16px !important;
   background: #FFFFFF !important;
   border: 1.5px solid #E2E8F0 !important;
   border-radius: 9999px !important;
   color: #0F172A !important;
   font-family: inherit !important;
-  font-size: 0.92rem !important;
+  font-size: 0.88rem !important;
   font-weight: 600 !important;
   cursor: pointer !important;
   outline: none !important;
@@ -61,16 +65,18 @@ function ensureDropdownStyles() {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
   box-sizing: border-box !important;
   text-align: left !important;
+  user-select: none !important;
 }
 
 .tms-custom-select-trigger:hover {
-  border-color: #10B981 !important;
-  background: #FAFAFA !important;
+  border-color: #16A34A !important;
+  background: #F8FAFC !important;
 }
 
 .tms-custom-select-wrapper.is-open .tms-custom-select-trigger {
-  border-color: #10B981 !important;
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15) !important;
+  border-color: #16A34A !important;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.18) !important;
+  background: #FFFFFF !important;
 }
 
 .tms-custom-select-label {
@@ -90,8 +96,9 @@ function ensureDropdownStyles() {
   align-items: center !important;
   justify-content: center !important;
   margin-left: 8px !important;
-  transition: transform 0.2s ease !important;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
   flex-shrink: 0 !important;
+  color: #16A34A !important;
 }
 
 .tms-custom-select-wrapper.is-open .tms-custom-select-arrow {
@@ -99,30 +106,36 @@ function ensureDropdownStyles() {
 }
 
 .tms-custom-select-menu {
-  display: none !important;
-  position: absolute !important;
-  top: calc(100% + 6px) !important;
-  left: 0 !important;
-  right: 0 !important;
-  z-index: 10050 !important;
+  display: none;
   background: #FFFFFF !important;
   border: 1.5px solid #E2E8F0 !important;
-  border-radius: 18px !important;
-  padding: 8px !important;
-  box-shadow: 0 16px 36px -4px rgba(15, 23, 42, 0.18), 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+  border-radius: 16px !important;
+  padding: 6px !important;
+  box-shadow: 0 20px 45px -8px rgba(15, 23, 42, 0.22), 0 6px 16px -2px rgba(0, 0, 0, 0.08) !important;
   max-height: 280px !important;
   overflow-y: auto !important;
   box-sizing: border-box !important;
+  z-index: 999999 !important;
 }
 
+.tms-custom-select-menu::-webkit-scrollbar {
+  width: 6px !important;
+}
+.tms-custom-select-menu::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+.tms-custom-select-menu::-webkit-scrollbar-thumb {
+  background: #CBD5E1 !important;
+  border-radius: 4px !important;
+}
+.tms-custom-select-menu::-webkit-scrollbar-thumb:hover {
+  background: #16A34A !important;
+}
+
+.tms-custom-select-menu.is-active-portal,
 .tms-custom-select-wrapper.is-open .tms-custom-select-menu {
   display: block !important;
-  animation: tmsSelectMenuFade 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
-}
-
-.tms-custom-select-wrapper.is-open-above .tms-custom-select-menu {
-  top: auto !important;
-  bottom: calc(100% + 6px) !important;
+  animation: tmsSelectMenuFade 0.16s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 @keyframes tmsSelectMenuFade {
@@ -134,24 +147,27 @@ function ensureDropdownStyles() {
   display: flex !important;
   align-items: center !important;
   justify-content: space-between !important;
-  padding: 10px 14px !important;
-  border-radius: 12px !important;
+  padding: 9px 12px !important;
+  border-radius: 10px !important;
   color: #1E293B !important;
-  font-size: 0.9rem !important;
-  font-weight: 600 !important;
+  font-size: 0.88rem !important;
+  font-weight: 500 !important;
   cursor: pointer !important;
   transition: all 0.12s ease !important;
   margin-bottom: 2px !important;
   user-select: none !important;
+  line-height: 1.35 !important;
 }
 
-.tms-custom-select-option:hover {
-  background: #F1F5F9 !important;
-  color: #0F172A !important;
+.tms-custom-select-option:hover,
+.tms-custom-select-option.is-highlighted {
+  background: #F0FDF4 !important;
+  color: #15803D !important;
+  font-weight: 600 !important;
 }
 
 .tms-custom-select-option.is-selected {
-  background: #E8F5E9 !important;
+  background: #DCFCE7 !important;
   color: #15803D !important;
   font-weight: 700 !important;
 }
@@ -160,63 +176,67 @@ function ensureDropdownStyles() {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  color: #15803D !important;
+  color: #16A34A !important;
   margin-left: 8px !important;
-}`;
+  flex-shrink: 0 !important;
+}
+`;
   document.head.appendChild(style);
 }
 ensureDropdownStyles();
 
-/**
- * THAIBA MODEL SCHOOL ERP — Universal Custom Dropdown Engine
- * Replaces standard browser <select> dropdowns with modern pill-shaped triggers,
- * floating rounded menu cards, green checkmarks on selected options, and smooth animations.
- *
- * Fully preserves:
- * - Native form submissions and FormData(form)
- * - Standard select.value getter / setter
- * - change and input event dispatches
- * - HTML5 validation (required, validity checks)
- * - Dynamic option updates via DOM MutationObserver
- */
-
 const CHECKMARK_SVG = `
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#15803d" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
     <polyline points="20 6 9 17 4 12"></polyline>
   </svg>
 `;
 
 const CHEVRON_SVG = `
-  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
+  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round">
     <polyline points="6 9 12 15 18 9"></polyline>
   </svg>
 `;
 
-function closeWrapper(w) {
+function closeWrapper(w, reason = 'unknown') {
+  if (!w) return;
+  console.log('[DEBUG closeWrapper]', reason);
   w.classList.remove('is-open', 'is-open-above');
   w.style.removeProperty('z-index');
   const trig = w.querySelector('.tms-custom-select-trigger');
   if (trig) trig.setAttribute('aria-expanded', 'false');
-  const m = w.querySelector('.tms-custom-select-menu');
-  if (m) m.style.display = 'none';
+
+  const m = w.__menuRef || w.querySelector('.tms-custom-select-menu');
+  if (m) {
+    m.style.setProperty('display', 'none', 'important');
+    m.classList.remove('is-active-portal', 'is-open-above');
+    if (m.parentElement === document.body) {
+      w.appendChild(m);
+    }
+  }
 
   if (w.__elevatedAncestors) {
-    w.__elevatedAncestors.forEach(({ el, prevZ }) => {
-      if (prevZ) {
-        el.style.zIndex = prevZ;
-      } else {
-        el.style.removeProperty('z-index');
-      }
+    w.__elevatedAncestors.forEach(({ el, prevZ, prevOverflow }) => {
+      if (prevZ) el.style.zIndex = prevZ;
+      else el.style.removeProperty('z-index');
+      if (prevOverflow) el.style.overflow = prevOverflow;
+      else el.style.removeProperty('overflow');
       el.classList.remove('tms-has-open-select');
     });
     w.__elevatedAncestors = null;
   }
 }
 
-function closeAllCustomSelects(exceptWrapper = null) {
+function closeAllCustomSelects(exceptWrapper = null, reason = 'unknown') {
   document.querySelectorAll('.tms-custom-select-wrapper.is-open').forEach((w) => {
     if (w !== exceptWrapper) {
-      closeWrapper(w);
+      closeWrapper(w, 'closeAllCustomSelects: ' + reason);
+    }
+  });
+
+  // Safety cleanup: remove any orphaned menus in body whose wrapper is gone
+  document.querySelectorAll('.tms-custom-select-menu.is-portal').forEach((m) => {
+    if (!m.__wrapper || !document.contains(m.__wrapper)) {
+      m.remove();
     }
   });
 }
@@ -224,8 +244,8 @@ function closeAllCustomSelects(exceptWrapper = null) {
 // Global click outside listener to close open dropdowns
 if (typeof document !== 'undefined') {
   document.addEventListener('click', (e) => {
-    if (!e.target.closest('.tms-custom-select-wrapper')) {
-      closeAllCustomSelects();
+    if (!e.target.closest('.tms-custom-select-wrapper') && !e.target.closest('.tms-custom-select-menu')) {
+      closeAllCustomSelects(null, 'document click outside');
     }
   });
 
@@ -234,6 +254,24 @@ if (typeof document !== 'undefined') {
       closeAllCustomSelects();
     }
   });
+
+  window.addEventListener('resize', () => {
+    const openW = document.querySelector('.tms-custom-select-wrapper.is-open');
+    if (openW && openW.__repositionMenu) {
+      openW.__repositionMenu();
+    }
+  });
+
+  window.addEventListener('scroll', (e) => {
+    // If scrolling inside the dropdown menu itself, allow it
+    if (e.target && (e.target.classList?.contains('tms-custom-select-menu') || e.target.closest?.('.tms-custom-select-menu'))) {
+      return;
+    }
+    const openW = document.querySelector('.tms-custom-select-wrapper.is-open');
+    if (openW && openW.__repositionMenu) {
+      openW.__repositionMenu();
+    }
+  }, true);
 }
 
 export function enhanceSelect(select) {
@@ -249,6 +287,11 @@ export function enhanceSelect(select) {
   wrapper.className = 'tms-custom-select-wrapper';
   if (select.id) wrapper.dataset.forId = select.id;
   if (select.disabled) wrapper.classList.add('is-disabled');
+
+  // Copy sizing constraints from select if present
+  if (select.style.maxWidth) wrapper.style.maxWidth = select.style.maxWidth;
+  if (select.style.minWidth) wrapper.style.minWidth = select.style.minWidth;
+  if (select.style.width && select.style.width !== '100%') wrapper.style.width = select.style.width;
 
   // Insert wrapper before select, then move select inside wrapper
   select.parentNode.insertBefore(wrapper, select);
@@ -289,6 +332,9 @@ export function enhanceSelect(select) {
   menu.setAttribute('role', 'listbox');
   menu.style.display = 'none';
   wrapper.appendChild(menu);
+
+  wrapper.__menuRef = menu;
+  menu.__wrapper = wrapper;
 
   // Rebuild Menu Options from Native Select
   function rebuildOptions() {
@@ -354,6 +400,63 @@ export function enhanceSelect(select) {
 
   rebuildOptions();
 
+  // Floating Position Calculation
+  function repositionMenu() {
+    if (!document.contains(wrapper) || !document.contains(trigger)) {
+      closeWrapper(wrapper, 'not in document');
+      return;
+    }
+
+    const rect = trigger.getBoundingClientRect();
+    if (rect.bottom < 0 || rect.top > window.innerHeight) {
+      closeWrapper(wrapper, 'trigger out of viewport: rect.bottom=' + rect.bottom + ', rect.top=' + rect.top + ', innerHeight=' + window.innerHeight);
+      return;
+    }
+
+    const triggerWidth = rect.width;
+    const menuWidth = Math.max(triggerWidth, 200);
+
+    menu.style.setProperty('position', 'fixed', 'important');
+    menu.style.setProperty('z-index', '999999', 'important');
+    menu.style.setProperty('min-width', `${Math.round(menuWidth)}px`, 'important');
+    menu.style.setProperty('max-width', `${Math.max(menuWidth, 320)}px`, 'important');
+
+    // Horizontal placement
+    let left = rect.left;
+    if (left + menuWidth > window.innerWidth - 12) {
+      left = window.innerWidth - menuWidth - 12;
+    }
+    if (left < 12) left = 12;
+    menu.style.setProperty('left', `${Math.round(left)}px`, 'important');
+    menu.style.setProperty('right', 'auto', 'important');
+
+    // Vertical placement
+    const viewportHeight = window.innerHeight;
+    const spaceBelow = viewportHeight - rect.bottom;
+    const spaceAbove = rect.top;
+
+    // Strong downward bias: only open above if space below is genuinely tiny (< 150px) AND space above is significantly larger (> 220px)
+    const shouldOpenAbove = spaceBelow < 150 && spaceAbove > 220;
+
+    if (shouldOpenAbove) {
+      wrapper.classList.add('is-open-above');
+      menu.classList.add('is-open-above');
+      menu.style.setProperty('top', 'auto', 'important');
+      menu.style.setProperty('bottom', `${Math.round(viewportHeight - rect.top + 6)}px`, 'important');
+      const availHeight = Math.max(140, Math.min(280, spaceAbove - 24));
+      menu.style.setProperty('max-height', `${Math.round(availHeight)}px`, 'important');
+    } else {
+      wrapper.classList.remove('is-open-above');
+      menu.classList.remove('is-open-above');
+      menu.style.setProperty('top', `${Math.round(rect.bottom + 6)}px`, 'important');
+      menu.style.setProperty('bottom', 'auto', 'important');
+      const availHeight = Math.max(160, Math.min(280, spaceBelow - 24));
+      menu.style.setProperty('max-height', `${Math.round(availHeight)}px`, 'important');
+    }
+  }
+
+  wrapper.__repositionMenu = repositionMenu;
+
   // Position and open/close toggle
   function toggleOpen() {
     if (select.disabled) return;
@@ -364,16 +467,16 @@ export function enhanceSelect(select) {
     } else {
       closeAllCustomSelects(wrapper);
 
-      // Elevate wrapper and all positioned ancestors so the menu sits above subsequent DOM siblings
       wrapper.classList.add('is-open');
       wrapper.style.setProperty('z-index', '10050', 'important');
 
+      // Elevate ancestors
       let ancestor = wrapper.parentElement;
       const elevatedAncestors = [];
       while (ancestor && ancestor !== document.body) {
         const comp = window.getComputedStyle(ancestor);
         if (comp.position === 'relative' || comp.position === 'absolute' || comp.position === 'sticky' || comp.transform !== 'none' || ancestor.classList.contains('card')) {
-          elevatedAncestors.push({ el: ancestor, prevZ: ancestor.style.zIndex });
+          elevatedAncestors.push({ el: ancestor, prevZ: ancestor.style.zIndex, prevOverflow: ancestor.style.overflow });
           ancestor.style.setProperty('z-index', '9999', 'important');
           ancestor.classList.add('tms-has-open-select');
         }
@@ -381,27 +484,22 @@ export function enhanceSelect(select) {
       }
       wrapper.__elevatedAncestors = elevatedAncestors;
 
-      // Check space above vs below
-      const rect = trigger.getBoundingClientRect();
-      const viewportHeight = window.innerHeight;
-      const spaceBelow = viewportHeight - rect.bottom;
-      const spaceAbove = rect.top;
+      // Portal to document.body to prevent clipping from parent overflow
+      menu.classList.add('is-portal', 'is-active-portal');
+      document.body.appendChild(menu);
+      menu.style.setProperty('display', 'block', 'important');
 
-      if (spaceBelow < 280 && spaceAbove > 280) {
-        wrapper.classList.add('is-open-above');
-      } else {
-        wrapper.classList.remove('is-open-above');
-      }
-
+      repositionMenu();
       trigger.setAttribute('aria-expanded', 'true');
-      menu.style.display = 'block';
 
-      // Scroll selected item into view
+      // Scroll selected item into view or reset to top
       const selectedItem = menu.querySelector('.tms-custom-select-option.is-selected');
       if (selectedItem) {
         setTimeout(() => {
-          selectedItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-        }, 50);
+          selectedItem.scrollIntoView({ block: 'nearest' });
+        }, 30);
+      } else {
+        menu.scrollTop = 0;
       }
     }
   }
@@ -449,6 +547,9 @@ export function enhanceSelect(select) {
   // Watch for dynamic changes in <option> tags
   const obs = new MutationObserver(() => {
     rebuildOptions();
+    if (wrapper.classList.contains('is-open')) {
+      repositionMenu();
+    }
   });
   obs.observe(select, { childList: true, subtree: true, attributes: true, attributeFilter: ['selected', 'disabled'] });
 

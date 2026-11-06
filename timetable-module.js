@@ -9,6 +9,7 @@ import { UIComponents } from './ui-components.js';
 import { auditService } from './audit-service.js';
 import { TMS_LOGO } from './logo.js';
 import { exportPdf, formatPdfFilename } from './export-utils.js';
+import { syncActiveAcademicSession } from './academic-module.js';
 
 export const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -33,6 +34,7 @@ export const CORE_SUBJECTS = [
 
 export class TimetableModule {
   static async render(container) {
+    await syncActiveAcademicSession();
     const esc = (v) => UIComponents.escapeHtml(v);
 
     this._selectedGrade = this._selectedGrade || (TMS_CONFIG.academic.classes[0] || 'Grade 1');
