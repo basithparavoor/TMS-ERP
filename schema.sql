@@ -1205,3 +1205,36 @@ CREATE POLICY "attendance_records_read" ON attendance_records FOR SELECT TO anon
 DROP POLICY IF EXISTS "attendance_records_manage" ON attendance_records;
 CREATE POLICY "attendance_records_manage" ON attendance_records FOR ALL TO anon, authenticated USING (true);
 
+-- Student Leave & Gate Pass Records
+CREATE TABLE IF NOT EXISTS student_leaves (
+    id TEXT PRIMARY KEY,
+    student_id TEXT NOT NULL,
+    student_name TEXT NOT NULL,
+    admission_no TEXT,
+    grade TEXT,
+    section TEXT,
+    leave_type TEXT NOT NULL,
+    from_date DATE NOT NULL,
+    to_date DATE NOT NULL,
+    total_days INT DEFAULT 1,
+    reason TEXT NOT NULL,
+    emergency_phone TEXT,
+    applied_by TEXT DEFAULT 'student',
+    applied_by_name TEXT,
+    status TEXT NOT NULL DEFAULT 'PENDING',
+    issued_by TEXT,
+    issued_at TEXT,
+    gate_pass_no TEXT,
+    expected_return TEXT,
+    actual_return TEXT,
+    returned_marked_by TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE student_leaves ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "student_leaves_read" ON student_leaves;
+CREATE POLICY "student_leaves_read" ON student_leaves FOR SELECT TO anon, authenticated USING (true);
+DROP POLICY IF EXISTS "student_leaves_manage" ON student_leaves;
+CREATE POLICY "student_leaves_manage" ON student_leaves FOR ALL TO anon, authenticated USING (true);
+
+

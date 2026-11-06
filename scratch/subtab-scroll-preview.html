@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>TMS Subtab Scroll Preview</title>
+  <link rel="stylesheet" href="../app.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body {
+      background: #F8FAFC;
+      margin: 0;
+      padding: 24px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .wrapper {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div id="admin-container"></div>
+  </div>
+
+  <script type="module">
+    import { AdminModule } from '../admin-module.js';
+    import { authService } from '../auth-service.js';
+
+    authService.currentUser = {
+      id: 'super-admin-basith',
+      name: 'C. M. Basith',
+      email: 'cmbasith786@gmail.com',
+      role: 'super_admin',
+      isSuperAdmin: true,
+      title: 'Executive Director & Super Admin'
+    };
+
+    const container = document.getElementById('admin-container');
+    await AdminModule.render(container);
+    AdminModule.switchGroup('website');
+    if (window.lucide) window.lucide.createIcons();
+  </script>
+</body>
+</html>

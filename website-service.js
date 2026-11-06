@@ -51,6 +51,57 @@ export const DEFAULT_WEBSITE_CONFIG = {
     loginButtonText: 'Login'
   },
 
+  // 2b. Section & Tab Visibility Controls (Toggle ON/OFF each area of public website)
+  sections: {
+    // Header Navigation & Public Tabs
+    headerLoginBtn: true,
+    navAbout: true,
+    navAcademics: true,
+    navFacilities: true,
+    navHostel: false,
+    navNotices: true,
+    navGallery: true,
+    navTestimonials: true,
+    navAdmissions: true,
+    navContact: true,
+
+    // Major Landing Page Sections
+    hero: true,
+    quickStats: true,
+    about: true,
+    academics: true,
+    facilities: true,
+    hostel: false,
+    notices: true,
+    gallery: true,
+    testimonials: true,
+    admissionCta: true,
+    contact: true,
+
+    // Sub-Components & Buttons
+    heroBadge: true,
+    heroApplyBtn: true,
+    heroExploreBtn: true,
+    heroStats: true,
+    heroVisualCard: true,
+    aboutPrincipal: true,
+    aboutValues: true,
+    ctaApplyBtn: true,
+    ctaLoginBtn: true,
+    contactOfficeCard: true,
+    contactInquiryForm: true,
+    contactWaBtn: true,
+    contactDirBtn: true,
+
+    // Institutional Footer
+    footer: true,
+    footerAboutCol: true,
+    footerNavCol: true,
+    footerPortalsCol: true,
+    footerTrustCol: true,
+    footerBottom: true
+  },
+
   // 3. Hero Section
   hero: {
     badge: '★ ADMISSIONS OPEN FOR 2026–2027',
@@ -438,6 +489,14 @@ class WebsiteService {
           merged.hostel.enabled = false;
           merged.hostel.showNavButton = false;
         }
+        if (!merged.sections) {
+          merged.sections = JSON.parse(JSON.stringify(DEFAULT_WEBSITE_CONFIG.sections));
+        }
+        // Keep hostel and sections.hostel synchronized
+        if (merged.hostel) {
+          merged.sections.hostel = merged.hostel.enabled === true;
+          merged.sections.navHostel = merged.hostel.showNavButton !== false && merged.hostel.enabled === true;
+        }
         // Automatic migration of legacy defaults
         if (merged.meta && merged.meta.loginButtonText === 'Institutional Login') {
           merged.meta.loginButtonText = 'Login';
@@ -494,6 +553,13 @@ class WebsiteService {
     return h.enabled === true;
   }
 
+  isSectionEnabled(key, defaultValue = true) {
+    const cfg = this.getConfig();
+    const s = (cfg && cfg.sections) || {};
+    if (s[key] !== undefined) return s[key] === true;
+    return defaultValue;
+  }
+
   applyThemeVars() {
     try {
       const theme = this.data?.theme || DEFAULT_WEBSITE_CONFIG.theme;
@@ -537,6 +603,17 @@ class WebsiteService {
   async saveConfig(nextConfig) {
     try {
       const merged = this.deepMerge(this.data, nextConfig);
+      // Synchronize hostel enabled flag with sections.hostel
+      if (merged.sections && merged.sections.hostel !== undefined) {
+        if (!merged.hostel) merged.hostel = {};
+        merged.hostel.enabled = merged.sections.hostel === true;
+        if (merged.sections.navHostel !== undefined) {
+          merged.hostel.showNavButton = merged.sections.navHostel === true;
+        }
+      } else if (merged.hostel && merged.sections) {
+        merged.sections.hostel = merged.hostel.enabled === true;
+        merged.sections.navHostel = merged.hostel.showNavButton !== false && merged.hostel.enabled === true;
+      }
       this.data = merged;
       this.writeCache(merged);
       this.applyThemeVars();

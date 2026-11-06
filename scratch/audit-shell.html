@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TMS ERP Full Shell Audit</title>
+  <link rel="stylesheet" href="../app.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+  <div class="ambient-mesh">
+    <div class="mesh-glow-1"></div>
+    <div class="mesh-glow-2"></div>
+  </div>
+
+  <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+  <div class="app-container">
+    <!-- Sidebar Navigation -->
+    <aside class="app-sidebar" id="app-sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-brand-box">
+          <div style="width:36px; height:36px; border-radius:10px; background:#16a34a; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800;">TMS</div>
+          <div class="brand-info">
+            <h2>THAIBA MODEL SCHOOL</h2>
+            <p>Enterprise Campus ERP</p>
+          </div>
+        </div>
+        <button class="sidebar-collapse-btn desktop-only" id="sidebar-collapse-btn" title="Toggle Sidebar">
+          <i data-lucide="chevron-left"></i>
+        </button>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="#/dashboard" class="nav-item active"><i data-lucide="layout-dashboard"></i><span>Overview Dashboard</span></a>
+        <a href="#/my-work" class="nav-item"><i data-lucide="briefcase"></i><span>Staff Workspace</span></a>
+        <a href="#/admissions" class="nav-item"><i data-lucide="user-plus"></i><span>Admission Entry</span></a>
+        <a href="#/students" class="nav-item"><i data-lucide="graduation-cap"></i><span>Student Directory</span></a>
+        <a href="#/attendance" class="nav-item"><i data-lucide="radar"></i><span>Attendance & Radar</span></a>
+        <a href="#/id-cards" class="nav-item"><i data-lucide="badge-check"></i><span>ID Cards & Badges</span></a>
+        <a href="#/timetable" class="nav-item"><i data-lucide="clock"></i><span>Class Timetables</span></a>
+        <a href="#/calendar" class="nav-item"><i data-lucide="calendar"></i><span>Academic Calendar</span></a>
+        <a href="#/examinations" class="nav-item"><i data-lucide="award"></i><span>Examinations & Reports</span></a>
+        <a href="#/administration" class="nav-item"><i data-lucide="shield-check"></i><span>Administration</span></a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <div class="user-footer-wrap">
+          <div class="user-mini-card">
+            <div style="width:32px; height:32px; border-radius:50%; background:#10b981; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px;">CB</div>
+            <div class="user-details-mini">
+              <div class="name">C. M. Basith</div>
+              <div class="role">Super Admin</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Workspace -->
+    <main class="app-main">
+      <header class="app-topbar">
+        <div class="topbar-left">
+          <button class="mobile-header-menu-btn" id="mobile-header-menu-btn" aria-label="Open Navigation Menu">
+            <i data-lucide="menu"></i>
+          </button>
+          <div class="search-bar-trigger">
+            <i data-lucide="search" style="width: 16px; height: 16px;"></i>
+            <span>Search students, staff, records...</span>
+            <span class="kbd-shortcut">Ctrl K</span>
+          </div>
+        </div>
+
+        <div class="topbar-right">
+          <div class="ticker-badge">
+            <span style="width: 7px; height: 7px; border-radius: 50%; background: #16a34a; display: inline-block;"></span>
+            <span>Session 2026 Active</span>
+          </div>
+          <div style="width: 32px; height: 32px; border-radius: 50%; background: #10b981; color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:13px;">CB</div>
+        </div>
+      </header>
+
+      <div class="app-viewport" id="audit-viewport">
+        <!-- Render target -->
+      </div>
+    </main>
+  </div>
+
+  <!-- Mobile Bottom Nav -->
+  <nav class="mobile-bottom-nav">
+    <a href="#/dashboard" class="mobile-nav-item active"><i data-lucide="layout-dashboard"></i><span>Home</span></a>
+    <a href="#/students" class="mobile-nav-item"><i data-lucide="graduation-cap"></i><span>Students</span></a>
+    <a href="#/attendance" class="mobile-nav-item"><i data-lucide="radar"></i><span>Radar</span></a>
+    <a href="#/calendar" class="mobile-nav-item"><i data-lucide="calendar"></i><span>Calendar</span></a>
+    <a href="#/administration" class="mobile-nav-item"><i data-lucide="shield-check"></i><span>Admin</span></a>
+  </nav>
+
+  <script type="module">
+    import { authService } from '../auth-service.js';
+    import { DashboardModule } from '../dashboard-module.js';
+    import { MyWorkModule } from '../my-work-module.js';
+    import { StudentModule } from '../student-module.js';
+    import { AttendanceModule } from '../attendance-module.js';
+    import { CalendarModule } from '../calendar-module.js';
+    import { ExaminationModule } from '../examination-module.js';
+    import { AdminModule } from '../admin-module.js';
+    import { IdCardsModule } from '../id-cards-module.js';
+
+    authService.currentUser = {
+      id: 'super-admin-basith',
+      name: 'C. M. Basith',
+      email: 'cmbasith786@gmail.com',
+      role: 'super_admin',
+      isSuperAdmin: true,
+      title: 'Executive Director & Super Admin',
+      department: 'Executive Governance'
+    };
+
+    // Sidebar drawer toggle for mobile
+    const menuBtn = document.getElementById('mobile-header-menu-btn');
+    const sidebar = document.getElementById('app-sidebar');
+    const backdrop = document.getElementById('sidebar-backdrop');
+    if (menuBtn && sidebar && backdrop) {
+      menuBtn.addEventListener('click', () => {
+        sidebar.classList.toggle('open');
+        backdrop.classList.toggle('active');
+      });
+      backdrop.addEventListener('click', () => {
+        sidebar.classList.remove('open');
+        backdrop.classList.remove('active');
+      });
+    }
+
+    window.renderModule = async (name) => {
+      const vp = document.getElementById('audit-viewport');
+      vp.innerHTML = '';
+      if (name === 'dashboard') await DashboardModule.render(vp);
+      else if (name === 'my-work') await MyWorkModule.render(vp);
+      else if (name === 'students') await StudentModule.render(vp);
+      else if (name === 'attendance') await AttendanceModule.render(vp);
+      else if (name === 'calendar') await CalendarModule.render(vp);
+      else if (name === 'examinations') await ExaminationModule.render(vp);
+      else if (name === 'administration') {
+        await AdminModule.render(vp);
+        AdminModule.switchGroup('website');
+      }
+      else if (name === 'id-cards') await IdCardsModule.render(vp);
+
+      if (window.lucide) window.lucide.createIcons();
+    };
+
+    const params = new URLSearchParams(window.location.search);
+    const mod = params.get('mod') || 'dashboard';
+    await window.renderModule(mod);
+  </script>
+</body>
+</html>

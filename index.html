@@ -1954,15 +1954,15 @@
 
       <!-- Desktop Nav Links -->
       <nav class="inst-nav-links">
-        <a href="#about">About</a>
-        <a href="#academics">Academics</a>
-        <a href="#facilities">Facilities</a>
+        <a href="#about" id="nav-about-link">About</a>
+        <a href="#academics" id="nav-academics-link">Academics</a>
+        <a href="#facilities" id="nav-facilities-link">Facilities</a>
         <a href="#hostel" id="nav-hostel-link" style="display:none; font-weight:700; color:var(--brand-theme-primary);">Hostel</a>
-        <a href="#notices">Notices</a>
-        <a href="#gallery">Gallery</a>
-        <a href="#testimonials">Reviews</a>
-        <a href="#admissions">Admission</a>
-        <a href="#contact">Contact</a>
+        <a href="#notices" id="nav-notices-link">Notices</a>
+        <a href="#gallery" id="nav-gallery-link">Gallery</a>
+        <a href="#testimonials" id="nav-testimonials-link">Reviews</a>
+        <a href="#admissions" id="nav-admissions-link">Admission</a>
+        <a href="#contact" id="nav-contact-link">Contact</a>
       </nav>
 
       <!-- Action Buttons -->
@@ -1980,17 +1980,17 @@
     <!-- Mobile Dropdown Navigation -->
     <div id="mobile-nav-panel" class="mobile-nav-drawer" style="display:none;">
       <div class="mobile-nav-links-wrap">
-        <a href="#about" class="mobile-nav-link">
+        <a href="#about" class="mobile-nav-link" id="mobile-nav-about-link">
           <span class="mobile-nav-icon"><i data-lucide="info"></i></span>
           <span class="mobile-nav-text">About Institution</span>
           <i data-lucide="chevron-right" class="mobile-nav-arr"></i>
         </a>
-        <a href="#academics" class="mobile-nav-link">
+        <a href="#academics" class="mobile-nav-link" id="mobile-nav-academics-link">
           <span class="mobile-nav-icon"><i data-lucide="graduation-cap"></i></span>
           <span class="mobile-nav-text">Academics &amp; Wings</span>
           <i data-lucide="chevron-right" class="mobile-nav-arr"></i>
         </a>
-        <a href="#facilities" class="mobile-nav-link">
+        <a href="#facilities" class="mobile-nav-link" id="mobile-nav-facilities-link">
           <span class="mobile-nav-icon"><i data-lucide="building-2"></i></span>
           <span class="mobile-nav-text">Campus Facilities</span>
           <i data-lucide="chevron-right" class="mobile-nav-arr"></i>
@@ -2000,22 +2000,22 @@
           <span class="mobile-nav-text">Hostel &amp; Dormitories</span>
           <i data-lucide="chevron-right" class="mobile-nav-arr"></i>
         </a>
-        <a href="#notices" class="mobile-nav-link">
+        <a href="#notices" class="mobile-nav-link" id="mobile-nav-notices-link">
           <span class="mobile-nav-icon"><i data-lucide="bell"></i></span>
           <span class="mobile-nav-text">Live Notice Board</span>
           <i data-lucide="chevron-right" class="mobile-nav-arr"></i>
         </a>
-        <a href="#gallery" class="mobile-nav-link">
+        <a href="#gallery" class="mobile-nav-link" id="mobile-nav-gallery-link">
           <span class="mobile-nav-icon"><i data-lucide="image"></i></span>
           <span class="mobile-nav-text">Campus Gallery</span>
           <i data-lucide="chevron-right" class="mobile-nav-arr"></i>
         </a>
-        <a href="#testimonials" class="mobile-nav-link">
+        <a href="#testimonials" class="mobile-nav-link" id="mobile-nav-testimonials-link">
           <span class="mobile-nav-icon"><i data-lucide="message-square"></i></span>
           <span class="mobile-nav-text">Reviews &amp; Testimonials</span>
           <i data-lucide="chevron-right" class="mobile-nav-arr"></i>
         </a>
-        <a href="#contact" class="mobile-nav-link">
+        <a href="#contact" class="mobile-nav-link" id="mobile-nav-contact-link">
           <span class="mobile-nav-icon"><i data-lucide="phone"></i></span>
           <span class="mobile-nav-text">Contact &amp; Location</span>
           <i data-lucide="chevron-right" class="mobile-nav-arr"></i>
@@ -2027,7 +2027,7 @@
           <i data-lucide="lock" style="width:16px; height:16px;"></i>
           <span>Login</span>
         </a>
-        <a href="/admission" class="mobile-drawer-apply-btn">
+        <a href="/admission" class="mobile-drawer-apply-btn" id="mobile-drawer-apply-btn">
           <i data-lucide="pen-tool" style="width:16px; height:16px;"></i>
           <span>Apply Online (2026–2027)</span>
         </a>
@@ -2069,7 +2069,7 @@
           </a>
         </div>
 
-        <div class="hero-meta-row">
+        <div class="hero-meta-row" id="hero-meta-row">
           <div class="hero-meta-item">
             <div class="hero-meta-icon"><i data-lucide="award" style="width:20px; height:20px;"></i></div>
             <div class="hero-meta-text">
@@ -2095,7 +2095,7 @@
       </div>
 
       <!-- Hero Visual Showcase -->
-      <div class="hero-visual-card">
+      <div class="hero-visual-card" id="hero-visual-card">
         <img src="https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=1200&q=80" alt="Thaiba Model School Campus" class="hero-visual-img" id="hero-img">
         <div class="hero-overlay-tag">
           <i data-lucide="map-pin" style="width:14px; height:14px; color:#4ade80;"></i>
@@ -2120,7 +2120,7 @@
   </section>
 
   <!-- Key Statistics Ribbon -->
-  <section class="inst-stats-ribbon">
+  <section class="inst-stats-ribbon" id="quick-stats-ribbon">
     <div class="stats-ribbon-grid" id="stats-ribbon-grid">
       <!-- Populated dynamically via JS -->
     </div>
@@ -2131,7 +2131,7 @@
     <div class="inst-container">
       <div class="about-grid">
         <!-- Principal's Card -->
-        <div class="about-principal-card">
+        <div class="about-principal-card" id="about-principal-card">
           <div class="about-principal-header">
             <img src="https://images.unsplash.com/photo-1544717305-2782549b5136?auto=format&fit=crop&w=400&q=80" alt="Principal" class="about-principal-avatar" id="about-principal-photo">
             <div>
@@ -2459,7 +2459,7 @@
 
       <div class="contact-grid">
         <!-- Contact Cards -->
-        <div class="contact-info-card">
+        <div class="contact-info-card" id="contact-info-card">
           <h3 style="font-family:var(--font-display); font-size:1.3rem; font-weight:800; color:#0f172a; margin-bottom:24px;">Administrative Office</h3>
 
           <div class="contact-item-row">
@@ -2495,17 +2495,17 @@
           </div>
 
           <div style="border-top:1px solid #f1f5f9; padding-top:20px; margin-top:20px; display:flex; gap:12px;">
-            <a href="https://wa.me/918653382851" target="_blank" class="btn btn-secondary btn-sm" style="display:inline-flex; align-items:center; gap:6px; font-weight:700; color:#16a34a;">
+            <a href="https://wa.me/918653382851" target="_blank" class="btn btn-secondary btn-sm" id="contact-wa-btn" style="display:inline-flex; align-items:center; gap:6px; font-weight:700; color:#16a34a;">
               <i data-lucide="message-circle" style="width:16px; height:16px;"></i> WhatsApp Support
             </a>
-            <a href="https://maps.google.com/?q=Thaiba+Model+School+Tapan" target="_blank" class="btn btn-secondary btn-sm" style="display:inline-flex; align-items:center; gap:6px; font-weight:700;">
+            <a href="https://maps.google.com/?q=Thaiba+Model+School+Tapan" target="_blank" class="btn btn-secondary btn-sm" id="contact-dir-btn" style="display:inline-flex; align-items:center; gap:6px; font-weight:700;">
               <i data-lucide="navigation" style="width:16px; height:16px;"></i> Directions
             </a>
           </div>
         </div>
 
         <!-- Quick Inquiry Form -->
-        <div class="contact-form-card">
+        <div class="contact-form-card" id="contact-form-card">
           <h3 style="font-family:var(--font-display); font-size:1.3rem; font-weight:800; color:#0f172a; margin-bottom:12px;">Send an Admission Inquiry</h3>
           <p style="font-size:0.86rem; color:#64748b; margin-bottom:20px;">Fill out this quick form and our admissions desk will call you back within 24 hours.</p>
 
@@ -2557,9 +2557,9 @@
   </section>
 
   <!-- Institutional Footer -->
-  <footer class="inst-footer">
+  <footer class="inst-footer" id="website-footer">
     <div class="footer-grid">
-      <div class="footer-col">
+      <div class="footer-col" id="footer-about-col">
         <div style="display:flex; align-items:center; gap:12px; margin-bottom:14px;">
           <img src="tms-logo.png" alt="Logo" style="width:42px; height:42px; object-fit:contain;" id="footer-logo">
           <div>
@@ -2575,7 +2575,7 @@
         </div>
       </div>
 
-      <div class="footer-col">
+      <div class="footer-col" id="footer-nav-col">
         <h4>Navigation</h4>
         <ul>
           <li><a href="#about">About Our Institution</a></li>
@@ -2589,7 +2589,7 @@
         </ul>
       </div>
 
-      <div class="footer-col">
+      <div class="footer-col" id="footer-portals-col">
         <h4>Institutional Portals</h4>
         <div style="display:flex; flex-direction:column; gap:10px; margin-top:14px; max-width:240px;">
           <a href="/login" class="btn-inst-login" id="footer-login-btn" style="width:100%; justify-content:center; text-decoration:none; padding:11px 18px; font-weight:700;">
@@ -2603,7 +2603,7 @@
         </div>
       </div>
 
-      <div class="footer-col">
+      <div class="footer-col" id="footer-trust-col">
         <h4>Trust &amp; Governance</h4>
         <p style="font-size:0.84rem; line-height:1.6; color:#94a3b8; margin-bottom:12px;">
           Society Registration: IV 01894/2011<br>
@@ -2613,7 +2613,7 @@
       </div>
     </div>
 
-    <div class="footer-bottom">
+    <div class="footer-bottom" id="footer-bottom-row">
       <div id="footer-copyright">© 2026 THAIBA MODEL SCHOOL. All Rights Reserved. Run by Thaiba Heritage, Kolkata.</div>
       <div style="display:flex; gap:16px;">
         <a href="#home" style="color:#94a3b8; text-decoration:none;">Back to Top ↑</a>
@@ -3111,8 +3111,102 @@
       if (fCopy) fCopy.innerText = footer.copyright || '© 2026 THAIBA MODEL SCHOOL.';
       if (fEmer) fEmer.innerText = footer.emergencyHelpline || meta.phone || '+91 8653382851';
 
+      // Master Section & Tab Visibility
+      applySectionVisibilities(cfg.sections);
+
       updateLogoImages();
       UIComponents.refreshIcons();
+    }
+
+    function applySectionVisibilities(sections) {
+      const s = sections || {};
+      const isVis = (k, def = true) => (s[k] !== undefined ? s[k] === true : def);
+
+      const setDisplay = (id, visible, displayStyle = '') => {
+        const el = document.getElementById(id);
+        if (el) el.style.display = visible ? displayStyle : 'none';
+      };
+
+      // Header Login Button
+      setDisplay('btn-open-institutional-login', isVis('headerLoginBtn'), 'inline-flex');
+      setDisplay('btn-mobile-login', isVis('headerLoginBtn'), 'inline-flex');
+
+      // Desktop & Mobile Navigation Links (also hides navigation link if target section is turned off)
+      const aboutVis = isVis('navAbout') && isVis('about');
+      setDisplay('nav-about-link', aboutVis, 'inline-block');
+      setDisplay('mobile-nav-about-link', aboutVis, 'flex');
+
+      const academicsVis = isVis('navAcademics') && isVis('academics');
+      setDisplay('nav-academics-link', academicsVis, 'inline-block');
+      setDisplay('mobile-nav-academics-link', academicsVis, 'flex');
+
+      const facVis = isVis('navFacilities') && isVis('facilities');
+      setDisplay('nav-facilities-link', facVis, 'inline-block');
+      setDisplay('mobile-nav-facilities-link', facVis, 'flex');
+
+      const hostelVis = isVis('hostel', false) && isVis('navHostel', false);
+      setDisplay('nav-hostel-link', hostelVis, 'inline-block');
+      setDisplay('mobile-nav-hostel-link', hostelVis, 'flex');
+      setDisplay('footer-hostel-link', hostelVis, 'list-item');
+
+      const noticesVis = isVis('navNotices') && isVis('notices');
+      setDisplay('nav-notices-link', noticesVis, 'inline-block');
+      setDisplay('mobile-nav-notices-link', noticesVis, 'flex');
+
+      const galleryVis = isVis('navGallery') && isVis('gallery');
+      setDisplay('nav-gallery-link', galleryVis, 'inline-block');
+      setDisplay('mobile-nav-gallery-link', galleryVis, 'flex');
+
+      const testVis = isVis('navTestimonials') && isVis('testimonials');
+      setDisplay('nav-testimonials-link', testVis, 'inline-block');
+      setDisplay('mobile-nav-testimonials-link', testVis, 'flex');
+
+      const admVis = isVis('navAdmissions') && isVis('admissionCta');
+      setDisplay('nav-admissions-link', admVis, 'inline-block');
+      setDisplay('mobile-drawer-apply-btn', admVis, 'inline-flex');
+
+      const contactVis = isVis('navContact') && isVis('contact');
+      setDisplay('nav-contact-link', contactVis, 'inline-block');
+      setDisplay('mobile-nav-contact-link', contactVis, 'flex');
+
+      // Major Landing Page Sections
+      setDisplay('home', isVis('hero'), 'block');
+      setDisplay('hero-badge-pill', isVis('heroBadge'), 'inline-flex');
+      setDisplay('hero-apply-btn', isVis('heroApplyBtn'), 'inline-flex');
+      setDisplay('hero-explore-btn', isVis('heroExploreBtn'), 'inline-flex');
+      setDisplay('hero-meta-row', isVis('heroStats'), 'flex');
+      setDisplay('hero-visual-card', isVis('heroVisualCard'), 'block');
+
+      setDisplay('quick-stats-ribbon', isVis('quickStats'), 'block');
+
+      setDisplay('about', isVis('about'), 'block');
+      setDisplay('about-principal-card', isVis('aboutPrincipal'), 'block');
+      setDisplay('about-values-grid', isVis('aboutValues'), 'grid');
+
+      setDisplay('academics', isVis('academics'), 'block');
+      setDisplay('facilities', isVis('facilities'), 'block');
+      setDisplay('hostel', isVis('hostel', false), 'block');
+      setDisplay('notices', isVis('notices'), 'block');
+      setDisplay('gallery', isVis('gallery'), 'block');
+      setDisplay('testimonials', isVis('testimonials'), 'block');
+
+      setDisplay('admissions', isVis('admissionCta'), 'block');
+      setDisplay('cta-btn', isVis('ctaApplyBtn'), 'inline-flex');
+      setDisplay('cta-login-btn', isVis('ctaLoginBtn'), 'inline-flex');
+
+      setDisplay('contact', isVis('contact'), 'block');
+      setDisplay('contact-info-card', isVis('contactOfficeCard'), 'block');
+      setDisplay('contact-form-card', isVis('contactInquiryForm'), 'block');
+      setDisplay('contact-wa-btn', isVis('contactWaBtn'), 'inline-flex');
+      setDisplay('contact-dir-btn', isVis('contactDirBtn'), 'inline-flex');
+
+      // Footer & Columns
+      setDisplay('website-footer', isVis('footer'), 'block');
+      setDisplay('footer-about-col', isVis('footerAboutCol'), 'block');
+      setDisplay('footer-nav-col', isVis('footerNavCol'), 'block');
+      setDisplay('footer-portals-col', isVis('footerPortalsCol'), 'block');
+      setDisplay('footer-trust-col', isVis('footerTrustCol'), 'block');
+      setDisplay('footer-bottom-row', isVis('footerBottom'), 'flex');
     }
 
     function renderNotices(notices, filter) {

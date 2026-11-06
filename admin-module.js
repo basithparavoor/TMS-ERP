@@ -380,6 +380,7 @@ export class AdminModule {
       ],
       website: [
         { key: 'website-inquiries', label: 'Admission Inquiries', icon: 'message-square', showInquiryBadge: true },
+        { key: 'website-sections', label: 'Sections & Tabs Visibility (ON/OFF)', icon: 'toggle-right' },
         { key: 'website-general', label: 'Identity & Brand Colors', icon: 'palette' },
         { key: 'website-hero', label: 'Hero & Headlines', icon: 'sparkles' },
         { key: 'website-about', label: 'About & Leadership', icon: 'book-open' },

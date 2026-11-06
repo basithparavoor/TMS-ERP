@@ -1,0 +1,626 @@
+{
+  "desktopResults": [
+    {
+      "name": "overview",
+      "isMobile": false,
+      "metrics": {
+        "docW": 1254,
+        "winW": 1254,
+        "docH": 757,
+        "winH": 757,
+        "hasHorizontalScroll": false,
+        "overflowCount": 1,
+        "topOverflows": [
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-1",
+            "id": "",
+            "right": 1332,
+            "width": 704
+          }
+        ],
+        "smallButtonsCount": 0,
+        "topSmallButtons": []
+      },
+      "filename": "overview-desktop.png"
+    },
+    {
+      "name": "staff-workspace",
+      "isMobile": false,
+      "metrics": {
+        "docW": 1254,
+        "winW": 1254,
+        "docH": 757,
+        "winH": 757,
+        "hasHorizontalScroll": false,
+        "overflowCount": 1,
+        "topOverflows": [
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-1",
+            "id": "",
+            "right": 1333,
+            "width": 702
+          }
+        ],
+        "smallButtonsCount": 0,
+        "topSmallButtons": []
+      },
+      "filename": "staff-workspace-desktop.png"
+    },
+    {
+      "name": "students",
+      "isMobile": false,
+      "metrics": {
+        "docW": 1254,
+        "winW": 1254,
+        "docH": 757,
+        "winH": 757,
+        "hasHorizontalScroll": false,
+        "overflowCount": 1,
+        "topOverflows": [
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-1",
+            "id": "",
+            "right": 1333,
+            "width": 702
+          }
+        ],
+        "smallButtonsCount": 0,
+        "topSmallButtons": []
+      },
+      "filename": "students-desktop.png"
+    },
+    {
+      "name": "attendance",
+      "isMobile": false,
+      "metrics": {
+        "docW": 1254,
+        "winW": 1254,
+        "docH": 757,
+        "winH": 757,
+        "hasHorizontalScroll": false,
+        "overflowCount": 1,
+        "topOverflows": [
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-1",
+            "id": "",
+            "right": 1334,
+            "width": 701
+          }
+        ],
+        "smallButtonsCount": 0,
+        "topSmallButtons": []
+      },
+      "filename": "attendance-desktop.png"
+    },
+    {
+      "name": "id-cards",
+      "isMobile": false,
+      "metrics": {
+        "docW": 1254,
+        "winW": 1254,
+        "docH": 757,
+        "winH": 757,
+        "hasHorizontalScroll": false,
+        "overflowCount": 1,
+        "topOverflows": [
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-1",
+            "id": "",
+            "right": 1333,
+            "width": 702
+          }
+        ],
+        "smallButtonsCount": 0,
+        "topSmallButtons": []
+      },
+      "filename": "id-cards-desktop.png"
+    },
+    {
+      "name": "timetable",
+      "isMobile": false,
+      "metrics": {
+        "docW": 1254,
+        "winW": 1254,
+        "docH": 757,
+        "winH": 757,
+        "hasHorizontalScroll": false,
+        "overflowCount": 1,
+        "topOverflows": [
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-1",
+            "id": "",
+            "right": 1333,
+            "width": 702
+          }
+        ],
+        "smallButtonsCount": 0,
+        "topSmallButtons": []
+      },
+      "filename": "timetable-desktop.png"
+    },
+    {
+      "name": "calendar",
+      "isMobile": false,
+      "metrics": {
+        "docW": 1254,
+        "winW": 1254,
+        "docH": 757,
+        "winH": 757,
+        "hasHorizontalScroll": false,
+        "overflowCount": 1,
+        "topOverflows": [
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-1",
+            "id": "",
+            "right": 1333,
+            "width": 702
+          }
+        ],
+        "smallButtonsCount": 0,
+        "topSmallButtons": []
+      },
+      "filename": "calendar-desktop.png"
+    },
+    {
+      "name": "examinations",
+      "isMobile": false,
+      "metrics": {
+        "docW": 1254,
+        "winW": 1254,
+        "docH": 757,
+        "winH": 757,
+        "hasHorizontalScroll": false,
+        "overflowCount": 1,
+        "topOverflows": [
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-1",
+            "id": "",
+            "right": 1333,
+            "width": 703
+          }
+        ],
+        "smallButtonsCount": 0,
+        "topSmallButtons": []
+      },
+      "filename": "examinations-desktop.png"
+    },
+    {
+      "name": "administration",
+      "isMobile": false,
+      "metrics": {
+        "docW": 1254,
+        "winW": 1254,
+        "docH": 757,
+        "winH": 757,
+        "hasHorizontalScroll": false,
+        "overflowCount": 1,
+        "topOverflows": [
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-1",
+            "id": "",
+            "right": 1334,
+            "width": 701
+          }
+        ],
+        "smallButtonsCount": 0,
+        "topSmallButtons": []
+      },
+      "filename": "administration-desktop.png"
+    },
+    {
+      "name": "finance",
+      "isMobile": false,
+      "metrics": {
+        "docW": 1254,
+        "winW": 1254,
+        "docH": 757,
+        "winH": 757,
+        "hasHorizontalScroll": false,
+        "overflowCount": 1,
+        "topOverflows": [
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-1",
+            "id": "",
+            "right": 1333,
+            "width": 702
+          }
+        ],
+        "smallButtonsCount": 0,
+        "topSmallButtons": []
+      },
+      "filename": "finance-desktop.png"
+    }
+  ],
+  "mobileResults": [
+    {
+      "name": "overview",
+      "isMobile": true,
+      "metrics": {
+        "docW": 481,
+        "winW": 496,
+        "docH": 749,
+        "winH": 719,
+        "hasHorizontalScroll": false,
+        "overflowCount": 2,
+        "topOverflows": [
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-1",
+            "id": "",
+            "right": 560,
+            "width": 702
+          },
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-2",
+            "id": "",
+            "right": 776,
+            "width": 752
+          }
+        ],
+        "smallButtonsCount": 1,
+        "topSmallButtons": [
+          {
+            "tag": "BUTTON",
+            "text": "",
+            "w": 30,
+            "h": 30
+          }
+        ]
+      },
+      "filename": "overview-mobile.png"
+    },
+    {
+      "name": "staff-workspace",
+      "isMobile": true,
+      "metrics": {
+        "docW": 481,
+        "winW": 496,
+        "docH": 749,
+        "winH": 719,
+        "hasHorizontalScroll": false,
+        "overflowCount": 2,
+        "topOverflows": [
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-1",
+            "id": "",
+            "right": 560,
+            "width": 702
+          },
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-2",
+            "id": "",
+            "right": 777,
+            "width": 752
+          }
+        ],
+        "smallButtonsCount": 1,
+        "topSmallButtons": [
+          {
+            "tag": "BUTTON",
+            "text": "",
+            "w": 30,
+            "h": 30
+          }
+        ]
+      },
+      "filename": "staff-workspace-mobile.png"
+    },
+    {
+      "name": "students",
+      "isMobile": true,
+      "metrics": {
+        "docW": 481,
+        "winW": 496,
+        "docH": 749,
+        "winH": 719,
+        "hasHorizontalScroll": false,
+        "overflowCount": 2,
+        "topOverflows": [
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-1",
+            "id": "",
+            "right": 560,
+            "width": 702
+          },
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-2",
+            "id": "",
+            "right": 777,
+            "width": 752
+          }
+        ],
+        "smallButtonsCount": 1,
+        "topSmallButtons": [
+          {
+            "tag": "BUTTON",
+            "text": "",
+            "w": 30,
+            "h": 30
+          }
+        ]
+      },
+      "filename": "students-mobile.png"
+    },
+    {
+      "name": "attendance",
+      "isMobile": true,
+      "metrics": {
+        "docW": 481,
+        "winW": 496,
+        "docH": 749,
+        "winH": 719,
+        "hasHorizontalScroll": false,
+        "overflowCount": 2,
+        "topOverflows": [
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-1",
+            "id": "",
+            "right": 560,
+            "width": 702
+          },
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-2",
+            "id": "",
+            "right": 777,
+            "width": 753
+          }
+        ],
+        "smallButtonsCount": 1,
+        "topSmallButtons": [
+          {
+            "tag": "BUTTON",
+            "text": "",
+            "w": 30,
+            "h": 30
+          }
+        ]
+      },
+      "filename": "attendance-mobile.png"
+    },
+    {
+      "name": "id-cards",
+      "isMobile": true,
+      "metrics": {
+        "docW": 481,
+        "winW": 496,
+        "docH": 749,
+        "winH": 719,
+        "hasHorizontalScroll": false,
+        "overflowCount": 2,
+        "topOverflows": [
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-1",
+            "id": "",
+            "right": 560,
+            "width": 702
+          },
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-2",
+            "id": "",
+            "right": 777,
+            "width": 753
+          }
+        ],
+        "smallButtonsCount": 1,
+        "topSmallButtons": [
+          {
+            "tag": "BUTTON",
+            "text": "",
+            "w": 30,
+            "h": 30
+          }
+        ]
+      },
+      "filename": "id-cards-mobile.png"
+    },
+    {
+      "name": "timetable",
+      "isMobile": true,
+      "metrics": {
+        "docW": 481,
+        "winW": 496,
+        "docH": 749,
+        "winH": 719,
+        "hasHorizontalScroll": false,
+        "overflowCount": 2,
+        "topOverflows": [
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-1",
+            "id": "",
+            "right": 560,
+            "width": 702
+          },
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-2",
+            "id": "",
+            "right": 777,
+            "width": 753
+          }
+        ],
+        "smallButtonsCount": 1,
+        "topSmallButtons": [
+          {
+            "tag": "BUTTON",
+            "text": "",
+            "w": 30,
+            "h": 30
+          }
+        ]
+      },
+      "filename": "timetable-mobile.png"
+    },
+    {
+      "name": "calendar",
+      "isMobile": true,
+      "metrics": {
+        "docW": 481,
+        "winW": 496,
+        "docH": 749,
+        "winH": 719,
+        "hasHorizontalScroll": false,
+        "overflowCount": 2,
+        "topOverflows": [
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-1",
+            "id": "",
+            "right": 560,
+            "width": 703
+          },
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-2",
+            "id": "",
+            "right": 777,
+            "width": 753
+          }
+        ],
+        "smallButtonsCount": 1,
+        "topSmallButtons": [
+          {
+            "tag": "BUTTON",
+            "text": "",
+            "w": 30,
+            "h": 30
+          }
+        ]
+      },
+      "filename": "calendar-mobile.png"
+    },
+    {
+      "name": "examinations",
+      "isMobile": true,
+      "metrics": {
+        "docW": 481,
+        "winW": 496,
+        "docH": 749,
+        "winH": 719,
+        "hasHorizontalScroll": false,
+        "overflowCount": 2,
+        "topOverflows": [
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-1",
+            "id": "",
+            "right": 560,
+            "width": 703
+          },
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-2",
+            "id": "",
+            "right": 777,
+            "width": 753
+          }
+        ],
+        "smallButtonsCount": 1,
+        "topSmallButtons": [
+          {
+            "tag": "BUTTON",
+            "text": "",
+            "w": 30,
+            "h": 30
+          }
+        ]
+      },
+      "filename": "examinations-mobile.png"
+    },
+    {
+      "name": "administration",
+      "isMobile": true,
+      "metrics": {
+        "docW": 481,
+        "winW": 496,
+        "docH": 749,
+        "winH": 719,
+        "hasHorizontalScroll": false,
+        "overflowCount": 2,
+        "topOverflows": [
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-1",
+            "id": "",
+            "right": 560,
+            "width": 703
+          },
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-2",
+            "id": "",
+            "right": 777,
+            "width": 753
+          }
+        ],
+        "smallButtonsCount": 1,
+        "topSmallButtons": [
+          {
+            "tag": "BUTTON",
+            "text": "",
+            "w": 30,
+            "h": 30
+          }
+        ]
+      },
+      "filename": "administration-mobile.png"
+    },
+    {
+      "name": "finance",
+      "isMobile": true,
+      "metrics": {
+        "docW": 481,
+        "winW": 496,
+        "docH": 749,
+        "winH": 719,
+        "hasHorizontalScroll": false,
+        "overflowCount": 2,
+        "topOverflows": [
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-1",
+            "id": "",
+            "right": 560,
+            "width": 703
+          },
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-2",
+            "id": "",
+            "right": 777,
+            "width": 753
+          }
+        ],
+        "smallButtonsCount": 1,
+        "topSmallButtons": [
+          {
+            "tag": "BUTTON",
+            "text": "",
+            "w": 30,
+            "h": 30
+          }
+        ]
+      },
+      "filename": "finance-mobile.png"
+    }
+  ]
+}

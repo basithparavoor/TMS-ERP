@@ -1,0 +1,230 @@
+{
+  "mobile": [
+    {
+      "mod": "dashboard",
+      "metrics": {
+        "docW": 496,
+        "winW": 496,
+        "hasOverflow": false,
+        "overflows": [
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-1",
+            "w": 707,
+            "right": 573
+          },
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-2",
+            "w": 758,
+            "right": 785
+          }
+        ]
+      },
+      "filename": "mobile-audit-dashboard.png"
+    },
+    {
+      "mod": "my-work",
+      "metrics": {
+        "docW": 496,
+        "winW": 496,
+        "hasOverflow": false,
+        "overflows": [
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-1",
+            "w": 719,
+            "right": 569
+          },
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-2",
+            "w": 773,
+            "right": 801
+          }
+        ]
+      },
+      "filename": "mobile-audit-my-work.png"
+    },
+    {
+      "mod": "students",
+      "metrics": {
+        "docW": 496,
+        "winW": 496,
+        "hasOverflow": false,
+        "overflows": [
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-1",
+            "w": 730,
+            "right": 565
+          },
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-2",
+            "w": 790,
+            "right": 822
+          }
+        ]
+      },
+      "filename": "mobile-audit-students.png"
+    },
+    {
+      "mod": "attendance",
+      "metrics": {
+        "docW": 496,
+        "winW": 496,
+        "hasOverflow": false,
+        "overflows": [
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-1",
+            "w": 735,
+            "right": 564
+          },
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-2",
+            "w": 804,
+            "right": 837
+          }
+        ]
+      },
+      "filename": "mobile-audit-attendance.png"
+    },
+    {
+      "mod": "calendar",
+      "metrics": {
+        "docW": 496,
+        "winW": 496,
+        "hasOverflow": false,
+        "overflows": [
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-1",
+            "w": 732,
+            "right": 564
+          },
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-2",
+            "w": 810,
+            "right": 844
+          }
+        ]
+      },
+      "filename": "mobile-audit-calendar.png"
+    },
+    {
+      "mod": "examinations",
+      "metrics": {
+        "docW": 496,
+        "winW": 496,
+        "hasOverflow": false,
+        "overflows": [
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-1",
+            "w": 718,
+            "right": 569
+          },
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-2",
+            "w": 807,
+            "right": 842
+          }
+        ]
+      },
+      "filename": "mobile-audit-examinations.png"
+    },
+    {
+      "mod": "administration",
+      "metrics": {
+        "docW": 496,
+        "winW": 496,
+        "hasOverflow": false,
+        "overflows": [
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-1",
+            "w": 696,
+            "right": 575
+          },
+          {
+            "tag": "DIV",
+            "cls": "mesh-glow-2",
+            "w": 793,
+            "right": 826
+          }
+        ]
+      },
+      "filename": "mobile-audit-administration.png"
+    }
+  ],
+  "desktop": [
+    {
+      "mod": "dashboard",
+      "metrics": {
+        "docW": 1280,
+        "winW": 1280,
+        "hasOverflow": false
+      },
+      "filename": "desktop-audit-dashboard.png"
+    },
+    {
+      "mod": "my-work",
+      "metrics": {
+        "docW": 1280,
+        "winW": 1280,
+        "hasOverflow": false
+      },
+      "filename": "desktop-audit-my-work.png"
+    },
+    {
+      "mod": "students",
+      "metrics": {
+        "docW": 1280,
+        "winW": 1280,
+        "hasOverflow": false
+      },
+      "filename": "desktop-audit-students.png"
+    },
+    {
+      "mod": "attendance",
+      "metrics": {
+        "docW": 1280,
+        "winW": 1280,
+        "hasOverflow": false
+      },
+      "filename": "desktop-audit-attendance.png"
+    },
+    {
+      "mod": "calendar",
+      "metrics": {
+        "docW": 1280,
+        "winW": 1280,
+        "hasOverflow": false
+      },
+      "filename": "desktop-audit-calendar.png"
+    },
+    {
+      "mod": "examinations",
+      "metrics": {
+        "docW": 1280,
+        "winW": 1280,
+        "hasOverflow": false
+      },
+      "filename": "desktop-audit-examinations.png"
+    },
+    {
+      "mod": "administration",
+      "metrics": {
+        "docW": 1280,
+        "winW": 1280,
+        "hasOverflow": false
+      },
+      "filename": "desktop-audit-administration.png"
+    }
+  ]
+}

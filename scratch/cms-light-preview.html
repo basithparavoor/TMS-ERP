@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>TMS CMS Light Theme & Buttons Preview</title>
+  <link rel="stylesheet" href="../app.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body {
+      background: #F8FAFC;
+      margin: 0;
+      padding: 24px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .wrapper {
+      max-width: 1180px;
+      margin: 0 auto;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <div id="cms-tab-content"></div>
+  </div>
+
+  <script type="module">
+    import { AdminWebsiteCms } from '../admin-website-cms.js';
+    import { websiteService } from '../website-service.js';
+
+    // Mock website config
+    AdminWebsiteCms._config = websiteService.getConfig();
+
+    const container = document.getElementById('cms-tab-content');
+    await AdminWebsiteCms.render(container, 'website-hostel');
+    if (window.lucide) window.lucide.createIcons();
+  </script>
+</body>
+</html>

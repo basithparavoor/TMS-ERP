@@ -41,6 +41,11 @@ class AuthService {
     try {
       const { data: { session } } = await client.auth.getSession();
       if (!session || !session.user) {
+        const cached = this.readCache();
+        if (cached && cached.role) {
+          this.currentUser = cached;
+          return cached;
+        }
         this.currentUser = null;
         this.clearCache();
         return null;
