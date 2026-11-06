@@ -2237,6 +2237,7 @@ export class AdminModule {
                 <button class="btn btn-secondary btn-sm" id="btn-select-all-fields"><i data-lucide="check-square"></i> Select All</button>
                 <button class="btn btn-secondary btn-sm" id="btn-bulk-del-fields" style="color:#ef4444;"><i data-lucide="trash-2"></i> Delete Selected (<span id="field-selected-count">0</span>)</button>
               `}
+              <button class="btn btn-secondary btn-sm" id="btn-restore-defaults" title="Restore standard questions without deleting custom questions"><i data-lucide="rotate-ccw"></i> Restore Standard Questions</button>
               <button class="btn btn-secondary btn-sm" id="btn-add-section"><i data-lucide="folder-plus"></i> Add New Section</button>
               <button class="btn btn-secondary btn-sm" id="btn-add-photo-field" style="color:#059669; border-color:#86efac; font-weight:700;"><i data-lucide="camera"></i> + Add Photo Question</button>
               <button class="btn btn-primary btn-sm" id="btn-add-field"><i data-lucide="plus"></i> Add Question</button>
@@ -2258,9 +2259,17 @@ export class AdminModule {
 
     const seedBtn = document.getElementById('btn-seed-fields');
     if (seedBtn) seedBtn.addEventListener('click', async () => {
-      await admissionService.seedDefaultFields();
+      await admissionService.seedDefaultFields(true);
       await auditService.log('ADMISSION_FORM_FIELDS_SEEDED', 'GOVERNANCE', {});
       UIComponents.showToast('Default form sections saved.', 'success');
+      this.renderTab('form-builder');
+    });
+
+    const restoreBtn = document.getElementById('btn-restore-defaults');
+    if (restoreBtn) restoreBtn.addEventListener('click', async () => {
+      await admissionService.seedDefaultFields(true);
+      await auditService.log('ADMISSION_FORM_FIELDS_RESTORED', 'GOVERNANCE', {});
+      UIComponents.showToast('Standard admission questions restored successfully.', 'success');
       this.renderTab('form-builder');
     });
 

@@ -223,12 +223,54 @@ class AdmissionService {
 
   /* ---------------- Form fields ---------------- */
 
+  /** Ensure default fields are persisted so adding a custom question never wipes out defaults */
+  async ensureCoreDefaultsSeeded() {
+    const rows = await dbService.select('admission_form_fields');
+    const existingKeys = new Set((rows || []).map(f => (f.fieldKey || f.key || '').trim().toLowerCase()));
+    const hasCore = existingKeys.has('candidatename') && existingKeys.has('dob');
+    if (!hasCore) {
+      let maxOrder = (rows || []).reduce((max, f) => Math.max(max, f.displayOrder || 0), 0);
+      for (const f of DEFAULT_FIELDS) {
+        const k = (f.key || '').trim().toLowerCase();
+        if (!existingKeys.has(k)) {
+          maxOrder += 1;
+          const record = {
+            id: `fld-${f.key}`,
+            fieldKey: f.key,
+            label: f.label,
+            fieldType: f.type,
+            section: f.section || 'General Information',
+            placeholder: f.placeholder || '',
+            helpText: f.helpText || '',
+            options: Array.isArray(f.options) ? f.options : [],
+            required: !!f.required,
+            isActive: true,
+            displayOrder: f.order || maxOrder
+          };
+          // eslint-disable-next-line no-await-in-loop
+          await dbService.upsert('admission_form_fields', record);
+          existingKeys.add(k);
+        }
+      }
+    }
+  }
+
   async listFields() {
     const rows = await dbService.select('admission_form_fields');
-    const active = rows
-      .filter((f) => f.isActive !== false)
-      .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
-    if (active.length) return active;
+    if (rows && rows.length) {
+      const hasCore = rows.some(f => (f.fieldKey || f.key) === 'candidateName');
+      if (!hasCore) {
+        await this.ensureCoreDefaultsSeeded();
+        const refreshed = await dbService.select('admission_form_fields');
+        return refreshed
+          .filter((f) => f.isActive !== false)
+          .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+      }
+      const active = rows
+        .filter((f) => f.isActive !== false)
+        .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+      if (active.length) return active;
+    }
     return DEFAULT_FIELDS.map((f, i) => ({
       id: `fld-${f.key}`,
       fieldKey: f.key,
@@ -246,10 +288,22 @@ class AdmissionService {
 
   async listAllFields() {
     const rows = await dbService.select('admission_form_fields');
-    return rows.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+    if (rows && rows.length) {
+      const hasCore = rows.some(f => (f.fieldKey || f.key) === 'candidateName');
+      if (!hasCore) {
+        await this.ensureCoreDefaultsSeeded();
+        const refreshed = await dbService.select('admission_form_fields');
+        return refreshed.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+      }
+      return rows.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+    }
+    return [];
   }
 
-  async saveField(field) {
+  async saveField(field, skipEnsure = false) {
+    if (!skipEnsure) {
+      await this.ensureCoreDefaultsSeeded();
+    }
     const key = (field.fieldKey || field.key || '').trim().replace(/[^A-Za-z0-9_]/g, '');
     if (!key) throw new Error('A field key is required.');
     const type = FIELD_TYPES.includes(field.fieldType || field.type) ? (field.fieldType || field.type) : 'text';
@@ -258,7 +312,7 @@ class AdmissionService {
       fieldKey: key,
       label: field.label || key,
       fieldType: type,
-      section: field.section || 'General',
+      section: field.section || 'General Information',
       placeholder: field.placeholder || '',
       helpText: field.helpText || '',
       options: Array.isArray(field.options) ? field.options : [],
@@ -273,23 +327,49 @@ class AdmissionService {
     return dbService.delete('admission_form_fields', id);
   }
 
-  async seedDefaultFields() {
-    const existing = await this.listAllFields();
-    if (existing.length) return existing.length;
-    let order = 1;
+  async seedDefaultFields(force = false) {
+    const existing = await dbService.select('admission_form_fields');
+    const existingKeys = new Set((existing || []).map(f => (f.fieldKey || f.key || '').trim().toLowerCase()));
+    let maxOrder = (existing || []).reduce((max, f) => Math.max(max, f.displayOrder || 0), 0);
+    let seeded = 0;
     for (const f of DEFAULT_FIELDS) {
-      // eslint-disable-next-line no-await-in-loop
-      await this.saveField({ ...f, fieldKey: f.key, fieldType: f.type, displayOrder: order });
-      order += 1;
+      const k = (f.key || '').trim().toLowerCase();
+      if (force || !existingKeys.has(k)) {
+        maxOrder += 1;
+        const record = {
+          id: `fld-${f.key}`,
+          fieldKey: f.key,
+          label: f.label,
+          fieldType: f.type,
+          section: f.section || 'General Information',
+          placeholder: f.placeholder || '',
+          helpText: f.helpText || '',
+          options: Array.isArray(f.options) ? f.options : [],
+          required: !!f.required,
+          isActive: true,
+          displayOrder: f.order || maxOrder
+        };
+        // eslint-disable-next-line no-await-in-loop
+        await dbService.upsert('admission_form_fields', record);
+        existingKeys.add(k);
+        seeded += 1;
+      }
     }
-    return DEFAULT_FIELDS.length;
+    return seeded;
   }
 
   /* ---------------- Fees ---------------- */
 
+  async ensureCoreFeesSeeded() {
+    const existing = await dbService.select('admission_fees');
+    if (!existing || existing.length === 0) {
+      await this.seedDefaultFees();
+    }
+  }
+
   async listFees() {
     const rows = await dbService.select('admission_fees');
-    const active = rows
+    const active = (rows || [])
       .filter((f) => f.isActive !== false)
       .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
     if (active.length) return active;
@@ -306,10 +386,13 @@ class AdmissionService {
 
   async listAllFees() {
     const rows = await dbService.select('admission_fees');
-    return rows.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+    return (rows || []).sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
   }
 
-  async saveFee(fee) {
+  async saveFee(fee, skipEnsure = false) {
+    if (!skipEnsure) {
+      await this.ensureCoreFeesSeeded();
+    }
     const record = {
       id: fee.id || `fee-${randomToken(6)}`,
       name: fee.name || 'Fee Item',
@@ -333,7 +416,7 @@ class AdmissionService {
     let order = 1;
     for (const f of DEFAULT_FEES) {
       // eslint-disable-next-line no-await-in-loop
-      await this.saveFee({ ...f, displayOrder: order });
+      await this.saveFee({ ...f, displayOrder: order }, true);
       order += 1;
     }
     return DEFAULT_FEES.length;
