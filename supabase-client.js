@@ -90,8 +90,13 @@ class SupabaseDataService {
           await this.client.from(item.collection).delete().eq('id', item.payload.id);
         }
       } catch (err) {
-        console.warn(`[Offline Sync] Item ${item.id} retry deferred:`, err.message);
-        remaining.push(item);
+        const isRls = /row-level security|policy|permission denied|42501|403|unauthorized/i.test(err.message || '') || err.code === '42501';
+        if (!isRls) {
+          console.warn(`[Offline Sync] Item ${item.id} retry deferred:`, err.message);
+          remaining.push(item);
+        } else {
+          console.warn(`[Offline Sync] Dropped ${item.collection} item ${item.id} due to cloud policy restriction:`, err.message);
+        }
       }
     }
 
@@ -106,10 +111,23 @@ class SupabaseDataService {
     try {
       const demoKeys = [
         'tms_seeded_v3',
-        'tms_offline_queue',
         'tms_mock_users'
       ];
       demoKeys.forEach(k => localStorage.removeItem(k));
+
+      // Clear any stuck RLS-blocked queue entries from offline queue
+      const rawQueue = localStorage.getItem('tms_offline_queue');
+      if (rawQueue) {
+        try {
+          const parsed = JSON.parse(rawQueue);
+          if (Array.isArray(parsed)) {
+            const cleaned = parsed.filter(item => item.collection !== 'app_settings');
+            localStorage.setItem('tms_offline_queue', JSON.stringify(cleaned));
+          }
+        } catch (_) {
+          localStorage.removeItem('tms_offline_queue');
+        }
+      }
 
       const collections = [
         'assignments',
@@ -301,9 +319,14 @@ class SupabaseDataService {
           .upsert(rowToDb(enriched), { onConflict });
         if (error) throw error;
       } catch (e) {
-        console.error(`Supabase upsert FAILED for ${collection}:`, e.message);
-        this.addToQueue('upsert', collection, enriched);
-        return { ...enriched, _syncError: e.message, _queued: true };
+        const isRlsError = /row-level security|policy|permission denied|42501|403|unauthorized/i.test(e.message || '') || e.code === '42501';
+        if (!isRlsError) {
+          console.error(`Supabase upsert FAILED for ${collection}:`, e.message);
+          this.addToQueue('upsert', collection, enriched);
+        } else {
+          console.warn(`Supabase upsert for ${collection} stored locally (cloud policy restricted):`, e.message);
+        }
+        return { ...enriched, _syncError: e.message, _queued: !isRlsError };
       }
     } else {
       this.addToQueue('upsert', collection, enriched);
