@@ -5502,39 +5502,84 @@ a {
 .att-status-btn.btn-e.active { background: #3B82F6; border-color: #3B82F6; color: #FFFFFF; }
 
 
-/* TMS Breadcrumbs Horizontal Single-Line Styling */
-.tms-breadcrumbs {
-  margin-bottom: 8px !important;
-  display: block !important;
+/* TMS Universal Luxury Page Header Card Layout */
+.tms-page-header {
+  background: #FFFFFF !important;
+  border: 1px solid #E2E8F0 !important;
+  border-radius: 20px !important;
+  padding: 22px 26px !important;
+  margin-bottom: 24px !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04), 0 6px 18px rgba(15, 23, 42, 0.03) !important;
+  position: relative !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+  transition: all 0.2s ease !important;
 }
-.tms-breadcrumbs-list {
+
+.tms-page-header::before {
+  content: "" !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  bottom: 0 !important;
+  width: 5px !important;
+  background: linear-gradient(180deg, #10B981 0%, #059669 45%, #0E623B 100%) !important;
+  border-top-left-radius: 20px !important;
+  border-bottom-left-radius: 20px !important;
+}
+
+.tms-page-header-row {
   display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  flex-wrap: wrap !important;
+  gap: 18px !important;
+  width: 100% !important;
+}
+
+.tms-page-header-content {
+  flex: 1 1 320px !important;
+  min-width: 0 !important;
+}
+
+/* Breadcrumbs Pill Trail */
+.tms-breadcrumbs {
+  margin-bottom: 14px !important;
+  display: inline-flex !important;
+}
+
+.tms-breadcrumbs-list {
+  display: inline-flex !important;
   flex-direction: row !important;
   align-items: center !important;
   gap: 6px !important;
   list-style: none !important;
   list-style-type: none !important;
-  padding: 0 !important;
+  padding: 4px 14px !important;
   margin: 0 !important;
-  font-size: 0.82rem !important;
-  color: #64748B !important;
+  background: #F8FAFC !important;
+  border: 1px solid #E2E8F0 !important;
+  border-radius: 9999px !important;
   flex-wrap: wrap !important;
 }
+
 .tms-breadcrumbs-list li,
 .tms-breadcrumbs-list .tms-breadcrumb-item {
   display: inline-flex !important;
   align-items: center !important;
   gap: 6px !important;
-  list-style: none !important;
-  list-style-type: none !important;
   margin: 0 !important;
   padding: 0 !important;
+  list-style: none !important;
+  list-style-type: none !important;
 }
+
 .tms-breadcrumbs-list li::marker,
 .tms-breadcrumbs-list .tms-breadcrumb-item::marker {
   display: none !important;
   content: "" !important;
 }
+
 .tms-breadcrumb-link {
   display: inline-flex !important;
   align-items: center !important;
@@ -5542,16 +5587,142 @@ a {
   color: #64748B !important;
   text-decoration: none !important;
   font-weight: 600 !important;
-  transition: color 0.15s ease !important;
+  font-size: 0.8rem !important;
+  transition: all 0.15s ease !important;
 }
+
 .tms-breadcrumb-link:hover {
   color: #16A34A !important;
 }
-.tms-breadcrumb-current {
-  font-weight: 700 !important;
-  color: #0F172A !important;
+
+.tms-breadcrumb-icon {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #16A34A !important;
 }
 
+.tms-breadcrumb-icon svg,
+.tms-breadcrumb-icon i {
+  width: 13px !important;
+  height: 13px !important;
+}
+
+.tms-breadcrumb-sep {
+  display: inline-flex !important;
+  align-items: center !important;
+  color: #94A3B8 !important;
+  opacity: 0.7 !important;
+}
+
+.tms-breadcrumb-sep svg,
+.tms-breadcrumb-sep i {
+  width: 12px !important;
+  height: 12px !important;
+}
+
+.tms-breadcrumb-current {
+  font-weight: 700 !important;
+  font-size: 0.8rem !important;
+  background: #E8F5E9 !important;
+  color: #15803D !important;
+  padding: 2px 10px !important;
+  border-radius: 9999px !important;
+}
+
+/* Page Title & Subtitle */
+.tms-page-title-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 16px !important;
+}
+
+.tms-page-header-icon {
+  width: 50px !important;
+  height: 50px !important;
+  border-radius: 16px !important;
+  background: linear-gradient(135deg, #10B981, #059669 45%, #0E623B) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #FFFFFF !important;
+  flex-shrink: 0 !important;
+  box-shadow: 0 6px 16px rgba(16, 185, 129, 0.28) !important;
+}
+
+.tms-page-header-icon svg,
+.tms-page-header-icon i {
+  width: 24px !important;
+  height: 24px !important;
+}
+
+.tms-page-title-text-wrap {
+  flex: 1 !important;
+  min-width: 0 !important;
+}
+
+.tms-page-title-wrap {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  flex-wrap: wrap !important;
+}
+
+.tms-page-title {
+  font-size: 1.7rem !important;
+  font-weight: 800 !important;
+  color: #0F172A !important;
+  letter-spacing: -0.028em !important;
+  line-height: 1.2 !important;
+  margin: 0 !important;
+}
+
+.tms-page-badge {
+  font-size: 0.76rem !important;
+  font-weight: 700 !important;
+  padding: 4px 12px !important;
+  border-radius: 9999px !important;
+}
+
+.tms-page-subtitle {
+  font-size: 0.9rem !important;
+  color: #64748B !important;
+  font-weight: 500 !important;
+  margin: 5px 0 0 0 !important;
+  line-height: 1.4 !important;
+}
+
+/* Page Header Actions */
+.tms-page-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  flex-wrap: wrap !important;
+}
+
+@media (max-width: 768px) {
+  .tms-page-header {
+    padding: 16px 18px !important;
+    margin-bottom: 18px !important;
+    border-radius: 16px !important;
+  }
+  .tms-page-title {
+    font-size: 1.35rem !important;
+  }
+  .tms-page-header-icon {
+    width: 42px !important;
+    height: 42px !important;
+    border-radius: 12px !important;
+  }
+  .tms-page-header-icon svg,
+  .tms-page-header-icon i {
+    width: 20px !important;
+    height: 20px !important;
+  }
+  .tms-page-actions {
+    width: 100% !important;
+  }
+}
 
 /* TMS Custom Dropdown Engine Styles */
 .tms-custom-select-native-hidden {
@@ -5699,227 +5870,56 @@ a {
 
 
 /* TMS Custom Datepicker Engine Styles */
-.tms-datepicker-native-hidden {
-  position: absolute !important;
-  width: 1px !important;
-  height: 1px !important;
-  padding: 0 !important;
-  margin: -1px !important;
-  overflow: hidden !important;
-  clip: rect(0, 0, 0, 0) !important;
-  white-space: nowrap !important;
-  border: 0 !important;
-  opacity: 0 !important;
-  pointer-events: none !important;
-}
-
-.tms-datepicker-wrapper {
-  position: relative !important;
-  display: block !important;
-  width: 100% !important;
-  box-sizing: border-box !important;
-}
-
-.tms-datepicker-trigger {
-  width: 100% !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  padding: 10px 18px !important;
-  background: #FFFFFF !important;
-  border: 1.5px solid #E2E8F0 !important;
-  border-radius: 9999px !important;
-  color: #0F172A !important;
-  font-family: inherit !important;
-  font-size: 0.92rem !important;
-  font-weight: 600 !important;
-  cursor: pointer !important;
-  outline: none !important;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04) !important;
-  box-sizing: border-box !important;
-  text-align: left !important;
-}
-
-.tms-datepicker-trigger:hover {
-  border-color: #10B981 !important;
-  background: #FAFAFA !important;
-}
-
-.tms-datepicker-wrapper.is-open .tms-datepicker-trigger {
-  border-color: #10B981 !important;
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15) !important;
-}
-
-.tms-datepicker-label {
-  overflow: hidden !important;
-  text-overflow: ellipsis !important;
-  white-space: nowrap !important;
-  flex: 1 !important;
-}
-
-.tms-datepicker-label.is-placeholder {
-  color: #94A3B8 !important;
-  font-weight: 500 !important;
-}
-
-.tms-datepicker-icon {
-  display: inline-flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  margin-left: 8px !important;
-  flex-shrink: 0 !important;
-  color: #10B981 !important;
-}
-
-.tms-datepicker-popup {
-  display: none !important;
-  position: absolute !important;
-  top: calc(100% + 8px) !important;
-  left: 0 !important;
-  z-index: 10050 !important;
-  background: #FFFFFF !important;
-  border: 1.5px solid #E2E8F0 !important;
-  border-radius: 24px !important;
-  padding: 20px !important;
-  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.14), 0 4px 16px rgba(0, 0, 0, 0.06) !important;
-  width: 320px !important;
-  box-sizing: border-box !important;
-}
-
-.tms-datepicker-wrapper.is-open .tms-datepicker-popup {
-  display: block !important;
-  animation: tmsDpPopupFade 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
-}
-
-.tms-datepicker-wrapper.is-open-above .tms-datepicker-popup {
-  top: auto !important;
-  bottom: calc(100% + 8px) !important;
-}
-
-@keyframes tmsDpPopupFade {
-  from { opacity: 0; transform: translateY(-6px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.tms-datepicker-header {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: space-between !important;
-  margin-bottom: 16px !important;
-}
-
-.tms-datepicker-badge-3d {
-  width: 52px !important;
-  height: 52px !important;
-  border-radius: 16px !important;
-  background: linear-gradient(135deg, #10B981, #047857) !important;
-  box-shadow: 0 6px 14px rgba(16, 185, 129, 0.35) !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  color: #FFFFFF !important;
-  font-size: 1.4rem !important;
-  font-weight: 800 !important;
-  position: relative !important;
-  flex-shrink: 0 !important;
-}
-
-.tms-datepicker-badge-3d::before {
-  content: "" !important;
-  position: absolute !important;
-  top: 4px !important;
-  left: 12px !important;
-  width: 6px !important;
-  height: 6px !important;
-  border-radius: 50% !important;
-  background: #FFFFFF !important;
-  box-shadow: 22px 0 0 #FFFFFF !important;
-}
-
-.tms-dp-nav-pill {
-  padding: 5px 12px !important;
-  background: #F1F5F9 !important;
-  border: 1px solid #E2E8F0 !important;
-  border-radius: 9999px !important;
-  font-size: 0.82rem !important;
-  font-weight: 700 !important;
-  color: #1E293B !important;
-  cursor: pointer !important;
-  display: inline-flex !important;
-  align-items: center !important;
-  gap: 4px !important;
-  transition: all 0.15s ease !important;
-}
-
-.tms-dp-nav-pill:hover {
-  background: #E2E8F0 !important;
-  color: #0F172A !important;
-}
-
-.tms-dp-weekdays {
-  display: grid !important;
-  grid-template-columns: repeat(7, 1fr) !important;
-  gap: 2px !important;
-  text-align: center !important;
-  font-size: 0.68rem !important;
-  font-weight: 800 !important;
-  letter-spacing: 0.05em !important;
-  color: #475569 !important;
-  margin-bottom: 8px !important;
-}
-
-.tms-dp-days-grid {
-  display: grid !important;
-  grid-template-columns: repeat(7, 1fr) !important;
-  gap: 4px !important;
-  margin-bottom: 16px !important;
-}
-
-.tms-dp-day-cell {
-  aspect-ratio: 1 !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  border-radius: 10px !important;
-  font-size: 0.82rem !important;
-  font-weight: 600 !important;
-  color: #1E293B !important;
-  cursor: pointer !important;
-  transition: all 0.12s ease !important;
-  user-select: none !important;
-}
-
-.tms-dp-day-cell:hover:not(.is-empty):not(.is-other-month) {
-  background: #F1F5F9 !important;
-}
-
-.tms-dp-day-cell.is-other-month {
-  color: #CBD5E1 !important;
-}
-
-.tms-dp-day-cell.is-selected {
-  background: #0E623B !important;
-  color: #FFFFFF !important;
-  font-weight: 800 !important;
-  box-shadow: 0 4px 10px rgba(14, 98, 59, 0.35) !important;
-  border-radius: 12px !important;
-}
-
-.tms-dp-confirm-btn {
-  width: 100% !important;
-  padding: 10px !important;
-  background: #0E623B !important;
-  color: #FFFFFF !important;
-  border: none !important;
-  border-radius: 14px !important;
-  font-weight: 700 !important;
-  font-size: 0.9rem !important;
-  cursor: pointer !important;
-  transition: all 0.15s ease !important;
-  box-shadow: 0 4px 12px rgba(14, 98, 59, 0.25) !important;
-}
-
-.tms-dp-confirm-btn:hover {
-  background: #0B4E2F !important;
-}
+.tps-date-input-wrapper{position:relative;display:flex;align-items:center;width:100%;min-width:0;box-sizing:border-box}
+.tps-date-input-field{cursor:pointer;background-color:var(--bg-surface);padding-right:2.2rem!important;width:100%!important;min-width:0!important;flex:1 1 0%!important;box-sizing:border-box!important}
+.tps-date-icon{position:absolute;right:.75rem;color:var(--brand-primary);pointer-events:none;display:flex;align-items:center;justify-content:center}
+.tps-calendar-popup{position:absolute;z-index:99999;background:#fff!important;border-radius:28px!important;border:1px solid rgba(226,232,240,.9)!important;box-shadow:0 24px 55px #0f172a2e,0 6px 16px #0f172a0f!important;padding:1.6rem 1.6rem 1.4rem!important;width:340px!important;-webkit-user-select:none;user-select:none;animation:tpsScaleFadeIn .15s cubic-bezier(.16,1,.3,1);font-family:var(--font-sans);box-sizing:border-box}
+.tps-cal-top-section{display:flex!important;align-items:flex-start!important;justify-content:space-between!important;gap:.75rem!important;margin-bottom:.55rem!important}
+.tps-cal-top-left{display:flex!important;flex-direction:column!important;gap:.65rem!important}
+.tps-cal-main-title{font-size:1.45rem!important;font-weight:800!important;color:#0f172a!important;letter-spacing:-.02em!important;line-height:1.15!important}
+.tps-cal-pills-row{display:flex!important;align-items:center!important;gap:.5rem!important}
+.tps-cal-pill-btn{display:inline-flex!important;align-items:center!important;gap:.4rem!important;background:#f1f5f9!important;border:1px solid #E2E8F0!important;border-radius:12px!important;padding:.45rem .8rem!important;font-size:.85rem!important;font-weight:700!important;color:#1e293b!important;cursor:pointer!important;transition:all .15s ease!important;outline:none!important}
+.tps-cal-pill-btn:hover{background:#e2e8f0!important;border-color:#cbd5e1!important;color:#0f5132!important}
+.tps-cal-pill-btn svg{color:#64748b!important;transition:transform .15s ease!important}
+.tps-cal-pill-btn:hover svg{color:#0f5132!important;transform:translateY(1px)}
+.tps-cal-badge-card{position:relative!important;width:62px!important;height:64px!important;background:linear-gradient(145deg,#10b981,#059669 45%,#0f5132)!important;border-radius:16px!important;display:flex!important;align-items:center!important;justify-content:center!important;box-shadow:0 10px 22px #0f513252,inset 0 1px 1px #fff6!important;flex-shrink:0!important;margin-top:2px!important}
+.tps-cal-badge-tabs{position:absolute!important;top:-6px!important;left:0!important;right:0!important;display:flex!important;justify-content:space-around!important;padding:0 12px!important}
+.tps-cal-badge-tabs .tps-cal-tab{width:7px!important;height:11px!important;background:#fff!important;border-radius:3.5px!important;box-shadow:0 1px 3px #00000040!important}
+.tps-cal-badge-num{font-size:1.7rem!important;font-weight:800!important;color:#fff!important;letter-spacing:-.03em!important;line-height:1!important;text-shadow:0 1px 2px rgba(0,0,0,.2)!important}
+.tps-cal-weekdays{display:grid!important;grid-template-columns:repeat(7,1fr)!important;text-align:center!important;margin:1.25rem 0 .55rem!important}
+.tps-cal-weekdays span{font-size:.74rem!important;font-weight:700!important;color:#1e293b!important;letter-spacing:.03em!important;padding:.2rem 0!important}
+.tps-cal-weekdays span.weekday-sun{color:#059669!important;font-weight:800!important}
+.tps-cal-days-grid{display:grid!important;grid-template-columns:repeat(7,1fr)!important;gap:4px!important;row-gap:6px!important}
+.tps-cal-day{width:38px!important;height:38px!important;display:flex!important;align-items:center!important;justify-content:center!important;font-size:.86rem!important;font-weight:600!important;cursor:pointer!important;border-radius:12px!important;transition:all .15s ease!important;margin:0 auto!important;position:relative!important;box-sizing:border-box!important}
+.tps-cal-day.current-month{color:#0f172a!important}
+.tps-cal-day.other-month{color:#cbd5e1!important;font-weight:400!important}
+.tps-cal-day.col-sun:not(.selected):not(.other-month){color:#059669!important;font-weight:700!important}
+.tps-cal-day:hover:not(.selected){background:#ecfdf5!important;color:#047857!important;transform:scale(1.06)!important}
+.tps-cal-day.selected{background:#0f5132!important;color:#fff!important;font-weight:800!important;border-radius:12px!important;box-shadow:0 6px 14px #0f513266!important;transform:scale(1.04)!important}
+.tps-cal-day.today:not(.selected){color:#059669!important;font-weight:800!important}
+.tps-cal-day.today:not(.selected):after{content:""!important;position:absolute!important;bottom:3px!important;width:14px!important;height:2.5px!important;background:#059669!important;border-radius:2px!important}
+.tps-cal-actions{display:flex!important;justify-content:center!important;margin-top:1.35rem!important}
+.tps-cal-confirm-btn{background:linear-gradient(135deg,#059669,#0f5132)!important;color:#fff!important;font-family:var(--font-sans)!important;font-size:.95rem!important;font-weight:700!important;padding:.75rem 2.4rem!important;border-radius:16px!important;border:none!important;cursor:pointer!important;box-shadow:0 10px 24px #0f513252!important;transition:all .15s ease!important;min-width:180px!important;text-align:center!important;outline:none!important}
+.tps-cal-confirm-btn:hover{transform:translateY(-2px)!important;box-shadow:0 14px 28px #0f51326b!important;background:linear-gradient(135deg,#10b981,#047857)!important}
+.tps-cal-confirm-btn:active{transform:translateY(1px)!important}
+.tps-cal-header{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:.5rem!important}
+.tps-cal-title{font-size:.95rem!important;font-weight:700!important;color:#0f172a!important}
+.tps-cal-nav-btn{width:32px!important;height:32px!important;border-radius:50%!important;border:1px solid #E2E8F0!important;background:#fff!important;color:#334155!important;display:flex!important;align-items:center!important;justify-content:center!important;cursor:pointer!important;transition:all .15s ease!important;padding:0!important}
+.tps-cal-nav-btn:hover{background:#f1f5f9!important;color:#0f172a!important;border-color:#cbd5e1!important}
+.tps-cal-divider{height:1px!important;background:#f1f5f9!important;margin:.75rem 0 .5rem!important}
+.tps-cal-grid-select{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:.5rem!important;padding:.35rem 0!important}
+.tps-cal-grid-item{display:flex!important;align-items:center!important;justify-content:center!important;padding:.8rem .5rem!important;font-size:.88rem!important;font-weight:600!important;color:#1e293b!important;background:#f8fafc!important;border:1px solid #E2E8F0!important;border-radius:12px!important;cursor:pointer!important;transition:all .15s ease!important;text-align:center!important}
+.tps-cal-grid-item:hover{background:#ecfdf5!important;border-color:#a7f3d0!important;color:#047857!important;transform:translateY(-1px)!important}
+.tps-cal-grid-item.selected{background:#0f5132!important;color:#fff!important;border-color:#0f5132!important;box-shadow:0 4px 10px #0f51324d!important}
+.tps-cal-footer{display:flex!important;align-items:center!important;justify-content:space-between!important}
+.tps-cal-today-action{font-size:.85rem!important;font-weight:700!important;color:#059669!important;background:transparent!important;border:none!important;cursor:pointer!important;padding:0!important;transition:color .15s ease!important}
+.tps-cal-today-action:hover{color:#047857!important;text-decoration:underline!important}
+.tps-date-input-wrapper{flex:1 1 0%!important;min-width:0!important;height:34px!important}
+.tps-date-input-field{height:34px!important;font-size:.8rem!important;padding:.35rem .55rem!important}
+.tps-date-icon{right:.55rem!important}
+.tps-date-icon svg{width:14px!important;height:14px!important}
+.tps-date-input-field{font-size:.825rem!important}
+.tps-date-input-wrapper{width:100%!important;min-width:0!important;max-width:100%!important;box-sizing:border-box!important}
+.tps-date-input-field,.cal-modal-date-input{width:100%!important;min-width:0!important;max-width:100%!important;flex:1 1 0%!important;box-sizing:border-box!important;height:38px!important;padding-left:.65rem!important;padding-right:2.1rem!important;font-size:.82rem!important;letter-spacing:-.01em!important}
+.tps-date-icon{right:.65rem!important}
+.tps-date-picker-wrap,.is-invalid.tps-date-input-field{border-color:#ef4444!important;background-color:#fef2f2!important;box-shadow:0 0 0 3px #ef444440!important}
