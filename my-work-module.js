@@ -20,7 +20,7 @@ export class MyWorkModule {
       <div class="tms-content-wrapper">
         ${UIComponents.renderPageHeader({
           title: 'Staff Workspace',
-          subtitle: `Welcome back, ${esc(user.name || 'Faculty Member')} (${esc(user.department || 'Academics')})`,
+          subtitle: `Welcome back, ${esc(user.name || 'Faculty Member')} (${esc((user.department && user.department !== '—') ? user.department : (user.title && user.title !== '—') ? user.title : ((user.isSuperAdmin || user.role === 'super_admin') ? 'Executive Governance' : 'Academics'))})`,
           icon: 'briefcase',
           breadcrumbs: [
             { label: 'Campus Core' },
