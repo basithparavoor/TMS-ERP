@@ -84,7 +84,7 @@
               </table>
             </div>
 
-            <div class="card">
+            <div class="card" style="margin-bottom: 24px;">
               <div class="card-header">
                 <h3 class="card-title">Term Assessment Reports</h3>
                 <span class="badge badge-info" id="portal-exam-status">Evaluation</span>
@@ -93,6 +93,27 @@
               <div id="portal-exam-rows" style="text-align: center; color: var(--text-muted); padding: 20px;">
                 <i data-lucide="inbox" style="width:40px;height:40px;display:block;margin:0 auto 10px;"></i>
                 No exam records published for this session yet.
+              </div>
+            </div>
+
+            <!-- Student Leave Governance Card -->
+            <div class="card">
+              <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                <div>
+                  <h3 class="card-title">Leave Applications &amp; Gate Passes</h3>
+                  <p style="font-size: 0.82rem; color: var(--text-muted); margin: 2px 0 0 0;">
+                    Official leave requests, warden approvals &amp; issued security outpasses.
+                  </p>
+                </div>
+                <button type="button" class="btn btn-primary btn-sm" id="btn-portal-apply-leave" style="background:#0E623B; border-color:#0E623B; font-weight:700; border-radius:8px; display:inline-flex; align-items:center; gap:6px;">
+                  <i data-lucide="plus"></i> Apply for Leave
+                </button>
+              </div>
+              <div id="portal-leave-rows" style="margin-top: 14px;">
+                <div style="text-align: center; color: var(--text-muted); padding: 20px;">
+                  <i data-lucide="inbox" style="width:36px; height:36px; display:block; margin:0 auto 10px; color: var(--text-subtle);"></i>
+                  Loading your leave applications...
+                </div>
               </div>
             </div>
           </div>
@@ -130,6 +151,7 @@
     import { TMS_CONFIG } from './config.js';
     import { brandingService } from './branding-service.js';
     import { QRCodeGenerator } from './qr-generator.js';
+    import { StudentLeaveService } from './student-leave-service.js';
 
     (async () => {
       brandingService.refresh();
