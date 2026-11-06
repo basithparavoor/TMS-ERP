@@ -407,6 +407,7 @@ export class AdminModule {
         <i data-lucide="${st.icon}" style="width: 14px; height: 14px;"></i>
         <span>${st.label}</span>
         ${st.showPendingBadge && pendingCount > 0 ? `<span class="badge" style="background:#ef4444; color:#fff; font-size:0.68rem; padding:1px 6px; border-radius:10px; margin-left:4px;">${pendingCount}</span>` : ''}
+        ${st.showInquiryBadge && (this._newInquiriesCount || 0) > 0 ? `<span class="badge" style="background:#16a34a; color:#fff; font-size:0.68rem; padding:1px 6px; border-radius:10px; margin-left:4px;">${this._newInquiriesCount} New</span>` : ''}
       </button>
     `).join('');
 
@@ -440,7 +441,8 @@ export class AdminModule {
     if (!tabContent) return;
 
     try {
-      if (tabKey.startsWith('website-')) await AdminWebsiteCms.render(tabContent, tabKey);
+      if (tabKey === 'inquiries' || tabKey === 'website-inquiries') await this.renderInquiriesTab(tabContent);
+      else if (tabKey.startsWith('website-')) await AdminWebsiteCms.render(tabContent, tabKey);
       else if (tabKey.startsWith('hostel-')) {
         await AdminWebsiteCms.render(tabContent, 'website-hostel');
         const targetMap = {
