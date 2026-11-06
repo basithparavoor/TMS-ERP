@@ -244,6 +244,31 @@
       box-shadow: 0 2px 8px rgba(22, 163, 74, 0.3);
     }
 
+    .btn-inst-admission-footer {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #ffffff !important;
+      padding: 0 20px;
+      height: 42px;
+      border-radius: 9999px;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 0.88rem;
+      text-decoration: none;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .btn-inst-admission-footer:hover {
+      background: rgba(255, 255, 255, 0.16);
+      border-color: #4ade80;
+      color: #4ade80 !important;
+      transform: translateY(-1.5px);
+      box-shadow: 0 4px 14px rgba(74, 222, 128, 0.2);
+    }
+
     .btn-inst-apply {
       display: inline-flex;
       align-items: center;
@@ -2079,10 +2104,10 @@
 
       <!-- Action Buttons -->
       <div class="inst-nav-actions">
-        <button class="btn-inst-login" id="btn-open-institutional-login" title="Login">
+        <a href="/login" class="btn-inst-login" id="btn-open-institutional-login" title="Login" style="text-decoration:none;">
           <i data-lucide="lock" style="width:15px; height:15px;"></i>
           <span id="nav-login-btn-text">Login</span>
-        </button>
+        </a>
         <button class="mobile-menu-toggle" id="mobile-menu-btn" title="Toggle Navigation Menu" aria-label="Open Navigation Menu">
           <i data-lucide="menu" style="width:20px; height:20px;"></i>
         </button>
@@ -2135,10 +2160,10 @@
       </div>
 
       <div class="mobile-nav-actions-bottom">
-        <button id="btn-mobile-login" class="btn-inst-login mobile-drawer-btn">
+        <a href="/login" id="btn-mobile-login" class="btn-inst-login mobile-drawer-btn" style="text-decoration:none;">
           <i data-lucide="lock" style="width:16px; height:16px;"></i>
           <span>Login</span>
-        </button>
+        </a>
         <a href="/admission" class="mobile-drawer-apply-btn">
           <i data-lucide="pen-tool" style="width:16px; height:16px;"></i>
           <span>Apply Online (2026–2027)</span>
@@ -2551,10 +2576,10 @@
             <i data-lucide="pen-tool" style="width:18px; height:18px;"></i>
             <span id="cta-btn-text">Apply Online Today</span>
           </a>
-          <button class="btn-inst-login" id="cta-login-btn" style="background:rgba(15, 23, 42, 0.4); border:1px solid rgba(255, 255, 255, 0.4);">
+          <a href="/login" class="btn-inst-login" id="cta-login-btn" style="background:rgba(15, 23, 42, 0.4); border:1px solid rgba(255, 255, 255, 0.4); text-decoration:none;">
             <i data-lucide="lock" style="width:16px; height:16px;"></i>
-            <span>Portal Login</span>
-          </button>
+            <span>Login</span>
+          </a>
         </div>
       </div>
     </div>
@@ -2703,14 +2728,16 @@
 
       <div class="footer-col">
         <h4>Institutional Portals</h4>
-        <ul>
-          <li><a href="/login" class="footer-portal-link">🏛️ Staff &amp; Faculty ERP</a></li>
-          <li><a href="/student">🎓 Student Academic Portal</a></li>
-          <li><a href="/parent">👨‍👩‍👧 Parent Guardian Portal</a></li>
-          <li><a href="/teacher">📚 Faculty Teaching Desk</a></li>
-          <li><a href="/admin">🛡️ Administration Console</a></li>
-          <li><a href="/admission">📝 Online Admission Application</a></li>
-        </ul>
+        <div style="display:flex; flex-direction:column; gap:10px; margin-top:14px; max-width:240px;">
+          <a href="/login" class="btn-inst-login" id="footer-login-btn" style="width:100%; justify-content:center; text-decoration:none; padding:11px 18px; font-weight:700;">
+            <i data-lucide="lock" style="width:15px; height:15px;"></i>
+            <span>Login</span>
+          </a>
+          <a href="/admission" class="btn-inst-admission-footer" style="width:100%;">
+            <i data-lucide="pen-tool" style="width:15px; height:15px; color:#4ade80;"></i>
+            <span>Admission Form</span>
+          </a>
+        </div>
       </div>
 
       <div class="footer-col">
@@ -2720,10 +2747,6 @@
           Under: Thaiba Heritage, Kolkata<br>
           Emergency: <span id="footer-emergency">+91 8653382851</span>
         </p>
-        <button class="btn btn-secondary btn-sm" id="footer-login-btn" style="background:rgba(255, 255, 255, 0.08); border:1px solid rgba(255, 255, 255, 0.18); color:#fff; width:100%; justify-content:center; padding:10px;">
-          <i data-lucide="lock" style="width:14px; height:14px; color:#4ade80;"></i>
-          <span>Institutional Login</span>
-        </button>
       </div>
     </div>
 
@@ -2734,98 +2757,6 @@
       </div>
     </div>
   </footer>
-
-  <!-- ==========================================================================
-       INSTITUTIONAL PORTALS & LOGIN MODAL
-       ========================================================================== -->
-  <div class="portal-modal-backdrop" id="portal-modal" role="dialog" aria-modal="true">
-    <div class="portal-modal-box">
-      <div class="portal-modal-header">
-        <button class="portal-modal-close-btn" id="btn-close-portal-modal" title="Close Modal">
-          <i data-lucide="x" style="width:18px; height:18px;"></i>
-        </button>
-        <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
-          <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#22c55e;"></span>
-          <span style="font-size:0.78rem; font-weight:800; color:#4ade80; text-transform:uppercase; letter-spacing:0.06em;">Secure Access Hub</span>
-        </div>
-        <h2 style="font-family:var(--font-display); font-size:1.65rem; font-weight:800; margin-bottom:6px;">Institutional ERP &amp; Portals</h2>
-        <p style="font-size:0.88rem; color:#cbd5e1;">Select your institutional portal to sign in or view your campus workspace.</p>
-      </div>
-
-      <div class="portal-cards-grid">
-        <!-- Faculty & Staff ERP Login -->
-        <a href="/login" class="portal-card-btn" id="portal-btn-staff">
-          <div class="portal-card-icon" style="background:#dcfce7; color:#16a34a;">
-            <i data-lucide="layout-dashboard" style="width:22px; height:22px;"></i>
-          </div>
-          <div>
-            <div class="portal-card-title">Faculty &amp; Staff ERP</div>
-            <div class="portal-card-desc">For Teachers, Coordinators, Accounts, HR &amp; Staff members.</div>
-          </div>
-        </a>
-
-        <!-- Student Portal -->
-        <a href="/student" class="portal-card-btn" id="portal-btn-student">
-          <div class="portal-card-icon" style="background:#e0e7ff; color:#4f46e5;">
-            <i data-lucide="graduation-cap" style="width:22px; height:22px;"></i>
-          </div>
-          <div>
-            <div class="portal-card-title">Student Portal</div>
-            <div class="portal-card-desc">Timetables, assignments, exam reports, digital ID &amp; syllabus.</div>
-          </div>
-        </a>
-
-        <!-- Parent Portal -->
-        <a href="/parent" class="portal-card-btn" id="portal-btn-parent">
-          <div class="portal-card-icon" style="background:#fef3c7; color:#d97706;">
-            <i data-lucide="users" style="width:22px; height:22px;"></i>
-          </div>
-          <div>
-            <div class="portal-card-title">Parent Guardian Portal</div>
-            <div class="portal-card-desc">Attendance tracking, fee payment receipts, notices &amp; report cards.</div>
-          </div>
-        </a>
-
-        <!-- Teacher Portal -->
-        <a href="/teacher" class="portal-card-btn" id="portal-btn-teacher">
-          <div class="portal-card-icon" style="background:#fce7f3; color:#db2777;">
-            <i data-lucide="book-open-check" style="width:22px; height:22px;"></i>
-          </div>
-          <div>
-            <div class="portal-card-title">Teacher &amp; Faculty Desk</div>
-            <div class="portal-card-desc">Mark student attendance, gradebooks, syllabus &amp; homework.</div>
-          </div>
-        </a>
-
-        <!-- Administration Portal -->
-        <a href="/admin" class="portal-card-btn" id="portal-btn-admin">
-          <div class="portal-card-icon" style="background:#fee2e2; color:#dc2626;">
-            <i data-lucide="shield" style="width:22px; height:22px;"></i>
-          </div>
-          <div>
-            <div class="portal-card-title">Administration Console</div>
-            <div class="portal-card-desc">School administration, user management, audit trails &amp; website CMS.</div>
-          </div>
-        </a>
-
-        <!-- Online Admission Portal -->
-        <a href="/admission" class="portal-card-btn" id="portal-btn-admission">
-          <div class="portal-card-icon" style="background:#ccfbf1; color:#0d9488;">
-            <i data-lucide="pen-tool" style="width:22px; height:22px;"></i>
-          </div>
-          <div>
-            <div class="portal-card-title">Online Admission Application</div>
-            <div class="portal-card-desc">Submit new student admission forms for session 2026–27.</div>
-          </div>
-        </a>
-      </div>
-
-      <div style="background:#f8fafc; border-top:1px solid #e2e8f0; padding:16px 32px; display:flex; align-items:center; justify-content:space-between; font-size:0.8rem; color:#64748b;">
-        <span>Need assistance logging in? Contact Campus Office: <strong>+91 8653382851</strong></span>
-        <button class="btn btn-secondary btn-sm" id="btn-portal-modal-cancel">Cancel</button>
-      </div>
-    </div>
-  </div>
 
   <!-- Main Website Script Module -->
   <script type="module">
@@ -3380,51 +3311,7 @@
     }
 
     function bindEvents() {
-      const modal = document.getElementById('portal-modal');
-      const openBtn = document.getElementById('btn-open-institutional-login');
-      const heroBtn = document.getElementById('hero-login-btn');
-      const ctaLoginBtn = document.getElementById('cta-login-btn');
-      const footerLoginBtn = document.getElementById('footer-login-btn');
-      const mobileLoginBtn = document.getElementById('btn-mobile-login');
-      const closeBtn = document.getElementById('btn-close-portal-modal');
-      const cancelBtn = document.getElementById('btn-portal-modal-cancel');
-
-      const openModal = (e) => {
-        if (e) e.preventDefault();
-        if (modal) modal.classList.add('open');
-      };
-
-      const closeModal = () => {
-        if (modal) modal.classList.remove('open');
-      };
-
       const mobilePanel = document.getElementById('mobile-nav-panel');
-
-      if (openBtn) openBtn.addEventListener('click', openModal);
-      if (heroBtn) heroBtn.addEventListener('click', openModal);
-      if (ctaLoginBtn) ctaLoginBtn.addEventListener('click', openModal);
-      if (footerLoginBtn) footerLoginBtn.addEventListener('click', openModal);
-      if (mobileLoginBtn) {
-        mobileLoginBtn.addEventListener('click', (e) => {
-          if (mobilePanel) mobilePanel.style.display = 'none';
-          openModal(e);
-        });
-      }
-
-      if (closeBtn) closeBtn.addEventListener('click', closeModal);
-      if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
-
-      if (modal) {
-        modal.addEventListener('click', (e) => {
-          if (e.target === modal) closeModal();
-        });
-      }
-
-      document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && modal && modal.classList.contains('open')) {
-          closeModal();
-        }
-      });
 
       // Mobile Menu Toggle
       const mobileBtn = document.getElementById('mobile-menu-btn');
