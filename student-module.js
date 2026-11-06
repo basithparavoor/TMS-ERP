@@ -152,6 +152,7 @@ import { PermissionEngine, CAPABILITIES } from './permission-engine.js';
 import { downloadCsv, formatPdfFilename } from './export-utils.js';
 import { TMS_LOGO } from './logo.js';
 import { admissionService } from './admission-service.js';
+import { BiometricCredentialModal } from './biometric-credential-modal.js';
 
 
 export const STUDENT_IMPORT_FIELDS = [
@@ -1222,12 +1223,19 @@ export class StudentModule {
     `;
 
     const footerHtml = `
-      <button class="btn btn-secondary" id="btn-modal-edit-student" style="border-radius:12px; padding:10px 22px; font-weight:700;">
-        <i data-lucide="edit-3"></i> Edit Student Record
-      </button>
-      <button class="btn btn-secondary" id="btn-modal-del-student" style="border-radius:12px; padding:10px 22px; font-weight:700; color:#EF4444; border-color:#FCA5A5;">
-        <i data-lucide="trash-2"></i> Delete Student
-      </button>
+      <div style="display:flex; justify-content:space-between; align-items:center; width:100%; flex-wrap:wrap; gap:10px;">
+        <button class="btn btn-primary" id="btn-modal-enroll-biometrics" style="border-radius:12px; padding:10px 22px; font-weight:700; background:#0E623B; border-color:#0E623B;">
+          <i data-lucide="radio"></i> Smart Biometrics &amp; NFC
+        </button>
+        <div style="display:flex; gap:10px;">
+          <button class="btn btn-secondary" id="btn-modal-edit-student" style="border-radius:12px; padding:10px 20px; font-weight:700;">
+            <i data-lucide="edit-3"></i> Edit Student Record
+          </button>
+          <button class="btn btn-secondary" id="btn-modal-del-student" style="border-radius:12px; padding:10px 20px; font-weight:700; color:#EF4444; border-color:#FCA5A5;">
+            <i data-lucide="trash-2"></i> Delete
+          </button>
+        </div>
+      </div>
     `;
 
     UIComponents.openModal({
@@ -1235,6 +1243,18 @@ export class StudentModule {
       bodyHtml,
       footerHtml,
       maxWidth: '680px'
+    });
+
+    document.getElementById('btn-modal-enroll-biometrics')?.addEventListener('click', () => {
+      UIComponents.closeModal();
+      BiometricCredentialModal.open({
+        person: s,
+        type: 'student',
+        onSave: (updated) => {
+          Object.assign(s, updated);
+          StudentModule.render(container);
+        }
+      });
     });
 
     document.getElementById('btn-modal-edit-student')?.addEventListener('click', () => {
