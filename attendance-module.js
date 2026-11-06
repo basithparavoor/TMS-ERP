@@ -2044,26 +2044,47 @@ export class AttendanceModule {
       });
     });
 
-    // Mark all present
+    // Mark all present (skip students on leave)
     viewport.querySelector('#btn-reg-mark-all-p')?.addEventListener('click', () => {
       viewport.querySelectorAll('.reg-student-row').forEach(row => {
-        row.querySelectorAll('.att-status-btn').forEach(b => {
+        const btns = row.querySelectorAll('.att-status-btn');
+        if (!btns.length) return; // Student on leave, locked!
+        btns.forEach(b => {
           if (b.dataset.status === 'present') b.classList.add('active');
           else b.classList.remove('active');
         });
       });
-      UIComponents.showToast('All displayed students marked present.', 'info');
+      UIComponents.showToast('All active campus students marked present.', 'info');
     });
 
-    // Mark all absent
+    // Mark all absent (skip students on leave)
     viewport.querySelector('#btn-reg-mark-all-a')?.addEventListener('click', () => {
       viewport.querySelectorAll('.reg-student-row').forEach(row => {
-        row.querySelectorAll('.att-status-btn').forEach(b => {
+        const btns = row.querySelectorAll('.att-status-btn');
+        if (!btns.length) return; // Student on leave, locked!
+        btns.forEach(b => {
           if (b.dataset.status === 'absent') b.classList.add('active');
           else b.classList.remove('active');
         });
       });
-      UIComponents.showToast('All displayed students marked absent.', 'info');
+      UIComponents.showToast('All active campus students marked absent.', 'info');
+    });
+
+    // Mark Student Returned directly from Register Ledger
+    viewport.querySelectorAll('.btn-mark-returned-reg').forEach(b => {
+      b.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const leaveId = b.dataset.leaveId;
+        const currentUser = authService.getCurrentUser();
+        const staffName = currentUser?.name || 'Assigned Staff';
+        b.disabled = true;
+        b.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Marking...';
+        await StudentLeaveService.markAsReturned(leaveId, { returnedMarkedBy: staffName });
+        this._leaves = await StudentLeaveService.getLeaves();
+        AttendanceAudio.playSuccess();
+        UIComponents.showToast('Student campus return marked. Attendance taking unlocked.', 'success');
+        this.renderRegisterMode(viewport);
+      });
     });
 
     // Save & Sync Ledger to Database
@@ -2080,6 +2101,15 @@ export class AttendanceModule {
         const sId = row.dataset.studentId;
         const student = this._students.find(s => s.id === sId);
         if (!student) continue;
+
+        // Skip students on active leave (leave locks attendance until verified return)
+        const activeLeave = (this._leaves || []).find(l => 
+          (l.studentId === student.id || l.admissionNo === student.admissionNo) && 
+          l.status === 'APPROVED_ON_LEAVE' && 
+          !l.actualReturn && 
+          this._selectedDate >= l.fromDate
+        );
+        if (activeLeave) continue;
 
         const activeBtn = row.querySelector('.att-status-btn.active');
         const status = activeBtn ? activeBtn.dataset.status : 'present';
