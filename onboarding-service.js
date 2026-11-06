@@ -184,15 +184,18 @@ export class OnboardingService {
     if (!this._cachedMetaMap) this._cachedMetaMap = {};
     this._cachedMetaMap[userId] = updated;
 
-    // Upsert to Supabase app_settings
+    // Upsert to Supabase app_settings only if authenticated user is administrative
     try {
-      await dbService.upsert('app_settings', {
-        id: META_SETTING_KEY,
-        value: this._cachedMetaMap
-      });
-    } catch (err) {
-      console.warn('Could not sync staff metadata to Supabase app_settings:', err.message);
-    }
+      const storedUser = localStorage.getItem('tms_user');
+      const cur = storedUser ? JSON.parse(storedUser) : null;
+      const canManageSettings = cur && (cur.role === 'admin' || cur.role === 'principal' || cur.role === 'super_admin' || cur.isSuperAdmin);
+      if (canManageSettings) {
+        await dbService.upsert('app_settings', {
+          id: META_SETTING_KEY,
+          value: this._cachedMetaMap
+        });
+      }
+    } catch (_) {}
 
     return updated;
   }

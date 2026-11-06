@@ -628,7 +628,7 @@ export class AcademicModule {
           topic.completed = !topic.completed;
           dbService.setLocal('syllabus_topics', this._syllabus);
           try {
-            await dbService.upsert('app_settings', { key: 'academic_syllabus_topics', value: this._syllabus });
+            await dbService.upsert('app_settings', { id: 'academic_syllabus_topics', value: this._syllabus });
           } catch(e) {}
           UIComponents.showToast(`Unit marked as ${topic.completed ? 'Completed' : 'Pending'}!`, 'success');
           this.renderSyllabusTab(content);
@@ -1202,7 +1202,7 @@ export class AcademicModule {
         this._syllabus.push(topicRecord);
         dbService.setLocal('syllabus_topics', this._syllabus);
         try {
-          await dbService.upsert('app_settings', { key: 'academic_syllabus_topics', value: this._syllabus });
+          await dbService.upsert('app_settings', { id: 'academic_syllabus_topics', value: this._syllabus });
         } catch(e) {}
         UIComponents.showToast(`Unit "${title}" added to syllabus!`, 'success');
         UIComponents.closeModal();
