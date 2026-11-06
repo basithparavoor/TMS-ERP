@@ -18,6 +18,7 @@ import { institutionService } from './institution-service.js';
 import { WhatsAppService } from './whatsapp-service.js';
 import { downloadCsv, exportPdf, formatPdfFilename, kvTable } from './export-utils.js';
 import { AdminWebsiteCms } from './admin-website-cms.js';
+import { websiteService } from './website-service.js';
 import { WindowPermissionsService, WINDOW_ROLES, ROLE_THEMES, WINDOW_CATEGORIES, DEFAULT_RBAC_MATRIX } from './window-permissions.js';
 
 const esc = (v) => UIComponents.escapeHtml(v);
@@ -97,7 +98,13 @@ export class AdminModule {
   /* ================================================================== */
 
   static async render(container) {
-    const stats = await admissionService.getStats();
+    const [stats, inqs] = await Promise.all([
+      admissionService.getStats(),
+      websiteService.listInquiries().catch(() => [])
+    ]);
+    this._inquiries = inqs || [];
+    this._newInquiriesCount = (this._inquiries).filter(i => (i.status || 'new') === 'new').length;
+
     const currentUser = authService.getCurrentUser();
     const isSuperAdmin = currentUser?.isSuperAdmin === true || (currentUser?.email || '').toLowerCase() === (TMS_CONFIG.superAdminEmail || '').toLowerCase();
 
@@ -339,6 +346,7 @@ export class AdminModule {
     const SUBTABS = {
       admissions: [
         { key: 'applications', label: 'Applications Roster', icon: 'file-text' },
+        { key: 'inquiries', label: 'Website Inquiries', icon: 'message-square', showInquiryBadge: true },
         { key: 'form-builder', label: 'Form Field Builder', icon: 'layout-template' },
         { key: 'fees', label: 'Fee Structure Master', icon: 'receipt' },
         { key: 'payment-settings', label: 'Portal Rules & Video', icon: 'settings' }
@@ -351,6 +359,7 @@ export class AdminModule {
         { key: 'audit', label: 'Security Audit Trail', icon: 'shield-alert' }
       ],
       website: [
+        { key: 'website-inquiries', label: 'Admission Inquiries', icon: 'message-square', showInquiryBadge: true },
         { key: 'website-general', label: 'Identity & Brand Colors', icon: 'palette' },
         { key: 'website-hero', label: 'Hero & Headlines', icon: 'sparkles' },
         { key: 'website-about', label: 'About & Leadership', icon: 'book-open' },
