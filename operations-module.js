@@ -34,8 +34,11 @@ export class OperationsModule {
         </div>
 
         <!-- Segmented Pill Tabs Rail -->
-        <div class="tms-tab-rail-wrapper">
-          <div class="tms-segmented-tabs">
+        <div class="tms-tab-scroll-wrapper">
+          <button type="button" class="tms-tab-nav-btn tms-tab-nav-prev" aria-label="Scroll left" title="Scroll tabs left">
+            <i data-lucide="chevron-left"></i>
+          </button>
+          <div class="tms-segmented-tabs tms-tab-scroll-rail">
             <button class="tms-tab-pill active ops-tab" data-tab="library">
               <i data-lucide="book"></i>
               <span>Library &amp; ISBN Catalogue</span>

@@ -102,8 +102,11 @@ export class AcademicModule {
       </div>
 
       <!-- Academic Segmented Navigation Tabs -->
-      <div class="tms-tab-rail-wrapper">
-        <div class="tms-segmented-tabs">
+      <div class="tms-tab-scroll-wrapper">
+        <button type="button" class="tms-tab-nav-btn tms-tab-nav-prev" aria-label="Scroll left" title="Scroll tabs left">
+          <i data-lucide="chevron-left"></i>
+        </button>
+        <div class="tms-segmented-tabs tms-tab-scroll-rail">
           <button class="tms-tab-pill ${this._currentTab === 'classes' ? 'active' : ''} acad-tab" data-tab="classes">
             <i data-lucide="layers"></i>
             <span>Classes &amp; Sections</span>
@@ -125,6 +128,9 @@ export class AcademicModule {
             <span>Syllabus Tracker</span>
           </button>
         </div>
+        <button type="button" class="tms-tab-nav-btn tms-tab-nav-next" aria-label="Scroll right" title="Scroll tabs right">
+          <i data-lucide="chevron-right"></i>
+        </button>
       </div>
 
       <div id="acad-tab-content"></div>

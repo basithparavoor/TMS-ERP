@@ -44,8 +44,11 @@ export class MyWorkModule {
         </div>
 
         <!-- Segmented Pill Tabs Rail -->
-        <div class="tms-tab-rail-wrapper">
-          <div class="tms-segmented-tabs" id="mywork-tab-pills">
+        <div class="tms-tab-scroll-wrapper">
+          <button type="button" class="tms-tab-nav-btn tms-tab-nav-prev" id="mywork-tabs-scroll-prev" aria-label="Scroll left" title="Scroll tabs left">
+            <i data-lucide="chevron-left"></i>
+          </button>
+          <div class="tms-segmented-tabs tms-tab-scroll-rail" id="mywork-tab-pills">
             <button class="tms-tab-pill active staff-tab" data-tab="overview">
               <i data-lucide="layout-dashboard"></i>
               <span>Overview Hub</span>
@@ -75,6 +78,9 @@ export class MyWorkModule {
               <span>Salary &amp; CTC</span>
             </button>
           </div>
+          <button type="button" class="tms-tab-nav-btn tms-tab-nav-next" id="mywork-tabs-scroll-next" aria-label="Scroll right" title="Scroll tabs right">
+            <i data-lucide="chevron-right"></i>
+          </button>
         </div>
 
         <div id="my-work-tab-content"></div>

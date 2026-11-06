@@ -74,8 +74,11 @@ export class TimetableModule {
         })}
 
       <!-- Module View Tabs -->
-      <div class="tms-tab-rail-wrapper">
-        <div class="tms-segmented-tabs">
+      <div class="tms-tab-scroll-wrapper">
+        <button type="button" class="tms-tab-nav-btn tms-tab-nav-prev" aria-label="Scroll left" title="Scroll tabs left">
+          <i data-lucide="chevron-left"></i>
+        </button>
+        <div class="tms-segmented-tabs tms-tab-scroll-rail">
           <button class="tms-tab-pill ${this._activeView === 'matrix' ? 'active' : ''}" id="tab-tt-matrix">
             <i data-lucide="grid"></i>
             <span>Class Timetable Matrix</span>
@@ -85,6 +88,9 @@ export class TimetableModule {
             <span>Proxy &amp; Substitution Engine</span>
           </button>
         </div>
+        <button type="button" class="tms-tab-nav-btn tms-tab-nav-next" aria-label="Scroll right" title="Scroll tabs right">
+          <i data-lucide="chevron-right"></i>
+        </button>
       </div>
 
       ${this._activeView === 'matrix' ? `

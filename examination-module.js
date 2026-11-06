@@ -133,8 +133,11 @@ export class ExaminationModule {
       </div>
 
       <!-- Tabs Navigation -->
-      <div class="tms-tab-rail-wrapper">
-        <div class="tms-segmented-tabs">
+      <div class="tms-tab-scroll-wrapper">
+        <button type="button" class="tms-tab-nav-btn tms-tab-nav-prev" aria-label="Scroll left" title="Scroll tabs left">
+          <i data-lucide="chevron-left"></i>
+        </button>
+        <div class="tms-segmented-tabs tms-tab-scroll-rail">
           <button class="tms-tab-pill ${this._examViewTab === 'ledger' ? 'active' : ''}" id="tab-exam-ledger">
             <i data-lucide="table"></i>
             <span>Marks Ledger &amp; Report Cards</span>
@@ -150,6 +153,9 @@ export class ExaminationModule {
             <span class="tab-badge" style="background: rgba(16, 185, 129, 0.15); color: #059669;">${filteredStudents.length}</span>
           </button>
         </div>
+        <button type="button" class="tms-tab-nav-btn tms-tab-nav-next" aria-label="Scroll right" title="Scroll tabs right">
+          <i data-lucide="chevron-right"></i>
+        </button>
       </div>
 
       ${this._examViewTab === 'ledger' ? `

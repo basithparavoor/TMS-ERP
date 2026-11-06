@@ -1,116 +1,117 @@
-/**
- * THAIBA MODEL SCHOOL — UI Components & Theme Engine
- */
-
-import { enhanceSelect, enhanceAllSelects, startGlobalSelectObserver } from './dropdown-enhancer.js';
-import { enhanceDatePicker, enhanceAllDatePickers, startGlobalDatePickerObserver } from './datepicker-enhancer.js';
-
-export class UIComponents {
   /**
-   * Escape untrusted values before interpolating them into HTML templates.
-   * Prevents stored/reflected XSS from user- or staff-supplied data.
+   * Universal Tab Rail Enhancer
+   * Equips every tab bar and sub-tab rail with circular < and > buttons,
+   * smooth mouse-wheel horizontal scrolling, and auto-centering on click.
    */
-  static escapeHtml(value) {
-    if (value === null || value === undefined) return '';
-    return String(value)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
-  }
+  static initTabRails(root = document) {
+    if (!root) return;
+    const rails = root.querySelectorAll('.tms-segmented-tabs, .tms-subtab-rail, .user-sub-tabs-bar, [data-tms-scroll-rail]');
+    rails.forEach((rail) => {
+      let wrapper = rail.closest('.tms-tab-scroll-wrapper, .tms-subtab-container-wrap, .tms-tab-rail-wrapper');
+      
+      if (!wrapper) {
+        wrapper = document.createElement('div');
+        wrapper.className = 'tms-tab-scroll-wrapper';
+        rail.parentNode.insertBefore(wrapper, rail);
+        wrapper.appendChild(rail);
+      } else {
+        wrapper.classList.add('tms-tab-scroll-wrapper');
+      }
 
-  static initTheme() {
-    // Enforce Pro-Max Luxury Light Theme (Dark mode completely removed as requested)
-    document.body.classList.remove('dark');
-    localStorage.setItem('tms_theme', 'light');
+      let prevBtn = wrapper.querySelector('.tms-tab-nav-prev, .tms-subtab-nav-prev');
+      let nextBtn = wrapper.querySelector('.tms-tab-nav-next, .tms-subtab-nav-next');
+      let createdIcons = false;
 
-    const savedColor = localStorage.getItem('tms_color_theme') || 'emerald';
-    const activeColor = (savedColor === 'oled') ? 'emerald' : savedColor;
+      if (!prevBtn) {
+        prevBtn = document.createElement('button');
+        prevBtn.type = 'button';
+        prevBtn.className = 'tms-tab-nav-btn tms-tab-nav-prev';
+        prevBtn.setAttribute('aria-label', 'Scroll left');
+        prevBtn.setAttribute('title', 'Scroll tabs left');
+        prevBtn.innerHTML = '<i data-lucide="chevron-left"></i>';
+        wrapper.insertBefore(prevBtn, rail);
+        createdIcons = true;
+      }
 
-    document.documentElement.setAttribute('data-theme', activeColor);
-    document.body.setAttribute('data-theme', activeColor);
-    localStorage.setItem('tms_color_theme', activeColor);
+      if (!nextBtn) {
+        nextBtn = document.createElement('button');
+        nextBtn.type = 'button';
+        nextBtn.className = 'tms-tab-nav-btn tms-tab-nav-next';
+        nextBtn.setAttribute('aria-label', 'Scroll right');
+        nextBtn.setAttribute('title', 'Scroll tabs right');
+        nextBtn.innerHTML = '<i data-lucide="chevron-right"></i>';
+        wrapper.appendChild(nextBtn);
+        createdIcons = true;
+      }
 
-    this.installGlobalInterceptors();
-    startGlobalSelectObserver();
-    startGlobalDatePickerObserver();
-  }
+      if (createdIcons && window.lucide && typeof window.lucide.createIcons === 'function') {
+        try { window.lucide.createIcons({ root: wrapper }); } catch (e) {}
+      }
 
-  static enhanceSelect(el) {
-    enhanceSelect(el);
-  }
+      const updateNavButtons = () => {
+        const maxScroll = Math.max(0, rail.scrollWidth - rail.clientWidth);
+        if (maxScroll <= 4) {
+          prevBtn.style.opacity = '0.35';
+          prevBtn.style.pointerEvents = 'none';
+          nextBtn.style.opacity = '0.35';
+          nextBtn.style.pointerEvents = 'none';
+          return;
+        }
+        const canLeft = rail.scrollLeft > 6;
+        const canRight = rail.scrollLeft < maxScroll - 6;
+        prevBtn.style.pointerEvents = canLeft ? 'auto' : 'none';
+        prevBtn.style.opacity = canLeft ? '1' : '0.35';
+        nextBtn.style.pointerEvents = canRight ? 'auto' : 'none';
+        nextBtn.style.opacity = canRight ? '1' : '0.35';
+      };
 
-  static enhanceAllSelects(root = document) {
-    enhanceAllSelects(root);
-  }
+      if (!rail._tmsTabBound) {
+        rail._tmsTabBound = true;
+        rail.addEventListener('scroll', updateNavButtons, { passive: true });
+        window.addEventListener('resize', updateNavButtons, { passive: true });
 
-  static initCustomSelects() {
-    startGlobalSelectObserver();
-  }
+        rail.addEventListener('wheel', (e) => {
+          if (e.deltaY !== 0 && rail.scrollWidth > rail.clientWidth) {
+            e.preventDefault();
+            rail.scrollLeft += (e.deltaY * 0.9);
+            updateNavButtons();
+          }
+        }, { passive: false });
 
-  static enhanceDatePicker(el) {
-    enhanceDatePicker(el);
-  }
+        prevBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          rail.scrollBy({ left: -260, behavior: 'smooth' });
+          setTimeout(updateNavButtons, 300);
+        });
 
-  static enhanceAllDatePickers(root = document) {
-    enhanceAllDatePickers(root);
-  }
+        nextBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          rail.scrollBy({ left: 260, behavior: 'smooth' });
+          setTimeout(updateNavButtons, 300);
+        });
 
-  static initDatePickers() {
-    startGlobalDatePickerObserver();
-  }
+        rail.addEventListener('click', (e) => {
+          const pill = e.target.closest('.tms-tab-pill, .tms-subtab-pill, .staff-tab, .acad-tab, .hostel-sub-pill, .ops-tab, button');
+          if (pill && rail.contains(pill)) {
+            pill.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            setTimeout(updateNavButtons, 250);
+          }
+        });
+      }
 
-  static installGlobalInterceptors() {
-    if (typeof window === 'undefined' || window._tmsPopupsInstalled) return;
-    window._tmsPopupsInstalled = true;
-
-    // Intercept native browser alert with luxury UIComponents modal
-    window.alert = (message) => {
-      this.alert({
-        title: 'Campus Notification',
-        message: String(message || ''),
-        buttonText: 'Got It',
-        type: 'info',
-        icon: 'info'
-      });
-    };
-  }
-
-  static setColorTheme(themeName) {
-    const valid = ['emerald', 'sapphire', 'burgundy'];
-    const chosen = valid.includes(themeName) ? themeName : 'emerald';
-    
-    document.body.classList.remove('dark');
-    localStorage.setItem('tms_theme', 'light');
-    document.documentElement.setAttribute('data-theme', chosen);
-    document.body.setAttribute('data-theme', chosen);
-    localStorage.setItem('tms_color_theme', chosen);
-
-    const names = {
-      emerald: 'Thaiba Emerald (Classic Institutional)',
-      sapphire: 'Royal Sapphire (Academic Blue)',
-      burgundy: 'Noble Burgundy (Regal Crimson)'
-    };
-    this.showToast(`Active Theme: ${names[chosen]} (Premium Light Edition)`, 'success');
-  }
-
-  static toggleTheme() {
-    // Cycle between luxury light palettes
-    const current = localStorage.getItem('tms_color_theme') || 'emerald';
-    const next = current === 'emerald' ? 'sapphire' : (current === 'sapphire' ? 'burgundy' : 'emerald');
-    this.setColorTheme(next);
-  }
-
-  static updateThemeButton() {
-    // No-op for dark mode button
+      setTimeout(updateNavButtons, 60);
+      setTimeout(updateNavButtons, 250);
+    });
   }
 
   static refreshIcons() {
     if (window.lucide && typeof window.lucide.createIcons === 'function') {
       if (this._iconRaf) cancelAnimationFrame(this._iconRaf);
       this._iconRaf = requestAnimationFrame(() => {
-        try { window.lucide.createIcons(); } catch (e) { /* ignore */ }
+        try { 
+          window.lucide.createIcons(); 
+          this.initTabRails();
+        } catch (e) { /* ignore */ }
       });
     }
   }

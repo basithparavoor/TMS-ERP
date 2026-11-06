@@ -1597,15 +1597,23 @@ export class AdminWebsiteCms {
         </div>
       </div>
 
-      <!-- HOSTEL INTERNAL MANAGEMENT TABS -->
-      <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px;">
-        <button class="tms-tab-pill active hostel-sub-pill" data-target="hostel-sec-overview"><i data-lucide="sliders"></i> <span>Overview &amp; Capacity</span></button>
-        <button class="tms-tab-pill hostel-sub-pill" data-target="hostel-sec-wings"><i data-lucide="building"></i> <span>Dormitories &amp; Wings (${wings.length})</span></button>
-        <button class="tms-tab-pill hostel-sub-pill" data-target="hostel-sec-features"><i data-lucide="sparkles"></i> <span>Amenities &amp; Care (${features.length})</span></button>
-        <button class="tms-tab-pill hostel-sub-pill" data-target="hostel-sec-routine"><i data-lucide="clock"></i> <span>Daily Routine (${routine.length})</span></button>
-        <button class="tms-tab-pill hostel-sub-pill" data-target="hostel-sec-mess"><i data-lucide="utensils"></i> <span>Mess &amp; Weekly Menu</span></button>
-        <button class="tms-tab-pill hostel-sub-pill" data-target="hostel-sec-wardens"><i data-lucide="phone-call"></i> <span>Wardens &amp; Rules</span></button>
-        <button class="tms-tab-pill hostel-sub-pill" data-target="hostel-sec-roster"><i data-lucide="users"></i> <span>Student Roster (${allocations.length})</span></button>
+      <!-- HOSTEL INTERNAL MANAGEMENT TABS WITH SCROLL CONTROLS -->
+      <div class="tms-tab-scroll-wrapper" style="margin-bottom: 20px;">
+        <button type="button" class="tms-tab-nav-btn tms-tab-nav-prev" aria-label="Scroll left" title="Scroll subtabs left">
+          <i data-lucide="chevron-left"></i>
+        </button>
+        <div class="tms-subtab-rail" id="hostel-subtabs-rail">
+          <button class="tms-tab-pill active hostel-sub-pill" data-target="hostel-sec-overview"><i data-lucide="sliders"></i> <span>Overview &amp; Capacity</span></button>
+          <button class="tms-tab-pill hostel-sub-pill" data-target="hostel-sec-wings"><i data-lucide="building"></i> <span>Dormitories &amp; Wings (${wings.length})</span></button>
+          <button class="tms-tab-pill hostel-sub-pill" data-target="hostel-sec-features"><i data-lucide="sparkles"></i> <span>Amenities &amp; Care (${features.length})</span></button>
+          <button class="tms-tab-pill hostel-sub-pill" data-target="hostel-sec-routine"><i data-lucide="clock"></i> <span>Daily Routine (${routine.length})</span></button>
+          <button class="tms-tab-pill hostel-sub-pill" data-target="hostel-sec-mess"><i data-lucide="utensils"></i> <span>Mess &amp; Weekly Menu</span></button>
+          <button class="tms-tab-pill hostel-sub-pill" data-target="hostel-sec-wardens"><i data-lucide="phone-call"></i> <span>Wardens &amp; Rules</span></button>
+          <button class="tms-tab-pill hostel-sub-pill" data-target="hostel-sec-roster"><i data-lucide="users"></i> <span>Student Roster (${allocations.length})</span></button>
+        </div>
+        <button type="button" class="tms-tab-nav-btn tms-tab-nav-next" aria-label="Scroll right" title="Scroll subtabs right">
+          <i data-lucide="chevron-right"></i>
+        </button>
       </div>
 
       <!-- SECTION 1: OVERVIEW & CAPACITY -->

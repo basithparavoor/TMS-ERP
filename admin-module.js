@@ -147,8 +147,11 @@ export class AdminModule {
       <div id="admin-auth-warning"></div>
 
       <!-- Primary Segmented Tabs Rail (Modern Showcase Style) -->
-      <div class="tms-tab-rail-wrapper">
-        <div class="tms-segmented-tabs" id="admin-primary-tabs">
+      <div class="tms-tab-scroll-wrapper">
+        <button type="button" class="tms-tab-nav-btn tms-tab-nav-prev" id="admin-primary-scroll-prev" aria-label="Scroll left" title="Scroll tabs left">
+          <i data-lucide="chevron-left"></i>
+        </button>
+        <div class="tms-segmented-tabs tms-tab-scroll-rail" id="admin-primary-tabs">
           <button class="tms-tab-pill active" data-group="admissions">
             <i data-lucide="clipboard-list"></i>
             <span>Admissions Hub</span>
@@ -178,6 +181,9 @@ export class AdminModule {
           </button>
           ` : ''}
         </div>
+        <button type="button" class="tms-tab-nav-btn tms-tab-nav-next" id="admin-primary-scroll-next" aria-label="Scroll right" title="Scroll tabs right">
+          <i data-lucide="chevron-right"></i>
+        </button>
       </div>
 
       <!-- Secondary Subtabs Rail with Navigation Controls -->
@@ -245,8 +251,11 @@ export class AdminModule {
         </div>
 
         <!-- Primary Segmented Tabs Rail for Users Module -->
-        <div class="tms-tab-rail-wrapper">
-          <div class="tms-segmented-tabs" id="users-primary-tabs">
+        <div class="tms-tab-scroll-wrapper">
+          <button type="button" class="tms-tab-nav-btn tms-tab-nav-prev" aria-label="Scroll left" title="Scroll tabs left">
+            <i data-lucide="chevron-left"></i>
+          </button>
+          <div class="tms-segmented-tabs tms-tab-scroll-rail" id="users-primary-tabs">
             <button class="tms-tab-pill ${targetTab === 'users' ? 'active' : ''}" data-tab="users">
               <i data-lucide="users"></i>
               <span>User Directory</span>
@@ -273,6 +282,9 @@ export class AdminModule {
               <span>Security Audit Logs</span>
             </button>
           </div>
+          <button type="button" class="tms-tab-nav-btn tms-tab-nav-next" aria-label="Scroll right" title="Scroll tabs right">
+            <i data-lucide="chevron-right"></i>
+          </button>
         </div>
 
         <div id="users-view-content" style="margin-top: 18px;"></div>
@@ -447,14 +459,20 @@ export class AdminModule {
       if (!subRail) return;
       const prevBtn = document.getElementById('admin-subtab-scroll-prev');
       const nextBtn = document.getElementById('admin-subtab-scroll-next');
-      const hasOverflow = subRail.scrollWidth > subRail.clientWidth + 6;
-      if (!hasOverflow) {
-        if (prevBtn) prevBtn.style.display = 'none';
-        if (nextBtn) nextBtn.style.display = 'none';
-        return;
+      const maxScroll = Math.max(0, subRail.scrollWidth - subRail.clientWidth);
+      const canScrollLeft = subRail.scrollLeft > 6;
+      const canScrollRight = subRail.scrollLeft < maxScroll - 6;
+
+      if (prevBtn) {
+        prevBtn.style.display = 'inline-flex';
+        prevBtn.style.opacity = canScrollLeft ? '1' : '0.35';
+        prevBtn.style.pointerEvents = canScrollLeft ? 'auto' : 'none';
       }
-      if (prevBtn) prevBtn.style.display = subRail.scrollLeft > 10 ? 'inline-flex' : 'none';
-      if (nextBtn) nextBtn.style.display = (subRail.scrollLeft + subRail.clientWidth) < (subRail.scrollWidth - 10) ? 'inline-flex' : 'none';
+      if (nextBtn) {
+        nextBtn.style.display = 'inline-flex';
+        nextBtn.style.opacity = canScrollRight ? '1' : '0.35';
+        nextBtn.style.pointerEvents = canScrollRight ? 'auto' : 'none';
+      }
     };
 
     if (!subRail._scrollInitialized) {
@@ -683,15 +701,20 @@ export class AdminModule {
     body.innerHTML = rows.map((a) => {
       const pld = a.payload || {};
       const photoName = pld.photo || pld.candidatePassportPhoto || pld.passportPhoto || pld.studentPassportPhoto || pld.studentProfilePhoto || pld.candidatePhoto;
-      const photoSrc = photoName
-        ? ((photoName.startsWith('http') || photoName.startsWith('data:'))
-            ? photoName
-            : admissionService.getPublicUrl('admission-docs', photoName))
-        : '';
+      let photoSrc = '';
+      if (photoName) {
+        if (typeof photoName === 'string' && photoName.includes('/storage/v1/object/sign/')) {
+          photoSrc = photoName.replace('/storage/v1/object/sign/', '/storage/v1/object/public/').split('?')[0];
+        } else if (typeof photoName === 'string' && (photoName.startsWith('http') || photoName.startsWith('data:'))) {
+          photoSrc = photoName;
+        } else {
+          photoSrc = admissionService.getPublicUrl('admission-docs', photoName);
+        }
+      }
       const photoCell = photoSrc
         ? `<img class="app-photo-thumb" src="${esc(photoSrc)}" data-path="${esc(photoName)}" alt="Applicant photo"
              style="width:30px;height:36px;object-fit:cover;border:1px solid var(--border-color);border-radius:4px;background:#f1f5f9;cursor:pointer;"
-             onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' width=\'30\' height=\'36\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%2394a3b8\' stroke-width=\'2\'><path d=\'M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2\'/><circle cx=\'12\' cy=\'7\' r=\'4\'/></svg>';"
+             onerror="this.onerror=null; this.src='data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2230%22%20height%3D%2236%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M19%2021v-2a4%204%200%200%200-4-4H9a4%204%200%200%200-4%204v2%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%227%22%20r%3D%224%22%2F%3E%3C%2Fsvg%3E';"
              title="Click to view the photographed applicant">`
         : '<span style="color:var(--text-subtle);">—</span>';
       return `
@@ -6320,6 +6343,221 @@ export class AdminModule {
       UIComponents.showToast(`Question "${label}" saved successfully!`, 'success');
       UIComponents.closeModal();
       this.renderTab('staff-onboarding');
+    });
+
+    UIComponents.refreshIcons();
+  }
+
+  /**
+   * Institution Profile & Campus Status Tab
+   * Editable institutional registration, trust body, campus location, support contacts,
+   * and Head of Institution.
+   */
+  static async renderInstitutionDetailsTab(tabContent) {
+    const details = await institutionService.refresh();
+
+    tabContent.innerHTML = `
+      <div class="card" style="margin-bottom: 20px;">
+        <div class="card-header" style="flex-wrap: wrap; gap: 12px; justify-content: space-between; align-items: center;">
+          <div>
+            <h3 class="card-title" style="display: flex; align-items: center; gap: 8px;">
+              <i data-lucide="building-2" style="color: #16a34a;"></i> Institution Profile &amp; Campus Status
+            </h3>
+            <p class="card-desc">
+              Manage official campus registration, trust authority, physical location, institutional support contacts, and Head of Institution. Values saved here are applied everywhere across all school portals, website CMS, documents, admission forms, and fee receipts.
+            </p>
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button class="btn btn-secondary btn-sm" id="btn-reset-inst-defaults" style="color: #64748b;">
+              <i data-lucide="rotate-ccw"></i> Reset Defaults
+            </button>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: minmax(320px, 460px) 1fr; gap: 24px; align-items: start; margin-top: 14px;">
+          <!-- Left Column: Live Status Card Preview -->
+          <div>
+            <div style="font-weight: 700; font-size: 0.82rem; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; display: flex; align-items: center; gap: 6px;">
+              <i data-lucide="eye" style="width: 15px; height: 15px; color: #2563eb;"></i> Live Campus Status Card
+            </div>
+            <div id="inst-card-preview-container">
+              ${institutionService.renderStatusCardHtml(details)}
+            </div>
+            <div style="font-size: 0.76rem; color: #64748b; margin-top: 12px; line-height: 1.4; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 10px; padding: 10px 14px;">
+              ℹ️ <strong>Universal Campus Presence:</strong> This card reflects real-time institutional accreditation. Any edits made on the right update this live preview immediately.
+            </div>
+          </div>
+
+          <!-- Right Column: Institutional Profile Form -->
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 20px;">
+            <h4 style="margin: 0 0 16px 0; font-size: 1rem; font-weight: 800; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+              <i data-lucide="edit-3" style="color: #2563eb; width: 18px; height: 18px;"></i> Edit Institutional Campus Details
+            </h4>
+
+            <div style="display: grid; grid-template-columns: 1fr; gap: 14px;">
+              <!-- 1. Official Registration & Trust -->
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                <div class="form-group" style="margin: 0;">
+                  <label class="form-label" style="font-weight: 600; font-size: 0.82rem;">Official Registration No. *</label>
+                  <input type="text" class="form-input inst-inp" id="inst-reg-no" value="${esc(details.regNo || '')}" placeholder="e.g. Regd. No. IV 01894/2011" style="border-radius: 8px;">
+                </div>
+                <div class="form-group" style="margin: 0;">
+                  <label class="form-label" style="font-weight: 600; font-size: 0.82rem;">Parent Trust / Society *</label>
+                  <input type="text" class="form-input inst-inp" id="inst-trust" value="${esc(details.trust || '')}" placeholder="e.g. Thaiba Heritage, Kolkata" style="border-radius: 8px;">
+                </div>
+              </div>
+
+              <!-- 2. Campus Location & District -->
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                <div class="form-group" style="margin: 0;">
+                  <label class="form-label" style="font-weight: 600; font-size: 0.82rem;">Campus District / Badge *</label>
+                  <input type="text" class="form-input inst-inp" id="inst-district" value="${esc(details.campusDistrict || '')}" placeholder="e.g. Dakshin Dinajpur" style="border-radius: 8px;">
+                  <div style="font-size: 0.72rem; color: #64748b; margin-top: 2px;">Shown in the blue header pill badge</div>
+                </div>
+                <div class="form-group" style="margin: 0;">
+                  <label class="form-label" style="font-weight: 600; font-size: 0.82rem;">Full Physical Campus Location *</label>
+                  <input type="text" class="form-input inst-inp" id="inst-location" value="${esc(details.campusLocation || '')}" placeholder="e.g. Baghait, Tapan, Dakshin Dinajpur, West Bengal 733127" style="border-radius: 8px;">
+                </div>
+              </div>
+
+              <!-- 3. Campus Support Contacts -->
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                <div class="form-group" style="margin: 0;">
+                  <label class="form-label" style="font-weight: 600; font-size: 0.82rem;">Contact Phones (Primary / Secondary)</label>
+                  <input type="text" class="form-input inst-inp font-mono" id="inst-phones" value="${esc(details.contactPhones || '')}" placeholder="+91 8653382851 / +91 8167782851" style="border-radius: 8px;">
+                </div>
+                <div class="form-group" style="margin: 0;">
+                  <label class="form-label" style="font-weight: 600; font-size: 0.82rem;">Institutional Support Email</label>
+                  <input type="email" class="form-input inst-inp font-mono" id="inst-email" value="${esc(details.contactEmail || '')}" placeholder="tms@thaibagarden.com" style="border-radius: 8px;">
+                </div>
+              </div>
+
+              <!-- 4. Head of Institution -->
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 14px;">
+                <div class="form-group" style="margin: 0;">
+                  <label class="form-label" style="font-weight: 700; font-size: 0.82rem; color: #16a34a; display: flex; align-items: center; gap: 6px;">
+                    <i data-lucide="crown" style="width: 14px; height: 14px;"></i> Head of Institution (Full Name) *
+                  </label>
+                  <input type="text" class="form-input inst-inp" id="inst-head-name" value="${esc(details.headOfInstitutionName || '')}" placeholder="e.g. C. M. Basith" style="border-radius: 8px; font-weight: 700;">
+                  <div style="font-size: 0.72rem; color: #64748b; margin-top: 2px;">Authorized Executive Head</div>
+                </div>
+                <div class="form-group" style="margin: 0;">
+                  <label class="form-label" style="font-weight: 700; font-size: 0.82rem; color: #16a34a; display: flex; align-items: center; gap: 6px;">
+                    <i data-lucide="mail" style="width: 14px; height: 14px;"></i> Head of Institution Email *
+                  </label>
+                  <input type="email" class="form-input inst-inp font-mono" id="inst-head-email" value="${esc(details.headOfInstitutionEmail || '')}" placeholder="e.g. cmbasith786@gmail.com" style="border-radius: 8px;">
+                  <div style="font-size: 0.72rem; color: #64748b; margin-top: 2px;">Official Correspondence Desk</div>
+                </div>
+              </div>
+
+              <!-- 5. Name, Website & Tagline -->
+              <div class="form-group" style="margin: 0;">
+                <label class="form-label" style="font-weight: 600; font-size: 0.82rem;">Legal Institution Name *</label>
+                <input type="text" class="form-input inst-inp" id="inst-name" value="${esc(details.name || '')}" placeholder="THAIBA MODEL SCHOOL" style="border-radius: 8px; font-weight: 700;">
+              </div>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+                <div class="form-group" style="margin: 0;">
+                  <label class="form-label" style="font-weight: 600; font-size: 0.82rem;">Official Public Website</label>
+                  <input type="text" class="form-input inst-inp" id="inst-website" value="${esc(details.website || '')}" placeholder="https://www.thaibagarden.com" style="border-radius: 8px;">
+                </div>
+                <div class="form-group" style="margin: 0;">
+                  <label class="form-label" style="font-weight: 600; font-size: 0.82rem;">Campus Motto / Subtitle</label>
+                  <input type="text" class="form-input inst-inp" id="inst-tagline" value="${esc(details.tagline || '')}" placeholder="Run by : Thaiba Heritage, Kolkata" style="border-radius: 8px;">
+                </div>
+              </div>
+
+              <!-- Save Action -->
+              <div style="margin-top: 10px; display: flex; justify-content: flex-end; gap: 10px;">
+                <button class="btn btn-primary" id="btn-save-inst-details" style="background: #16a34a; border-color: #16a34a; padding: 10px 22px; border-radius: 10px; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+                  <i data-lucide="save"></i> Save Institutional Details
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Live Card Preview Handler
+    const updatePreview = () => {
+      const liveData = {
+        name: document.getElementById('inst-name')?.value.trim() || details.name,
+        regNo: document.getElementById('inst-reg-no')?.value.trim() || details.regNo,
+        trust: document.getElementById('inst-trust')?.value.trim() || details.trust,
+        campusDistrict: document.getElementById('inst-district')?.value.trim() || details.campusDistrict,
+        campusLocation: document.getElementById('inst-location')?.value.trim() || details.campusLocation,
+        contactPhones: document.getElementById('inst-phones')?.value.trim() || details.contactPhones,
+        contactEmail: document.getElementById('inst-email')?.value.trim() || details.contactEmail,
+        headOfInstitutionName: document.getElementById('inst-head-name')?.value.trim() || details.headOfInstitutionName,
+        headOfInstitutionEmail: document.getElementById('inst-head-email')?.value.trim() || details.headOfInstitutionEmail,
+        website: document.getElementById('inst-website')?.value.trim() || details.website,
+        tagline: document.getElementById('inst-tagline')?.value.trim() || details.tagline
+      };
+
+      const container = document.getElementById('inst-card-preview-container');
+      if (container) {
+        container.innerHTML = institutionService.renderStatusCardHtml(liveData);
+        UIComponents.refreshIcons();
+      }
+    };
+
+    tabContent.querySelectorAll('.inst-inp').forEach(inp => {
+      inp.addEventListener('input', updatePreview);
+    });
+
+    // Save Button Handler
+    safeOn('btn-save-inst-details', 'click', async () => {
+      const regNo = (document.getElementById('inst-reg-no')?.value || '').trim();
+      const trust = (document.getElementById('inst-trust')?.value || '').trim();
+      const campusDistrict = (document.getElementById('inst-district')?.value || '').trim();
+      const campusLocation = (document.getElementById('inst-location')?.value || '').trim();
+      const contactPhones = (document.getElementById('inst-phones')?.value || '').trim();
+      const contactEmail = (document.getElementById('inst-email')?.value || '').trim();
+      const headOfInstitutionName = (document.getElementById('inst-head-name')?.value || '').trim();
+      const headOfInstitutionEmail = (document.getElementById('inst-head-email')?.value || '').trim();
+      const name = (document.getElementById('inst-name')?.value || '').trim();
+      const website = (document.getElementById('inst-website')?.value || '').trim();
+      const tagline = (document.getElementById('inst-tagline')?.value || '').trim();
+
+      if (!name || !regNo || !trust) {
+        UIComponents.showToast('Please fill in Institution Name, Registration No., and Parent Trust.', 'warning');
+        return;
+      }
+
+      const payload = {
+        name,
+        regNo,
+        trust,
+        campusDistrict: campusDistrict || 'Dakshin Dinajpur',
+        campusLocation: campusLocation || 'Baghait, Tapan, Dakshin Dinajpur, West Bengal 733127',
+        contactPhones: contactPhones || '+91 8653382851 / +91 8167782851',
+        contactEmail: contactEmail || 'tms@thaibagarden.com',
+        headOfInstitutionName: headOfInstitutionName || 'C. M. Basith',
+        headOfInstitutionEmail: headOfInstitutionEmail || 'cmbasith786@gmail.com',
+        website,
+        tagline
+      };
+
+      const saveBtn = document.getElementById('btn-save-inst-details');
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Saving...';
+      }
+
+      await institutionService.saveDetails(payload);
+      await auditService.log('INSTITUTION_DETAILS_UPDATED', 'GOVERNANCE', payload);
+
+      UIComponents.showToast('Institutional Details updated successfully & applied campus-wide!', 'success');
+      this.renderTab('institution-details');
+    });
+
+    // Reset Defaults Handler
+    safeOn('btn-reset-inst-defaults', 'click', async () => {
+      if (!confirm('Reset all institutional campus details back to standard defaults?')) return;
+      await institutionService.resetToDefaults();
+      await auditService.log('INSTITUTION_DETAILS_RESET', 'GOVERNANCE', {});
+      UIComponents.showToast('Institutional details reset to standard defaults.', 'info');
+      this.renderTab('institution-details');
     });
 
     UIComponents.refreshIcons();

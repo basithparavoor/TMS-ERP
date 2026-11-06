@@ -33,6 +33,7 @@ class SupabaseDataService {
     this.isOnline = navigator.onLine;
     this._memCache = new Map();
     this._memCacheTime = new Map();
+    this._missingTables = new Set();
     this._cacheTTL = 60000; // 60 seconds memory cache
     this.cleanLegacyDemoData();
     this.initClient();
