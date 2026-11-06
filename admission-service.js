@@ -448,7 +448,27 @@ class AdmissionService {
 
   async listApplications() {
     const rows = await dbService.select('admissions_applications', null, true);
-    return (rows || []).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    return (rows || []).map((a) => {
+      const pld = a.payload || {};
+      const createdAt = a.createdAt || a.created_at || pld.applicationDate || new Date().toISOString();
+      return {
+        ...a,
+        id: a.id || a.appId || a.app_id,
+        appId: a.appId || a.app_id || pld.formNo || pld.appId || a.id,
+        studentName: a.studentName || a.student_name || pld.candidateName || pld.studentName || '—',
+        grade: a.grade || a.applyingClass || pld.applyingClass || pld.grade || '—',
+        guardianName: a.guardianName || a.guardian_name || pld.fatherName || pld.guardianName || pld.motherName || '—',
+        phone: a.phone || pld.phone || pld.mobile || '—',
+        gender: a.gender || pld.gender || '',
+        dob: a.dob || pld.dob || '',
+        address: a.address || [pld.village, pld.po, pld.ps, pld.district, pld.pin].filter(Boolean).join(', ') || '',
+        feeTotal: a.feeTotal != null ? Number(a.feeTotal) : (a.fee_total != null ? Number(a.fee_total) : 0),
+        paymentStatus: a.paymentStatus || a.payment_status || 'Not Required',
+        submittedByName: a.submittedByName || a.submitted_by_name || 'Self / Public',
+        status: a.status || 'Submitted',
+        createdAt
+      };
+    }).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
   }
 
   async listApplicationsForParent(userId, email) {

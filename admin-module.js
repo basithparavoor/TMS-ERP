@@ -550,6 +550,7 @@ export class AdminModule {
     safeOn('btn-view-merit-list', 'click', () => this.openMeritListModal());
     safeOn('btn-export-csv', 'click', () => this.exportApplicationsCsv());
     safeOn('btn-export-pdf', 'click', () => this.exportApplicationsPdf());
+    safeOn('btn-refresh-apps', 'click', () => this.refreshApplications(tabContent));
     safeOn('btn-delete-pending', 'click', () => this.deletePendingApplications());
     safeOn('btn-select-visible', 'click', () => this.toggleSelectAll(true, tabContent));
     safeOn('btn-clear-selection', 'click', () => this.toggleSelectAll(false, tabContent));
@@ -709,7 +710,8 @@ export class AdminModule {
   static async deletePendingApplications() {
     const pending = (this._apps || []).filter((a) => a.status === 'Submitted' || a.status === 'Under Verification');
     if (!pending.length) { UIComponents.showToast('No pending applications to delete.', 'info'); return; }
-    if (!confirm(`Delete ALL ${pending.length} pending application(s) (Submitted / Under Verification)? This cannot be undone.`)) return;
+    const confirmName = prompt(`CAUTION: You are about to delete ALL ${pending.length} pending application(s). Type "DELETE" to confirm:`);
+    if (confirmName !== 'DELETE') return;
     await this.deleteApplications(pending.map((a) => a.id));
   }
 
@@ -750,8 +752,20 @@ export class AdminModule {
     const docFields = fields.filter((f) => (f.fieldType || 'text') === 'file');
     const textFields = fields.filter((f) => (f.fieldType || 'text') !== 'file');
 
+    const pld = app.payload || {};
     const detailsRows = textFields.map((f) => {
-      const raw = (app.payload || {})[f.fieldKey];
+      let raw = pld[f.fieldKey];
+      if (raw == null || raw === '') {
+        if (f.fieldKey === 'candidateName') raw = app.studentName || app.student_name || pld.studentName;
+        else if (f.fieldKey === 'applyingClass') raw = app.grade || pld.grade;
+        else if (f.fieldKey === 'fatherName') raw = app.guardianName || app.guardian_name || pld.guardianName;
+        else if (f.fieldKey === 'phone') raw = app.phone;
+        else if (f.fieldKey === 'email') raw = app.email;
+        else if (f.fieldKey === 'dob') raw = app.dob;
+        else if (f.fieldKey === 'gender') raw = app.gender;
+        else if (f.fieldKey === 'village' && app.address) raw = app.address;
+        else raw = app[f.fieldKey];
+      }
       return `
         <tr>
           <th style="width:36%; background:#f8fafc; font-weight:700; color:#475569; font-size:0.75rem; border-bottom:1px solid #f1f5f9; padding:8px 12px; white-space:normal;">${esc(f.label)}</th>
@@ -759,6 +773,29 @@ export class AdminModule {
         </tr>
       `;
     }).join('');
+
+    // Append any extra payload attributes not already captured in textFields
+    const knownKeys = new Set(fields.map(f => f.fieldKey));
+    knownKeys.add('photo');
+    knownKeys.add('candidatePhoto');
+    knownKeys.add('passportPhoto');
+    knownKeys.add('candidateName');
+    knownKeys.add('studentName');
+    knownKeys.add('applyingClass');
+    knownKeys.add('grade');
+    knownKeys.add('fatherName');
+    knownKeys.add('guardianName');
+    const extraRows = Object.entries(pld)
+      .filter(([k, v]) => !knownKeys.has(k) && v != null && v !== '' && typeof v !== 'object')
+      .map(([k, v]) => {
+        const label = k.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase());
+        return `
+          <tr>
+            <th style="width:36%; background:#f8fafc; font-weight:700; color:#475569; font-size:0.75rem; border-bottom:1px solid #f1f5f9; padding:8px 12px; white-space:normal;">${esc(label)}</th>
+            <td style="font-size:0.82rem; color:#1e293b; border-bottom:1px solid #f1f5f9; padding:8px 12px;">${esc(v)}</td>
+          </tr>
+        `;
+      }).join('');
 
     const docsListHtml = docFields.length ? docFields.map((f) => {
       const raw = (app.payload || {})[f.fieldKey];
@@ -883,6 +920,7 @@ export class AdminModule {
                     <td style="font-size:0.82rem; border-bottom:1px solid #f1f5f9; padding:8px 12px;">${fmtDate(app.createdAt)}</td>
                   </tr>
                   ${detailsRows}
+                  ${extraRows}
                 </tbody>
               </table>
             </div>
@@ -1642,7 +1680,19 @@ export class AdminModule {
       details += `<div style="font-size:11.5px; font-weight:800; color:#166534; text-transform:uppercase; letter-spacing:0.5px; margin:12px 0 4px; border-bottom:1px solid #bbf7d0; padding-bottom:2px;">${esc(section)}</div>`;
       details += '<table style="width:100%; border-collapse:collapse; font-size:10.5px; margin-bottom:8px;"><tbody>';
       sectionFields.forEach((f) => {
-        const raw = (app.payload || {})[f.fieldKey];
+        const pld = app.payload || {};
+        let raw = pld[f.fieldKey];
+        if (raw == null || raw === '') {
+          if (f.fieldKey === 'candidateName') raw = app.studentName || app.student_name || pld.studentName;
+          else if (f.fieldKey === 'applyingClass') raw = app.grade || pld.grade;
+          else if (f.fieldKey === 'fatherName') raw = app.guardianName || app.guardian_name || pld.guardianName;
+          else if (f.fieldKey === 'phone') raw = app.phone;
+          else if (f.fieldKey === 'email') raw = app.email;
+          else if (f.fieldKey === 'dob') raw = app.dob;
+          else if (f.fieldKey === 'gender') raw = app.gender;
+          else if (f.fieldKey === 'village' && app.address) raw = app.address;
+          else raw = app[f.fieldKey];
+        }
         const isFile = (f.fieldType || 'text') === 'file';
         const shown = isFile
           ? (raw ? esc(String(raw).split('/').pop()) : 'Not attached')
