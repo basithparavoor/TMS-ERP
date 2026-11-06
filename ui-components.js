@@ -156,9 +156,9 @@ export class UIComponents {
       overlay.className = 'modal-overlay';
       overlay.innerHTML = `
         <div class="modal-window">
-          <div class="card-header" style="margin-bottom: 16px;">
-            <h3 class="card-title" id="global-modal-title"></h3>
-            <button class="icon-btn" id="global-modal-close"><i data-lucide="x"></i></button>
+          <div class="card-header modal-header-row" style="margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: nowrap; gap: 12px;">
+            <h3 class="card-title" id="global-modal-title" style="margin: 0; display: flex; align-items: center; gap: 10px;"></h3>
+            <button class="icon-btn" id="global-modal-close" title="Close" style="flex-shrink: 0;"><i data-lucide="x"></i></button>
           </div>
           <div id="global-modal-body" style="margin-bottom: 20px;"></div>
           <div id="global-modal-footer" style="display: flex; justify-content: flex-end; gap: 10px;"></div>
@@ -180,7 +180,14 @@ export class UIComponents {
       modalWin.style.maxWidth = maxWidth || '680px';
     }
 
-    document.getElementById('global-modal-title').innerText = title;
+    const titleEl = document.getElementById('global-modal-title');
+    if (titleEl) {
+      if (typeof title === 'string' && title.includes('<') && title.includes('>')) {
+        titleEl.innerHTML = title;
+      } else {
+        titleEl.textContent = title || '';
+      }
+    }
     document.getElementById('global-modal-body').innerHTML = bodyHtml;
     
     const footerEl = document.getElementById('global-modal-footer');
