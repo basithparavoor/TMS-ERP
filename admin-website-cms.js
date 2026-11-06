@@ -92,7 +92,11 @@ export class AdminWebsiteCms {
     const subContainer = document.getElementById('cms-subtab-container');
     if (!subContainer) return;
 
-    if (subKey === 'website-general') this.renderGeneralTab(subContainer);
+    if (subKey === 'website-inquiries') {
+      const { AdminModule } = await import('./admin-module.js');
+      await AdminModule.renderInquiriesTab(subContainer);
+    }
+    else if (subKey === 'website-general') this.renderGeneralTab(subContainer);
     else if (subKey === 'website-hero') this.renderHeroTab(subContainer);
     else if (subKey === 'website-about') this.renderAboutTab(subContainer);
     else if (subKey === 'website-academics') this.renderAcademicsTab(subContainer);
