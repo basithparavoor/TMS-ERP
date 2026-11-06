@@ -48,7 +48,7 @@ export const DEFAULT_WEBSITE_CONFIG = {
     campusAddress: 'Baghait, Tapan, Dakshin Dinajpur, West Bengal, PIN 733127',
     topbarAlert: '📢 Admissions Open for Academic Session 2026-27 • Limited Seats Available for Nursery to Grade 11',
     topbarAlertLink: '/admission',
-    loginButtonText: 'Institutional Login'
+    loginButtonText: 'Login'
   },
 
   // 3. Hero Section
@@ -58,8 +58,8 @@ export const DEFAULT_WEBSITE_CONFIG = {
     subheadline: 'A premier educational sanctuary in Dakshin Dinajpur where academic distinction blends seamlessly with ethical integrity, modern STEM facilities, and individual student mentorship.',
     primaryCtaText: 'Apply for Admission',
     primaryCtaUrl: '/admission',
-    secondaryCtaText: 'Institutional Login',
-    secondaryCtaUrl: '/login',
+    secondaryCtaText: 'Explore Programs',
+    secondaryCtaUrl: '#academics',
     heroImageUrl: 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=1200&q=80',
     stat1Number: '100%',
     stat1Label: 'Board Pass Rate',
@@ -431,7 +431,16 @@ class WebsiteService {
       const stored = localStorage.getItem(CACHE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored);
-        return this.deepMerge(DEFAULT_WEBSITE_CONFIG, parsed);
+        const merged = this.deepMerge(DEFAULT_WEBSITE_CONFIG, parsed);
+        // Automatic migration of legacy defaults
+        if (merged.meta && merged.meta.loginButtonText === 'Institutional Login') {
+          merged.meta.loginButtonText = 'Login';
+        }
+        if (merged.hero && merged.hero.secondaryCtaText === 'Institutional Login') {
+          merged.hero.secondaryCtaText = 'Explore Programs';
+          merged.hero.secondaryCtaUrl = '#academics';
+        }
+        return merged;
       }
     } catch (e) {
       console.warn('Error reading website CMS cache:', e);

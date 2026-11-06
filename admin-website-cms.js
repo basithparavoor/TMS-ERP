@@ -199,8 +199,8 @@ export class AdminWebsiteCms {
           </div>
 
           <div class="form-group">
-            <label class="form-label">Institutional Login Button Label</label>
-            <input type="text" id="meta-loginbtn" class="form-input" value="${esc(meta.loginButtonText || 'Institutional Login')}">
+            <label class="form-label">Header Login Button Label</label>
+            <input type="text" id="meta-loginbtn" class="form-input" value="${esc(meta.loginButtonText || 'Login')}">
           </div>
         </div>
 

@@ -27,6 +27,21 @@ function ensureDropdownStyles() {
   box-sizing: border-box !important;
 }
 
+.tms-custom-select-wrapper.is-open {
+  z-index: 10050 !important;
+  position: relative !important;
+}
+
+.tms-has-open-select,
+.card:has(.tms-custom-select-wrapper.is-open),
+.form-group:has(.tms-custom-select-wrapper.is-open),
+[class*="card"]:has(.tms-custom-select-wrapper.is-open),
+.modal-content:has(.tms-custom-select-wrapper.is-open),
+.modal-body:has(.tms-custom-select-wrapper.is-open) {
+  z-index: 9999 !important;
+  position: relative !important;
+}
+
 .tms-custom-select-trigger {
   width: 100% !important;
   display: flex !important;
@@ -94,7 +109,7 @@ function ensureDropdownStyles() {
   border: 1.5px solid #E2E8F0 !important;
   border-radius: 18px !important;
   padding: 8px !important;
-  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12), 0 4px 12px rgba(0, 0, 0, 0.06) !important;
+  box-shadow: 0 16px 36px -4px rgba(15, 23, 42, 0.18), 0 4px 12px rgba(0, 0, 0, 0.08) !important;
   max-height: 280px !important;
   overflow-y: auto !important;
   box-sizing: border-box !important;
@@ -147,8 +162,7 @@ function ensureDropdownStyles() {
   justify-content: center !important;
   color: #15803D !important;
   margin-left: 8px !important;
-}
-`;
+}`;
   document.head.appendChild(style);
 }
 ensureDropdownStyles();
@@ -178,14 +192,31 @@ const CHEVRON_SVG = `
   </svg>
 `;
 
+function closeWrapper(w) {
+  w.classList.remove('is-open', 'is-open-above');
+  w.style.removeProperty('z-index');
+  const trig = w.querySelector('.tms-custom-select-trigger');
+  if (trig) trig.setAttribute('aria-expanded', 'false');
+  const m = w.querySelector('.tms-custom-select-menu');
+  if (m) m.style.display = 'none';
+
+  if (w.__elevatedAncestors) {
+    w.__elevatedAncestors.forEach(({ el, prevZ }) => {
+      if (prevZ) {
+        el.style.zIndex = prevZ;
+      } else {
+        el.style.removeProperty('z-index');
+      }
+      el.classList.remove('tms-has-open-select');
+    });
+    w.__elevatedAncestors = null;
+  }
+}
+
 function closeAllCustomSelects(exceptWrapper = null) {
   document.querySelectorAll('.tms-custom-select-wrapper.is-open').forEach((w) => {
     if (w !== exceptWrapper) {
-      w.classList.remove('is-open', 'is-open-above');
-      const trig = w.querySelector('.tms-custom-select-trigger');
-      if (trig) trig.setAttribute('aria-expanded', 'false');
-      const m = w.querySelector('.tms-custom-select-menu');
-      if (m) m.style.display = 'none';
+      closeWrapper(w);
     }
   });
 }
@@ -312,9 +343,7 @@ export function enhanceSelect(select) {
         select.dispatchEvent(new Event('input', { bubbles: true }));
         select.dispatchEvent(new Event('change', { bubbles: true }));
 
-        wrapper.classList.remove('is-open', 'is-open-above');
-        trigger.setAttribute('aria-expanded', 'false');
-        menu.style.display = 'none';
+        closeWrapper(wrapper);
         trigger.focus();
         wrapper.classList.remove('is-invalid');
       });
@@ -331,11 +360,26 @@ export function enhanceSelect(select) {
     const isOpen = wrapper.classList.contains('is-open');
 
     if (isOpen) {
-      wrapper.classList.remove('is-open', 'is-open-above');
-      trigger.setAttribute('aria-expanded', 'false');
-      menu.style.display = 'none';
+      closeWrapper(wrapper);
     } else {
       closeAllCustomSelects(wrapper);
+
+      // Elevate wrapper and all positioned ancestors so the menu sits above subsequent DOM siblings
+      wrapper.classList.add('is-open');
+      wrapper.style.setProperty('z-index', '10050', 'important');
+
+      let ancestor = wrapper.parentElement;
+      const elevatedAncestors = [];
+      while (ancestor && ancestor !== document.body) {
+        const comp = window.getComputedStyle(ancestor);
+        if (comp.position === 'relative' || comp.position === 'absolute' || comp.position === 'sticky' || comp.transform !== 'none' || ancestor.classList.contains('card')) {
+          elevatedAncestors.push({ el: ancestor, prevZ: ancestor.style.zIndex });
+          ancestor.style.setProperty('z-index', '9999', 'important');
+          ancestor.classList.add('tms-has-open-select');
+        }
+        ancestor = ancestor.parentElement;
+      }
+      wrapper.__elevatedAncestors = elevatedAncestors;
 
       // Check space above vs below
       const rect = trigger.getBoundingClientRect();
@@ -349,7 +393,6 @@ export function enhanceSelect(select) {
         wrapper.classList.remove('is-open-above');
       }
 
-      wrapper.classList.add('is-open');
       trigger.setAttribute('aria-expanded', 'true');
       menu.style.display = 'block';
 

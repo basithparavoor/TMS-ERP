@@ -5746,6 +5746,21 @@ a {
   box-sizing: border-box !important;
 }
 
+.tms-custom-select-wrapper.is-open {
+  z-index: 10050 !important;
+  position: relative !important;
+}
+
+.tms-has-open-select,
+.card:has(.tms-custom-select-wrapper.is-open),
+.form-group:has(.tms-custom-select-wrapper.is-open),
+[class*="card"]:has(.tms-custom-select-wrapper.is-open),
+.modal-content:has(.tms-custom-select-wrapper.is-open),
+.modal-body:has(.tms-custom-select-wrapper.is-open) {
+  z-index: 9999 !important;
+  position: relative !important;
+}
+
 .tms-custom-select-trigger {
   width: 100% !important;
   display: flex !important;

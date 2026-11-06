@@ -78,7 +78,12 @@ export class ExaminationModule {
         ${UIComponents.renderPageHeader({
           title: 'Examinations & Assessment Engine',
           subtitle: 'Class gradebooks, bulk marks ledger, official CBSE/State-Board A4 Cumulative Progress Report Cards.',
-          breadcrumbs: [{ label: 'Exams & Reports' }],
+          breadcrumbs: [
+            { label: 'Campus Core' },
+            { label: 'Academics & Operations' },
+            { label: 'Examinations & Reports', active: true }
+          ],
+          icon: 'award',
           badge: 'Evaluation Suite',
           actionsHtml: `
             <button class="btn btn-secondary" id="btn-publish-results"><i data-lucide="share-2"></i> Publish Results</button>
