@@ -655,3 +655,37 @@ $$;
 GRANT EXECUTE ON FUNCTION public.tms_create_user(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT) TO anon, authenticated;
 
 NOTIFY pgrst, 'reload schema';
+
+
+-- ============================================================================
+-- Section 32: Public Admission Inquiries
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.admission_inquiries (
+    id TEXT PRIMARY KEY,
+    candidate_name TEXT,
+    phone TEXT,
+    applying_class TEXT,
+    parent_name TEXT,
+    village TEXT,
+    message TEXT,
+    source TEXT,
+    status TEXT DEFAULT 'new',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.admission_inquiries ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "admission_inquiries_insert_public" ON public.admission_inquiries;
+CREATE POLICY "admission_inquiries_insert_public" ON public.admission_inquiries
+  FOR INSERT TO anon, authenticated WITH CHECK (true);
+
+DROP POLICY IF EXISTS "admission_inquiries_read_all" ON public.admission_inquiries;
+CREATE POLICY "admission_inquiries_read_all" ON public.admission_inquiries
+  FOR SELECT TO anon, authenticated USING (true);
+
+DROP POLICY IF EXISTS "admission_inquiries_manage_auth" ON public.admission_inquiries;
+CREATE POLICY "admission_inquiries_manage_auth" ON public.admission_inquiries
+  FOR ALL TO authenticated USING (true) WITH CHECK (true);
+
+GRANT ALL ON TABLE public.admission_inquiries TO anon, authenticated, service_role;

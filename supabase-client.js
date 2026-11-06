@@ -214,6 +214,10 @@ class SupabaseDataService {
   }
 
   async select(collection, filterFn = null, forceRefresh = false) {
+    if (this._missingTables && this._missingTables.has(collection)) {
+      const local = this.getLocal(collection);
+      return filterFn ? local.filter(filterFn) : [...local];
+    }
     const now = Date.now();
 
     // 1. In-Memory RAM Cache (Instant 0ms)
@@ -232,8 +236,14 @@ class SupabaseDataService {
       this._memCacheTime.set(collection, now);
 
       // Background silent revalidation (non-blocking)
-      if (this.client && this.isOnline) {
+      if (this.client && this.isOnline && !this._missingTables.has(collection)) {
         this.client.from(collection).select('*').then(({ data, error }) => {
+          if (error) {
+            if (error.code === '42P01' || error.status === 404 || String(error.message || '').includes('does not exist')) {
+              this._missingTables.add(collection);
+            }
+            return;
+          }
           if (!error && Array.isArray(data)) {
             const mapped = data.map(rowFromDb);
             const currentLocal = this.getLocal(collection);
@@ -264,6 +274,10 @@ class SupabaseDataService {
           }
         }
       } catch (err) {
+        if (err && (err.code === '42P01' || err.status === 404 || String(err.message || '').includes('404') || String(err.message || '').includes('does not exist'))) {
+          if (!this._missingTables) this._missingTables = new Set();
+          this._missingTables.add(collection);
+        }
         console.warn(`Supabase select failed for ${collection}, using local cache:`, err.message);
       }
     }

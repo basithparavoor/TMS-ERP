@@ -663,13 +663,17 @@ class WebsiteService {
    */
   async listInquiries() {
     let inquiries = [];
-    try {
-      const rows = await dbService.select('admission_inquiries', null, true);
-      if (Array.isArray(rows) && rows.length > 0) {
-        inquiries = rows;
+    if (this._inquiriesTableAvailable !== false) {
+      try {
+        const rows = await dbService.select('admission_inquiries', null, false);
+        if (Array.isArray(rows) && rows.length > 0) {
+          inquiries = rows;
+        }
+      } catch (e) {
+        if (e && (e.code === '42P01' || e.status === 404 || String(e.message || '').includes('404'))) {
+          this._inquiriesTableAvailable = false;
+        }
       }
-    } catch (e) {
-      console.warn('Admission inquiries DB query notice:', e);
     }
 
     if (inquiries.length === 0) {

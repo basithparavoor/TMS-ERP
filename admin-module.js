@@ -187,12 +187,12 @@ export class AdminModule {
       </div>
 
       <!-- Secondary Subtabs Rail with Navigation Controls -->
-      <div class="tms-subtab-container-wrap">
-        <button type="button" class="tms-subtab-nav-btn tms-subtab-nav-prev" id="admin-subtab-scroll-prev" aria-label="Scroll left" style="display:none;" title="Scroll subtabs left">
+      <div class="tms-subtab-container-wrap tms-tab-scroll-wrapper">
+        <button type="button" class="tms-subtab-nav-btn tms-tab-nav-btn tms-subtab-nav-prev" id="admin-subtab-scroll-prev" aria-label="Scroll left" title="Scroll subtabs left">
           <i data-lucide="chevron-left"></i>
         </button>
-        <div class="tms-subtab-rail" id="admin-subtab-rail"></div>
-        <button type="button" class="tms-subtab-nav-btn tms-subtab-nav-next" id="admin-subtab-scroll-next" aria-label="Scroll right" style="display:none;" title="Scroll subtabs right">
+        <div class="tms-subtab-rail tms-tab-scroll-rail" id="admin-subtab-rail"></div>
+        <button type="button" class="tms-subtab-nav-btn tms-tab-nav-btn tms-subtab-nav-next" id="admin-subtab-scroll-next" aria-label="Scroll right" title="Scroll subtabs right">
           <i data-lucide="chevron-right"></i>
         </button>
       </div>
