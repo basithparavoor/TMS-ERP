@@ -3233,6 +3233,527 @@ export class AdminModule {
   }
 
   /* ================================================================== */
+  /* Admission Inquiries                                                */
+  /* ================================================================== */
+
+  static async renderInquiriesTab(tabContent) {
+    let inquiries = await websiteService.listInquiries();
+    this._inquiries = inquiries || [];
+    this._inqSearch = '';
+    this._inqStatusFilter = '';
+    this._inqGradeFilter = '';
+
+    const newCount = this._inquiries.filter(i => (i.status || 'new') === 'new').length;
+    const contactedCount = this._inquiries.filter(i => i.status === 'contacted').length;
+    const admittedCount = this._inquiries.filter(i => i.status === 'admitted').length;
+    const closedCount = this._inquiries.filter(i => i.status === 'closed').length;
+    this._newInquiriesCount = newCount;
+
+    tabContent.innerHTML = `
+      <div class="card">
+        <div class="card-header" style="flex-wrap: wrap; gap: 12px;">
+          <div>
+            <h3 class="card-title" style="display:flex; align-items:center; gap:8px;">
+              <i data-lucide="message-square" style="color:var(--brand-theme-primary, #16a34a);"></i>
+              <span>Website Admission Inquiries</span>
+              ${newCount > 0 ? `<span class="badge" style="background:#16a34a; color:#fff; font-size:0.75rem; padding:3px 9px; border-radius:999px;">${newCount} New</span>` : ''}
+            </h3>
+            <p class="card-desc">Review, follow up, and track prospective parents and students who submitted inquiries through the institutional website contact form.</p>
+          </div>
+          <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button class="btn btn-secondary btn-sm" id="btn-refresh-inquiries" title="Reload from server">
+              <i data-lucide="refresh-cw"></i> Refresh
+            </button>
+            <button class="btn btn-secondary btn-sm" id="btn-export-inquiries-csv">
+              <i data-lucide="file-spreadsheet"></i> Export CSV
+            </button>
+            <button class="btn btn-primary btn-sm" id="btn-manual-inquiry">
+              <i data-lucide="plus"></i> Log Manual Inquiry
+            </button>
+          </div>
+        </div>
+
+        <!-- KPI Summary Cards -->
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap:12px; margin-bottom:18px;">
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px;">
+            <div style="font-size:0.74rem; color:#64748b; font-weight:700; text-transform:uppercase;">Total Inquiries</div>
+            <div style="font-size:1.55rem; font-weight:800; color:#0f172a; margin-top:2px;">${this._inquiries.length}</div>
+          </div>
+          <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:12px 14px;">
+            <div style="font-size:0.74rem; color:#15803d; font-weight:700; text-transform:uppercase;">New / Needs Call</div>
+            <div style="font-size:1.55rem; font-weight:800; color:#16a34a; margin-top:2px;">${newCount}</div>
+          </div>
+          <div style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:10px; padding:12px 14px;">
+            <div style="font-size:0.74rem; color:#0369a1; font-weight:700; text-transform:uppercase;">Contacted / In Progress</div>
+            <div style="font-size:1.55rem; font-weight:800; color:#0284c7; margin-top:2px;">${contactedCount}</div>
+          </div>
+          <div style="background:#fefce8; border:1px solid #fef08a; border-radius:10px; padding:12px 14px;">
+            <div style="font-size:0.74rem; color:#854d0e; font-weight:700; text-transform:uppercase;">Converted / Admitted</div>
+            <div style="font-size:1.55rem; font-weight:800; color:#ca8a04; margin-top:2px;">${admittedCount}</div>
+          </div>
+        </div>
+
+        <!-- Filter & Search Toolbar -->
+        <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; align-items:center;">
+          <input class="form-input" id="inq-search" placeholder="Search guardian, phone, class, questions…" style="max-width: 280px;">
+          <select class="form-select" id="inq-status-filter" style="max-width: 190px;">
+            <option value="">All Statuses</option>
+            <option value="new">✨ New (Awaiting Call)</option>
+            <option value="contacted">📞 Contacted</option>
+            <option value="admitted">🎓 Converted / Admitted</option>
+            <option value="closed">📁 Closed / Archived</option>
+          </select>
+          <select class="form-select" id="inq-grade-filter" style="max-width: 210px;">
+            <option value="">All Grades / Wings</option>
+            <option value="Nursery">Nursery / LKG / UKG</option>
+            <option value="Primary">Primary School (Grades 1–5)</option>
+            <option value="Middle">Middle School (Grades 6–8)</option>
+            <option value="Secondary">Secondary (Grades 9–10)</option>
+            <option value="Higher Secondary">Senior Secondary (11–12)</option>
+            <option value="Hostel">Hostel &amp; Residential Wing</option>
+            <option value="Moral Wing">Islamic &amp; Moral Studies</option>
+          </select>
+          <button class="btn btn-secondary btn-sm" id="btn-clear-inq-filters">Reset Filters</button>
+        </div>
+
+        <!-- Inquiries Table -->
+        <div class="table-responsive">
+          <table class="tms-table" style="font-size: 0.85rem;">
+            <thead>
+              <tr>
+                <th>Received Date</th>
+                <th>Guardian / Parent</th>
+                <th>Target Class</th>
+                <th>Contact &amp; WhatsApp</th>
+                <th>Message / Questions</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="inq-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    `;
+
+    this.renderInquiryRows(tabContent);
+
+    safeOn('inq-search', 'input', (e) => {
+      this._inqSearch = e.target.value.toLowerCase().trim();
+      this.renderInquiryRows(tabContent);
+    });
+
+    safeOn('inq-status-filter', 'change', (e) => {
+      this._inqStatusFilter = e.target.value;
+      this.renderInquiryRows(tabContent);
+    });
+
+    safeOn('inq-grade-filter', 'change', (e) => {
+      this._inqGradeFilter = e.target.value;
+      this.renderInquiryRows(tabContent);
+    });
+
+    safeOn('btn-clear-inq-filters', 'click', () => {
+      const s = document.getElementById('inq-search');
+      const sf = document.getElementById('inq-status-filter');
+      const gf = document.getElementById('inq-grade-filter');
+      if (s) s.value = '';
+      if (sf) sf.value = '';
+      if (gf) gf.value = '';
+      this._inqSearch = '';
+      this._inqStatusFilter = '';
+      this._inqGradeFilter = '';
+      this.renderInquiryRows(tabContent);
+    });
+
+    safeOn('btn-refresh-inquiries', 'click', async () => {
+      UIComponents.showToast('Refreshing inquiries from campus database...', 'info');
+      await this.renderInquiriesTab(tabContent);
+    });
+
+    safeOn('btn-export-inquiries-csv', 'click', () => {
+      this.exportInquiriesCsv();
+    });
+
+    safeOn('btn-manual-inquiry', 'click', () => {
+      this.openManualInquiryModal(tabContent);
+    });
+
+    UIComponents.refreshIcons();
+  }
+
+  static renderInquiryRows(tabContent) {
+    const body = document.getElementById('inq-table-body');
+    if (!body) return;
+
+    let rows = this._inquiries || [];
+    if (this._inqSearch) {
+      const q = this._inqSearch;
+      rows = rows.filter(i => {
+        const str = `${i.guardianName || ''} ${i.phone || ''} ${i.email || ''} ${i.grade || ''} ${i.message || ''} ${i.notes || ''}`.toLowerCase();
+        return str.includes(q);
+      });
+    }
+
+    if (this._inqStatusFilter) {
+      rows = rows.filter(i => (i.status || 'new') === this._inqStatusFilter);
+    }
+
+    if (this._inqGradeFilter) {
+      rows = rows.filter(i => (i.grade || '').toLowerCase().includes(this._inqGradeFilter.toLowerCase()));
+    }
+
+    if (!rows.length) {
+      body.innerHTML = `
+        <tr>
+          <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 36px 20px;">
+            <div style="margin-bottom:8px;"><i data-lucide="inbox" style="width:36px; height:36px; color:#cbd5e1;"></i></div>
+            <p style="font-weight:600; margin:0 0 6px 0; color:#475569;">No admission inquiries match the selected criteria.</p>
+            <span style="font-size:0.8rem; color:#94a3b8;">Prospective inquiries submitted on the website homepage will appear here automatically.</span>
+          </td>
+        </tr>
+      `;
+      UIComponents.refreshIcons();
+      return;
+    }
+
+    body.innerHTML = rows.map(inq => {
+      const dateStr = inq.createdAt ? new Date(inq.createdAt).toLocaleString('en-IN', {
+        day: '2-digit', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', hour12: true
+      }) : '—';
+
+      const cleanPhone = (inq.phone || '').replace(/[^0-9]/g, '');
+      const waNumber = cleanPhone.length === 10 ? '91' + cleanPhone : cleanPhone;
+      const waText = encodeURIComponent(`Assalamu Alaikum / Greetings from Thaiba Model School Admissions Desk. We received your admission inquiry for ${inq.grade || 'our academic program'}. How may we assist you with admissions for 2026-27?`);
+      const waUrl = `https://api.whatsapp.com/send?phone=${waNumber}&text=${waText}`;
+
+      let statusBadge = '<span class="badge" style="background:#fef3c7; color:#92400e; font-weight:700; border:1px solid #fde68a;">✨ New</span>';
+      if (inq.status === 'contacted') {
+        statusBadge = '<span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:700; border:1px solid #bae6fd;">📞 Contacted</span>';
+      } else if (inq.status === 'admitted') {
+        statusBadge = '<span class="badge" style="background:#dcfce7; color:#15803d; font-weight:700; border:1px solid #bbf7d0;">🎓 Admitted</span>';
+      } else if (inq.status === 'closed') {
+        statusBadge = '<span class="badge" style="background:#f1f5f9; color:#475569; font-weight:700; border:1px solid #e2e8f0;">Closed</span>';
+      }
+
+      const msgPreview = inq.message ? esc(inq.message.length > 55 ? inq.message.slice(0, 55) + '…' : inq.message) : '<span style="color:#94a3b8; font-style:italic;">No question attached</span>';
+
+      return `
+        <tr>
+          <td style="white-space:nowrap; color:#64748b; font-size:0.8rem;">
+            <div>${dateStr}</div>
+            <div style="font-size:0.7rem; color:#94a3b8;">${esc(inq.source || 'Website')}</div>
+          </td>
+          <td>
+            <div style="font-weight:700; color:#0f172a; font-size:0.9rem;">${esc(inq.guardianName)}</div>
+            ${inq.email ? `<div style="font-size:0.75rem; color:#64748b;"><a href="mailto:${esc(inq.email)}" style="color:inherit; text-decoration:none;">${esc(inq.email)}</a></div>` : ''}
+          </td>
+          <td>
+            <span class="badge" style="background:#f1f5f9; color:#0f172a; font-weight:700; border:1px solid #cbd5e1; white-space:nowrap;">
+              ${esc(inq.grade)}
+            </span>
+          </td>
+          <td style="white-space:nowrap;">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <a href="tel:${esc(inq.phone)}" class="font-mono" style="font-weight:700; color:#0f172a; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                <i data-lucide="phone" style="width:13px; height:13px; color:#16a34a;"></i>
+                <span>${esc(inq.phone)}</span>
+              </a>
+              ${cleanPhone ? `
+                <a href="${waUrl}" target="_blank" rel="noopener noreferrer" class="btn btn-sm" title="Chat on WhatsApp"
+                   style="background:#22c55e; color:#fff; padding:3px 7px; font-size:0.7rem; border-radius:6px; text-decoration:none; display:inline-flex; align-items:center; gap:3px;">
+                  <i data-lucide="message-circle" style="width:12px; height:12px;"></i>
+                  <span>WA</span>
+                </a>
+              ` : ''}
+            </div>
+          </td>
+          <td>
+            <div style="max-width:240px; color:#334155; line-height:1.4;">${msgPreview}</div>
+            ${inq.notes ? `<div style="font-size:0.72rem; color:#16a34a; margin-top:2px; font-weight:600;"><i data-lucide="bookmark" style="width:10px; height:10px;"></i> ${esc(inq.notes.slice(0, 35))}</div>` : ''}
+          </td>
+          <td>
+            ${statusBadge}
+          </td>
+          <td>
+            <div style="display:flex; gap:6px; align-items:center;">
+              <button class="btn btn-secondary btn-sm btn-view-inquiry" data-id="${esc(inq.id)}" title="View full details and update follow-up notes" style="padding:4px 8px;">
+                <i data-lucide="eye" style="width:13px; height:13px;"></i> Details
+              </button>
+              <button class="btn btn-secondary btn-sm btn-del-inquiry" data-id="${esc(inq.id)}" title="Delete inquiry" style="color:#ef4444; padding:4px 7px;">
+                <i data-lucide="trash-2" style="width:13px; height:13px;"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    body.querySelectorAll('.btn-view-inquiry').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.id;
+        const inq = (this._inquiries || []).find(i => i.id === id);
+        if (inq) this.openInquiryDetailsModal(inq, tabContent);
+      });
+    });
+
+    body.querySelectorAll('.btn-del-inquiry').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        const confirmed = await UIComponents.confirm({
+          title: 'Delete Admission Inquiry?',
+          message: 'Are you sure you want to delete this website inquiry? This action cannot be undone.',
+          confirmText: 'Delete Inquiry',
+          cancelText: 'Keep'
+        });
+        if (confirmed) {
+          await websiteService.deleteInquiry(id);
+          this._inquiries = (this._inquiries || []).filter(i => i.id !== id);
+          UIComponents.showToast('Inquiry deleted successfully.', 'success');
+          this.renderInquiryRows(tabContent);
+        }
+      });
+    });
+
+    UIComponents.refreshIcons();
+  }
+
+  static openInquiryDetailsModal(inq, tabContent) {
+    const cleanPhone = (inq.phone || '').replace(/[^0-9]/g, '');
+    const waNumber = cleanPhone.length === 10 ? '91' + cleanPhone : cleanPhone;
+    const waText = encodeURIComponent(`Assalamu Alaikum / Greetings from Thaiba Model School Admissions Desk regarding your admission inquiry for ${inq.grade || 'our academic program'}.`);
+    const waUrl = `https://api.whatsapp.com/send?phone=${waNumber}&text=${waText}`;
+
+    const dateStr = inq.createdAt ? new Date(inq.createdAt).toLocaleString('en-IN', {
+      day: '2-digit', month: 'short', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', hour12: true
+    }) : '—';
+
+    const modalContent = `
+      <div style="display:flex; flex-direction:column; gap:16px;">
+        <!-- Top Info Header -->
+        <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;">
+            <div>
+              <div style="font-size:0.75rem; color:#64748b; font-weight:700; text-transform:uppercase;">Inquiry ID: <span class="font-mono">${esc(inq.id)}</span></div>
+              <h3 style="font-family:var(--font-display); font-size:1.25rem; font-weight:800; color:#0f172a; margin:4px 0;">${esc(inq.guardianName)}</h3>
+              <div style="font-size:0.82rem; color:#475569;">Received on <strong>${dateStr}</strong> via ${esc(inq.source || 'Website Contact Form')}</div>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <a href="tel:${esc(inq.phone)}" class="btn btn-secondary btn-sm" style="font-weight:700;">
+                <i data-lucide="phone" style="width:14px; height:14px; color:#16a34a;"></i> Call
+              </a>
+              <a href="${waUrl}" target="_blank" class="btn btn-sm" style="background:#22c55e; color:#fff; font-weight:700;">
+                <i data-lucide="message-circle" style="width:14px; height:14px;"></i> WhatsApp
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Contact & Target Grid -->
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+          <div class="form-group">
+            <label class="form-label" style="font-size:0.78rem; font-weight:700;">Contact Phone</label>
+            <input class="form-input font-mono" id="modal-inq-phone" value="${esc(inq.phone)}" readonly style="background:#f8fafc; font-weight:700;">
+          </div>
+          <div class="form-group">
+            <label class="form-label" style="font-size:0.78rem; font-weight:700;">Email Address</label>
+            <input class="form-input" id="modal-inq-email" value="${esc(inq.email || 'None provided')}" readonly style="background:#f8fafc;">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" style="font-size:0.78rem; font-weight:700;">Target Grade / Campus Wing</label>
+          <input class="form-input" value="${esc(inq.grade || '—')}" readonly style="background:#f8fafc; font-weight:700; color:#16a34a;">
+        </div>
+
+        <!-- Message from Parent -->
+        <div class="form-group">
+          <label class="form-label" style="font-size:0.78rem; font-weight:700;">Parent Inquiry / Questions</label>
+          <div style="background:#ffffff; border:1.5px solid #cbd5e1; border-radius:8px; padding:12px; font-size:0.9rem; line-height:1.6; color:#1e293b; min-height:64px; white-space:pre-wrap;">${esc(inq.message || 'No additional message was submitted.')}</div>
+        </div>
+
+        <!-- Follow-up Status & Admin Notes -->
+        <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:14px;">
+          <div style="font-size:0.85rem; font-weight:800; color:#15803d; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+            <i data-lucide="clipboard-edit" style="width:16px; height:16px;"></i>
+            <span>Admission Desk Follow-up</span>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 1fr; gap:12px;">
+            <div class="form-group">
+              <label class="form-label" style="font-size:0.8rem; font-weight:700;">Inquiry Status</label>
+              <select class="form-select" id="modal-inq-status" style="font-weight:700;">
+                <option value="new" ${inq.status === 'new' ? 'selected' : ''}>✨ New (Awaiting Call)</option>
+                <option value="contacted" ${inq.status === 'contacted' ? 'selected' : ''}>📞 Contacted (Follow-up In Progress)</option>
+                <option value="admitted" ${inq.status === 'admitted' ? 'selected' : ''}>🎓 Converted to Admission / Enrolled</option>
+                <option value="closed" ${inq.status === 'closed' ? 'selected' : ''}>📁 Closed / Not Interested</option>
+              </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label" style="font-size:0.8rem; font-weight:700;">Office Follow-up Notes &amp; Remarks</label>
+              <textarea class="form-textarea" id="modal-inq-notes" rows="3" placeholder="e.g. Called guardian on 6th Nov. Interested in Class 5 Hostel admission. Scheduled campus visit for Saturday...">${esc(inq.notes || '')}</textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Conversion Button to Formal Admission Entry -->
+        <div style="display:flex; justify-content:space-between; align-items:center; padding-top:8px; border-top:1px solid #e2e8f0; flex-wrap:wrap; gap:8px;">
+          <a href="/admission" target="_blank" class="btn btn-secondary btn-sm" style="color:var(--brand-theme-primary); font-weight:700;">
+            <i data-lucide="external-link" style="width:14px; height:14px;"></i> Open Public Admission Gateway
+          </a>
+          <button type="button" class="btn btn-primary" id="btn-save-inquiry-modal" style="font-weight:700;">
+            <i data-lucide="save" style="width:15px; height:15px;"></i> Save Follow-up Changes
+          </button>
+        </div>
+      </div>
+    `;
+
+    UIComponents.showModal({
+      title: `Admission Inquiry — ${esc(inq.guardianName)}`,
+      content: modalContent,
+      confirmText: 'Done',
+      showCancel: false
+    });
+
+    safeOn('btn-save-inquiry-modal', 'click', async () => {
+      const nextStatus = document.getElementById('modal-inq-status').value;
+      const nextNotes = document.getElementById('modal-inq-notes').value.trim();
+
+      await websiteService.updateInquiry(inq.id, {
+        status: nextStatus,
+        notes: nextNotes
+      });
+
+      inq.status = nextStatus;
+      inq.notes = nextNotes;
+      UIComponents.showToast('Inquiry follow-up notes & status saved!', 'success');
+      this.renderInquiryRows(tabContent);
+    });
+
+    UIComponents.refreshIcons();
+  }
+
+  static openManualInquiryModal(tabContent) {
+    const modalContent = `
+      <form id="form-manual-inquiry" style="display:flex; flex-direction:column; gap:14px;">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+          <div class="form-group">
+            <label class="form-label" style="font-weight:700; font-size:0.82rem;">Guardian / Parent Name *</label>
+            <input class="form-input" id="man-inq-name" placeholder="e.g. Dr. Rafiqul Islam" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" style="font-weight:700; font-size:0.82rem;">Contact Phone *</label>
+            <input class="form-input" id="man-inq-phone" placeholder="+91 XXXXX XXXXX" required>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
+          <div class="form-group">
+            <label class="form-label" style="font-weight:700; font-size:0.82rem;">Target Class / Wing *</label>
+            <select class="form-select" id="man-inq-grade" required>
+              <option value="Pre-Primary (Nursery/KG)">Pre-Primary (Nursery / KG)</option>
+              <option value="Primary School (Grades 1–5)">Primary School (Grades 1–5)</option>
+              <option value="Middle School (Grades 6–8)">Middle School (Grades 6–8)</option>
+              <option value="Secondary (Grades 9–10)">Secondary (Grades 9–10)</option>
+              <option value="Senior Secondary (Grades 11–12)">Senior Secondary (Grades 11–12)</option>
+              <option value="Hostel & Residential Wing">Hostel &amp; Residential Wing</option>
+              <option value="Islamic & Moral Studies Wing">Islamic &amp; Moral Studies Wing</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" style="font-weight:700; font-size:0.82rem;">Email Address (Optional)</label>
+            <input class="form-input" id="man-inq-email" placeholder="guardian@example.com">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" style="font-weight:700; font-size:0.82rem;">Inquiry Source</label>
+          <select class="form-select" id="man-inq-source">
+            <option value="Campus Office Walk-in">Campus Office Walk-in</option>
+            <option value="Telephone Call">Telephone Call</option>
+            <option value="WhatsApp Direct">WhatsApp Direct</option>
+            <option value="Institutional Website">Institutional Website</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" style="font-weight:700; font-size:0.82rem;">Parent Questions / Requirements</label>
+          <textarea class="form-textarea" id="man-inq-msg" rows="3" placeholder="Requirements regarding transport, hostel boarding, fee concessions..."></textarea>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:8px;">
+          <button type="submit" class="btn btn-primary" style="font-weight:700;">
+            <i data-lucide="plus"></i> Record Inquiry
+          </button>
+        </div>
+      </form>
+    `;
+
+    UIComponents.showModal({
+      title: 'Log New Admission Inquiry',
+      content: modalContent,
+      showConfirm: false,
+      cancelText: 'Cancel'
+    });
+
+    safeOn('form-manual-inquiry', 'submit', async (e) => {
+      e.preventDefault();
+      const name = document.getElementById('man-inq-name').value.trim();
+      const phone = document.getElementById('man-inq-phone').value.trim();
+      const grade = document.getElementById('man-inq-grade').value;
+      const email = document.getElementById('man-inq-email').value.trim();
+      const source = document.getElementById('man-inq-source').value;
+      const message = document.getElementById('man-inq-msg').value.trim();
+
+      const newInquiry = {
+        guardianName: name,
+        phone,
+        grade,
+        email,
+        source,
+        message,
+        status: 'new'
+      };
+
+      const saved = await websiteService.saveInquiry(newInquiry);
+      if (!this._inquiries) this._inquiries = [];
+      this._inquiries.unshift(saved);
+
+      UIComponents.closeModal();
+      UIComponents.showToast('Admission inquiry recorded successfully!', 'success');
+      this.renderInquiryRows(tabContent);
+    });
+
+    UIComponents.refreshIcons();
+  }
+
+  static exportInquiriesCsv() {
+    const list = this._inquiries || [];
+    if (!list.length) {
+      UIComponents.showToast('No admission inquiries to export.', 'warning');
+      return;
+    }
+    const headers = ['Inquiry ID', 'Received Date', 'Guardian Name', 'Phone', 'Email', 'Target Grade', 'Message', 'Source', 'Status', 'Admin Notes'];
+    const data = list.map(i => [
+      i.id || '',
+      i.createdAt ? new Date(i.createdAt).toISOString() : '',
+      i.guardianName || '',
+      i.phone || '',
+      i.email || '',
+      i.grade || '',
+      (i.message || '').replace(/\r?\n/g, ' '),
+      i.source || '',
+      i.status || '',
+      (i.notes || '').replace(/\r?\n/g, ' ')
+    ]);
+    downloadCsv(`TMS-Admission-Inquiries-${new Date().toISOString().slice(0, 10)}.csv`, [headers, ...data]);
+    UIComponents.showToast('Exported admission inquiries to CSV.', 'success');
+  }
+
+  /* ================================================================== */
   /* Notifications                                                      */
   /* ================================================================== */
 

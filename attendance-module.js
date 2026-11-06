@@ -16,6 +16,7 @@ import { downloadCsv } from './export-utils.js';
 import { WhatsAppService } from './whatsapp-service.js';
 import { ClassroomModal, DAYS_CONFIG } from './classroom-modal.js';
 import { SAMPLE_STUDENTS } from './student-module.js';
+import { BiometricCredentialModal } from './biometric-credential-modal.js';
 
 export const DEFAULT_CLASSROOMS = [
   {
@@ -296,6 +297,9 @@ export class AttendanceModule {
           actionsHtml: `
             <div style="display:inline-flex; align-items:center; gap:8px;">
               <input type="date" id="att-global-date-input" class="form-input" value="${this._selectedDate}" style="font-weight:700; border-radius:12px; padding:6px 12px; font-size:0.86rem; background:#FFFFFF; border:1.5px solid #CBD5E1; color:#0F172A; width:auto; cursor:pointer;" title="Change Attendance Date">
+              <button type="button" class="btn btn-secondary" id="btn-open-enrollment-kiosk">
+                <i data-lucide="radio"></i> Smart Biometrics &amp; NFC
+              </button>
               <button type="button" class="btn btn-secondary" id="btn-open-att-report">
                 <i data-lucide="clipboard-check"></i> Attendance Report
               </button>
@@ -2021,6 +2025,19 @@ export class AttendanceModule {
         onSave: async (created) => {
           this._classrooms.push(created);
           await dbService.insert('academic_classes', created);
+          this.renderActiveModeView(container);
+        }
+      });
+    });
+
+    container.querySelector('#btn-open-enrollment-kiosk')?.addEventListener('click', () => {
+      const student = this._students[0] || {};
+      BiometricCredentialModal.open({
+        person: student,
+        type: 'student',
+        onSave: (updated) => {
+          const idx = this._students.findIndex(s => s.id === updated.id);
+          if (idx >= 0) this._students[idx] = updated;
           this.renderActiveModeView(container);
         }
       });
