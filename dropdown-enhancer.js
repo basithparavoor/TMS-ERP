@@ -385,6 +385,16 @@ export function enhanceSelect(select) {
         if (opt.disabled) return;
 
         select.value = opt.value;
+        if (select.options[idx]) {
+          select.selectedIndex = idx;
+        }
+        labelSpan.textContent = opt.text || '— Select —';
+        if (!opt.value) {
+          labelSpan.classList.add('is-placeholder');
+        } else {
+          labelSpan.classList.remove('is-placeholder');
+        }
+
         select.dispatchEvent(new Event('input', { bubbles: true }));
         select.dispatchEvent(new Event('change', { bubbles: true }));
 
@@ -410,6 +420,22 @@ export function enhanceSelect(select) {
     if (rect.bottom < -80 || rect.top > window.innerHeight + 80) {
       closeWrapper(wrapper);
       return;
+    }
+
+    // Check if trigger is scrolled out of view of any scrollable container
+    let p = trigger.parentElement;
+    while (p && p !== document.body) {
+      if (p.scrollHeight > p.clientHeight || p.scrollWidth > p.clientWidth) {
+        const pComp = window.getComputedStyle(p);
+        if (pComp.overflowY === 'auto' || pComp.overflowY === 'scroll') {
+          const pRect = p.getBoundingClientRect();
+          if (rect.bottom < pRect.top + 4 || rect.top > pRect.bottom - 4) {
+            closeWrapper(wrapper);
+            return;
+          }
+        }
+      }
+      p = p.parentElement;
     }
 
     const triggerWidth = rect.width;

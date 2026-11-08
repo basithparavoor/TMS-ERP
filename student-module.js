@@ -218,10 +218,12 @@ export class StudentModule {
         <!-- Filter bar -->
         <div style="display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap; align-items:center;">
           <input type="text" id="cfg-field-search" class="form-input form-input-sm" placeholder="Search field by name..." style="flex:1; min-width:200px; height:34px;">
-          <select id="cfg-category-filter" class="form-select form-select-sm no-custom-select" style="width:200px; height:34px; padding:4px 10px; border-radius:6px; border:1.5px solid #cbd5e1; background:#ffffff; font-weight:600; cursor:pointer;">
-            <option value="">All Categories (${configs.length})</option>
-            ${categories.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('')}
-          </select>
+          <div style="min-width:210px;" id="cfg-category-filter-wrap">
+            <select id="cfg-category-filter" class="form-select form-select-sm" style="width:100%;">
+              <option value="">All Categories (${configs.length})</option>
+              ${categories.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('')}
+            </select>
+          </div>
         </div>
 
         <!-- Table of 41 fields with sticky header and fixed height scroll -->
@@ -231,7 +233,7 @@ export class StudentModule {
               <tr style="background:#f8fafc; border-bottom:1.5px solid #cbd5e1; position:sticky; top:0; z-index:10; box-shadow:0 1px 2px rgba(0,0,0,0.05);">
                 <th style="padding:10px 12px; text-align:left; background:#f8fafc; width:220px;">Field / Header</th>
                 <th style="padding:10px 12px; text-align:left; background:#f8fafc; width:130px;">Category</th>
-                <th style="padding:10px 12px; text-align:left; background:#f8fafc; width:150px;">Control Theme</th>
+                <th style="padding:10px 12px; text-align:left; background:#f8fafc; width:165px;">Control Theme</th>
                 <th style="padding:10px 12px; text-align:left; background:#f8fafc;">Options (Dropdown / Button)</th>
                 <th style="padding:10px 12px; text-align:center; background:#f8fafc; width:75px;">Required?</th>
                 <th style="padding:10px 12px; text-align:center; background:#f8fafc; width:70px;">Active?</th>
@@ -251,7 +253,7 @@ export class StudentModule {
                       <span class="badge" style="background:#e0f2fe; color:#0369a1; font-size:0.7rem; font-weight:600;">${esc(f.category || 'General')}</span>
                     </td>
                     <td style="padding:8px 12px; vertical-align:middle;">
-                      <select class="form-select form-select-sm cfg-fld-type no-custom-select" data-key="${esc(f.key)}" style="width:100%; height:32px; padding:4px 8px; font-size:0.8rem; border-radius:6px; border:1.5px solid #cbd5e1; background-color:#ffffff; color:#0f172a; font-weight:600; cursor:pointer;">
+                      <select class="form-select form-select-sm cfg-fld-type" data-key="${esc(f.key)}" style="width:100%;">
                         <option value="text" ${f.type === 'text' ? 'selected' : ''}>Text Input</option>
                         <option value="dropdown" ${f.type === 'dropdown' ? 'selected' : ''}>Dropdown Menu</option>
                         <option value="button" ${f.type === 'button' ? 'selected' : ''}>Button Pills</option>
@@ -309,35 +311,60 @@ export class StudentModule {
     catSelect?.addEventListener('change', filterRows);
 
     // Live control theme switcher: toggles options input state and populates defaults
-    document.querySelectorAll('.cfg-fld-type').forEach(select => {
-      select.addEventListener('change', () => {
-        const key = select.dataset.key;
-        const optInput = document.querySelector(`.cfg-fld-options[data-key="${key}"]`);
-        if (optInput) {
-          const isChoice = ['dropdown', 'button'].includes(select.value);
-          optInput.disabled = !isChoice;
-          if (isChoice) {
-            optInput.style.backgroundColor = '#ffffff';
-            optInput.style.borderColor = '#3b82f6';
-            optInput.style.color = '#0f172a';
-            if (!optInput.value.trim()) {
-              if (key === 'gender') optInput.value = 'Male, Female, Other';
-              else if (key === 'isOrphan') optInput.value = 'No, Yes';
-              else if (key === 'bloodGroup') optInput.value = 'A+, A-, B+, B-, O+, O-, AB+, AB-';
-              else if (key === 'status') optInput.value = 'Active, Inactive, On Leave, Transferred';
-              else if (key === 'category') optInput.value = 'GENERAL, OBC-A, OBC-B, SC, ST, EWS, ORPHAN';
-              else if (key === 'religion') optInput.value = 'Islam, Hinduism, Christianity, Sikhism, Other';
-              else if (key === 'relation') optInput.value = 'Father, Mother, Grandfather, Grandmother, Uncle, Guardian';
-              else optInput.value = 'Option 1, Option 2, Option 3';
-            }
-          } else {
-            optInput.style.backgroundColor = '#f8fafc';
-            optInput.style.borderColor = '#e2e8f0';
-            optInput.style.color = '#94a3b8';
+    const handleTypeChange = (select) => {
+      if (!select) return;
+      const key = select.dataset.key;
+      const optInput = document.querySelector(`.cfg-fld-options[data-key="${key}"]`);
+      if (optInput) {
+        const isChoice = ['dropdown', 'button'].includes(select.value);
+        optInput.disabled = !isChoice;
+        if (isChoice) {
+          optInput.style.backgroundColor = '#ffffff';
+          optInput.style.borderColor = '#3b82f6';
+          optInput.style.color = '#0f172a';
+          if (!optInput.value.trim()) {
+            if (key === 'gender') optInput.value = 'Male, Female, Other';
+            else if (key === 'isOrphan') optInput.value = 'No, Yes';
+            else if (key === 'bloodGroup') optInput.value = 'A+, A-, B+, B-, O+, O-, AB+, AB-';
+            else if (key === 'status') optInput.value = 'Active, Inactive, On Leave, Transferred';
+            else if (key === 'category') optInput.value = 'GENERAL, OBC-A, OBC-B, SC, ST, EWS, ORPHAN';
+            else if (key === 'religion') optInput.value = 'Islam, Hinduism, Christianity, Sikhism, Other';
+            else if (key === 'relation') optInput.value = 'Father, Mother, Grandfather, Grandmother, Uncle, Guardian';
+            else if (key === 'grade') optInput.value = 'STD-I, STD-II, STD-III, STD-IV, STD-V, STD-VI, STD-VII, STD-VIII, STD-IX, STD-X, STD-XI, STD-XII, Nursery, LKG, UKG';
+            else optInput.value = 'Option 1, Option 2, Option 3';
           }
+          optInput.focus();
+        } else {
+          optInput.style.backgroundColor = '#f8fafc';
+          optInput.style.borderColor = '#e2e8f0';
+          optInput.style.color = '#94a3b8';
         }
-      });
+      }
+    };
+
+    // Both direct listener and table body delegation
+    document.querySelectorAll('.cfg-fld-type').forEach(select => {
+      select.addEventListener('change', () => handleTypeChange(select));
+      select.addEventListener('input', () => handleTypeChange(select));
     });
+
+    const fieldsTbody = document.getElementById('cfg-fields-tbody');
+    fieldsTbody?.addEventListener('change', (e) => {
+      const select = e.target.closest('.cfg-fld-type');
+      if (select) handleTypeChange(select);
+    });
+    fieldsTbody?.addEventListener('input', (e) => {
+      const select = e.target.closest('.cfg-fld-type');
+      if (select) handleTypeChange(select);
+    });
+
+    catSelect?.addEventListener('input', filterRows);
+
+    // Enhance all custom selects inside the modal immediately
+    const modalBody = document.getElementById('global-modal-body');
+    if (modalBody && typeof UIComponents.enhanceAllSelects === 'function') {
+      UIComponents.enhanceAllSelects(modalBody);
+    }
 
     document.getElementById('btn-reset-field-defaults')?.addEventListener('click', () => {
       if (confirm('Reset all field customization settings to system defaults?')) {
