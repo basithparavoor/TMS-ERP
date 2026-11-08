@@ -1472,89 +1472,254 @@ export class StudentModule {
     const esc = (v) => UIComponents.escapeHtml(v);
     const s = student || {};
 
+    const formatVal = (v) => {
+      if (v === null || v === undefined) return '';
+      const str = String(v).trim();
+      return str === '—' ? '' : str;
+    };
+
+    const renderProp = (label, val, icon = null, mono = false, copyable = false, actionType = null) => {
+      const cleanVal = formatVal(val);
+      const isFilled = cleanVal !== '';
+
+      let actionLink = '';
+      if (isFilled && actionType === 'phone') {
+        actionLink = `<a href="tel:${esc(cleanVal)}" title="Call ${esc(label)}" style="color:#2563eb; display:inline-flex; align-items:center; margin-left:4px; padding:2px;"><i data-lucide="phone-outgoing" style="width:12px;height:12px;"></i></a>`;
+      } else if (isFilled && actionType === 'wa') {
+        const num = cleanVal.replace(/[^0-9]/g, '');
+        actionLink = `<a href="https://wa.me/${esc(num)}" target="_blank" rel="noopener" title="WhatsApp ${esc(label)}" style="color:#16a34a; display:inline-flex; align-items:center; margin-left:4px; padding:2px;"><i data-lucide="message-square" style="width:12px;height:12px;"></i></a>`;
+      } else if (isFilled && actionType === 'mail') {
+        actionLink = `<a href="mailto:${esc(cleanVal)}" title="Email ${esc(label)}" style="color:#0284c7; display:inline-flex; align-items:center; margin-left:4px; padding:2px;"><i data-lucide="mail" style="width:12px;height:12px;"></i></a>`;
+      }
+
+      return `
+        <div class="tms-prop-card" style="background:#ffffff; border:1.5px solid #f1f5f9; border-radius:10px; padding:9px 12px; display:flex; flex-direction:column; justify-content:center; min-height:54px; box-shadow:0 1px 2px rgba(0,0,0,0.02); transition:all 0.15s ease;">
+          <div style="font-size:0.67rem; font-weight:700; color:#64748b; letter-spacing:0.04em; text-transform:uppercase; display:flex; align-items:center; gap:5px; margin-bottom:3px;">
+            ${icon ? `<i data-lucide="${icon}" style="width:12px;height:12px;color:#94a3b8;flex-shrink:0;"></i>` : ''}
+            <span>${esc(label)}</span>
+          </div>
+          <div style="font-size:0.86rem; font-weight:700; color:${isFilled ? '#0f172a' : '#94a3b8'}; ${mono ? 'font-family:var(--font-mono);' : ''} display:flex; align-items:center; justify-content:space-between; gap:6px;">
+            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:inline-flex; align-items:center; gap:4px; min-width:0;">
+              ${isFilled ? esc(cleanVal) : '<span style="font-weight:500; font-style:italic; font-size:0.78rem; color:#94a3b8;">Not Recorded</span>'}
+              ${actionLink}
+            </span>
+            ${copyable && isFilled ? `<button type="button" class="btn-copy-prop" data-val="${esc(cleanVal)}" title="Copy ${esc(label)}" style="background:transparent; border:none; padding:3px; cursor:pointer; color:#94a3b8; display:inline-flex; align-items:center; justify-content:center; border-radius:4px; transition:color 0.15s ease;"><i data-lucide="copy" style="width:12px; height:12px;"></i></button>` : ''}
+          </div>
+        </div>
+      `;
+    };
+
+    const isGirl = s.gender === 'Girl' || s.gender === 'Female';
+    const statusColor = s.status === 'Active' ? '#16a34a' : '#d97706';
+    const statusBg = s.status === 'Active' ? '#dcfce7' : '#fef3c7';
+
     const bodyHtml = `
-      <div style="font-family: var(--font-sans, system-ui, -apple-system, sans-serif); padding:4px 0;">
+      <div style="font-family:var(--font-sans, system-ui, -apple-system, sans-serif); padding:2px 0;">
         <!-- Top Profile Banner -->
-        <div style="display:flex; gap:20px; align-items:center; margin-bottom:20px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:16px;">
-          <div style="width:76px; height:76px; border-radius:50%; overflow:hidden; background:#E2E8F0; border:2.5px solid #2563eb; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:2.2rem; font-weight:800; color:#1E293B;">
-            ${s.photo ? `<img src="${esc(s.photo)}" alt="${esc(s.fullName)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML = '${s.gender === 'Girl' || s.gender === 'Female' ? '👧' : '👦'}';">` : (s.gender === 'Girl' || s.gender === 'Female' ? '👧' : '👦')}
-          </div>
-          <div style="flex:1; min-width:0;">
-            <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px; flex-wrap:wrap;">
-              <h3 style="margin:0; font-size:1.4rem; font-weight:800; color:#0F172A; letter-spacing:-0.02em;">
-                ${esc(s.fullName || 'Student')}
-              </h3>
-              <span class="badge ${s.status === 'Active' ? 'badge-success' : 'badge-warning'}">${esc(s.status || 'Active')}</span>
-              <span class="tms-id-badge font-mono" style="font-size:0.75rem; padding:3px 12px;">${esc(s.admissionNo || '—')}</span>
+        <div style="background:linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border:1.5px solid #e2e8f0; border-radius:14px; padding:16px 18px; margin-bottom:14px; box-shadow:0 2px 6px rgba(0,0,0,0.03);">
+          <div style="display:flex; gap:16px; align-items:center; flex-wrap:wrap;">
+            <!-- Avatar with ring and badge -->
+            <div style="position:relative; flex-shrink:0;">
+              <div style="width:76px; height:76px; border-radius:50%; overflow:hidden; background:#f1f5f9; border:2.5px solid #16a34a; box-shadow:0 3px 10px rgba(22,163,74,0.18); display:flex; align-items:center; justify-content:center; font-size:2.2rem;">
+                ${s.photo ? `<img src="${esc(s.photo)}" alt="${esc(s.fullName)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML = '${isGirl ? '👧' : '👦'}';">` : (isGirl ? '👧' : '👦')}
+              </div>
+              <span style="position:absolute; bottom:2px; right:2px; width:14px; height:14px; background:#16a34a; border:2.5px solid #ffffff; border-radius:50%;" title="Active Record"></span>
             </div>
-            <div style="font-size:0.86rem; color:#64748B; margin-bottom:4px;">
-              Class: <strong style="color:#0F172A;">${esc(s.grade || '—')}</strong> • Gender: <strong style="color:#0F172A;">${esc(s.gender || '—')}</strong> • DOB: <strong style="color:#0F172A;">${esc(s.dob || '—')}</strong> • Blood: <strong style="color:#0F172A;">${esc(s.bloodGroup || '—')}</strong>
-            </div>
-            <div style="font-size:0.82rem; color:#64748B;">
-              Religion: <strong style="color:#0F172A;">${esc(s.religion || '—')}</strong> • Category: <strong style="color:#0F172A;">${esc(s.category || '—')}</strong> • Orphan: <strong style="color:#0F172A;">${esc(s.isOrphan || 'No')}</strong>
-            </div>
-          </div>
-        </div>
 
-        <!-- Statutory Government IDs Strip -->
-        <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:12px 16px; margin-bottom:18px;">
-          <div style="font-size:0.75rem; font-weight:800; color:#1e40af; letter-spacing:0.04em; text-transform:uppercase; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
-            <i data-lucide="badge-check" style="width:14px; height:14px;"></i> Statutory Government &amp; Portal IDs
-          </div>
-          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:10px; font-size:0.82rem;">
-            <div><span style="color:#64748b;">Aadhar:</span> <strong class="font-mono" style="color:#0f172a;">${esc(s.aadharNo || s.aadhaar || '—')}</strong></div>
-            <div><span style="color:#64748b;">APAAR ID:</span> <strong class="font-mono" style="color:#0f172a;">${esc(s.apaarId || '—')}</strong></div>
-            <div><span style="color:#64748b;">Govt / Shiksha ID:</span> <strong class="font-mono" style="color:#0f172a;">${esc(s.govtStudentId || '—')}</strong></div>
-            <div><span style="color:#64748b;">Minority ID:</span> <strong class="font-mono" style="color:#0f172a;">${esc(s.minorityId || '—')}</strong></div>
-            <div><span style="color:#64748b;">Kanyashree ID:</span> <strong class="font-mono" style="color:#0f172a;">${esc(s.kanyashreeId || '—')}</strong></div>
-          </div>
-        </div>
+            <!-- Identity Header -->
+            <div style="flex:1; min-width:240px;">
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px;">
+                <h3 style="margin:0; font-size:1.35rem; font-weight:800; color:#0f172a; letter-spacing:-0.02em;">
+                  ${esc(s.fullName || 'Student')}
+                </h3>
+                <span class="badge" style="background:${statusBg}; color:${statusColor}; font-weight:700; font-size:0.75rem; padding:3px 10px; border-radius:9999px;">
+                  ● ${esc(s.status || 'Active')}
+                </span>
+                <span class="badge" style="background:#e0f2fe; color:#0369a1; font-weight:700; font-family:var(--font-mono); font-size:0.75rem; padding:3px 10px; border-radius:9999px;">
+                  ID: ${esc(s.admissionNo || '—')}
+                </span>
+                ${s.rollNo ? `<span class="badge" style="background:#f1f5f9; color:#475569; font-weight:700; font-family:var(--font-mono); font-size:0.75rem; padding:3px 10px; border-radius:9999px;">Roll: ${esc(s.rollNo)}</span>` : ''}
+              </div>
 
-        <!-- 3 Columns: Address / Father / Mother & Guardian -->
-        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:16px; margin-bottom:16px;">
-          <!-- Address & Academic -->
-          <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:10px; padding:14px;">
-            <div style="font-size:0.75rem; font-weight:800; color:#475569; letter-spacing:0.04em; text-transform:uppercase; margin-bottom:8px;">
-              📍 Address &amp; Academic
-            </div>
-            <div style="font-size:0.82rem; color:#334155; line-height:1.5;">
-              <div>Village: <strong>${esc(s.village || '—')}</strong></div>
-              <div>PO: <strong>${esc(s.postOffice || '—')}</strong> • PS: <strong>${esc(s.policeStation || '—')}</strong></div>
-              <div>District: <strong>${esc(s.district || '—')}</strong></div>
-              <div>State: <strong>${esc(s.state || 'West Bengal')}</strong> • PIN: <strong>${esc(s.pinCode || '—')}</strong></div>
-              <div style="margin-top:6px; padding-top:6px; border-top:1px dashed #e2e8f0;">
-                <div>Admission Date: <strong>${esc(s.admissionDate || '—')}</strong></div>
-                <div>Class Join Date: <strong>${esc(s.classJoinDate || '—')}</strong></div>
-                <div>Previous School: <strong>${esc(s.previousSchool || '—')}</strong></div>
+              <!-- Quick Metrics Chips -->
+              <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center; font-size:0.78rem;">
+                <span style="background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:3px 9px; color:#334155; display:inline-flex; align-items:center; gap:5px;">
+                  <i data-lucide="graduation-cap" style="width:13px; height:13px; color:#2563eb;"></i>
+                  Class: <strong style="color:#0f172a;">${esc(s.grade || '—')}</strong>
+                </span>
+                <span style="background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:3px 9px; color:#334155; display:inline-flex; align-items:center; gap:5px;">
+                  <i data-lucide="${isGirl ? 'user-check' : 'user'}" style="width:13px; height:13px; color:#8b5cf6;"></i>
+                  Gender: <strong style="color:#0f172a;">${esc(s.gender || '—')}</strong>
+                </span>
+                <span style="background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:3px 9px; color:#334155; display:inline-flex; align-items:center; gap:5px;">
+                  <i data-lucide="calendar" style="width:13px; height:13px; color:#f59e0b;"></i>
+                  DOB: <strong style="color:#0f172a;">${esc(s.dob || '—')}</strong>
+                </span>
+                <span style="background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:3px 9px; color:#334155; display:inline-flex; align-items:center; gap:5px;">
+                  <i data-lucide="droplet" style="width:13px; height:13px; color:#ef4444;"></i>
+                  Blood: <strong style="color:#0f172a;">${esc(s.bloodGroup || '—')}</strong>
+                </span>
+                <span style="background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:3px 9px; color:#334155; display:inline-flex; align-items:center; gap:5px;">
+                  <i data-lucide="shield" style="width:13px; height:13px; color:#10b981;"></i>
+                  Religion: <strong style="color:#0f172a;">${esc(s.religion || '—')}</strong>
+                </span>
+                <span style="background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:3px 9px; color:#334155; display:inline-flex; align-items:center; gap:5px;">
+                  <i data-lucide="tag" style="width:13px; height:13px; color:#06b6d4;"></i>
+                  Category: <strong style="color:#0f172a;">${esc(s.category || '—')}</strong>
+                </span>
+                <span style="background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:3px 9px; color:#334155; display:inline-flex; align-items:center; gap:5px;">
+                  <i data-lucide="heart" style="width:13px; height:13px; color:#ec4899;"></i>
+                  Orphan: <strong style="color:#0f172a;">${esc(s.isOrphan || 'No')}</strong>
+                </span>
               </div>
             </div>
           </div>
+        </div>
 
-          <!-- Father Details -->
-          <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:10px; padding:14px;">
-            <div style="font-size:0.75rem; font-weight:800; color:#475569; letter-spacing:0.04em; text-transform:uppercase; margin-bottom:8px;">
-              👨 Father Details
+        <!-- Navigation Tab Rail -->
+        <div class="tms-profile-tab-rail" style="display:flex; gap:6px; margin-bottom:14px; overflow-x:auto; padding-bottom:4px; border-bottom:1.5px solid #e2e8f0;">
+          <button type="button" class="btn btn-sm btn-prof-tab active" data-tab="statutory" style="border-radius:9999px; padding:5px 14px; font-size:0.8rem; font-weight:700; display:inline-flex; align-items:center; gap:6px; background:#0e623b; border-color:#0e623b; color:#ffffff;">
+            <i data-lucide="badge-check" style="width:14px; height:14px;"></i> Statutory &amp; IDs
+          </button>
+          <button type="button" class="btn btn-sm btn-prof-tab btn-secondary" data-tab="family" style="border-radius:9999px; padding:5px 14px; font-size:0.8rem; font-weight:700; display:inline-flex; align-items:center; gap:6px; background:#ffffff; border-color:#cbd5e1; color:#475569;">
+            <i data-lucide="users" style="width:14px; height:14px;"></i> Parents &amp; Guardian
+          </button>
+          <button type="button" class="btn btn-sm btn-prof-tab btn-secondary" data-tab="address" style="border-radius:9999px; padding:5px 14px; font-size:0.8rem; font-weight:700; display:inline-flex; align-items:center; gap:6px; background:#ffffff; border-color:#cbd5e1; color:#475569;">
+            <i data-lucide="map-pin" style="width:14px; height:14px;"></i> Address &amp; Contact
+          </button>
+          <button type="button" class="btn btn-sm btn-prof-tab btn-secondary" data-tab="academic" style="border-radius:9999px; padding:5px 14px; font-size:0.8rem; font-weight:700; display:inline-flex; align-items:center; gap:6px; background:#ffffff; border-color:#cbd5e1; color:#475569;">
+            <i data-lucide="graduation-cap" style="width:14px; height:14px;"></i> Academic History
+          </button>
+          <button type="button" class="btn btn-sm btn-prof-tab btn-secondary" data-tab="all" style="border-radius:9999px; padding:5px 14px; font-size:0.8rem; font-weight:700; display:inline-flex; align-items:center; gap:6px; background:#ffffff; border-color:#cbd5e1; color:#475569;">
+            <i data-lucide="layout-grid" style="width:14px; height:14px;"></i> View All
+          </button>
+        </div>
+
+        <!-- TAB PANE 1: Statutory & Portal IDs -->
+        <div class="prof-pane" id="prof-pane-statutory" style="display:block;">
+          <div style="background:#f0f9ff; border:1px solid #bae6fd; border-radius:12px; padding:14px 16px; margin-bottom:14px;">
+            <div style="font-size:0.75rem; font-weight:800; color:#0369a1; letter-spacing:0.04em; text-transform:uppercase; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+              <i data-lucide="badge-check" style="width:15px; height:15px; color:#0284c7;"></i> Statutory Government &amp; Portal Identifiers
             </div>
-            <div style="font-size:0.82rem; color:#334155; line-height:1.5;">
-              <div>Name: <strong>${esc(s.fatherName || '—')}</strong></div>
-              <div>Occupation: <strong>${esc(s.fatherOccupation || '—')}</strong></div>
-              <div>Qualification: <strong>${esc(s.fatherQualification || '—')}</strong></div>
-              <div>Phone: <strong class="font-mono">${esc(s.fatherPhone || '—')}</strong></div>
-              <div>WhatsApp: <strong class="font-mono">${esc(s.fatherWhatsapp || '—')}</strong></div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:10px;">
+              ${renderProp('Aadhaar Number', s.aadharNo || s.aadhaar, 'fingerprint', true, true)}
+              ${renderProp('APAAR ID', s.apaarId, 'shield-check', true, true)}
+              ${renderProp('Govt / Banglar Shiksha ID', s.govtStudentId, 'landmark', true, true)}
+              ${renderProp('Minority ID', s.minorityId, 'award', true, true)}
+              ${renderProp('Kanyashree ID', s.kanyashreeId, 'sparkles', true, true)}
             </div>
           </div>
+        </div>
 
-          <!-- Mother & Guardian Details -->
-          <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:10px; padding:14px;">
-            <div style="font-size:0.75rem; font-weight:800; color:#475569; letter-spacing:0.04em; text-transform:uppercase; margin-bottom:8px;">
-              👩 Mother &amp; Guardian
+        <!-- TAB PANE 2: Parents & Guardian -->
+        <div class="prof-pane" id="prof-pane-family" style="display:none;">
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:12px; margin-bottom:14px;">
+            <!-- Father Card -->
+            <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:14px; box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+              <div style="font-size:0.76rem; font-weight:800; color:#1e40af; letter-spacing:0.04em; text-transform:uppercase; margin-bottom:10px; display:flex; align-items:center; gap:7px;">
+                <div style="width:24px; height:24px; border-radius:6px; background:#dbeafe; display:flex; align-items:center; justify-content:center; color:#2563eb;">
+                  <i data-lucide="user" style="width:14px; height:14px;"></i>
+                </div>
+                Father Details
+              </div>
+              <div style="display:flex; flex-direction:column; gap:8px;">
+                ${renderProp('Father Name', s.fatherName)}
+                ${renderProp('Occupation', s.fatherOccupation)}
+                ${renderProp('Educational Qualification', s.fatherQualification)}
+                ${renderProp('Phone Number', s.fatherPhone, 'phone', true, true, 'phone')}
+                ${renderProp('WhatsApp', s.fatherWhatsapp, 'message-circle', true, true, 'wa')}
+              </div>
             </div>
-            <div style="font-size:0.82rem; color:#334155; line-height:1.5;">
-              <div>Mother: <strong>${esc(s.motherName || '—')}</strong></div>
-              <div>Occupation: <strong>${esc(s.motherOccupation || '—')}</strong></div>
-              <div>Guardian: <strong>${esc(s.guardianName || '—')}</strong> (${esc(s.relation || 'Parent')})</div>
-              <div>Guardian Phone: <strong class="font-mono">${esc(s.guardianPhone || '—')}</strong></div>
-              <div>Annual Income: <strong>${esc(s.annualIncome ? '₹' + s.annualIncome : '—')}</strong></div>
+
+            <!-- Mother Card -->
+            <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:14px; box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+              <div style="font-size:0.76rem; font-weight:800; color:#7c3aed; letter-spacing:0.04em; text-transform:uppercase; margin-bottom:10px; display:flex; align-items:center; gap:7px;">
+                <div style="width:24px; height:24px; border-radius:6px; background:#ede9fe; display:flex; align-items:center; justify-content:center; color:#7c3aed;">
+                  <i data-lucide="heart-handshake" style="width:14px; height:14px;"></i>
+                </div>
+                Mother Details
+              </div>
+              <div style="display:flex; flex-direction:column; gap:8px;">
+                ${renderProp('Mother Name', s.motherName)}
+                ${renderProp('Occupation', s.motherOccupation)}
+                ${renderProp('Educational Qualification', s.motherQualification)}
+                ${renderProp('Phone Number', s.motherPhone, 'phone', true, true, 'phone')}
+                ${renderProp('WhatsApp', s.motherWhatsapp, 'message-circle', true, true, 'wa')}
+              </div>
+            </div>
+
+            <!-- Guardian & Financial -->
+            <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:14px; box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+              <div style="font-size:0.76rem; font-weight:800; color:#b45309; letter-spacing:0.04em; text-transform:uppercase; margin-bottom:10px; display:flex; align-items:center; gap:7px;">
+                <div style="width:24px; height:24px; border-radius:6px; background:#fef3c7; display:flex; align-items:center; justify-content:center; color:#d97706;">
+                  <i data-lucide="shield" style="width:14px; height:14px;"></i>
+                </div>
+                Guardian &amp; Financials
+              </div>
+              <div style="display:flex; flex-direction:column; gap:8px;">
+                ${renderProp('Guardian Name', s.guardianName)}
+                ${renderProp('Relationship', s.relation || 'Parent')}
+                ${renderProp('Guardian Phone', s.guardianPhone, 'phone-call', true, true, 'phone')}
+                ${renderProp('Annual Family Income', s.annualIncome ? ('₹ ' + Number(s.annualIncome).toLocaleString('en-IN')) : null, 'indian-rupee')}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB PANE 3: Address & Contact -->
+        <div class="prof-pane" id="prof-pane-address" style="display:none;">
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:12px; margin-bottom:14px;">
+            <!-- Residential Address -->
+            <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:14px; box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+              <div style="font-size:0.76rem; font-weight:800; color:#b91c1c; letter-spacing:0.04em; text-transform:uppercase; margin-bottom:10px; display:flex; align-items:center; gap:7px;">
+                <div style="width:24px; height:24px; border-radius:6px; background:#fee2e2; display:flex; align-items:center; justify-content:center; color:#dc2626;">
+                  <i data-lucide="map-pin" style="width:14px; height:14px;"></i>
+                </div>
+                Residential Address
+              </div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                ${renderProp('Village / Town', s.village)}
+                ${renderProp('Post Office', s.postOffice)}
+                ${renderProp('Police Station', s.policeStation)}
+                ${renderProp('District', s.district)}
+                ${renderProp('State', s.state || 'West Bengal')}
+                ${renderProp('PIN Code', s.pinCode, 'hash', true)}
+              </div>
+            </div>
+
+            <!-- Direct Contact -->
+            <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:14px; box-shadow:0 1px 3px rgba(0,0,0,0.02);">
+              <div style="font-size:0.76rem; font-weight:800; color:#0e623b; letter-spacing:0.04em; text-transform:uppercase; margin-bottom:10px; display:flex; align-items:center; gap:7px;">
+                <div style="width:24px; height:24px; border-radius:6px; background:#dcfce7; display:flex; align-items:center; justify-content:center; color:#16a34a;">
+                  <i data-lucide="phone-call" style="width:14px; height:14px;"></i>
+                </div>
+                Direct Communication
+              </div>
+              <div style="display:flex; flex-direction:column; gap:8px;">
+                ${renderProp('Primary Phone', s.phone, 'phone', true, true, 'phone')}
+                ${renderProp('WhatsApp Number', s.whatsapp, 'message-circle', true, true, 'wa')}
+                ${renderProp('Email Address', s.email, 'mail', true, true, 'mail')}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB PANE 4: Academic History -->
+        <div class="prof-pane" id="prof-pane-academic" style="display:none;">
+          <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:14px; box-shadow:0 1px 3px rgba(0,0,0,0.02); margin-bottom:14px;">
+            <div style="font-size:0.76rem; font-weight:800; color:#0e623b; letter-spacing:0.04em; text-transform:uppercase; margin-bottom:10px; display:flex; align-items:center; gap:7px;">
+              <div style="width:24px; height:24px; border-radius:6px; background:#dcfce7; display:flex; align-items:center; justify-content:center; color:#16a34a;">
+                <i data-lucide="graduation-cap" style="width:14px; height:14px;"></i>
+              </div>
+              Academic Enrollment &amp; Schooling Lifecycle
+            </div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:8px;">
+              ${renderProp('Current Standard', `${s.grade || '—'} (Sec ${s.section || 'A'})`, 'book-open')}
+              ${renderProp('Roll Number', s.rollNo || 'Unassigned', 'hash', true)}
+              ${renderProp('Admission Date', s.admissionDate, 'calendar')}
+              ${renderProp('Class Join Date', s.classJoinDate, 'calendar-check')}
+              ${renderProp('Previous School', s.previousSchool, 'building')}
+              ${renderProp('Enrollment Status', s.status || 'Active', 'check-circle')}
             </div>
           </div>
         </div>
@@ -1563,15 +1728,15 @@ export class StudentModule {
 
     const footerHtml = `
       <div style="display:flex; justify-content:space-between; align-items:center; width:100%; flex-wrap:wrap; gap:10px;">
-        <button class="btn btn-primary" id="btn-modal-enroll-biometrics" style="border-radius:12px; padding:10px 22px; font-weight:700; background:#0E623B; border-color:#0E623B;">
-          <i data-lucide="radio"></i> Smart Biometrics &amp; NFC
+        <button class="btn btn-primary" id="btn-modal-enroll-biometrics" style="border-radius:12px; padding:9px 20px; font-weight:700; background:#0E623B; border-color:#0E623B; display:inline-flex; align-items:center; gap:7px;">
+          <i data-lucide="radio" style="width:16px; height:16px;"></i> Smart Biometrics &amp; NFC
         </button>
         <div style="display:flex; gap:10px;">
-          <button class="btn btn-secondary" id="btn-modal-edit-student" style="border-radius:12px; padding:10px 20px; font-weight:700;">
-            <i data-lucide="edit-3"></i> Edit Student Record
+          <button class="btn btn-secondary" id="btn-modal-edit-student" style="border-radius:12px; padding:9px 18px; font-weight:700; display:inline-flex; align-items:center; gap:6px;">
+            <i data-lucide="edit-3" style="width:15px; height:15px;"></i> Edit Student Record
           </button>
-          <button class="btn btn-secondary" id="btn-modal-del-student" style="border-radius:12px; padding:10px 20px; font-weight:700; color:#EF4444; border-color:#FCA5A5;">
-            <i data-lucide="trash-2"></i> Delete
+          <button class="btn btn-secondary" id="btn-modal-del-student" style="border-radius:12px; padding:9px 18px; font-weight:700; color:#EF4444; border-color:#FCA5A5; display:inline-flex; align-items:center; gap:6px;">
+            <i data-lucide="trash-2" style="width:15px; height:15px;"></i> Delete
           </button>
         </div>
       </div>
@@ -1581,7 +1746,52 @@ export class StudentModule {
       title: `Student Profile — ${esc(s.fullName || 'Student')}`,
       bodyHtml,
       footerHtml,
-      maxWidth: '820px'
+      maxWidth: '880px'
+    });
+
+    // Tab navigation logic
+    const tabButtons = document.querySelectorAll('.btn-prof-tab');
+    const panes = document.querySelectorAll('.prof-pane');
+
+    tabButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        tabButtons.forEach(b => {
+          b.classList.remove('btn-primary', 'active');
+          b.classList.add('btn-secondary');
+          b.style.backgroundColor = '#ffffff';
+          b.style.borderColor = '#cbd5e1';
+          b.style.color = '#475569';
+        });
+        btn.classList.remove('btn-secondary');
+        btn.classList.add('btn-primary', 'active');
+        btn.style.backgroundColor = '#0e623b';
+        btn.style.borderColor = '#0e623b';
+        btn.style.color = '#ffffff';
+
+        const tab = btn.dataset.tab;
+        if (tab === 'all') {
+          panes.forEach(p => p.style.display = 'block');
+        } else {
+          panes.forEach(p => p.style.display = 'none');
+          const target = document.getElementById(`prof-pane-${tab}`);
+          if (target) target.style.display = 'block';
+        }
+        UIComponents.refreshIcons();
+      });
+    });
+
+    // One-click copy handler for copy buttons
+    document.querySelectorAll('.btn-copy-prop').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const val = btn.dataset.val;
+        if (val && navigator.clipboard) {
+          try {
+            await navigator.clipboard.writeText(val);
+            UIComponents.showToast(`Copied "${val}" to clipboard!`, 'info');
+          } catch (_) {}
+        }
+      });
     });
 
     document.getElementById('btn-modal-enroll-biometrics')?.addEventListener('click', () => {
@@ -1605,7 +1815,6 @@ export class StudentModule {
       UIComponents.closeModal();
       StudentModule.deleteStudents([s], container);
     });
-
     UIComponents.refreshIcons();
   }
 
