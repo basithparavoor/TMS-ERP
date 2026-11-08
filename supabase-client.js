@@ -37,11 +37,70 @@ function rowFromDb(row, collection = null) {
   if (!out.aadharNo && out.aadhaar) out.aadharNo = out.aadhaar;
   if (!out.aadhaar && out.aadharNo) out.aadhaar = out.aadharNo;
 
+  if (collection === 'academic_classes') {
+    if (!out.name && out.grade) out.name = out.grade;
+    if (!out.room && out.roomNo) out.room = out.roomNo;
+  }
+
   return out;
 }
 
 function rowToDb(row, collection = null) {
   if (!row || typeof row !== 'object') return row;
+
+  if (collection === 'academic_classes') {
+    const classOut = {};
+    const gradeVal = row.grade || row.name || '';
+    if (gradeVal) classOut.grade = gradeVal;
+    if (row.id) classOut.id = row.id;
+    if (row.section !== undefined) classOut.section = row.section;
+    if (row.roomNo !== undefined || row.room !== undefined) classOut.roomNo = row.roomNo || row.room;
+    if (row.capacity !== undefined) classOut.capacity = Number(row.capacity) || 35;
+    if (row.teacher !== undefined) classOut.teacher = row.teacher;
+    if (row.teacherId !== undefined) classOut.teacherId = row.teacherId;
+    if (row.periods !== undefined) classOut.periods = Number(row.periods) || 35;
+    if (row.status !== undefined) classOut.status = row.status || 'Active';
+    if (row.created_at !== undefined) classOut.created_at = row.created_at;
+    return classOut;
+  }
+
+  if (collection === 'academic_sessions') {
+    const sessOut = {};
+    const KNOWN_SESS = new Set(['id', 'sessionName', 'startDate', 'endDate', 'isCurrent', 'terms', 'status', 'created_at']);
+    for (const [k, v] of Object.entries(row)) {
+      if (KNOWN_SESS.has(k)) sessOut[k] = v;
+      else if (k === 'session_name') sessOut.sessionName = v;
+      else if (k === 'start_date') sessOut.startDate = v;
+      else if (k === 'end_date') sessOut.endDate = v;
+      else if (k === 'is_current') sessOut.isCurrent = v;
+    }
+    return sessOut;
+  }
+
+  if (collection === 'academic_periods') {
+    const perOut = {};
+    const KNOWN_PER = new Set(['id', 'name', 'periodNo', 'startTime', 'endTime', 'durationMins', 'isBreak', 'orderIndex', 'status', 'created_at']);
+    for (const [k, v] of Object.entries(row)) {
+      if (KNOWN_PER.has(k)) perOut[k] = v;
+      else if (k === 'period_no') perOut.periodNo = v;
+      else if (k === 'start_time') perOut.startTime = v;
+      else if (k === 'end_time') perOut.endTime = v;
+      else if (k === 'duration_mins') perOut.durationMins = v;
+      else if (k === 'is_break') perOut.isBreak = v;
+      else if (k === 'order_index') perOut.orderIndex = v;
+    }
+    return perOut;
+  }
+
+  if (collection === 'academic_subjects') {
+    const subjOut = {};
+    const KNOWN_SUBJ = new Set(['id', 'code', 'name', 'classification', 'credits', 'hod', 'lab', 'created_at']);
+    for (const [k, v] of Object.entries(row)) {
+      if (KNOWN_SUBJ.has(k)) subjOut[k] = v;
+    }
+    return subjOut;
+  }
+
   const out = {};
   const meta = {};
 
@@ -132,11 +191,11 @@ class SupabaseDataService {
     for (const item of queue) {
       try {
         if (item.action === 'insert') {
-          await this.client.from(item.collection).insert([rowToDb(item.payload)]);
+          await this.client.from(item.collection).insert([rowToDb(item.payload, item.collection)]);
         } else if (item.action === 'upsert') {
-          await this.client.from(item.collection).upsert(rowToDb(item.payload));
+          await this.client.from(item.collection).upsert(rowToDb(item.payload, item.collection));
         } else if (item.action === 'update') {
-          await this.client.from(item.collection).update(rowToDb(item.payload.updates)).eq('id', item.payload.id);
+          await this.client.from(item.collection).update(rowToDb(item.payload.updates, item.collection)).eq('id', item.payload.id);
         } else if (item.action === 'delete') {
           await this.client.from(item.collection).delete().eq('id', item.payload.id);
         }
@@ -172,7 +231,7 @@ class SupabaseDataService {
         try {
           const parsed = JSON.parse(rawQueue);
           if (Array.isArray(parsed)) {
-            const cleaned = parsed.filter(item => item.collection !== 'app_settings');
+            const cleaned = parsed.filter(item => item.collection !== 'app_settings' && !(item.collection === 'academic_classes' && item.payload && item.payload.name));
             localStorage.setItem('tms_offline_queue', JSON.stringify(cleaned));
           }
         } catch (_) {

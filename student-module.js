@@ -76,12 +76,19 @@ export class StudentModule {
 
     return DEFAULT_STUDENT_FIELDS.map(df => {
       const ov = overrides[df.key] || {};
+      let opts = ov.options;
+      if (typeof opts === 'string') {
+        opts = opts.split(',').map(s => s.trim()).filter(Boolean);
+      }
+      if (!opts || !Array.isArray(opts) || !opts.length) {
+        opts = df.options ? [...df.options] : [];
+      }
       return {
         ...df,
         type: ov.type || df.type,
         required: ov.required !== undefined ? ov.required : df.required,
         active: ov.active !== undefined ? ov.active : df.active,
-        options: ov.options && Array.isArray(ov.options) ? ov.options : df.options
+        options: opts
       };
     });
   }
@@ -109,26 +116,38 @@ export class StudentModule {
     const reqAttr = field.required ? 'required' : '';
     const currentVal = value !== undefined && value !== null ? String(value) : '';
 
+    // Normalize options
+    let opts = field.options;
+    if (typeof opts === 'string') {
+      opts = opts.split(',').map(s => s.trim()).filter(Boolean);
+    }
+    if (!Array.isArray(opts) || !opts.length) {
+      const df = DEFAULT_STUDENT_FIELDS.find(x => x.key === field.key);
+      if (df && df.options && df.options.length) {
+        opts = [...df.options];
+      } else {
+        opts = field.type === 'button' ? ['Yes', 'No'] : ['Option 1', 'Option 2'];
+      }
+    }
+
     if (field.type === 'button') {
-      const opts = field.options && field.options.length ? field.options : ['Yes', 'No'];
-      const activeVal = currentVal || opts[0];
+      const activeVal = currentVal || opts[0] || 'Yes';
       return `
         <div class="tms-btn-pills" data-fkey="${esc(field.key)}">
           <input type="hidden" id="${esc(inputId)}" name="${esc(field.key)}" value="${esc(activeVal)}">
           ${opts.map(opt => `
-            <button type="button" class="tms-pill-btn ${opt === activeVal ? 'active' : ''}" data-val="${esc(opt)}">${esc(opt)}</button>
+            <button type="button" class="tms-pill-btn ${String(opt) === String(activeVal) ? 'active' : ''}" data-val="${esc(opt)}">${esc(opt)}</button>
           `).join('')}
         </div>
       `;
     }
 
     if (field.type === 'dropdown') {
-      const opts = field.options && field.options.length ? field.options : [];
       return `
         <select class="form-select" id="${esc(inputId)}" name="${esc(field.key)}" ${reqAttr}>
           <option value="">-- Select ${esc(field.label)} --</option>
           ${opts.map(opt => `
-            <option value="${esc(opt)}" ${opt === currentVal ? 'selected' : ''}>${esc(opt)}</option>
+            <option value="${esc(opt)}" ${String(opt) === String(currentVal) ? 'selected' : ''}>${esc(opt)}</option>
           `).join('')}
         </select>
       `;
@@ -182,7 +201,7 @@ export class StudentModule {
 
     const bodyHtml = `
       <div style="font-family:inherit;">
-        <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:12px 16px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:12px 16px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
           <div>
             <div style="font-weight:700; color:#166534; font-size:0.88rem; display:flex; align-items:center; gap:6px;">
               <i data-lucide="sliders-horizontal" style="width:16px; height:16px;"></i> Form &amp; Theme Customizer
@@ -197,58 +216,62 @@ export class StudentModule {
         </div>
 
         <!-- Filter bar -->
-        <div style="display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap;">
-          <input type="text" id="cfg-field-search" class="form-input form-input-sm" placeholder="Search field by name..." style="flex:1; min-width:200px;">
-          <select id="cfg-category-filter" class="form-select form-select-sm" style="width:200px;">
+        <div style="display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap; align-items:center;">
+          <input type="text" id="cfg-field-search" class="form-input form-input-sm" placeholder="Search field by name..." style="flex:1; min-width:200px; height:34px;">
+          <select id="cfg-category-filter" class="form-select form-select-sm no-custom-select" style="width:200px; height:34px; padding:4px 10px; border-radius:6px; border:1.5px solid #cbd5e1; background:#ffffff; font-weight:600; cursor:pointer;">
             <option value="">All Categories (${configs.length})</option>
             ${categories.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('')}
           </select>
         </div>
 
-        <!-- Table of 41 fields -->
-        <div class="table-responsive" style="max-height:50vh; overflow-y:auto; border:1px solid #e2e8f0; border-radius:10px;">
-          <table class="tms-table" style="font-size:0.8rem; width:100%; border-collapse:collapse;">
+        <!-- Table of 41 fields with sticky header and fixed height scroll -->
+        <div class="table-responsive" style="max-height: 52vh; overflow-y: auto; overflow-x: auto; border: 1.5px solid #e2e8f0; border-radius: 10px; background: #ffffff;">
+          <table class="tms-table" style="font-size:0.8rem; width:100%; border-collapse:collapse; min-width:680px;">
             <thead>
-              <tr style="background:#f8fafc; border-bottom:1.5px solid #e2e8f0; position:sticky; top:0; z-index:2;">
-                <th style="padding:10px 12px; text-align:left;">Field / Header</th>
-                <th style="padding:10px 12px; text-align:left;">Category</th>
-                <th style="padding:10px 12px; text-align:left; width:140px;">Control Theme</th>
-                <th style="padding:10px 12px; text-align:left;">Options (Dropdown / Button)</th>
-                <th style="padding:10px 12px; text-align:center; width:80px;">Required?</th>
-                <th style="padding:10px 12px; text-align:center; width:80px;">Active?</th>
+              <tr style="background:#f8fafc; border-bottom:1.5px solid #cbd5e1; position:sticky; top:0; z-index:10; box-shadow:0 1px 2px rgba(0,0,0,0.05);">
+                <th style="padding:10px 12px; text-align:left; background:#f8fafc; width:220px;">Field / Header</th>
+                <th style="padding:10px 12px; text-align:left; background:#f8fafc; width:130px;">Category</th>
+                <th style="padding:10px 12px; text-align:left; background:#f8fafc; width:150px;">Control Theme</th>
+                <th style="padding:10px 12px; text-align:left; background:#f8fafc;">Options (Dropdown / Button)</th>
+                <th style="padding:10px 12px; text-align:center; background:#f8fafc; width:75px;">Required?</th>
+                <th style="padding:10px 12px; text-align:center; background:#f8fafc; width:70px;">Active?</th>
               </tr>
             </thead>
             <tbody id="cfg-fields-tbody">
-              ${configs.map(f => `
-                <tr class="cfg-field-row" data-key="${esc(f.key)}" data-cat="${esc(f.category || '')}" data-name="${esc(f.label.toLowerCase())}">
-                  <td style="padding:8px 12px; font-weight:700; color:#0f172a;">
-                    ${esc(f.label)}
-                    <div style="font-size:0.7rem; color:#64748b; font-family:var(--font-mono); font-weight:400;">${esc(f.key)}</div>
-                  </td>
-                  <td style="padding:8px 12px;">
-                    <span class="badge" style="background:#e0f2fe; color:#0369a1; font-size:0.7rem;">${esc(f.category || 'General')}</span>
-                  </td>
-                  <td style="padding:8px 12px;">
-                    <select class="form-select form-select-sm cfg-fld-type" data-key="${esc(f.key)}" style="width:100%; padding:4px 8px; font-size:0.78rem;">
-                      <option value="text" ${f.type === 'text' ? 'selected' : ''}>Text Input</option>
-                      <option value="dropdown" ${f.type === 'dropdown' ? 'selected' : ''}>Dropdown Menu</option>
-                      <option value="button" ${f.type === 'button' ? 'selected' : ''}>Button Pills</option>
-                      <option value="date" ${f.type === 'date' ? 'selected' : ''}>Date Picker</option>
-                      <option value="number" ${f.type === 'number' ? 'selected' : ''}>Number</option>
-                      <option value="textarea" ${f.type === 'textarea' ? 'selected' : ''}>Textarea</option>
-                    </select>
-                  </td>
-                  <td style="padding:8px 12px;">
-                    <input type="text" class="form-input form-input-sm cfg-fld-options" data-key="${esc(f.key)}" value="${esc((f.options || []).join(', '))}" placeholder="e.g. Yes, No" style="width:100%; font-size:0.75rem; padding:4px 8px;" ${['dropdown', 'button'].includes(f.type) ? '' : 'disabled'}>
-                  </td>
-                  <td style="padding:8px 12px; text-align:center;">
-                    <input type="checkbox" class="cfg-fld-req" data-key="${esc(f.key)}" ${f.required ? 'checked' : ''} style="width:16px; height:16px; cursor:pointer;">
-                  </td>
-                  <td style="padding:8px 12px; text-align:center;">
-                    <input type="checkbox" class="cfg-fld-act" data-key="${esc(f.key)}" ${f.active !== false ? 'checked' : ''} style="width:16px; height:16px; cursor:pointer;">
-                  </td>
-                </tr>
-              `).join('')}
+              ${configs.map(f => {
+                const isChoice = ['dropdown', 'button'].includes(f.type);
+                const optsVal = (f.options || []).join(', ');
+                return `
+                  <tr class="cfg-field-row" data-key="${esc(f.key)}" data-cat="${esc(f.category || '')}" data-name="${esc(f.label.toLowerCase())}" style="border-bottom:1px solid #f1f5f9;">
+                    <td style="padding:8px 12px; font-weight:700; color:#0f172a; vertical-align:middle;">
+                      ${esc(f.label)}
+                      <div style="font-size:0.7rem; color:#64748b; font-family:var(--font-mono); font-weight:400;">${esc(f.key)}</div>
+                    </td>
+                    <td style="padding:8px 12px; vertical-align:middle;">
+                      <span class="badge" style="background:#e0f2fe; color:#0369a1; font-size:0.7rem; font-weight:600;">${esc(f.category || 'General')}</span>
+                    </td>
+                    <td style="padding:8px 12px; vertical-align:middle;">
+                      <select class="form-select form-select-sm cfg-fld-type no-custom-select" data-key="${esc(f.key)}" style="width:100%; height:32px; padding:4px 8px; font-size:0.8rem; border-radius:6px; border:1.5px solid #cbd5e1; background-color:#ffffff; color:#0f172a; font-weight:600; cursor:pointer;">
+                        <option value="text" ${f.type === 'text' ? 'selected' : ''}>Text Input</option>
+                        <option value="dropdown" ${f.type === 'dropdown' ? 'selected' : ''}>Dropdown Menu</option>
+                        <option value="button" ${f.type === 'button' ? 'selected' : ''}>Button Pills</option>
+                        <option value="date" ${f.type === 'date' ? 'selected' : ''}>Date Picker</option>
+                        <option value="number" ${f.type === 'number' ? 'selected' : ''}>Number</option>
+                        <option value="textarea" ${f.type === 'textarea' ? 'selected' : ''}>Textarea</option>
+                      </select>
+                    </td>
+                    <td style="padding:8px 12px; vertical-align:middle;">
+                      <input type="text" class="form-input form-input-sm cfg-fld-options" data-key="${esc(f.key)}" value="${esc(optsVal)}" placeholder="Comma-separated, e.g. Yes, No" style="width:100%; height:32px; font-size:0.76rem; padding:4px 8px; border-radius:6px; transition:all 0.15s ease; background:${isChoice ? '#ffffff' : '#f8fafc'}; border:1.5px solid ${isChoice ? '#3b82f6' : '#e2e8f0'}; color:${isChoice ? '#0f172a' : '#94a3b8'};" ${isChoice ? '' : 'disabled'}>
+                    </td>
+                    <td style="padding:8px 12px; text-align:center; vertical-align:middle;">
+                      <input type="checkbox" class="cfg-fld-req" data-key="${esc(f.key)}" ${f.required ? 'checked' : ''} style="width:17px; height:17px; cursor:pointer; accent-color:#2563eb;">
+                    </td>
+                    <td style="padding:8px 12px; text-align:center; vertical-align:middle;">
+                      <input type="checkbox" class="cfg-fld-act" data-key="${esc(f.key)}" ${f.active !== false ? 'checked' : ''} style="width:17px; height:17px; cursor:pointer; accent-color:#16a34a;">
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
             </tbody>
           </table>
         </div>
@@ -256,8 +279,8 @@ export class StudentModule {
     `;
 
     const footerHtml = `
-      <button class="btn btn-secondary" onclick="document.getElementById('global-modal-close').click()">Cancel</button>
-      <button class="btn btn-primary" id="btn-save-field-customizations" style="background:#0e623b; border-color:#0e623b;">
+      <button class="btn btn-secondary" onclick="document.getElementById('global-modal-close').click()" style="padding:8px 20px; font-weight:700;">Cancel</button>
+      <button class="btn btn-primary" id="btn-save-field-customizations" style="background:#0e623b; border-color:#0e623b; padding:8px 24px; font-weight:700; display:inline-flex; align-items:center; gap:6px;">
         <i data-lucide="check"></i> Save Field Settings
       </button>
     `;
@@ -285,6 +308,7 @@ export class StudentModule {
     searchInput?.addEventListener('input', filterRows);
     catSelect?.addEventListener('change', filterRows);
 
+    // Live control theme switcher: toggles options input state and populates defaults
     document.querySelectorAll('.cfg-fld-type').forEach(select => {
       select.addEventListener('change', () => {
         const key = select.dataset.key;
@@ -292,8 +316,24 @@ export class StudentModule {
         if (optInput) {
           const isChoice = ['dropdown', 'button'].includes(select.value);
           optInput.disabled = !isChoice;
-          if (isChoice && !optInput.value.trim()) {
-            optInput.value = 'Option 1, Option 2';
+          if (isChoice) {
+            optInput.style.backgroundColor = '#ffffff';
+            optInput.style.borderColor = '#3b82f6';
+            optInput.style.color = '#0f172a';
+            if (!optInput.value.trim()) {
+              if (key === 'gender') optInput.value = 'Male, Female, Other';
+              else if (key === 'isOrphan') optInput.value = 'No, Yes';
+              else if (key === 'bloodGroup') optInput.value = 'A+, A-, B+, B-, O+, O-, AB+, AB-';
+              else if (key === 'status') optInput.value = 'Active, Inactive, On Leave, Transferred';
+              else if (key === 'category') optInput.value = 'GENERAL, OBC-A, OBC-B, SC, ST, EWS, ORPHAN';
+              else if (key === 'religion') optInput.value = 'Islam, Hinduism, Christianity, Sikhism, Other';
+              else if (key === 'relation') optInput.value = 'Father, Mother, Grandfather, Grandmother, Uncle, Guardian';
+              else optInput.value = 'Option 1, Option 2, Option 3';
+            }
+          } else {
+            optInput.style.backgroundColor = '#f8fafc';
+            optInput.style.borderColor = '#e2e8f0';
+            optInput.style.color = '#94a3b8';
           }
         }
       });
@@ -319,7 +359,14 @@ export class StudentModule {
 
         const type = typeEl ? typeEl.value : 'text';
         const rawOpts = optEl ? optEl.value : '';
-        const options = rawOpts.split(',').map(s => s.trim()).filter(Boolean);
+        let options = rawOpts.split(',').map(s => s.trim()).filter(Boolean);
+
+        // Fallback for choice controls if options left empty
+        if (['dropdown', 'button'].includes(type) && !options.length) {
+          const df = DEFAULT_STUDENT_FIELDS.find(x => x.key === key);
+          options = df && df.options && df.options.length ? [...df.options] : ['Option 1', 'Option 2'];
+        }
+
         const required = !!reqEl?.checked;
         const active = !!actEl?.checked;
 
@@ -335,9 +382,6 @@ export class StudentModule {
     UIComponents.refreshIcons();
   }
 
-  /**
-   * Open full enrollment modal dynamically rendering all 41 fields grouped into cards
-   */
   static openEnrollmentModal(container) {
     const esc = (v) => UIComponents.escapeHtml(v);
     const fields = this.getFieldConfigs().filter(f => f.active !== false);

@@ -813,3 +813,10 @@ ALTER TABLE public.students ADD COLUMN IF NOT EXISTS religion TEXT;
 ALTER TABLE public.students ADD COLUMN IF NOT EXISTS payload JSONB DEFAULT '{}'::jsonb;
 
 NOTIFY pgrst, 'reload schema';
+
+
+-- ============================================================================
+-- Section 35: Academic Classes Schema Cache Compatibility
+-- ============================================================================
+ALTER TABLE IF EXISTS public.academic_classes ADD COLUMN IF NOT EXISTS name TEXT;
+UPDATE public.academic_classes SET name = grade WHERE name IS NULL AND grade IS NOT NULL;
