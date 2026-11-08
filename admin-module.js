@@ -165,7 +165,7 @@ export class AdminModule {
             <i data-lucide="globe"></i>
             <span>Institutional Website</span>
           </button>
-          <button class="tms-tab-pill" data-group="hostel" id="admin-group-tab-hostel" style="${websiteService.isHostelEnabled() ? '' : 'display:none;'}">
+          <button class="tms-tab-pill" data-group="hostel" id="admin-group-tab-hostel">
             <i data-lucide="home"></i>
             <span>Hostel Management</span>
           </button>
