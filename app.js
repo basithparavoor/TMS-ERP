@@ -88,6 +88,20 @@ export class AppController {
     // Warn clearly if the add-on migration has not been applied yet.
     checkMigration();
 
+    // Clean any legacy demo items from local storage caches
+    const cachedStudents = dbService.getLocal('students');
+    if (Array.isArray(cachedStudents) && cachedStudents.some(s => s && (String(s.id).startsWith('std-') || String(s.admissionNo).startsWith('TPS-2026-')))) {
+      const cleanStudents = cachedStudents.filter(s => s && !String(s.id).startsWith('std-') && !String(s.admissionNo).startsWith('TPS-2026-'));
+      dbService.setLocal('students', cleanStudents);
+      dbService.invalidateCache('students');
+    }
+    const cachedLeaves = dbService.getLocal('student_leaves');
+    if (Array.isArray(cachedLeaves) && cachedLeaves.some(l => l && (l.id === 'LV-2026-001' || l.studentId === 'std-5'))) {
+      const cleanLeaves = cachedLeaves.filter(l => l && l.id !== 'LV-2026-001' && l.studentId !== 'std-5');
+      dbService.setLocal('student_leaves', cleanLeaves);
+      dbService.invalidateCache('student_leaves');
+    }
+
     this.renderShell();
     this.bindGlobalEvents();
     await NotificationCenter.init();

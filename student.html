@@ -178,11 +178,7 @@
 
       try {
         let students = await dbService.select('students');
-        if (!students || !students.length) {
-          const { SAMPLE_STUDENTS } = await import('./student-module.js');
-          students = SAMPLE_STUDENTS;
-        }
-        const student = students.find(s => s.userId === user.id || s.id === user.id || s.email === user.email || s.admissionNo === user.admissionNo) || students[0] || null;
+        const student = (students || []).find(s => s.userId === user.id || s.id === user.id || s.email === user.email || s.admissionNo === user.admissionNo) || null;
 
         if (!student) {
           setText('portal-student-name', 'No Student Record Linked');

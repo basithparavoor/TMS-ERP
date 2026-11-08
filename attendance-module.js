@@ -15,7 +15,7 @@ import { auditService } from './audit-service.js';
 import { downloadCsv } from './export-utils.js';
 import { WhatsAppService } from './whatsapp-service.js';
 import { ClassroomModal, DAYS_CONFIG } from './classroom-modal.js';
-import { SAMPLE_STUDENTS } from './student-module.js';
+
 import { BiometricCredentialModal } from './biometric-credential-modal.js';
 import { StudentLeaveService } from './student-leave-service.js';
 import { authService } from './auth-service.js';
@@ -282,7 +282,7 @@ export class AttendanceModule {
       StudentLeaveService.getLeaves()
     ]);
 
-    this._students = (allStudents && allStudents.length) ? allStudents : SAMPLE_STUDENTS;
+    this._students = allStudents || [];
     this._records = allRecords || [];
     this._classrooms = (allClassrooms && allClassrooms.length) ? allClassrooms : DEFAULT_CLASSROOMS;
     this._leaves = allLeaves || [];
@@ -1011,9 +1011,9 @@ export class AttendanceModule {
 
         <!-- Student Quick Simulation Punch Buttons -->
         <div style="display:flex; justify-content:center; gap:8px; flex-wrap:wrap; margin-bottom:24px;">
-          <button class="btn btn-outline btn-xs demo-qr-punch" data-id="TPS-2026-001">⚡ Punch: MD Aamir (TPS-2026-001)</button>
-          <button class="btn btn-outline btn-xs demo-qr-punch" data-id="TPS-2026-002">⚡ Punch: Rehan Islam (TPS-2026-002)</button>
-          <button class="btn btn-outline btn-xs demo-qr-punch" data-id="TPS-2026-005">⚡ Punch: Sultana Sarkar (TPS-2026-005)</button>
+          ${(this._students && this._students.length > 0) ? this._students.slice(0, 3).map(s => `
+            <button class="btn btn-outline btn-xs demo-qr-punch" data-id="${esc(s.admissionNo || s.id)}">⚡ Punch: ${esc(s.fullName)} (${esc(s.admissionNo || s.id)})</button>
+          `).join('') : '<span style="color:var(--text-muted); font-size:0.78rem;">(No student records enrolled yet)</span>'}
         </div>
 
         <!-- Live Kiosk Activity Feed -->
@@ -1340,15 +1340,11 @@ export class AttendanceModule {
 
         <!-- Simulated NFC Card Tap -->
         <div style="display:flex; justify-content:center; gap:8px; flex-wrap:wrap; margin-bottom:24px;">
-          <button class="btn btn-primary btn-sm demo-nfc-tap" data-id="TPS-2026-001" style="background:#0E623B; border-color:#0E623B; border-radius:9999px;">
-            <i data-lucide="zap"></i> Tap: MD Aamir
-          </button>
-          <button class="btn btn-secondary btn-sm demo-nfc-tap" data-id="TPS-2026-003" style="border-radius:9999px;">
-            <i data-lucide="zap"></i> Tap: Jakir Sarkar
-          </button>
-          <button class="btn btn-secondary btn-sm demo-nfc-tap" data-id="TPS-2026-004" style="border-radius:9999px;">
-            <i data-lucide="zap"></i> Tap: Rijuwan Mondal
-          </button>
+          ${(this._students && this._students.length > 0) ? this._students.slice(0, 3).map((s, idx) => `
+            <button class="btn ${idx === 0 ? 'btn-primary' : 'btn-secondary'} btn-sm demo-nfc-tap" data-id="${esc(s.admissionNo || s.id)}" style="${idx === 0 ? 'background:#0E623B; border-color:#0E623B;' : ''} border-radius:9999px;">
+              <i data-lucide="zap"></i> Tap: ${esc(s.fullName)}
+            </button>
+          `).join('') : '<span style="color:var(--text-muted); font-size:0.78rem;">(No student records enrolled yet)</span>'}
         </div>
 
         <!-- Today's Contactless Tap Ledger -->
@@ -1610,15 +1606,11 @@ export class AttendanceModule {
         </div>
 
         <div style="display:flex; justify-content:center; gap:8px; flex-wrap:wrap; margin-bottom:24px;">
-          <button class="btn btn-primary btn-sm demo-face-match" data-id="TPS-2026-001" style="background:#0E623B; border-color:#0E623B; border-radius:9999px;">
-            <i data-lucide="user-check"></i> Match MD Aamir (99.2%)
-          </button>
-          <button class="btn btn-secondary btn-sm demo-face-match" data-id="TPS-2026-002" style="border-radius:9999px;">
-            <i data-lucide="user-check"></i> Match Rehan Islam (98.6%)
-          </button>
-          <button class="btn btn-secondary btn-sm demo-face-match" data-id="TPS-2026-006" style="border-radius:9999px;">
-            <i data-lucide="user-check"></i> Match Awan Ikbal (97.9%)
-          </button>
+          ${(this._students && this._students.length > 0) ? this._students.slice(0, 3).map((s, idx) => `
+            <button class="btn ${idx === 0 ? 'btn-primary' : 'btn-secondary'} btn-sm demo-face-match" data-id="${esc(s.admissionNo || s.id)}" style="${idx === 0 ? 'background:#0E623B; border-color:#0E623B;' : ''} border-radius:9999px;">
+              <i data-lucide="user-check"></i> Match ${esc(s.fullName)} (${(98.5 + idx * 0.4).toFixed(1)}%)
+            </button>
+          `).join('') : '<span style="color:var(--text-muted); font-size:0.78rem;">(No student records enrolled yet)</span>'}
         </div>
 
         <!-- Today's Biometric Facial Recognition Ledger -->

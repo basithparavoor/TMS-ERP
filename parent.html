@@ -159,27 +159,30 @@
         console.error(e);
       }
 
-      // Link wards: match by parent email/phone/id or fallback to demo student (e.g. Sultana Sarkar or first student)
+      // Link wards: match by parent email/phone/id
       const myWards = students.filter(s => 
-        s.guardianEmail === user.email || 
-        s.guardianPhone === user.phone || 
+        (s.guardianEmail && s.guardianEmail.toLowerCase() === (user.email || '').toLowerCase()) || 
+        (s.guardianPhone && user.phone && s.guardianPhone.replace(/\D/g, '').includes(user.phone.replace(/\D/g, ''))) || 
         s.parentId === user.id
       );
-      const activeWard = myWards[0] || students.find(s => s.admissionNo === 'TPS-2026-005') || students[0] || {
-        id: 'std-5',
-        fullName: 'Sultana Sarkar',
-        admissionNo: 'TPS-2026-005',
-        grade: 'STD-III',
-        section: 'A'
-      };
+      const activeWard = myWards[0] || students[0] || null;
 
-      const myWardLeaves = leaves.filter(l => 
+      const myWardLeaves = activeWard ? leaves.filter(l => 
         l.studentId === activeWard.id || 
         l.admissionNo === activeWard.admissionNo || 
         (myWards.some(w => w.id === l.studentId || w.admissionNo === l.admissionNo))
-      );
+      ) : [];
 
       const renderLeaveCards = () => {
+        if (!activeWard) {
+          return `
+            <div style="text-align: center; color: var(--text-muted); padding: 24px; background: var(--bg-subtle, #F8FAFC); border-radius: 10px;">
+              <i data-lucide="user-x" style="width:36px; height:36px; display:block; margin:0 auto 8px; color: #94a3b8;"></i>
+              <div style="font-weight: 600;">No Enrolled Wards Linked</div>
+              <div style="font-size: 0.8rem; margin-top: 2px;">Your verified enrolled students will appear here once officially admitted.</div>
+            </div>
+          `;
+        }
         if (!myWardLeaves.length) {
           return `
             <div style="text-align: center; color: var(--text-muted); padding: 24px; background: var(--bg-subtle, #F8FAFC); border-radius: 10px;">

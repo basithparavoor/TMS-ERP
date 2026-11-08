@@ -17,7 +17,7 @@ import { TMS_LOGO } from './logo.js';
 import { QRCodeGenerator } from './qr-generator.js';
 import { exportPdf, formatPdfFilename } from './export-utils.js';
 import { BiometricCredentialModal } from './biometric-credential-modal.js';
-import { SAMPLE_STUDENTS } from './student-module.js';
+
 
 export const CARD_TEMPLATES = {
   emerald: {
@@ -81,12 +81,8 @@ export class IdCardsModule {
       dbService.select('staff_directory')
     ]);
 
-    this._students = (allStudents && allStudents.length) ? allStudents : SAMPLE_STUDENTS;
-    this._staff = (allStaff && allStaff.length) ? allStaff : [
-      { id: 'st-1', name: 'muhammad mubashir', staffId: 'FAC-2026-001', designation: 'Senior Faculty', department: 'Arabic & Moral Studies', phone: '9847123456', avatar: '/assets/avatars/std-1.png' },
-      { id: 'st-2', name: 'Hafiz Tariq', staffId: 'FAC-2026-002', designation: 'Hifz Instructor', department: 'Hifz Academy', phone: '9847654321', avatar: '/assets/avatars/std-2.png' },
-      { id: 'st-3', name: 'Br. Abdul Basith', staffId: 'FAC-2026-003', designation: 'Academic Council', department: 'Hostel Administration', phone: '9847998877', avatar: '/assets/avatars/std-3.png' }
-    ];
+    this._students = allStudents || [];
+    this._staff = allStaff || [];
 
     this._activeTab = this._activeTab || 'students'; // 'students' | 'staff'
     this._selectedGrade = this._selectedGrade || 'all';

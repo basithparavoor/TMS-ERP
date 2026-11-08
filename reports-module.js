@@ -32,7 +32,7 @@ export class ReportsModule {
     `;
 
     const monthLabels = ['Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr'];
-    const monthData = [45, 52, 68, 74, 61, Math.max(30, Math.round(totalCollected / 1000))];
+    const monthData = totalCollected > 0 ? [0, 0, 0, 0, 0, Math.round(totalCollected / 1000)] : [0, 0, 0, 0, 0, 0];
 
     container.innerHTML = `
       <div class="tms-content-wrapper">
