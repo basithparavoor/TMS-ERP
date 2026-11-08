@@ -27,7 +27,7 @@ export const DEFAULT_STUDENT_FIELDS = [
   { key: 'previousSchool', label: 'Previous School Name', category: 'Academic History', type: 'text', defaultType: 'text', required: false, active: true, sample1: 'Harirampur High School', sample2: 'Malda Model Academy', keywords: ['previous school name', 'previous school', 'last school', 'prev school'] },
   { key: 'bloodGroup', label: 'Blood Group', category: 'Demographics & Health', type: 'dropdown', defaultType: 'dropdown', required: false, active: true, options: ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-', 'Unknown'], sample1: 'O+', sample2: 'B+', keywords: ['blood group', 'blood', 'bloodgroup'] },
   { key: 'isOrphan', label: 'is Orphan', category: 'Demographics & Health', type: 'button', defaultType: 'button', required: false, active: true, options: ['No', 'Yes'], sample1: 'No', sample2: 'Yes', keywords: ['is orphan', 'orphan', 'orphan status'] },
-  { key: 'category', label: 'Category', category: 'Demographics & Health', type: 'dropdown', defaultType: 'dropdown', required: false, active: true, options: ['GENERAL', 'OBC-A', 'OBC-B', 'SC', 'ST', 'EWS', 'ORPHAN'], sample1: 'GENERAL', sample2: 'OBC-A', keywords: ['category', 'caste', 'social category'] },
+  { key: 'category', label: 'Category', category: 'Demographics & Health', type: 'dropdown', defaultType: 'dropdown', required: false, active: true, options: ['Day Scholar', 'Hosteler', 'TSQ', 'GENERAL', 'OBC-A', 'OBC-B', 'SC', 'ST', 'EWS', 'ORPHAN'], sample1: 'Day Scholar', sample2: 'Hosteler', keywords: ['category', 'caste', 'social category', 'day scholar', 'hosteller'] },
   { key: 'status', label: 'Enrollment Status', category: 'Core Identity', type: 'button', defaultType: 'button', required: true, active: true, options: ['Active', 'Inactive', 'On Leave', 'Transferred'], sample1: 'Active', sample2: 'Active', keywords: ['enrollment status', 'status', 'student status'] },
   { key: 'gender', label: 'Gender', category: 'Demographics & Health', type: 'button', defaultType: 'button', required: true, active: true, options: ['Male', 'Female', 'Other'], sample1: 'Male', sample2: 'Female', keywords: ['gender', 'sex'] },
   { key: 'admissionDate', label: 'Admission Date', category: 'Core Identity', type: 'date', defaultType: 'date', required: false, active: true, sample1: '2024-04-05', sample2: '2024-04-08', keywords: ['admission date', 'adm date', 'date of admission'] },
@@ -618,6 +618,28 @@ export class StudentModule {
     UIComponents.refreshIcons();
   }
 
+  
+  /**
+   * Determine whether student is a non-residential Day Scholar
+   */
+  static isDayScholar(s) {
+    if (!s) return true;
+    if (s.boardingType === 'day_scholar') return true;
+    if (s.boardingType === 'hosteller' || s.boardingType === 'residential') return false;
+    const cat = String(s.category || '').trim();
+    if (/day[\s_-]*scholar/i.test(cat)) return true;
+    if (/hostel|boarder|residential|tsq|tahfiz/i.test(cat)) return false;
+    if (s.hostelBlock && s.hostelBlock.trim() && s.hostelRoom && s.hostelRoom.trim()) return false;
+    return true;
+  }
+
+  /**
+   * Determine whether student is a residential hosteller / boarder
+   */
+  static isHosteller(s) {
+    return !this.isDayScholar(s);
+  }
+
   static async render(container) {
     // Fetch students from database (with clean-up if legacy demo students were cached)
     let rawStudents = (await dbService.select('students')) || [];
@@ -817,7 +839,11 @@ export class StudentModule {
                     <span class="tms-category-badge">${esc(s.category || 'GENERAL')}</span>
                   </td>
                   <td style="padding:14px 16px;">
-                    ${(s.hostelBlock && s.hostelBlock.trim() && s.hostelRoom && s.hostelRoom.trim() && !/day scholar/i.test(s.category || '')) ? `
+                    ${StudentModule.isDayScholar(s) ? `
+                      <span class="badge" style="background:#f8fafc; color:#64748b; border:1px solid #e2e8f0; font-size:0.75rem; font-weight:600; padding:4px 9px; border-radius:6px; display:inline-flex; align-items:center; gap:5px;">
+                        <i data-lucide="sun" style="width:13px; height:13px; color:#d97706;"></i> Day Scholar
+                      </span>
+                    ` : (s.hostelBlock && s.hostelBlock.trim() && s.hostelRoom && s.hostelRoom.trim()) ? `
                       <div style="display:flex; flex-direction:column; gap:2px;">
                         <div style="font-weight:700; font-size:0.84rem; color:#1e293b; display:flex; align-items:center; gap:5px;">
                           <i data-lucide="home" style="width:13px; height:13px; color:#16a34a; flex-shrink:0;"></i>
@@ -832,10 +858,10 @@ export class StudentModule {
                       </div>
                     ` : `
                       <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-start;">
-                        <span class="badge" style="background:#f1f5f9; color:#64748b; font-size:0.74rem; font-weight:600; padding:3px 8px; border-radius:6px; display:inline-flex; align-items:center; gap:4px;">
-                          <i data-lucide="sun" style="width:12px; height:12px; color:#d97706;"></i> Day Scholar
+                        <span class="badge" style="background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:6px; display:inline-flex; align-items:center; gap:4px;">
+                          <i data-lucide="alert-circle" style="width:11px; height:11px; color:#d97706;"></i> Unassigned Bed
                         </span>
-                        <button type="button" class="btn btn-secondary btn-sm btn-change-bed" data-id="${esc(s.id)}" style="padding:1px 8px; font-size:0.7rem; border-radius:6px; color:#2563eb; font-weight:700;">
+                        <button type="button" class="btn btn-primary btn-sm btn-change-bed" data-id="${esc(s.id)}" style="background:#0e623b; border-color:#0e623b; padding:2px 9px; font-size:0.72rem; border-radius:6px; color:#ffffff; font-weight:700; display:inline-flex; align-items:center; gap:4px;">
                           <i data-lucide="plus" style="width:11px; height:11px;"></i> Assign Bed
                         </button>
                       </div>
@@ -1784,14 +1810,18 @@ export class StudentModule {
               ${renderProp('Class Join Date', s.classJoinDate, 'calendar-check')}
               ${renderProp('Previous School', s.previousSchool, 'building')}
               ${renderProp('Enrollment Status', s.status || 'Active', 'check-circle')}
-              ${renderProp('Hostel Wing / Block', s.hostelBlock || 'Day Scholar (No Bed)', 'home')}
-              ${renderProp('Hostel Room', s.hostelRoom || '—', 'door-closed', true)}
-              ${renderProp('Hostel Bed', s.hostelBed || '—', 'bed', true)}
-              <div style="grid-column: 1 / -1; margin-top: 6px;">
-                <button type="button" class="btn btn-secondary btn-sm" id="btn-prof-change-bed" style="font-weight:700; border-radius:8px;">
-                  <i data-lucide="bed" style="color:#16a34a;"></i> Assign / Change Hostel Bed
-                </button>
-              </div>
+              ${StudentModule.isDayScholar(s) ? `
+                ${renderProp('Residential Status', 'Day Scholar (Non-Residential)', 'sun')}
+              ` : `
+                ${renderProp('Hostel Wing / Block', s.hostelBlock || 'Unassigned Wing', 'home')}
+                ${renderProp('Hostel Room', s.hostelRoom || 'Unassigned Room', 'door-closed', true)}
+                ${renderProp('Hostel Bed', s.hostelBed || 'Unassigned Bed', 'bed', true)}
+                <div style="grid-column: 1 / -1; margin-top: 6px;">
+                  <button type="button" class="btn btn-secondary btn-sm" id="btn-prof-change-bed" style="font-weight:700; border-radius:8px;">
+                    <i data-lucide="bed" style="color:#16a34a;"></i> ${s.hostelRoom ? 'Change Hostel Bed' : 'Assign Hostel Bed'}
+                  </button>
+                </div>
+              `}
             </div>
           </div>
         </div>
@@ -1902,7 +1932,8 @@ export class StudentModule {
     const esc = (v) => UIComponents.escapeHtml(v);
     const s = student || {};
 
-    const hasBed = Boolean(s.hostelBlock && s.hostelBlock.trim() && s.hostelRoom && s.hostelRoom.trim() && !/day scholar/i.test(s.category || ''));
+    const isBoarder = StudentModule.isHosteller(s);
+    const hasBed = Boolean(s.hostelBlock && s.hostelBlock.trim() && s.hostelRoom && s.hostelRoom.trim() && isBoarder);
     const isGirl = s.gender === 'Girl' || s.gender === 'Female';
 
     const defaultWing = s.hostelBlock || (isGirl ? 'Fatima-tuz-Zahra Girls Wing' : 'Hazrat Bilal Boys Wing');
@@ -1929,7 +1960,7 @@ export class StudentModule {
             </div>
           </div>
           <span class="badge" style="font-size:0.78rem; padding:4px 12px; border-radius:9999px; background:${hasBed ? '#dcfce7' : '#f1f5f9'}; color:${hasBed ? '#15803d' : '#64748b'}; font-weight:700;">
-            ${hasBed ? '● Currently Boarding' : '○ Day Scholar'}
+            ${hasBed ? '● Bed Assigned' : (isBoarder ? '⚠️ Hosteller (Bed Pending)' : '○ Day Scholar')}
           </span>
         </div>
 
@@ -1939,15 +1970,15 @@ export class StudentModule {
             Boarding Enrollment Type
           </label>
           <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-            <label id="lbl-board-dayscholar" style="border:1.5px solid ${!hasBed ? '#16a34a' : '#e2e8f0'}; background:${!hasBed ? '#f0fdf4' : '#ffffff'}; border-radius:10px; padding:12px; cursor:pointer; display:flex; align-items:flex-start; gap:10px; transition:all 0.15s ease;">
-              <input type="radio" name="boardingType" value="day_scholar" ${!hasBed ? 'checked' : ''} style="margin-top:3px; accent-color:#16a34a;">
+            <label id="lbl-board-dayscholar" style="border:1.5px solid ${!isBoarder ? '#16a34a' : '#e2e8f0'}; background:${!isBoarder ? '#f0fdf4' : '#ffffff'}; border-radius:10px; padding:12px; cursor:pointer; display:flex; align-items:flex-start; gap:10px; transition:all 0.15s ease;">
+              <input type="radio" name="boardingType" value="day_scholar" ${!isBoarder ? 'checked' : ''} style="margin-top:3px; accent-color:#16a34a;">
               <div>
                 <div style="font-weight:700; font-size:0.88rem; color:#0f172a;">Day Scholar</div>
                 <div style="font-size:0.74rem; color:#64748b;">No hostel bed assigned. Student attends campus daily.</div>
               </div>
             </label>
-            <label id="lbl-board-hostel" style="border:1.5px solid ${hasBed ? '#16a34a' : '#e2e8f0'}; background:${hasBed ? '#f0fdf4' : '#ffffff'}; border-radius:10px; padding:12px; cursor:pointer; display:flex; align-items:flex-start; gap:10px; transition:all 0.15s ease;">
-              <input type="radio" name="boardingType" value="hostel_boarder" ${hasBed ? 'checked' : ''} style="margin-top:3px; accent-color:#16a34a;">
+            <label id="lbl-board-hostel" style="border:1.5px solid ${isBoarder ? '#16a34a' : '#e2e8f0'}; background:${isBoarder ? '#f0fdf4' : '#ffffff'}; border-radius:10px; padding:12px; cursor:pointer; display:flex; align-items:flex-start; gap:10px; transition:all 0.15s ease;">
+              <input type="radio" name="boardingType" value="hostel_boarder" ${isBoarder ? 'checked' : ''} style="margin-top:3px; accent-color:#16a34a;">
               <div>
                 <div style="font-weight:700; font-size:0.88rem; color:#0f172a;">Hostel Resident</div>
                 <div style="font-size:0.74rem; color:#64748b;">Full residential boarding with allocated wing, room &amp; bed.</div>
@@ -1957,7 +1988,7 @@ export class StudentModule {
         </div>
 
         <!-- Bed Allocation Form Fields -->
-        <div id="hostel-allocation-fields" style="display:${hasBed ? 'block' : 'none'}; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:16px; margin-bottom:16px;">
+        <div id="hostel-allocation-fields" style="display:${isBoarder ? 'block' : 'none'}; background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:16px; margin-bottom:16px;">
           <div style="font-size:0.8rem; font-weight:800; color:#1e40af; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:12px; display:flex; align-items:center; gap:6px;">
             <i data-lucide="bed" style="width:16px; height:16px;"></i> Bed &amp; Dormitory Assignment
           </div>
@@ -2043,10 +2074,14 @@ export class StudentModule {
         hostelBed: isBoarder ? bed : ''
       };
 
-      if (!isBoarder && s.category === 'Hostel Resident') {
+      if (!isBoarder) {
         updates.category = 'Day Scholar';
-      } else if (isBoarder && (!s.category || s.category === 'Day Scholar')) {
-        updates.category = 'Hostel Resident';
+        updates.boardingType = 'day_scholar';
+      } else {
+        updates.boardingType = 'hosteller';
+        if (!s.category || /day[\s_-]*scholar/i.test(s.category)) {
+          updates.category = 'Hosteler';
+        }
       }
 
       Object.assign(s, updates);
@@ -2094,11 +2129,14 @@ export class StudentModule {
     const esc = (v) => UIComponents.escapeHtml(v);
     const students = this._students || [];
 
-    const hostellers = students.filter(s => s.hostelBlock && s.hostelBlock.trim() && s.hostelRoom && s.hostelRoom.trim() && !/day scholar/i.test(s.category || ''));
-    const dayScholars = students.filter(s => !s.hostelBlock || !s.hostelRoom || /day scholar/i.test(s.category || ''));
+    const hostellers = students.filter(s => StudentModule.isHosteller(s));
+    const dayScholars = students.filter(s => StudentModule.isDayScholar(s));
 
-    const boysHostel = hostellers.filter(s => s.gender === 'Boy' || s.gender === 'Male');
-    const girlsHostel = hostellers.filter(s => s.gender === 'Girl' || s.gender === 'Female');
+    const allocatedHostellers = hostellers.filter(s => s.hostelBlock && s.hostelBlock.trim() && s.hostelRoom && s.hostelRoom.trim());
+    const unallocatedHostellers = hostellers.filter(s => !s.hostelBlock || !s.hostelBlock.trim() || !s.hostelRoom || !s.hostelRoom.trim());
+
+    const boysHostel = allocatedHostellers.filter(s => s.gender === 'Boy' || s.gender === 'Male');
+    const girlsHostel = allocatedHostellers.filter(s => s.gender === 'Girl' || s.gender === 'Female');
 
     const bodyHtml = `
       <div style="font-family:inherit;">
@@ -2160,17 +2198,28 @@ export class StudentModule {
                     <div style="font-size:0.7rem; color:#64748b; font-family:var(--font-mono);">${esc(s.admissionNo)}</div>
                   </td>
                   <td style="padding:8px 12px; font-weight:600;">${esc(s.grade || '—')}</td>
-                  <td style="padding:8px 12px; font-weight:600; color:#1e40af;">${esc(s.hostelBlock)}</td>
-                  <td style="padding:8px 12px; font-weight:700; font-family:var(--font-mono); color:#0f172a;">${esc(s.hostelRoom)}</td>
-                  <td style="padding:8px 12px; font-weight:700; font-family:var(--font-mono); color:#16a34a;">${esc(s.hostelBed || 'Bed 1')}</td>
-                  <td style="padding:8px 12px; text-align:right;">
-                    <button type="button" class="btn btn-secondary btn-sm btn-edit-hostel-bed" data-id="${esc(s.id)}" style="padding:2px 8px; font-size:0.72rem; font-weight:700; margin-right:4px;">
-                      <i data-lucide="edit-2" style="width:12px;height:12px;"></i> Change
-                    </button>
-                    <button type="button" class="btn btn-secondary btn-sm btn-vacate-hostel-bed" data-id="${esc(s.id)}" style="padding:2px 8px; font-size:0.72rem; font-weight:700; color:#ef4444; border-color:#fca5a5;">
-                      <i data-lucide="x" style="width:12px;height:12px;"></i> Vacate
-                    </button>
-                  </td>
+                  ${Boolean(s.hostelBlock && s.hostelRoom) ? `
+                    <td style="padding:8px 12px; font-weight:600; color:#1e40af;">${esc(s.hostelBlock)}</td>
+                    <td style="padding:8px 12px; font-weight:700; font-family:var(--font-mono); color:#0f172a;">${esc(s.hostelRoom)}</td>
+                    <td style="padding:8px 12px; font-weight:700; font-family:var(--font-mono); color:#16a34a;">${esc(s.hostelBed || 'Bed 1')}</td>
+                    <td style="padding:8px 12px; text-align:right;">
+                      <button type="button" class="btn btn-secondary btn-sm btn-edit-hostel-bed" data-id="${esc(s.id)}" style="padding:2px 8px; font-size:0.72rem; font-weight:700; margin-right:4px;">
+                        <i data-lucide="edit-2" style="width:12px;height:12px;"></i> Change
+                      </button>
+                      <button type="button" class="btn btn-secondary btn-sm btn-vacate-hostel-bed" data-id="${esc(s.id)}" style="padding:2px 8px; font-size:0.72rem; font-weight:700; color:#ef4444; border-color:#fca5a5;">
+                        <i data-lucide="x" style="width:12px;height:12px;"></i> Vacate
+                      </button>
+                    </td>
+                  ` : `
+                    <td style="padding:8px 12px;"><span class="badge" style="background:#fef3c7; color:#92400e; font-weight:700;">Pending Wing</span></td>
+                    <td style="padding:8px 12px; color:#94a3b8;">—</td>
+                    <td style="padding:8px 12px; color:#94a3b8;">—</td>
+                    <td style="padding:8px 12px; text-align:right;">
+                      <button type="button" class="btn btn-primary btn-sm btn-edit-hostel-bed" data-id="${esc(s.id)}" style="background:#0e623b; border-color:#0e623b; padding:2px 8px; font-size:0.72rem; font-weight:700; color:#ffffff;">
+                        <i data-lucide="plus" style="width:12px;height:12px;"></i> Assign Bed
+                      </button>
+                    </td>
+                  `}
                 </tr>
               `).join('') : `
                 <tr>
@@ -2210,12 +2259,12 @@ export class StudentModule {
 
     // Allocate button: pick from unassigned students
     document.getElementById('btn-quick-allocate-bed')?.addEventListener('click', () => {
-      if (!dayScholars.length) {
-        UIComponents.showToast('All enrolled students already have assigned hostel beds!', 'info');
-        return;
-      }
-      // Show quick student selector modal
-      const studentOptions = dayScholars.map(s => `<option value="${esc(s.id)}">${esc(s.fullName)} (${esc(s.admissionNo)}) - ${esc(s.grade)}</option>`).join('');
+      // Prioritize hostellers who need a bed
+      const pool = unallocatedHostellers.length ? unallocatedHostellers : students;
+      const studentOptions = pool.map(s => {
+        const isH = StudentModule.isHosteller(s);
+        return `<option value="${esc(s.id)}">${esc(s.fullName)} (${esc(s.admissionNo)}) - ${esc(s.grade)} [${isH ? 'Hosteller - Pending Bed' : 'Day Scholar'}]</option>`;
+      }).join('');
       const pickHtml = `
         <div style="font-family:inherit;">
           <p style="font-size:0.86rem; color:#475569; margin-bottom:14px;">Select an enrolled student to allocate a hostel room and bed:</p>
