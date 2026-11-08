@@ -773,3 +773,43 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
 NOTIFY pgrst, 'reload schema';
+
+
+-- ============================================================================
+-- Section 34: Comprehensive Student Profile Fields (41 Statutory Columns)
+-- ============================================================================
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS govt_student_id TEXT;
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS apaar_id TEXT;
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS minority_id TEXT;
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS kanyashree_id TEXT;
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS previous_school TEXT;
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS is_orphan TEXT DEFAULT 'No';
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'General';
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS admission_date DATE;
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS class_join_date DATE;
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS village TEXT;
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS post_office TEXT;
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS police_station TEXT;
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS district TEXT;
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS state TEXT;
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS pin_code TEXT;
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS phone TEXT;
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS whatsapp TEXT;
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS father_name TEXT;
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS father_occupation TEXT;
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS father_qualification TEXT;
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS father_phone TEXT;
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS father_whatsapp TEXT;
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS mother_name TEXT;
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS mother_occupation TEXT;
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS mother_qualification TEXT;
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS mother_phone TEXT;
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS mother_whatsapp TEXT;
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS relation TEXT;
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS annual_income TEXT;
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS aadhar_no TEXT;
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS religion TEXT;
+ALTER TABLE public.students ADD COLUMN IF NOT EXISTS payload JSONB DEFAULT '{}'::jsonb;
+
+NOTIFY pgrst, 'reload schema';

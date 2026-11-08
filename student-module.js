@@ -16,24 +16,533 @@ import { admissionService } from './admission-service.js';
 import { BiometricCredentialModal } from './biometric-credential-modal.js';
 
 
-export const STUDENT_IMPORT_FIELDS = [
-  { key: 'admissionNo', label: 'Admission No', default: true, required: false, sample1: 'TMS/2022/012', sample2: 'TMS/2023/045', keywords: ['admission no', 'adm no', 'admission', 'id'] },
-  { key: 'rollNo', label: 'Roll No', default: true, required: false, sample1: '01', sample2: '02', keywords: ['roll', 'roll no'] },
-  { key: 'fullName', label: 'Full Name', default: true, required: true, sample1: 'Aayan Khan', sample2: 'Fatima Zahra', keywords: ['full name', 'name', 'student name', 'candidate name'] },
-  { key: 'grade', label: 'Class / Grade', default: true, required: true, sample1: 'Grade 4', sample2: 'Grade 2', keywords: ['grade', 'class', 'standard'] },
-  { key: 'section', label: 'Section', default: true, required: false, sample1: 'A', sample2: 'B', keywords: ['section', 'sec'] },
-  { key: 'gender', label: 'Gender', default: true, required: false, sample1: 'Male', sample2: 'Female', keywords: ['gender', 'sex'] },
-  { key: 'dob', label: 'Date of Birth (YYYY-MM-DD)', default: true, required: false, sample1: '2015-04-12', sample2: '2017-08-23', keywords: ['dob', 'date of birth', 'birth'] },
-  { key: 'guardianName', label: 'Guardian / Father Name', default: true, required: false, sample1: 'Tariq Khan', sample2: 'Irfan Zahra', keywords: ['guardian name', 'parent name', 'father', 'guardian'] },
-  { key: 'guardianPhone', label: 'Guardian Phone', default: true, required: false, sample1: '+91 98311 00001', sample2: '+91 98311 00002', keywords: ['guardian phone', 'phone', 'contact', 'mobile'] },
-  { key: 'bloodGroup', label: 'Blood Group', default: true, required: false, sample1: 'O+', sample2: 'A+', keywords: ['blood group', 'blood'] },
-  { key: 'address', label: 'Residential Address', default: true, required: false, sample1: 'Malda Town', sample2: 'Harirampur', keywords: ['address', 'village', 'city'] },
-  { key: 'status', label: 'Enrollment Status', default: true, required: false, sample1: 'Active', sample2: 'Active', keywords: ['status', 'enrollment status'] },
-  { key: 'allergies', label: 'Medical Notes / Allergies', default: false, required: false, sample1: 'None', sample2: 'Asthma', keywords: ['allergies', 'medical'] },
-  { key: 'emergencyContact', label: 'Emergency Contact', default: false, required: false, sample1: '+91 98311 00099', sample2: '+91 98311 00088', keywords: ['emergency', 'alt phone'] }
+export const DEFAULT_STUDENT_FIELDS = [
+  { key: 'admissionNo', label: 'ID', category: 'Core Identity', type: 'text', defaultType: 'text', required: false, active: true, sample1: 'TMS/2026/001', sample2: 'TMS/2026/002', keywords: ['id', 'admission no', 'admission', 'adm no', 'student id'] },
+  { key: 'fullName', label: 'NAME', category: 'Core Identity', type: 'text', defaultType: 'text', required: true, active: true, sample1: 'Aayan Khan', sample2: 'Fatima Zahra', keywords: ['name', 'full name', 'student name', 'candidate name'] },
+  { key: 'grade', label: 'CLASS', category: 'Core Identity', type: 'dropdown', defaultType: 'dropdown', required: true, active: true, options: ['STD-I', 'STD-II', 'STD-III', 'STD-IV', 'STD-V', 'STD-VI', 'STD-VII', 'STD-VIII', 'STD-IX', 'STD-X', 'STD-XI', 'STD-XII', 'Nursery', 'LKG', 'UKG'], sample1: 'STD-IV', sample2: 'STD-II', keywords: ['class', 'grade', 'standard'] },
+  { key: 'govtStudentId', label: 'GOVERNMENT STUDENT ID', category: 'Government IDs', type: 'text', defaultType: 'text', required: false, active: true, sample1: 'WB19041234567', sample2: 'WB19041234568', keywords: ['government student id', 'govt student id', 'banglar shiksha id', 'banglar shiksha', 'govt id'] },
+  { key: 'apaarId', label: 'APAAR ID', category: 'Government IDs', type: 'text', defaultType: 'text', required: false, active: true, sample1: '987654321012', sample2: '987654321013', keywords: ['apaar id', 'apaar', 'one nation one student id', 'abc id'] },
+  { key: 'minorityId', label: 'MINORITY ID', category: 'Government IDs', type: 'text', defaultType: 'text', required: false, active: true, sample1: 'MIN-WB-00441', sample2: 'MIN-WB-00442', keywords: ['minority id', 'minority', 'oasid', 'oikyshiree'] },
+  { key: 'kanyashreeId', label: 'KANYASHREE ID', category: 'Government IDs', type: 'text', defaultType: 'text', required: false, active: true, sample1: '1906050010115001', sample2: '1906050010115002', keywords: ['kanyashree id', 'kanyashree', 'kp id'] },
+  { key: 'previousSchool', label: 'Previous School Name', category: 'Academic History', type: 'text', defaultType: 'text', required: false, active: true, sample1: 'Harirampur High School', sample2: 'Malda Model Academy', keywords: ['previous school name', 'previous school', 'last school', 'prev school'] },
+  { key: 'bloodGroup', label: 'Blood Group', category: 'Demographics & Health', type: 'dropdown', defaultType: 'dropdown', required: false, active: true, options: ['A+', 'A-', 'B+', 'B-', 'O+', 'O-', 'AB+', 'AB-', 'Unknown'], sample1: 'O+', sample2: 'B+', keywords: ['blood group', 'blood', 'bloodgroup'] },
+  { key: 'isOrphan', label: 'is Orphan', category: 'Demographics & Health', type: 'button', defaultType: 'button', required: false, active: true, options: ['No', 'Yes'], sample1: 'No', sample2: 'Yes', keywords: ['is orphan', 'orphan', 'orphan status'] },
+  { key: 'category', label: 'Category', category: 'Demographics & Health', type: 'dropdown', defaultType: 'dropdown', required: false, active: true, options: ['GENERAL', 'OBC-A', 'OBC-B', 'SC', 'ST', 'EWS', 'ORPHAN'], sample1: 'GENERAL', sample2: 'OBC-A', keywords: ['category', 'caste', 'social category'] },
+  { key: 'status', label: 'Enrollment Status', category: 'Core Identity', type: 'button', defaultType: 'button', required: true, active: true, options: ['Active', 'Inactive', 'On Leave', 'Transferred'], sample1: 'Active', sample2: 'Active', keywords: ['enrollment status', 'status', 'student status'] },
+  { key: 'gender', label: 'Gender', category: 'Demographics & Health', type: 'button', defaultType: 'button', required: true, active: true, options: ['Male', 'Female', 'Other'], sample1: 'Male', sample2: 'Female', keywords: ['gender', 'sex'] },
+  { key: 'admissionDate', label: 'Admission Date', category: 'Core Identity', type: 'date', defaultType: 'date', required: false, active: true, sample1: '2024-04-05', sample2: '2024-04-08', keywords: ['admission date', 'adm date', 'date of admission'] },
+  { key: 'classJoinDate', label: 'Class Join Date', category: 'Core Identity', type: 'date', defaultType: 'date', required: false, active: true, sample1: '2024-04-10', sample2: '2024-04-10', keywords: ['class join date', 'join date', 'date of joining'] },
+  { key: 'village', label: 'Village', category: 'Residential Address', type: 'text', defaultType: 'text', required: false, active: true, sample1: 'Chanchal', sample2: 'Harirampur', keywords: ['village', 'gram', 'city', 'town'] },
+  { key: 'postOffice', label: 'Post Office', category: 'Residential Address', type: 'text', defaultType: 'text', required: false, active: true, sample1: 'Chanchal PO', sample2: 'Harirampur PO', keywords: ['post office', 'po', 'p.o.'] },
+  { key: 'policeStation', label: 'Police Station', category: 'Residential Address', type: 'text', defaultType: 'text', required: false, active: true, sample1: 'Chanchal PS', sample2: 'Harirampur PS', keywords: ['police station', 'ps', 'p.s.'] },
+  { key: 'district', label: 'District', category: 'Residential Address', type: 'text', defaultType: 'text', required: false, active: true, sample1: 'Malda', sample2: 'Dakshin Dinajpur', keywords: ['district', 'dist', 'dist.'] },
+  { key: 'state', label: 'State', category: 'Residential Address', type: 'text', defaultType: 'text', required: false, active: true, sample1: 'West Bengal', sample2: 'West Bengal', keywords: ['state', 'province'] },
+  { key: 'pinCode', label: 'Pin Code', category: 'Residential Address', type: 'text', defaultType: 'text', required: false, active: true, sample1: '732123', sample2: '733125', keywords: ['pin code', 'pin', 'pincode', 'postal code', 'zip'] },
+  { key: 'phone', label: 'Phone Number', category: 'Contact & Communication', type: 'text', defaultType: 'text', required: false, active: true, sample1: '+91 98311 00001', sample2: '+91 98311 00002', keywords: ['phone number', 'phone', 'primary phone', 'mobile'] },
+  { key: 'whatsapp', label: 'Whatsapp Number', category: 'Contact & Communication', type: 'text', defaultType: 'text', required: false, active: true, sample1: '+91 98311 00001', sample2: '+91 98311 00002', keywords: ['whatsapp number', 'whatsapp', 'wa phone'] },
+  { key: 'email', label: 'Email', category: 'Contact & Communication', type: 'text', defaultType: 'text', required: false, active: true, sample1: 'student1@thaibamodel.in', sample2: 'student2@thaibamodel.in', keywords: ['email', 'email id', 'e-mail'] },
+  { key: 'fatherName', label: 'Father Name', category: 'Father Details', type: 'text', defaultType: 'text', required: false, active: true, sample1: 'Tariq Khan', sample2: 'Irfan Zahra', keywords: ['father name', 'father', 'fathers name'] },
+  { key: 'fatherOccupation', label: 'Fathers Occupation', category: 'Father Details', type: 'text', defaultType: 'text', required: false, active: true, sample1: 'Business', sample2: 'Teacher', keywords: ['fathers occupation', 'father occupation', 'father job'] },
+  { key: 'fatherQualification', label: 'Fathers Educational Qualification', category: 'Father Details', type: 'text', defaultType: 'text', required: false, active: true, sample1: 'Graduate', sample2: 'Post Graduate', keywords: ['fathers educational qualification', 'father qualification', 'father education'] },
+  { key: 'fatherPhone', label: 'Fathers Phone', category: 'Father Details', type: 'text', defaultType: 'text', required: false, active: true, sample1: '+91 98311 00001', sample2: '+91 98311 00002', keywords: ['fathers phone', 'father phone', 'father mobile'] },
+  { key: 'fatherWhatsapp', label: 'Fathers Whatsapp', category: 'Father Details', type: 'text', defaultType: 'text', required: false, active: true, sample1: '+91 98311 00001', sample2: '+91 98311 00002', keywords: ['fathers whatsapp', 'father whatsapp'] },
+  { key: 'motherName', label: 'Mother Name', category: 'Mother Details', type: 'text', defaultType: 'text', required: false, active: true, sample1: 'Parveen Begum', sample2: 'Nasreen Sultana', keywords: ['mother name', 'mother', 'mothers name'] },
+  { key: 'motherOccupation', label: 'Mothers Occupation', category: 'Mother Details', type: 'text', defaultType: 'text', required: false, active: true, sample1: 'Homemaker', sample2: 'Government Service', keywords: ['mothers occupation', 'mother occupation', 'mother job'] },
+  { key: 'motherQualification', label: 'Mothers Educational Qualification', category: 'Mother Details', type: 'text', defaultType: 'text', required: false, active: true, sample1: 'Higher Secondary', sample2: 'Graduate', keywords: ['mothers educational qualification', 'mother qualification', 'mother education'] },
+  { key: 'motherPhone', label: 'Mothers Phone', category: 'Mother Details', type: 'text', defaultType: 'text', required: false, active: true, sample1: '+91 98311 00003', sample2: '+91 98311 00004', keywords: ['mothers phone', 'mother phone', 'mother mobile'] },
+  { key: 'motherWhatsapp', label: 'Mothers Whatsapp', category: 'Mother Details', type: 'text', defaultType: 'text', required: false, active: true, sample1: '+91 98311 00003', sample2: '+91 98311 00004', keywords: ['mothers whatsapp', 'mother whatsapp'] },
+  { key: 'guardianName', label: 'Guardian Name', category: 'Guardian & Financial', type: 'text', defaultType: 'text', required: false, active: true, sample1: 'Tariq Khan', sample2: 'Irfan Zahra', keywords: ['guardian name', 'guardian', 'primary guardian'] },
+  { key: 'relation', label: 'Relation', category: 'Guardian & Financial', type: 'dropdown', defaultType: 'dropdown', required: false, active: true, options: ['Father', 'Mother', 'Grandfather', 'Grandmother', 'Uncle', 'Aunt', 'Brother', 'Sister', 'Legal Guardian', 'Other'], sample1: 'Father', sample2: 'Mother', keywords: ['relation', 'guardian relation', 'relationship'] },
+  { key: 'guardianPhone', label: 'Guardians Phone', category: 'Guardian & Financial', type: 'text', defaultType: 'text', required: false, active: true, sample1: '+91 98311 00001', sample2: '+91 98311 00002', keywords: ['guardians phone', 'guardian phone', 'guardian mobile'] },
+  { key: 'annualIncome', label: 'Annual Family Income', category: 'Guardian & Financial', type: 'text', defaultType: 'text', required: false, active: true, sample1: '120000', sample2: '240000', keywords: ['annual family income', 'annual income', 'family income', 'income'] },
+  { key: 'aadharNo', label: 'Aadhar No', category: 'Government IDs', type: 'text', defaultType: 'text', required: false, active: true, sample1: '2345 6789 0123', sample2: '3456 7890 1234', keywords: ['aadhar no', 'aadhar', 'aadhaar', 'aadhaar no', 'uid'] },
+  { key: 'religion', label: 'Religion', category: 'Demographics & Health', type: 'dropdown', defaultType: 'dropdown', required: false, active: true, options: ['Islam', 'Hinduism', 'Christianity', 'Sikhism', 'Buddhism', 'Jainism', 'Other'], sample1: 'Islam', sample2: 'Islam', keywords: ['religion', 'faith'] },
+  { key: 'dob', label: 'Date of Birth', category: 'Demographics & Health', type: 'date', defaultType: 'date', required: false, active: true, sample1: '2015-04-12', sample2: '2017-08-23', keywords: ['date of birth', 'dob', 'birth date'] }
 ];
 
+export const STUDENT_IMPORT_FIELDS = DEFAULT_STUDENT_FIELDS;
+export const STUDENT_FIELD_CONFIG_STORAGE_KEY = 'tms_student_field_config';
 export class StudentModule {
+
+  /**
+   * Retrieve active field configurations, merged with user-defined overrides (control types, required, active, options)
+   */
+  static getFieldConfigs() {
+    let overrides = {};
+    try {
+      const stored = localStorage.getItem(STUDENT_FIELD_CONFIG_STORAGE_KEY);
+      if (stored) overrides = JSON.parse(stored) || {};
+    } catch (e) {}
+
+    return DEFAULT_STUDENT_FIELDS.map(df => {
+      const ov = overrides[df.key] || {};
+      return {
+        ...df,
+        type: ov.type || df.type,
+        required: ov.required !== undefined ? ov.required : df.required,
+        active: ov.active !== undefined ? ov.active : df.active,
+        options: ov.options && Array.isArray(ov.options) ? ov.options : df.options
+      };
+    });
+  }
+
+  /**
+   * Save customized field configurations
+   */
+  static async saveFieldConfigs(newConfigs) {
+    try {
+      localStorage.setItem(STUDENT_FIELD_CONFIG_STORAGE_KEY, JSON.stringify(newConfigs));
+      try {
+        await dbService.upsert('app_settings', { key: 'student_field_config', value: newConfigs });
+      } catch (err) {}
+    } catch (e) {
+      console.warn('Could not persist student field configs:', e);
+    }
+  }
+
+  /**
+   * Render HTML control for a field based on configured type (button pills, dropdown, date, text, textarea, number)
+   */
+  static renderFieldControl(field, value = '', idPrefix = 'fld') {
+    const esc = (v) => UIComponents.escapeHtml(v);
+    const inputId = `${idPrefix}-${field.key}`;
+    const reqAttr = field.required ? 'required' : '';
+    const currentVal = value !== undefined && value !== null ? String(value) : '';
+
+    if (field.type === 'button') {
+      const opts = field.options && field.options.length ? field.options : ['Yes', 'No'];
+      const activeVal = currentVal || opts[0];
+      return `
+        <div class="tms-btn-pills" data-fkey="${esc(field.key)}">
+          <input type="hidden" id="${esc(inputId)}" name="${esc(field.key)}" value="${esc(activeVal)}">
+          ${opts.map(opt => `
+            <button type="button" class="tms-pill-btn ${opt === activeVal ? 'active' : ''}" data-val="${esc(opt)}">${esc(opt)}</button>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    if (field.type === 'dropdown') {
+      const opts = field.options && field.options.length ? field.options : [];
+      return `
+        <select class="form-select" id="${esc(inputId)}" name="${esc(field.key)}" ${reqAttr}>
+          <option value="">-- Select ${esc(field.label)} --</option>
+          ${opts.map(opt => `
+            <option value="${esc(opt)}" ${opt === currentVal ? 'selected' : ''}>${esc(opt)}</option>
+          `).join('')}
+        </select>
+      `;
+    }
+
+    if (field.type === 'date') {
+      const dVal = currentVal ? currentVal.slice(0, 10) : '';
+      return `<input type="date" class="form-input" id="${esc(inputId)}" name="${esc(field.key)}" value="${esc(dVal)}" ${reqAttr}>`;
+    }
+
+    if (field.type === 'textarea') {
+      return `<textarea class="form-textarea" id="${esc(inputId)}" name="${esc(field.key)}" rows="2" placeholder="Enter ${esc(field.label)}..." ${reqAttr}>${esc(currentVal)}</textarea>`;
+    }
+
+    if (field.type === 'number') {
+      return `<input type="number" class="form-input" id="${esc(inputId)}" name="${esc(field.key)}" value="${esc(currentVal)}" placeholder="Enter ${esc(field.label)}..." ${reqAttr}>`;
+    }
+
+    // Default: text
+    return `<input type="text" class="form-input" id="${esc(inputId)}" name="${esc(field.key)}" value="${esc(currentVal)}" placeholder="Enter ${esc(field.label)}..." ${reqAttr}>`;
+  }
+
+  /**
+   * Bind interactive events on pill buttons inside any modal container
+   */
+  static bindFieldControls(container) {
+    if (!container) return;
+    container.querySelectorAll('.tms-btn-pills').forEach(pillsWrap => {
+      const hiddenInput = pillsWrap.querySelector('input[type="hidden"]');
+      pillsWrap.querySelectorAll('.tms-pill-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.preventDefault();
+          pillsWrap.querySelectorAll('.tms-pill-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          if (hiddenInput) {
+            hiddenInput.value = btn.dataset.val;
+            hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        });
+      });
+    });
+  }
+
+  /**
+   * Modal to customize student form field themes, controls (dropdown, button pills, text, date), required flags & options
+   */
+  static openCustomizeFieldsModal(container) {
+    const esc = (v) => UIComponents.escapeHtml(v);
+    const configs = this.getFieldConfigs();
+    const categories = Array.from(new Set(configs.map(f => f.category || 'General')));
+
+    const bodyHtml = `
+      <div style="font-family:inherit;">
+        <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:12px 16px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+          <div>
+            <div style="font-weight:700; color:#166534; font-size:0.88rem; display:flex; align-items:center; gap:6px;">
+              <i data-lucide="sliders-horizontal" style="width:16px; height:16px;"></i> Form &amp; Theme Customizer
+            </div>
+            <div style="font-size:0.78rem; color:#475569; margin-top:2px;">
+              Configure whether each of the 41 fields displays as a <strong>Dropdown menu</strong>, <strong>Segmented Button Pills</strong>, <strong>Date picker</strong>, or <strong>Text</strong>, and set Required flags.
+            </div>
+          </div>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-reset-field-defaults" style="font-size:0.75rem;">
+            <i data-lucide="rotate-ccw"></i> Reset All Defaults
+          </button>
+        </div>
+
+        <!-- Filter bar -->
+        <div style="display:flex; gap:10px; margin-bottom:12px; flex-wrap:wrap;">
+          <input type="text" id="cfg-field-search" class="form-input form-input-sm" placeholder="Search field by name..." style="flex:1; min-width:200px;">
+          <select id="cfg-category-filter" class="form-select form-select-sm" style="width:200px;">
+            <option value="">All Categories (${configs.length})</option>
+            ${categories.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('')}
+          </select>
+        </div>
+
+        <!-- Table of 41 fields -->
+        <div class="table-responsive" style="max-height:50vh; overflow-y:auto; border:1px solid #e2e8f0; border-radius:10px;">
+          <table class="tms-table" style="font-size:0.8rem; width:100%; border-collapse:collapse;">
+            <thead>
+              <tr style="background:#f8fafc; border-bottom:1.5px solid #e2e8f0; position:sticky; top:0; z-index:2;">
+                <th style="padding:10px 12px; text-align:left;">Field / Header</th>
+                <th style="padding:10px 12px; text-align:left;">Category</th>
+                <th style="padding:10px 12px; text-align:left; width:140px;">Control Theme</th>
+                <th style="padding:10px 12px; text-align:left;">Options (Dropdown / Button)</th>
+                <th style="padding:10px 12px; text-align:center; width:80px;">Required?</th>
+                <th style="padding:10px 12px; text-align:center; width:80px;">Active?</th>
+              </tr>
+            </thead>
+            <tbody id="cfg-fields-tbody">
+              ${configs.map(f => `
+                <tr class="cfg-field-row" data-key="${esc(f.key)}" data-cat="${esc(f.category || '')}" data-name="${esc(f.label.toLowerCase())}">
+                  <td style="padding:8px 12px; font-weight:700; color:#0f172a;">
+                    ${esc(f.label)}
+                    <div style="font-size:0.7rem; color:#64748b; font-family:var(--font-mono); font-weight:400;">${esc(f.key)}</div>
+                  </td>
+                  <td style="padding:8px 12px;">
+                    <span class="badge" style="background:#e0f2fe; color:#0369a1; font-size:0.7rem;">${esc(f.category || 'General')}</span>
+                  </td>
+                  <td style="padding:8px 12px;">
+                    <select class="form-select form-select-sm cfg-fld-type" data-key="${esc(f.key)}" style="width:100%; padding:4px 8px; font-size:0.78rem;">
+                      <option value="text" ${f.type === 'text' ? 'selected' : ''}>Text Input</option>
+                      <option value="dropdown" ${f.type === 'dropdown' ? 'selected' : ''}>Dropdown Menu</option>
+                      <option value="button" ${f.type === 'button' ? 'selected' : ''}>Button Pills</option>
+                      <option value="date" ${f.type === 'date' ? 'selected' : ''}>Date Picker</option>
+                      <option value="number" ${f.type === 'number' ? 'selected' : ''}>Number</option>
+                      <option value="textarea" ${f.type === 'textarea' ? 'selected' : ''}>Textarea</option>
+                    </select>
+                  </td>
+                  <td style="padding:8px 12px;">
+                    <input type="text" class="form-input form-input-sm cfg-fld-options" data-key="${esc(f.key)}" value="${esc((f.options || []).join(', '))}" placeholder="e.g. Yes, No" style="width:100%; font-size:0.75rem; padding:4px 8px;" ${['dropdown', 'button'].includes(f.type) ? '' : 'disabled'}>
+                  </td>
+                  <td style="padding:8px 12px; text-align:center;">
+                    <input type="checkbox" class="cfg-fld-req" data-key="${esc(f.key)}" ${f.required ? 'checked' : ''} style="width:16px; height:16px; cursor:pointer;">
+                  </td>
+                  <td style="padding:8px 12px; text-align:center;">
+                    <input type="checkbox" class="cfg-fld-act" data-key="${esc(f.key)}" ${f.active !== false ? 'checked' : ''} style="width:16px; height:16px; cursor:pointer;">
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+
+    const footerHtml = `
+      <button class="btn btn-secondary" onclick="document.getElementById('global-modal-close').click()">Cancel</button>
+      <button class="btn btn-primary" id="btn-save-field-customizations" style="background:#0e623b; border-color:#0e623b;">
+        <i data-lucide="check"></i> Save Field Settings
+      </button>
+    `;
+
+    UIComponents.openModal({
+      title: 'Customize Student Fields & Form Controls',
+      bodyHtml,
+      footerHtml,
+      maxWidth: '920px'
+    });
+
+    const searchInput = document.getElementById('cfg-field-search');
+    const catSelect = document.getElementById('cfg-category-filter');
+    const filterRows = () => {
+      const q = (searchInput?.value || '').toLowerCase().trim();
+      const cat = catSelect?.value || '';
+      document.querySelectorAll('.cfg-field-row').forEach(row => {
+        const name = row.dataset.name || '';
+        const rCat = row.dataset.cat || '';
+        const matchQ = !q || name.includes(q);
+        const matchCat = !cat || rCat === cat;
+        row.style.display = matchQ && matchCat ? '' : 'none';
+      });
+    };
+    searchInput?.addEventListener('input', filterRows);
+    catSelect?.addEventListener('change', filterRows);
+
+    document.querySelectorAll('.cfg-fld-type').forEach(select => {
+      select.addEventListener('change', () => {
+        const key = select.dataset.key;
+        const optInput = document.querySelector(`.cfg-fld-options[data-key="${key}"]`);
+        if (optInput) {
+          const isChoice = ['dropdown', 'button'].includes(select.value);
+          optInput.disabled = !isChoice;
+          if (isChoice && !optInput.value.trim()) {
+            optInput.value = 'Option 1, Option 2';
+          }
+        }
+      });
+    });
+
+    document.getElementById('btn-reset-field-defaults')?.addEventListener('click', () => {
+      if (confirm('Reset all field customization settings to system defaults?')) {
+        localStorage.removeItem(STUDENT_FIELD_CONFIG_STORAGE_KEY);
+        UIComponents.closeModal();
+        UIComponents.showToast('Field settings reset to system defaults.', 'info');
+        StudentModule.openCustomizeFieldsModal(container);
+      }
+    });
+
+    document.getElementById('btn-save-field-customizations')?.addEventListener('click', async () => {
+      const overrides = {};
+      document.querySelectorAll('.cfg-field-row').forEach(row => {
+        const key = row.dataset.key;
+        const typeEl = row.querySelector('.cfg-fld-type');
+        const optEl = row.querySelector('.cfg-fld-options');
+        const reqEl = row.querySelector('.cfg-fld-req');
+        const actEl = row.querySelector('.cfg-fld-act');
+
+        const type = typeEl ? typeEl.value : 'text';
+        const rawOpts = optEl ? optEl.value : '';
+        const options = rawOpts.split(',').map(s => s.trim()).filter(Boolean);
+        const required = !!reqEl?.checked;
+        const active = !!actEl?.checked;
+
+        overrides[key] = { type, required, active, options };
+      });
+
+      await StudentModule.saveFieldConfigs(overrides);
+      UIComponents.closeModal();
+      UIComponents.showToast('Student field configurations saved successfully!', 'success');
+      StudentModule.render(container);
+    });
+
+    UIComponents.refreshIcons();
+  }
+
+  /**
+   * Open full enrollment modal dynamically rendering all 41 fields grouped into cards
+   */
+  static openEnrollmentModal(container) {
+    const esc = (v) => UIComponents.escapeHtml(v);
+    const fields = this.getFieldConfigs().filter(f => f.active !== false);
+
+    const categoriesOrder = [
+      'Core Identity',
+      'Government IDs',
+      'Demographics & Health',
+      'Contact & Communication',
+      'Residential Address',
+      'Father Details',
+      'Mother Details',
+      'Guardian & Financial',
+      'Academic History'
+    ];
+
+    const fieldsByCategory = {};
+    fields.forEach(f => {
+      const cat = f.category || 'General';
+      if (!fieldsByCategory[cat]) fieldsByCategory[cat] = [];
+      fieldsByCategory[cat].push(f);
+    });
+
+    const categoryIcons = {
+      'Core Identity': 'user-check',
+      'Government IDs': 'badge-check',
+      'Demographics & Health': 'heart-pulse',
+      'Contact & Communication': 'phone-call',
+      'Residential Address': 'map-pin',
+      'Father Details': 'user',
+      'Mother Details': 'user',
+      'Guardian & Financial': 'shield',
+      'Academic History': 'graduation-cap'
+    };
+
+    const bodyHtml = `
+      <form id="form-enroll-student" style="font-family:inherit;">
+        <!-- Historical toggle -->
+        <div style="margin-bottom:14px; padding:12px 14px; background:rgba(37,99,235,0.06); border:1.5px solid rgba(37,99,235,0.25); border-radius:10px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+          <div>
+            <div style="font-weight:700; font-size:0.88rem; color:#1e40af; display:flex; align-items:center; gap:6px;">
+              <i data-lucide="history" style="width:16px;height:16px;"></i> Previous Year / Already Admitted Student?
+            </div>
+            <div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">Check this to manually enter their original historical Admission Number and Roll Number.</div>
+          </div>
+          <label style="display:inline-flex; align-items:center; cursor:pointer; gap:6px; font-weight:700; font-size:0.85rem; color:#1e40af;">
+            <input type="checkbox" id="adm-is-historical" style="width:18px; height:18px; cursor:pointer;">
+            <span>Manual Admission No</span>
+          </label>
+        </div>
+
+        <div id="historical-fields-container" style="display:none; margin-bottom:14px; padding:12px; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:8px;">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div class="form-group">
+              <label class="form-label" style="font-weight:700; color:#1e40af;">Original Admission Number *</label>
+              <input class="form-input font-mono" id="adm-manual-no" placeholder="e.g. TMS/2022/045 or 1042">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Original Roll Number</label>
+              <input class="form-input font-mono" id="adm-manual-roll" placeholder="e.g. 14">
+            </div>
+          </div>
+        </div>
+
+        <!-- Render categories -->
+        ${categoriesOrder.filter(cat => fieldsByCategory[cat] && fieldsByCategory[cat].length > 0).map(cat => {
+          const catFields = fieldsByCategory[cat];
+          const icon = categoryIcons[cat] || 'folder';
+          return `
+            <div class="tms-section-card">
+              <div class="tms-section-card-header">
+                <div class="tms-section-title">
+                  <i data-lucide="${icon}" style="width:16px; height:16px; color:#2563eb;"></i>
+                  <span>${esc(cat)}</span>
+                </div>
+                <span style="font-size:0.72rem; color:#64748b; font-weight:600;">${catFields.length} fields</span>
+              </div>
+              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:12px;">
+                ${catFields.map(f => `
+                  <div class="form-group" style="${f.type === 'textarea' ? 'grid-column:1/-1;' : ''}">
+                    <label class="form-label" style="display:flex; justify-content:space-between; align-items:center;">
+                      <span>${esc(f.label)} ${f.required ? '<span style="color:#ef4444;">*</span>' : ''}</span>
+                      <span style="font-size:0.68rem; color:#94a3b8; text-transform:uppercase;">${esc(f.type)}</span>
+                    </label>
+                    ${StudentModule.renderFieldControl(f, '', 'adm')}
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+          `;
+        }).join('')}
+      </form>
+    `;
+
+    const footerHtml = `
+      <button class="btn btn-secondary" onclick="document.getElementById('global-modal-close').click()">Cancel</button>
+      <button class="btn btn-primary" id="btn-save-enrollment" style="background:#0e623b; border-color:#0e623b;">
+        <i data-lucide="user-plus"></i> Confirm Enrollment
+      </button>
+    `;
+
+    UIComponents.openModal({
+      title: 'Enroll Student — All Statutory & Academic Fields',
+      bodyHtml,
+      footerHtml,
+      maxWidth: '880px'
+    });
+
+    StudentModule.bindFieldControls(document.getElementById('form-enroll-student'));
+
+    const histCb = document.getElementById('adm-is-historical');
+    const histContainer = document.getElementById('historical-fields-container');
+    if (histCb && histContainer) {
+      histCb.addEventListener('change', () => {
+        histContainer.style.display = histCb.checked ? 'block' : 'none';
+      });
+    }
+
+    document.getElementById('btn-save-enrollment')?.addEventListener('click', async () => {
+      const record = {};
+      const missingRequired = [];
+
+      fields.forEach(f => {
+        const input = document.getElementById(`adm-${f.key}`);
+        const val = input ? input.value.trim() : '';
+        record[f.key] = val;
+        if (f.required && !val && f.key !== 'admissionNo') {
+          missingRequired.push(f.label);
+        }
+      });
+
+      if (missingRequired.length > 0) {
+        UIComponents.showToast(`Please fill required fields: ${missingRequired.join(', ')}`, 'warning');
+        return;
+      }
+
+      const isHistorical = document.getElementById('adm-is-historical')?.checked;
+      let admissionNo = '';
+      let rollNo = record.rollNo || '';
+
+      if (isHistorical) {
+        admissionNo = document.getElementById('adm-manual-no')?.value.trim();
+        rollNo = document.getElementById('adm-manual-roll')?.value.trim() || rollNo;
+        if (!admissionNo) {
+          UIComponents.showToast('Please enter the historical admission number.', 'warning');
+          return;
+        }
+      } else {
+        if (!record.admissionNo) {
+          const existing = await dbService.select('students');
+          const maxSeq = existing.reduce((max, s) => {
+            const m = String(s.admissionNo || '').match(/(\d+)\s*$/);
+            return m ? Math.max(max, parseInt(m[1], 10)) : max;
+          }, 0);
+          const nextSeq = maxSeq + 1;
+          admissionNo = `TMS/${new Date().getFullYear()}/${nextSeq.toString().padStart(3, '0')}`;
+          if (!rollNo) rollNo = nextSeq.toString().padStart(2, '0');
+        } else {
+          admissionNo = record.admissionNo;
+        }
+      }
+
+      record.admissionNo = admissionNo;
+      record.rollNo = rollNo;
+      record.status = record.status || 'Active';
+
+      if (!record.address) {
+        record.address = [
+          record.village,
+          record.postOffice ? `PO: ${record.postOffice}` : '',
+          record.policeStation ? `PS: ${record.policeStation}` : '',
+          record.district,
+          record.state,
+          record.pinCode
+        ].filter(Boolean).join(', ');
+      }
+
+      if (!record.guardianName) record.guardianName = record.fatherName || record.motherName || '';
+      if (!record.guardianPhone) record.guardianPhone = record.fatherPhone || record.phone || '';
+
+      const btn = document.getElementById('btn-save-enrollment');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i data-lucide="loader" class="animate-spin"></i> Saving...';
+      }
+
+      const newStudent = await dbService.insert('students', record);
+      if (newStudent._syncError) {
+        UIComponents.showToast(`Enrollment could not be saved: ${newStudent._syncError}`, 'danger');
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = '<i data-lucide="user-plus"></i> Confirm Enrollment';
+        }
+        return;
+      }
+
+      await auditService.log('STUDENT_ENROLLED', 'ACADEMIC', { admissionNo, fullName: record.fullName, grade: record.grade, isHistorical: !!isHistorical }, newStudent.id);
+      UIComponents.closeModal();
+      UIComponents.showToast(`Student ${record.fullName} successfully enrolled (${admissionNo})!`, 'success');
+      StudentModule.render(container);
+    });
+
+    UIComponents.refreshIcons();
+  }
+
   static async render(container) {
     // Fetch students from database (with clean-up if legacy demo students were cached)
     let rawStudents = (await dbService.select('students')) || [];
@@ -66,6 +575,7 @@ export class StudentModule {
             <a href="/admission" target="_blank" class="btn btn-secondary"><i data-lucide="file-text"></i> Admission Form (A4)</a>
             ${canManage ? `
             <button class="btn btn-secondary" id="btn-bulk-import-students"><i data-lucide="file-up"></i> Bulk Import (CSV)</button>
+            <button class="btn btn-secondary" id="btn-customize-student-fields"><i data-lucide="sliders-horizontal"></i> Customize Fields</button>
             <button class="btn btn-primary" id="btn-new-admission"><i data-lucide="user-plus"></i> New Enrollment</button>` : ''}
           `
         })}
@@ -277,10 +787,42 @@ export class StudentModule {
   static openStudentEditModal(student, container) {
     const esc = (v) => UIComponents.escapeHtml(v);
     const s = student || {};
+    const fields = this.getFieldConfigs().filter(f => f.active !== false);
+
+    const categoriesOrder = [
+      'Core Identity',
+      'Government IDs',
+      'Demographics & Health',
+      'Contact & Communication',
+      'Residential Address',
+      'Father Details',
+      'Mother Details',
+      'Guardian & Financial',
+      'Academic History'
+    ];
+
+    const fieldsByCategory = {};
+    fields.forEach(f => {
+      const cat = f.category || 'General';
+      if (!fieldsByCategory[cat]) fieldsByCategory[cat] = [];
+      fieldsByCategory[cat].push(f);
+    });
+
+    const categoryIcons = {
+      'Core Identity': 'user-check',
+      'Government IDs': 'badge-check',
+      'Demographics & Health': 'heart-pulse',
+      'Contact & Communication': 'phone-call',
+      'Residential Address': 'map-pin',
+      'Father Details': 'user',
+      'Mother Details': 'user',
+      'Guardian & Financial': 'shield',
+      'Academic History': 'graduation-cap'
+    };
 
     const bodyHtml = `
-      <div style="font-family: var(--font-sans, system-ui, -apple-system, sans-serif);">
-        <!-- Top Photo Upload Card (Image 2 Match) -->
+      <div style="font-family:inherit;">
+        <!-- Top Photo Upload Card -->
         <div style="background:#F8FAFC; border:1.5px solid #E2E8F0; border-radius:16px; padding:18px 20px; display:flex; gap:18px; align-items:center; margin-bottom:20px;">
           <div style="position:relative; width:80px; height:106px; border-radius:10px; overflow:hidden; background:#E2E8F0; border:2px solid #CBD5E1; flex-shrink:0; cursor:pointer;" id="ed-photo-box" title="Click to browse photo">
             <img id="ed-photo-preview" src="${esc(s.photo || '')}" alt="${esc(s.fullName || 'Student')}" style="width:100%; height:100%; object-fit:cover; display:${s.photo ? 'block' : 'none'};" onerror="this.style.display='none'; document.getElementById('ed-photo-empty').style.display='flex';">
@@ -293,12 +835,12 @@ export class StudentModule {
             <input type="file" id="ed-photo-file" accept="image/*" style="display:none;">
           </div>
           <div style="flex:1; min-width:0;">
-            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px; flex-wrap:wrap;">
               <h4 style="margin:0; font-size:1.15rem; font-weight:800; color:#0F172A;">${esc(s.fullName || 'Student')}</h4>
-              <span class="tms-id-badge" style="font-size:0.75rem; padding:2px 10px;">${esc(s.admissionNo || 'TPS-2026-001')}</span>
+              <span class="tms-id-badge" style="font-size:0.75rem; padding:2px 10px;">${esc(s.admissionNo || '')}</span>
             </div>
             <p style="margin:0 0 6px 0; font-size:0.84rem; color:#64748B;">
-              Upload or update student passport photograph. The photo will automatically sync to ID cards, attendance sheets, and profile views.
+              Upload student photograph. Changes sync across ID cards, attendance sheets, and profile views.
             </p>
             <div style="font-size:0.74rem; color:#94A3B8; font-family:var(--font-mono);">
               JPG, PNG or WebP • Max size: 2MB • Aspect: 3:4
@@ -307,83 +849,44 @@ export class StudentModule {
         </div>
 
         <form id="form-edit-student">
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
-            <div class="form-group">
-              <label class="form-label">Full Name <span style="color:#EF4444;">*</span></label>
-              <input class="form-input" id="ed-name" value="${esc(s.fullName || '')}" required style="border-radius:9999px;">
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">ID / Admission Number <span style="color:#EF4444;">*</span></label>
-              <input class="form-input font-mono" id="ed-admission" value="${esc(s.admissionNo || '')}" required style="border-radius:9999px;">
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Date of Birth <span style="color:#EF4444;">*</span></label>
-              <input type="date" class="form-input" id="ed-dob" value="${esc((s.dob || '').slice(0, 10))}" required>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Gender <span style="color:#EF4444;">*</span></label>
-              <select class="form-select" id="ed-gender">
-                <option value="Male" ${s.gender === 'Male' || s.gender === 'Boy' ? 'selected' : ''}>Male</option>
-                <option value="Female" ${s.gender === 'Female' || s.gender === 'Girl' ? 'selected' : ''}>Female</option>
-                <option value="Other" ${s.gender === 'Other' ? 'selected' : ''}>Other</option>
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Class <span style="color:#EF4444;">*</span></label>
-              <select class="form-select" id="ed-grade">
-                ${['STD-I', 'STD-II', 'STD-III', 'STD-IV', 'STD-V', 'STD-VI', 'STD-VII', 'STD-VIII', 'STD-IX', 'STD-X', 'STD-XI', 'STD-XII', 'Nursery', 'LKG', 'UKG'].map(c => `<option value="${c}" ${(s.grade === c || s.class === c) ? 'selected' : ''}>${c}</option>`).join('')}
-              </select>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Category <span style="color:#EF4444;">*</span></label>
-              <input class="form-input" id="ed-category" value="${esc(s.category || 'ORPHAN')}" style="border-radius:9999px; text-transform:uppercase;">
-            </div>
-
-            <div class="form-group" style="grid-column:1/-1;">
-              <label class="form-label">Hostel &amp; Bed Allocation</label>
-              <div style="background:#F8FAFC; border:1.5px solid #E2E8F0; border-radius:14px; padding:12px 16px;">
-                <div style="font-weight:700; color:#1E293B; font-size:0.9rem;">
-                  ${esc(s.hostelBlock || (s.gender === 'Girl' || s.gender === 'Female' ? 'Thaiba Girls Hostel Campus' : 'Thaiba Boys Hostel Block A'))}: <strong>${esc(s.hostelRoom || 'Room 101')} • ${esc(s.hostelBed || 'Bed 1')}</strong>
+          <!-- Render categories -->
+          ${categoriesOrder.filter(cat => fieldsByCategory[cat] && fieldsByCategory[cat].length > 0).map(cat => {
+            const catFields = fieldsByCategory[cat];
+            const icon = categoryIcons[cat] || 'folder';
+            return `
+              <div class="tms-section-card">
+                <div class="tms-section-card-header">
+                  <div class="tms-section-title">
+                    <i data-lucide="${icon}" style="width:16px; height:16px; color:#2563eb;"></i>
+                    <span>${esc(cat)}</span>
+                  </div>
+                  <span style="font-size:0.72rem; color:#64748b; font-weight:600;">${catFields.length} fields</span>
                 </div>
-                <div style="font-size:0.75rem; color:#64748B; margin-top:3px;">
-                  Bed space is allocated exclusively in the <strong>Hostels &amp; Beds</strong> console.
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:12px;">
+                  ${catFields.map(f => {
+                    const currentVal = s[f.key] ?? '';
+                    return `
+                      <div class="form-group" style="${f.type === 'textarea' ? 'grid-column:1/-1;' : ''}">
+                        <label class="form-label" style="display:flex; justify-content:space-between; align-items:center;">
+                          <span>${esc(f.label)} ${f.required ? '<span style="color:#ef4444;">*</span>' : ''}</span>
+                          <span style="font-size:0.68rem; color:#94a3b8; text-transform:uppercase;">${esc(f.type)}</span>
+                        </label>
+                        ${StudentModule.renderFieldControl(f, currentVal, 'ed')}
+                      </div>
+                    `;
+                  }).join('')}
                 </div>
               </div>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Parent Name <span style="color:#EF4444;">*</span></label>
-              <input class="form-input" id="ed-guardian" value="${esc(s.guardianName || s.parentName || '')}" style="border-radius:9999px;">
-            </div>
-
-            <div class="form-group">
-              <label class="form-label">Parent Contact Phone <span style="color:#EF4444;">*</span></label>
-              <input class="form-input font-mono" id="ed-phone" value="${esc(s.guardianPhone || '')}" style="border-radius:9999px;">
-            </div>
-
-            <div class="form-group" style="grid-column:1/-1;">
-              <label class="form-label">Status <span style="color:#EF4444;">*</span></label>
-              <select class="form-select" id="ed-status">
-                <option value="Active" ${s.status === 'Active' || !s.status ? 'selected' : ''}>Active</option>
-                <option value="Inactive" ${s.status === 'Inactive' ? 'selected' : ''}>Inactive</option>
-                <option value="On Leave" ${s.status === 'On Leave' ? 'selected' : ''}>On Leave</option>
-                <option value="Transferred" ${s.status === 'Transferred' ? 'selected' : ''}>Transferred</option>
-              </select>
-            </div>
-          </div>
+            `;
+          }).join('')}
         </form>
       </div>
     `;
 
     const footerHtml = `
-      <button class="btn btn-secondary" id="ed-cancel" style="border-radius:12px; padding:10px 22px; font-weight:700;">Cancel</button>
+      <button class="btn btn-secondary" onclick="document.getElementById('global-modal-close').click()" style="border-radius:12px; padding:10px 22px; font-weight:700;">Cancel</button>
       <button class="btn btn-primary" id="ed-save" style="border-radius:12px; padding:10px 30px; font-weight:700; background:#0E623B; border-color:#0E623B;">
-        Save Changes
+        <i data-lucide="check"></i> Save Changes
       </button>
     `;
 
@@ -391,8 +894,10 @@ export class StudentModule {
       title: `Edit Student Record — ${esc(s.fullName || '')}`,
       bodyHtml,
       footerHtml,
-      maxWidth: '720px'
+      maxWidth: '880px'
     });
+
+    StudentModule.bindFieldControls(document.getElementById('form-edit-student'));
 
     // Photo file picker
     const photoBox = document.getElementById('ed-photo-box');
@@ -420,43 +925,57 @@ export class StudentModule {
       });
     }
 
-    document.getElementById('ed-cancel')?.addEventListener('click', () => UIComponents.closeModal());
     document.getElementById('ed-save')?.addEventListener('click', async () => {
-      const name = document.getElementById('ed-name').value.trim();
-      if (!name) { UIComponents.showToast('Student name is required.', 'warning'); return; }
+      const updates = { photo: uploadedPhotoUrl };
+      const missingRequired = [];
 
-      const updatedData = {
-        fullName: name,
-        admissionNo: document.getElementById('ed-admission').value.trim(),
-        dob: document.getElementById('ed-dob').value || null,
-        gender: document.getElementById('ed-gender').value,
-        grade: document.getElementById('ed-grade').value,
-        category: (document.getElementById('ed-category')?.value || 'GENERAL').trim().toUpperCase(),
-        guardianName: document.getElementById('ed-guardian').value.trim(),
-        guardianPhone: document.getElementById('ed-phone').value.trim(),
-        status: document.getElementById('ed-status').value,
-        photo: uploadedPhotoUrl
-      };
-
-      try {
-        if (s.id && !s.id.startsWith('std-')) {
-          await dbService.update('students', s.id, updatedData);
-        } else {
-          Object.assign(s, updatedData);
+      fields.forEach(f => {
+        const input = document.getElementById(`ed-${f.key}`);
+        const val = input ? input.value.trim() : '';
+        updates[f.key] = val;
+        if (f.required && !val) {
+          missingRequired.push(f.label);
         }
-        await auditService.log('STUDENT_UPDATED', 'STUDENTS', { studentId: s.id, name }, s.id);
-      } catch (err) {
-        Object.assign(s, updatedData);
+      });
+
+      if (missingRequired.length > 0) {
+        UIComponents.showToast(`Please fill required fields: ${missingRequired.join(', ')}`, 'warning');
+        return;
       }
 
-      UIComponents.showToast('Student record saved successfully.', 'success');
-      UIComponents.closeModal();
-      StudentModule.render(container);
+      if (!updates.address) {
+        updates.address = [
+          updates.village,
+          updates.postOffice ? `PO: ${updates.postOffice}` : '',
+          updates.policeStation ? `PS: ${updates.policeStation}` : '',
+          updates.district,
+          updates.state,
+          updates.pinCode
+        ].filter(Boolean).join(', ');
+      }
+
+      const saveBtn = document.getElementById('ed-save');
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i data-lucide="loader" class="animate-spin"></i> Saving...';
+      }
+
+      try {
+        await dbService.update('students', s.id, updates);
+        await auditService.log('STUDENT_UPDATED', 'ACADEMIC', { id: s.id, ...updates }, s.id);
+        UIComponents.closeModal();
+        UIComponents.showToast(`Student ${updates.fullName || s.fullName} updated!`, 'success');
+        StudentModule.render(container);
+      } catch (err) {
+        UIComponents.showToast(`Could not update student: ${err.message}`, 'danger');
+        if (saveBtn) {
+          saveBtn.disabled = false;
+          saveBtn.innerHTML = '<i data-lucide="check"></i> Save Changes';
+        }
+      }
     });
 
     UIComponents.refreshIcons();
-    UIComponents.enhanceAllSelects();
-    UIComponents.enhanceAllDatePickers();
   }
 
   static async deleteStudents(rows, container) {
@@ -573,6 +1092,10 @@ export class StudentModule {
     if (bulkImportBtn) {
       bulkImportBtn.addEventListener('click', () => StudentModule.openBulkImportModal(container));
     }
+    const customizeFieldsBtn = container.querySelector('#btn-customize-student-fields');
+    if (customizeFieldsBtn) {
+      customizeFieldsBtn.addEventListener('click', () => StudentModule.openCustomizeFieldsModal(container));
+    }
 
     const bulkEditBtn = container.querySelector('#btn-students-bulk-edit');
     if (bulkEditBtn) {
@@ -614,10 +1137,11 @@ export class StudentModule {
       bulkExport.addEventListener('click', () => {
         const rows = selectedStudents();
         if (!rows.length) { UIComponents.showToast('Select at least one student.', 'warning'); return; }
-        const header = ['Admission No', 'Roll', 'Name', 'Gender', 'DOB', 'Class', 'Section', 'Guardian', 'Phone', 'Blood', 'Status'];
-        const data = rows.map((s) => [s.admissionNo, s.rollNo, s.fullName, s.gender, s.dob, s.grade, s.section, s.guardianName, s.guardianPhone, s.bloodGroup, s.status]);
+        const fields = StudentModule.getFieldConfigs();
+        const header = fields.map(f => f.label);
+        const data = rows.map((s) => fields.map(f => s[f.key] !== undefined && s[f.key] !== null ? s[f.key] : ''));
         downloadCsv(`TMS-Students-${new Date().toISOString().slice(0, 10)}.csv`, [header, ...data]);
-        UIComponents.showToast('Selected students exported.', 'success');
+        UIComponents.showToast(`${rows.length} student(s) exported with all ${fields.length} columns.`, 'success');
       });
     }
     container.querySelectorAll('.btn-edit-student').forEach((b) =>
@@ -633,171 +1157,8 @@ export class StudentModule {
 
     const newAdmBtn = container.querySelector('#btn-new-admission');
     if (newAdmBtn) {
-      newAdmBtn.addEventListener('click', () => {
-        UIComponents.openModal({
-          title: 'Enroll Student — New or Previous Years',
-          maxWidth: '720px',
-          bodyHtml: `
-            <form id="form-enroll-student">
-              <div style="margin-bottom:14px; padding:12px 14px; background:rgba(37,99,235,0.06); border:1.5px solid rgba(37,99,235,0.25); border-radius:10px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
-                <div>
-                  <div style="font-weight:700; font-size:0.88rem; color:#1e40af; display:flex; align-items:center; gap:6px;">
-                    <i data-lucide="history" style="width:16px;height:16px;"></i> Previous Year / Already Admitted Student?
-                  </div>
-                  <div style="font-size:0.78rem; color:var(--text-muted); margin-top:2px;">Check this to manually enter their original historical Admission Number and Roll Number.</div>
-                </div>
-                <label style="display:inline-flex; align-items:center; cursor:pointer; gap:6px; font-weight:700; font-size:0.85rem; color:#1e40af;">
-                  <input type="checkbox" id="adm-is-historical" style="width:18px; height:18px; cursor:pointer;">
-                  <span>Manual Admission No</span>
-                </label>
-              </div>
-
-              <div id="historical-fields-container" style="display:none; margin-bottom:14px; padding:12px; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:8px;">
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-                  <div class="form-group">
-                    <label class="form-label" style="font-weight:700; color:#1e40af;">Original Admission Number *</label>
-                    <input class="form-input font-mono" id="adm-manual-no" placeholder="e.g. TMS/2022/045 or 1042">
-                  </div>
-                  <div class="form-group">
-                    <label class="form-label">Original Roll Number</label>
-                    <input class="form-input font-mono" id="adm-manual-roll" placeholder="e.g. 14">
-                  </div>
-                </div>
-              </div>
-
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
-                <div class="form-group">
-                  <label class="form-label">Full Name *</label>
-                  <input class="form-input" id="adm-fullname" required placeholder="e.g. Adil Mansoor">
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Date of Birth</label>
-                  <input type="date" class="form-input" id="adm-dob">
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Gender</label>
-                  <select class="form-select" id="adm-gender">
-                    <option>Male</option>
-                    <option>Female</option>
-                    <option>Other</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Blood Group</label>
-                  <select class="form-select" id="adm-blood">
-                    <option value="">Not Recorded</option>
-                    <option>O+</option><option>O-</option><option>A+</option><option>A-</option>
-                    <option>B+</option><option>B-</option><option>AB+</option><option>AB-</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Current Grade / Class *</label>
-                  <select class="form-select" id="adm-grade">
-                    ${TMS_CONFIG.academic.classes.map(c => `<option value="${c}">${c}</option>`).join('')}
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Section *</label>
-                  <select class="form-select" id="adm-section">
-                    <option>A</option><option>B</option><option>C</option>
-                  </select>
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Guardian / Father Name</label>
-                  <input class="form-input" id="adm-guardian" placeholder="Father / Mother Name">
-                </div>
-                <div class="form-group">
-                  <label class="form-label">Guardian Phone</label>
-                  <input class="form-input" id="adm-phone" placeholder="+91 98300 00000">
-                </div>
-              </div>
-              <div class="form-group" style="margin-top:10px;">
-                <label class="form-label">Residential Address / Village</label>
-                <textarea class="form-textarea" id="adm-address" rows="2" placeholder="Full residential address"></textarea>
-              </div>
-            </form>
-          `,
-          footerHtml: `
-            <button class="btn btn-secondary" onclick="document.getElementById('global-modal-close').click()">Cancel</button>
-            <button class="btn btn-primary" id="btn-save-enrollment">Confirm Enrollment</button>
-          `
-        });
-
-        const histCb = document.getElementById('adm-is-historical');
-        const histContainer = document.getElementById('historical-fields-container');
-        if (histCb && histContainer) {
-          histCb.addEventListener('change', () => {
-            histContainer.style.display = histCb.checked ? 'block' : 'none';
-          });
-        }
-
-        document.getElementById('btn-save-enrollment').addEventListener('click', async () => {
-          const fullName = document.getElementById('adm-fullname').value.trim();
-          const dob = document.getElementById('adm-dob').value;
-          const gender = document.getElementById('adm-gender').value;
-          const bloodGroup = document.getElementById('adm-blood').value;
-          const grade = document.getElementById('adm-grade').value;
-          const section = document.getElementById('adm-section').value;
-          const guardianName = document.getElementById('adm-guardian').value.trim();
-          const guardianPhone = document.getElementById('adm-phone').value.trim();
-          const address = document.getElementById('adm-address').value.trim();
-
-          if (!fullName) {
-            UIComponents.showToast('Please enter student full name', 'warning');
-            return;
-          }
-
-          const isHistorical = document.getElementById('adm-is-historical')?.checked;
-          let admissionNo = '';
-          let rollNo = '';
-
-          if (isHistorical) {
-            admissionNo = document.getElementById('adm-manual-no')?.value.trim();
-            rollNo = document.getElementById('adm-manual-roll')?.value.trim();
-            if (!admissionNo) {
-              UIComponents.showToast('Please enter the historical admission number.', 'warning');
-              return;
-            }
-          } else {
-            const existing = await dbService.select('students');
-            const maxSeq = existing.reduce((max, s) => {
-              const m = String(s.admissionNo || '').match(/(\d+)\s*$/);
-              return m ? Math.max(max, parseInt(m[1], 10)) : max;
-            }, 0);
-            const nextSeq = maxSeq + 1;
-            admissionNo = `TMS/${new Date().getFullYear()}/${nextSeq.toString().padStart(3, '0')}`;
-            rollNo = nextSeq.toString().padStart(2, '0');
-          }
-
-          const newStudent = await dbService.insert('students', {
-            admissionNo,
-            rollNo,
-            fullName,
-            dob: dob || null,
-            gender,
-            bloodGroup,
-            grade,
-            section,
-            guardianName,
-            guardianPhone,
-            address,
-            status: 'Active',
-            leaveStatus: null
-          });
-
-          if (newStudent._syncError) {
-            UIComponents.showToast(`Enrollment could not be saved: ${newStudent._syncError}`, 'danger');
-            return;
-          }
-
-          await auditService.log('STUDENT_ENROLLED', 'ACADEMIC', { admissionNo, fullName, grade, isHistorical: !!isHistorical }, newStudent.id);
-          UIComponents.closeModal();
-          UIComponents.showToast(`Student ${fullName} enrolled (${admissionNo})!`, 'success');
-          StudentModule.render(container);
-        });
-      });
+      newAdmBtn.addEventListener('click', () => StudentModule.openEnrollmentModal(container));
     }
-
     // Bulk ID Card generator button
     const bulkIdBtn = container.querySelector('#btn-bulk-print-id-cards');
     if (bulkIdBtn) {
@@ -1038,56 +1399,87 @@ export class StudentModule {
 
     const bodyHtml = `
       <div style="font-family: var(--font-sans, system-ui, -apple-system, sans-serif); padding:4px 0;">
-        <!-- Top Profile Banner (Image 3 Match) -->
-        <div style="display:flex; gap:20px; align-items:center; margin-bottom:20px;">
-          <div style="width:76px; height:76px; border-radius:50%; overflow:hidden; background:#E2E8F0; border:2.5px solid #E2E8F0; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:2.2rem; font-weight:800; color:#1E293B;">
+        <!-- Top Profile Banner -->
+        <div style="display:flex; gap:20px; align-items:center; margin-bottom:20px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:14px; padding:16px;">
+          <div style="width:76px; height:76px; border-radius:50%; overflow:hidden; background:#E2E8F0; border:2.5px solid #2563eb; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:2.2rem; font-weight:800; color:#1E293B;">
             ${s.photo ? `<img src="${esc(s.photo)}" alt="${esc(s.fullName)}" style="width:100%;height:100%;object-fit:cover;" onerror="this.parentElement.innerHTML = '${s.gender === 'Girl' || s.gender === 'Female' ? '👧' : '👦'}';">` : (s.gender === 'Girl' || s.gender === 'Female' ? '👧' : '👦')}
           </div>
           <div style="flex:1; min-width:0;">
             <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px; flex-wrap:wrap;">
-              <h3 style="margin:0; font-size:1.45rem; font-weight:800; color:#0F172A; letter-spacing:-0.02em;">
+              <h3 style="margin:0; font-size:1.4rem; font-weight:800; color:#0F172A; letter-spacing:-0.02em;">
                 ${esc(s.fullName || 'Student')}
               </h3>
-              <span class="tms-status-pill">${esc((s.status || 'Active').toLowerCase())}</span>
-              <span class="tms-id-badge" style="font-size:0.75rem; padding:3px 12px;">${esc(s.admissionNo || 'TPS-2026-001')}</span>
+              <span class="badge ${s.status === 'Active' ? 'badge-success' : 'badge-warning'}">${esc(s.status || 'Active')}</span>
+              <span class="tms-id-badge font-mono" style="font-size:0.75rem; padding:3px 12px;">${esc(s.admissionNo || '—')}</span>
             </div>
             <div style="font-size:0.86rem; color:#64748B; margin-bottom:4px;">
-              Gender: <strong style="color:#0F172A;">${esc(s.gender || 'Male')}</strong> • DOB: <strong style="color:#0F172A;">${esc(s.dob || '—')}</strong> • Class: <strong style="color:#0F172A;">${esc(s.grade || s.class || 'STD-I')}</strong>
+              Class: <strong style="color:#0F172A;">${esc(s.grade || '—')}</strong> • Gender: <strong style="color:#0F172A;">${esc(s.gender || '—')}</strong> • DOB: <strong style="color:#0F172A;">${esc(s.dob || '—')}</strong> • Blood: <strong style="color:#0F172A;">${esc(s.bloodGroup || '—')}</strong>
             </div>
-            <div style="font-size:0.86rem; color:#64748B;">
-              Hostel: <strong style="color:#0F172A;">${esc(s.hostelBlock || (s.gender === 'Girl' || s.gender === 'Female' ? 'Thaiba Girls Hostel Campus' : 'Thaiba Boys Hostel Block A'))}</strong> • Room: <strong style="color:#0F172A;">${esc(s.hostelRoom || 'Room 101')}</strong> • Bed: <strong style="color:#0F172A;">${esc(s.hostelBed || 'Bed 1')}</strong>
+            <div style="font-size:0.82rem; color:#64748B;">
+              Religion: <strong style="color:#0F172A;">${esc(s.religion || '—')}</strong> • Category: <strong style="color:#0F172A;">${esc(s.category || '—')}</strong> • Orphan: <strong style="color:#0F172A;">${esc(s.isOrphan || 'No')}</strong>
             </div>
           </div>
         </div>
 
-        <hr style="border:none; border-top:1.5px solid #F1F5F9; margin:18px 0 22px 0;">
+        <!-- Statutory Government IDs Strip -->
+        <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:12px 16px; margin-bottom:18px;">
+          <div style="font-size:0.75rem; font-weight:800; color:#1e40af; letter-spacing:0.04em; text-transform:uppercase; margin-bottom:8px; display:flex; align-items:center; gap:6px;">
+            <i data-lucide="badge-check" style="width:14px; height:14px;"></i> Statutory Government &amp; Portal IDs
+          </div>
+          <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:10px; font-size:0.82rem;">
+            <div><span style="color:#64748b;">Aadhar:</span> <strong class="font-mono" style="color:#0f172a;">${esc(s.aadharNo || s.aadhaar || '—')}</strong></div>
+            <div><span style="color:#64748b;">APAAR ID:</span> <strong class="font-mono" style="color:#0f172a;">${esc(s.apaarId || '—')}</strong></div>
+            <div><span style="color:#64748b;">Govt / Shiksha ID:</span> <strong class="font-mono" style="color:#0f172a;">${esc(s.govtStudentId || '—')}</strong></div>
+            <div><span style="color:#64748b;">Minority ID:</span> <strong class="font-mono" style="color:#0f172a;">${esc(s.minorityId || '—')}</strong></div>
+            <div><span style="color:#64748b;">Kanyashree ID:</span> <strong class="font-mono" style="color:#0f172a;">${esc(s.kanyashreeId || '—')}</strong></div>
+          </div>
+        </div>
 
-        <!-- Two Columns: Parent & Guardian / Native Address -->
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-bottom:24px;">
-          <div>
-            <div style="font-size:0.75rem; font-weight:800; color:#64748B; letter-spacing:0.05em; text-transform:uppercase; margin-bottom:10px;">
-              PARENT &amp; GUARDIAN
+        <!-- 3 Columns: Address / Father / Mother & Guardian -->
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:16px; margin-bottom:16px;">
+          <!-- Address & Academic -->
+          <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:10px; padding:14px;">
+            <div style="font-size:0.75rem; font-weight:800; color:#475569; letter-spacing:0.04em; text-transform:uppercase; margin-bottom:8px;">
+              📍 Address &amp; Academic
             </div>
-            <div style="font-size:0.86rem; color:#334155; margin-bottom:8px;">
-              Primary Contact: <strong style="color:#0F172A;">${esc(s.guardianName || s.parentName || 'MD Golam Mostafa')} (${esc(s.guardianPhone || '8104998120')})</strong>
-            </div>
-            <div style="font-size:0.86rem; color:#334155; margin-bottom:8px;">
-              Mother: <strong style="color:#0F172A;">${esc(s.motherName || '—')} (—)</strong>
-            </div>
-            <div style="font-size:0.86rem; color:#334155;">
-              WhatsApp: <strong style="color:#0F172A; font-family:var(--font-mono);">${esc(s.guardianPhone || '8104998120')}</strong>
+            <div style="font-size:0.82rem; color:#334155; line-height:1.5;">
+              <div>Village: <strong>${esc(s.village || '—')}</strong></div>
+              <div>PO: <strong>${esc(s.postOffice || '—')}</strong> • PS: <strong>${esc(s.policeStation || '—')}</strong></div>
+              <div>District: <strong>${esc(s.district || '—')}</strong></div>
+              <div>State: <strong>${esc(s.state || 'West Bengal')}</strong> • PIN: <strong>${esc(s.pinCode || '—')}</strong></div>
+              <div style="margin-top:6px; padding-top:6px; border-top:1px dashed #e2e8f0;">
+                <div>Admission Date: <strong>${esc(s.admissionDate || '—')}</strong></div>
+                <div>Class Join Date: <strong>${esc(s.classJoinDate || '—')}</strong></div>
+                <div>Previous School: <strong>${esc(s.previousSchool || '—')}</strong></div>
+              </div>
             </div>
           </div>
 
-          <div>
-            <div style="font-size:0.75rem; font-weight:800; color:#64748B; letter-spacing:0.05em; text-transform:uppercase; margin-bottom:10px;">
-              NATIVE ADDRESS
+          <!-- Father Details -->
+          <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:10px; padding:14px;">
+            <div style="font-size:0.75rem; font-weight:800; color:#475569; letter-spacing:0.04em; text-transform:uppercase; margin-bottom:8px;">
+              👨 Father Details
             </div>
-            <div style="font-size:0.86rem; color:#334155; margin-bottom:8px;">
-              Village / Town: <strong style="color:#0F172A;">${esc(s.village || '—')}</strong>, Dist: <strong style="color:#0F172A;">${esc(s.district || 'Malappuram')}</strong>
+            <div style="font-size:0.82rem; color:#334155; line-height:1.5;">
+              <div>Name: <strong>${esc(s.fatherName || '—')}</strong></div>
+              <div>Occupation: <strong>${esc(s.fatherOccupation || '—')}</strong></div>
+              <div>Qualification: <strong>${esc(s.fatherQualification || '—')}</strong></div>
+              <div>Phone: <strong class="font-mono">${esc(s.fatherPhone || '—')}</strong></div>
+              <div>WhatsApp: <strong class="font-mono">${esc(s.fatherWhatsapp || '—')}</strong></div>
             </div>
-            <div style="font-size:0.86rem; color:#334155;">
-              State: <strong style="color:#0F172A;">${esc(s.state || 'Kerala')}</strong> • PIN: <strong style="color:#0F172A; font-family:var(--font-mono);">${esc(s.pin || '676541')}</strong>
+          </div>
+
+          <!-- Mother & Guardian Details -->
+          <div style="background:#ffffff; border:1px solid #e2e8f0; border-radius:10px; padding:14px;">
+            <div style="font-size:0.75rem; font-weight:800; color:#475569; letter-spacing:0.04em; text-transform:uppercase; margin-bottom:8px;">
+              👩 Mother &amp; Guardian
+            </div>
+            <div style="font-size:0.82rem; color:#334155; line-height:1.5;">
+              <div>Mother: <strong>${esc(s.motherName || '—')}</strong></div>
+              <div>Occupation: <strong>${esc(s.motherOccupation || '—')}</strong></div>
+              <div>Guardian: <strong>${esc(s.guardianName || '—')}</strong> (${esc(s.relation || 'Parent')})</div>
+              <div>Guardian Phone: <strong class="font-mono">${esc(s.guardianPhone || '—')}</strong></div>
+              <div>Annual Income: <strong>${esc(s.annualIncome ? '₹' + s.annualIncome : '—')}</strong></div>
             </div>
           </div>
         </div>
@@ -1114,7 +1506,7 @@ export class StudentModule {
       title: `Student Profile — ${esc(s.fullName || 'Student')}`,
       bodyHtml,
       footerHtml,
-      maxWidth: '680px'
+      maxWidth: '820px'
     });
 
     document.getElementById('btn-modal-enroll-biometrics')?.addEventListener('click', () => {
@@ -1891,22 +2283,22 @@ export class StudentModule {
    * Download CSV Import Template with dynamically selected fields
    */
   static downloadImportTemplate(selectedKeys = null) {
-    const keys = selectedKeys && selectedKeys.length > 0
-      ? selectedKeys
-      : this.getSelectedImportFieldKeys();
+    const allFields = this.getFieldConfigs();
+    const activeFields = selectedKeys && selectedKeys.length > 0
+      ? allFields.filter(f => selectedKeys.includes(f.key))
+      : allFields;
 
-    const activeFields = STUDENT_IMPORT_FIELDS.filter(f => keys.includes(f.key));
     if (!activeFields.length) {
       UIComponents.showToast('Please select at least one field for the template.', 'warning');
       return;
     }
 
     const header = activeFields.map(f => f.label);
-    const sample1 = activeFields.map(f => f.sample1);
-    const sample2 = activeFields.map(f => f.sample2);
+    const sample1 = activeFields.map(f => f.sample1 || '');
+    const sample2 = activeFields.map(f => f.sample2 || '');
 
     downloadCsv('TMS_Students_Import_Template.csv', [header, sample1, sample2]);
-    UIComponents.showToast(`Import template downloaded with ${activeFields.length} selected fields.`, 'success');
+    UIComponents.showToast(`Import template downloaded with ${activeFields.length} statutory columns.`, 'success');
   }
 
   /**
@@ -1914,10 +2306,10 @@ export class StudentModule {
    */
   static openBulkImportModal(container) {
     const esc = (v) => UIComponents.escapeHtml(v);
+    const allFields = this.getFieldConfigs();
     const savedKeys = new Set(this.getSelectedImportFieldKeys());
 
-    // Ensure required fields are always included
-    STUDENT_IMPORT_FIELDS.forEach(f => {
+    allFields.forEach(f => {
       if (f.required) savedKeys.add(f.key);
     });
 
@@ -1931,11 +2323,11 @@ export class StudentModule {
                 <i data-lucide="sliders" style="width:16px;height:16px;"></i> 1. Choose Data Fields for Template &amp; Bulk Upload
               </h4>
               <div style="font-size:0.78rem; color:#475569;">
-                Select the exact data columns you want in your student spreadsheet. The downloaded CSV template will contain these exact fields.
+                Select columns for your student spreadsheet. The template contains all 41 fields in the statutory order by default.
               </div>
             </div>
             <div style="display:flex; gap:6px; flex-wrap:wrap;">
-              <button type="button" class="btn btn-secondary btn-sm" id="btn-select-all-flds" style="font-size:0.75rem; padding:4px 8px;">Select All</button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-select-all-flds" style="font-size:0.75rem; padding:4px 8px;">Select All (41)</button>
               <button type="button" class="btn btn-secondary btn-sm" id="btn-select-std-flds" style="font-size:0.75rem; padding:4px 8px;">Standard Fields</button>
               <button type="button" class="btn btn-secondary btn-sm" id="btn-select-min-flds" style="font-size:0.75rem; padding:4px 8px;">Minimal (Core Only)</button>
             </div>
@@ -1943,7 +2335,7 @@ export class StudentModule {
 
           <!-- Checkbox Grid -->
           <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap:8px 12px; background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:12px; max-height:220px; overflow-y:auto;" id="bulk-field-checklist">
-            ${STUDENT_IMPORT_FIELDS.map(f => {
+            ${allFields.map(f => {
               const isChecked = savedKeys.has(f.key);
               const isReq = f.required === true;
               return `
@@ -1971,7 +2363,7 @@ export class StudentModule {
             <i data-lucide="file-up" style="width:16px;height:16px;color:#059669;"></i> 2. Upload Completed CSV Spreadsheet (.csv)
           </h4>
           <div style="font-size:0.78rem; color:var(--text-muted); margin-bottom:10px;">
-            Fill your data in the downloaded CSV template and upload it here. You can drag and drop the file.
+            Fill your data in the downloaded CSV template and upload it here. All 41 fields are parsed and saved automatically.
           </div>
           <input type="file" id="bulk-import-file-input" accept=".csv,text/csv" class="form-input" style="padding:10px; border-radius:8px;">
           <div id="detected-columns-strip" style="display:none; margin-top:8px; font-size:0.78rem; color:#15803d; font-weight:600; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:6px; padding:6px 12px;"></div>
@@ -1989,12 +2381,13 @@ export class StudentModule {
               <thead id="import-preview-thead">
                 <tr>
                   <th>Status</th>
-                  <th>Admission No</th>
-                  <th>Full Name</th>
-                  <th>Grade &amp; Section</th>
-                  <th>Roll</th>
-                  <th>Guardian</th>
-                  <th>Phone</th>
+                  <th>ID</th>
+                  <th>NAME</th>
+                  <th>CLASS</th>
+                  <th>GOVT ID</th>
+                  <th>APAAR ID</th>
+                  <th>GUARDIAN</th>
+                  <th>PHONE</th>
                 </tr>
               </thead>
               <tbody id="import-preview-tbody"></tbody>
@@ -2018,7 +2411,6 @@ export class StudentModule {
       maxWidth: '880px'
     });
 
-    // Helper: Read currently checked fields
     const getActiveKeys = () => {
       const keys = [];
       document.querySelectorAll('.import-fld-chk').forEach(chk => {
@@ -2036,12 +2428,10 @@ export class StudentModule {
       } catch (e) {}
     };
 
-    // Checkbox change listener
     document.querySelectorAll('.import-fld-chk').forEach(chk => {
       chk.addEventListener('change', updateFieldsCounter);
     });
 
-    // Quick selection presets
     document.getElementById('btn-select-all-flds')?.addEventListener('click', () => {
       document.querySelectorAll('.import-fld-chk').forEach(chk => chk.checked = true);
       updateFieldsCounter();
@@ -2049,21 +2439,20 @@ export class StudentModule {
 
     document.getElementById('btn-select-std-flds')?.addEventListener('click', () => {
       document.querySelectorAll('.import-fld-chk').forEach(chk => {
-        const f = STUDENT_IMPORT_FIELDS.find(x => x.key === chk.dataset.fkey);
-        chk.checked = f ? (f.default || f.required) : true;
+        const f = allFields.find(x => x.key === chk.dataset.fkey);
+        chk.checked = f ? (f.required || f.active !== false) : true;
       });
       updateFieldsCounter();
     });
 
     document.getElementById('btn-select-min-flds')?.addEventListener('click', () => {
-      const minKeys = ['admissionNo', 'fullName', 'grade', 'section', 'guardianPhone'];
+      const minKeys = ['admissionNo', 'fullName', 'grade', 'gender', 'dob', 'guardianPhone'];
       document.querySelectorAll('.import-fld-chk').forEach(chk => {
         chk.checked = minKeys.includes(chk.dataset.fkey) || chk.disabled;
       });
       updateFieldsCounter();
     });
 
-    // Download CSV Template with selected fields
     document.getElementById('btn-dl-import-template')?.addEventListener('click', () => {
       const selectedKeys = getActiveKeys();
       StudentModule.downloadImportTemplate(selectedKeys);
@@ -2084,50 +2473,38 @@ export class StudentModule {
       }
 
       const headers = rows[0].map(h => (h || '').toLowerCase().trim());
-      const findIdx = (keywords) => headers.findIndex(h => keywords.some(k => h.includes(k)));
+      const colMap = {};
 
-      const idxAdm = findIdx(['admission no', 'adm no', 'admission', 'id']);
-      const idxRoll = findIdx(['roll', 'roll no']);
-      const idxName = findIdx(['full name', 'name', 'student name', 'candidate name']);
-      const idxGrade = findIdx(['grade', 'class', 'standard']);
-      const idxSec = findIdx(['section', 'sec']);
-      const idxGender = findIdx(['gender', 'sex']);
-      const idxDob = findIdx(['dob', 'date of birth', 'birth']);
-      const idxGuard = findIdx(['guardian name', 'parent name', 'father', 'guardian']);
-      const idxPhone = findIdx(['guardian phone', 'phone', 'contact', 'mobile']);
-      const idxBlood = findIdx(['blood group', 'blood']);
-      const idxAddr = findIdx(['address', 'village', 'city']);
-      const idxStatus = findIdx(['status', 'enrollment status']);
-      const idxAllergies = findIdx(['allergies', 'medical']);
-      const idxEmerg = findIdx(['emergency', 'alt phone']);
+      headers.forEach((h, colIdx) => {
+        const cleanH = h.replace(/[^a-z0-9]/g, ' ').trim().replace(/\s+/g, ' ');
+        const matched = allFields.find(f => {
+          const fLabel = f.label.toLowerCase().replace(/[^a-z0-9]/g, ' ').trim().replace(/\s+/g, ' ');
+          if (cleanH === fLabel) return true;
+          return f.keywords && f.keywords.some(k => {
+            const cleanK = k.toLowerCase().replace(/[^a-z0-9]/g, ' ').trim().replace(/\s+/g, ' ');
+            return cleanH === cleanK || cleanH.includes(cleanK) || cleanK.includes(cleanH);
+          });
+        });
+        if (matched && colMap[matched.key] === undefined) {
+          colMap[matched.key] = colIdx;
+        }
+      });
 
-      // Show detected columns strip
       const detectedStrip = document.getElementById('detected-columns-strip');
       if (detectedStrip) {
-        const detectedLabels = [];
-        if (idxName !== -1) detectedLabels.push('Full Name');
-        if (idxGrade !== -1) detectedLabels.push('Class / Grade');
-        if (idxAdm !== -1) detectedLabels.push('Admission No');
-        if (idxRoll !== -1) detectedLabels.push('Roll No');
-        if (idxSec !== -1) detectedLabels.push('Section');
-        if (idxGender !== -1) detectedLabels.push('Gender');
-        if (idxDob !== -1) detectedLabels.push('DOB');
-        if (idxGuard !== -1) detectedLabels.push('Guardian Name');
-        if (idxPhone !== -1) detectedLabels.push('Phone');
-        if (idxBlood !== -1) detectedLabels.push('Blood Group');
-        if (idxAddr !== -1) detectedLabels.push('Address');
-        if (idxStatus !== -1) detectedLabels.push('Status');
-        if (idxAllergies !== -1) detectedLabels.push('Allergies');
-        if (idxEmerg !== -1) detectedLabels.push('Emergency Contact');
-
+        const detectedCount = Object.keys(colMap).length;
+        const matchedNames = Object.keys(colMap).map(k => {
+          const f = allFields.find(x => x.key === k);
+          return f ? f.label : k;
+        });
         detectedStrip.style.display = 'block';
-        detectedStrip.innerHTML = `<i data-lucide="check-circle-2" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Detected ${detectedLabels.length} columns in file: <strong>${esc(detectedLabels.join(', '))}</strong>`;
+        detectedStrip.innerHTML = `<i data-lucide="check-circle-2" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Detected ${detectedCount} columns in file: <strong>${esc(matchedNames.slice(0, 10).join(', '))}${matchedNames.length > 10 ? '...' : ''}</strong>`;
       }
 
       let existingStudents = [];
       try {
         existingStudents = await dbService.select('students');
-      } catch (e) { existingStudents = []; }
+      } catch (err) { existingStudents = []; }
 
       const existingAdmNos = new Set(existingStudents.map(s => String(s.admissionNo || '').toLowerCase().trim()));
 
@@ -2139,50 +2516,39 @@ export class StudentModule {
         const r = rows[i];
         if (!r.length || (r.length === 1 && !r[0].trim())) continue;
 
-        let admNo = idxAdm !== -1 ? (r[idxAdm] || '').trim() : '';
-        const name = idxName !== -1 ? (r[idxName] || '').trim() : '';
-        const grade = idxGrade !== -1 ? (r[idxGrade] || '').trim() : 'Grade 1';
-        const sec = idxSec !== -1 ? (r[idxSec] || '').trim() : 'A';
-        const roll = idxRoll !== -1 ? (r[idxRoll] || '').trim() : '';
-        const gender = idxGender !== -1 ? (r[idxGender] || '').trim() : 'Male';
-        const dob = idxDob !== -1 ? (r[idxDob] || '').trim() : null;
-        const guard = idxGuard !== -1 ? (r[idxGuard] || '').trim() : '';
-        const phone = idxPhone !== -1 ? (r[idxPhone] || '').trim() : '';
-        const blood = idxBlood !== -1 ? (r[idxBlood] || '').trim() : '';
-        const address = idxAddr !== -1 ? (r[idxAddr] || '').trim() : '';
-        const status = idxStatus !== -1 ? (r[idxStatus] || '').trim() || 'Active' : 'Active';
-        const allergies = idxAllergies !== -1 ? (r[idxAllergies] || '').trim() : '';
-        const emergencyContact = idxEmerg !== -1 ? (r[idxEmerg] || '').trim() : '';
+        const rowObj = {};
+        allFields.forEach(f => {
+          const cIdx = colMap[f.key];
+          rowObj[f.key] = cIdx !== undefined && r[cIdx] !== undefined ? r[cIdx].trim() : '';
+        });
 
-        // If no admission no provided, assign sequential ID
-        if (!admNo) {
-          admNo = `TMS-IMP-${Date.now().toString(36).toUpperCase()}-${i}`;
+        if (!rowObj.admissionNo) {
+          rowObj.admissionNo = `TMS-IMP-${Date.now().toString(36).toUpperCase()}-${i}`;
         }
+        if (!rowObj.status) rowObj.status = 'Active';
 
-        const isDuplicate = existingAdmNos.has(admNo.toLowerCase());
-        const isInvalid = !name || !grade;
+        if (!rowObj.address) {
+          rowObj.address = [
+            rowObj.village,
+            rowObj.postOffice ? `PO: ${rowObj.postOffice}` : '',
+            rowObj.policeStation ? `PS: ${rowObj.policeStation}` : '',
+            rowObj.district,
+            rowObj.state,
+            rowObj.pinCode
+          ].filter(Boolean).join(', ');
+        }
+        if (!rowObj.guardianName) rowObj.guardianName = rowObj.fatherName || rowObj.motherName || '';
+        if (!rowObj.guardianPhone) rowObj.guardianPhone = rowObj.fatherPhone || rowObj.phone || '';
+
+        const isDuplicate = existingAdmNos.has(rowObj.admissionNo.toLowerCase());
+        const isInvalid = !rowObj.fullName || !rowObj.grade;
 
         if (isDuplicate) duplicateCount++;
         if (isInvalid) missingCount++;
 
-        parsedStudentsToImport.push({
-          admissionNo: admNo,
-          rollNo: roll,
-          fullName: name,
-          grade,
-          section: sec,
-          gender,
-          dob,
-          guardianName: guard,
-          guardianPhone: phone,
-          bloodGroup: blood,
-          address,
-          status,
-          allergies,
-          emergencyContact,
-          isDuplicate,
-          isInvalid
-        });
+        rowObj.isDuplicate = isDuplicate;
+        rowObj.isInvalid = isInvalid;
+        parsedStudentsToImport.push(rowObj);
       }
 
       const validList = parsedStudentsToImport.filter(p => !p.isInvalid && !p.isDuplicate);
@@ -2210,10 +2576,11 @@ export class StudentModule {
             </td>
             <td class="font-mono">${esc(p.admissionNo)}</td>
             <td style="font-weight:600;">${esc(p.fullName)}</td>
-            <td>${esc(p.grade)} - ${esc(p.section)}</td>
-            <td class="font-mono">${esc(p.rollNo || '—')}</td>
+            <td>${esc(p.grade)}</td>
+            <td class="font-mono">${esc(p.govtStudentId || '—')}</td>
+            <td class="font-mono">${esc(p.apaarId || '—')}</td>
             <td>${esc(p.guardianName || '—')}</td>
-            <td class="font-mono">${esc(p.guardianPhone || '—')}</td>
+            <td class="font-mono">${esc(p.guardianPhone || p.phone || '—')}</td>
           </tr>
         `).join('');
       }
@@ -2235,21 +2602,7 @@ export class StudentModule {
 
       let successCount = 0;
       for (const p of validList) {
-        const record = {
-          admissionNo: p.admissionNo,
-          rollNo: p.rollNo,
-          fullName: p.fullName,
-          grade: p.grade,
-          section: p.section,
-          gender: p.gender,
-          dob: p.dob || null,
-          guardianName: p.guardianName,
-          guardianPhone: p.guardianPhone,
-          bloodGroup: p.bloodGroup,
-          address: p.address,
-          status: p.status,
-          allergies: p.allergies
-        };
+        const { isDuplicate, isInvalid, ...record } = p;
         // eslint-disable-next-line no-await-in-loop
         await dbService.insert('students', record);
         successCount++;
@@ -2257,12 +2610,13 @@ export class StudentModule {
 
       await auditService.log('STUDENTS_BULK_IMPORTED', 'ACADEMIC', { importedCount: successCount });
       UIComponents.closeModal();
-      UIComponents.showToast(`Successfully imported ${successCount} student(s) into database!`, 'success');
+      UIComponents.showToast(`Successfully imported ${successCount} student(s) with all statutory fields!`, 'success');
       StudentModule.render(container);
     });
 
     UIComponents.refreshIcons();
   }
+
 }
 
 export default StudentModule;

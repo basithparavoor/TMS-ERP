@@ -11,17 +11,67 @@ import { TMS_CONFIG } from './config.js';
 const toCamel = (key) => key.replace(/_([a-z0-9])/g, (_, c) => c.toUpperCase());
 const toSnake = (key) => key.replace(/[A-Z]/g, (c) => '_' + c.toLowerCase());
 
-function rowFromDb(row) {
+const KNOWN_STUDENT_COLS = new Set([
+  'id', 'admission_no', 'roll_no', 'full_name', 'gender', 'dob', 'grade', 'section',
+  'guardian_name', 'guardian_phone', 'blood_group', 'address', 'status', 'leave_status',
+  'created_at', 'updated_at', 'user_id', 'photo', 'application_id', 'aadhaar',
+  'allergies', 'medical_conditions', 'emergency_physician', 'emergency_hospital_phone', 'medical_notes'
+]);
+
+function rowFromDb(row, collection = null) {
   if (!row || typeof row !== 'object') return row;
   const out = {};
   for (const [k, v] of Object.entries(row)) out[toCamel(k)] = v;
+
+  if (row.medical_notes && typeof row.medical_notes === 'string' && row.medical_notes.includes('__tms_meta__')) {
+    try {
+      const parsed = JSON.parse(row.medical_notes);
+      if (parsed && parsed.__tms_meta__) {
+        Object.assign(out, parsed.__tms_meta__);
+        out.medicalNotes = parsed.note || '';
+      }
+    } catch (e) {}
+  }
+
+  // Normalize aadharNo / aadhaar
+  if (!out.aadharNo && out.aadhaar) out.aadharNo = out.aadhaar;
+  if (!out.aadhaar && out.aadharNo) out.aadhaar = out.aadharNo;
+
   return out;
 }
 
-function rowToDb(row) {
+function rowToDb(row, collection = null) {
   if (!row || typeof row !== 'object') return row;
   const out = {};
-  for (const [k, v] of Object.entries(row)) out[toSnake(k)] = v;
+  const meta = {};
+
+  for (const [k, v] of Object.entries(row)) {
+    const snake = toSnake(k);
+    if (collection === 'students' && !KNOWN_STUDENT_COLS.has(snake)) {
+      meta[k] = v;
+    } else {
+      out[snake] = v;
+    }
+  }
+
+  if (collection === 'students' && Object.keys(meta).length > 0) {
+    let existingMeta = {};
+    if (out.medical_notes && typeof out.medical_notes === 'string') {
+      try {
+        const parsed = JSON.parse(out.medical_notes);
+        if (parsed && parsed.__tms_meta__) existingMeta = parsed.__tms_meta__;
+      } catch (e) {}
+    }
+    const combinedMeta = { ...existingMeta, ...meta };
+    out.medical_notes = JSON.stringify({
+      __tms_meta__: combinedMeta,
+      note: row.medicalNotes || row.medical_notes || ''
+    });
+  }
+
+  // Sync aadharNo / aadhaar
+  if (row.aadharNo && !out.aadhaar) out.aadhaar = row.aadharNo;
+
   return out;
 }
 
@@ -245,7 +295,7 @@ class SupabaseDataService {
             return;
           }
           if (!error && Array.isArray(data)) {
-            const mapped = data.map(rowFromDb);
+            const mapped = data.map(r => rowFromDb(r, collection));
             const currentLocal = this.getLocal(collection);
             if (mapped.length > 0 || currentLocal.length === 0) {
               this._memCache.set(collection, mapped);
@@ -265,7 +315,7 @@ class SupabaseDataService {
         const { data, error } = await this.client.from(collection).select('*');
         if (error) throw error;
         if (Array.isArray(data)) {
-          let mapped = data.map(rowFromDb);
+          let mapped = data.map(r => rowFromDb(r, collection));
           if (mapped.length > 0 || localData.length === 0) {
             // Preserve locally saved records that may not yet exist on the remote database
             if (localData && localData.length > 0) {
@@ -312,7 +362,7 @@ class SupabaseDataService {
     // Sync to Supabase
     if (this.client && this.isOnline) {
       try {
-        const { error } = await this.client.from(collection).insert([rowToDb(enriched)]);
+        const { error } = await this.client.from(collection).insert([rowToDb(enriched, collection)]);
         if (error) throw error;
       } catch (e) {
         console.error(`Supabase insert FAILED for ${collection}:`, e.message);
@@ -339,7 +389,7 @@ class SupabaseDataService {
       try {
         const { error } = await this.client
           .from(collection)
-          .upsert(rowToDb(enriched), { onConflict });
+          .upsert(rowToDb(enriched, collection), { onConflict });
         if (error) throw error;
       } catch (e) {
         const isRlsError = /row-level security|policy|permission denied|42501|403|unauthorized/i.test(e.message || '') || e.code === '42501';
@@ -370,7 +420,7 @@ class SupabaseDataService {
 
     if (this.client && this.isOnline) {
       try {
-        const { error } = await this.client.from(collection).update(rowToDb(updates)).eq('id', id);
+        const { error } = await this.client.from(collection).update(rowToDb(updates, collection)).eq('id', id);
         if (error) throw error;
       } catch (e) {
         console.error(`Supabase update FAILED for ${collection}:`, e.message);
