@@ -100,7 +100,7 @@ export class StudentModule {
     try {
       localStorage.setItem(STUDENT_FIELD_CONFIG_STORAGE_KEY, JSON.stringify(newConfigs));
       try {
-        await dbService.upsert('app_settings', { key: 'student_field_config', value: newConfigs });
+        await dbService.upsert('app_settings', { id: 'student_field_config', value: newConfigs });
       } catch (err) {}
     } catch (e) {
       console.warn('Could not persist student field configs:', e);
@@ -574,6 +574,10 @@ export class StudentModule {
       record.admissionNo = admissionNo;
       record.rollNo = rollNo;
       record.status = record.status || 'Active';
+      record.section = record.section && String(record.section).trim() ? String(record.section).trim() : 'A';
+      if (record.dob !== undefined && (record.dob === '' || !String(record.dob).trim())) record.dob = null;
+      if (record.admissionDate !== undefined && (record.admissionDate === '' || !String(record.admissionDate).trim())) record.admissionDate = null;
+      if (record.classJoinDate !== undefined && (record.classJoinDate === '' || !String(record.classJoinDate).trim())) record.classJoinDate = null;
 
       if (!record.address) {
         record.address = [
@@ -2674,6 +2678,10 @@ export class StudentModule {
       let successCount = 0;
       for (const p of validList) {
         const { isDuplicate, isInvalid, ...record } = p;
+        if (!record.section || !String(record.section).trim()) record.section = 'A';
+        if (record.dob !== undefined && (record.dob === '' || !String(record.dob).trim())) record.dob = null;
+        if (record.admissionDate !== undefined && (record.admissionDate === '' || !String(record.admissionDate).trim())) record.admissionDate = null;
+        if (record.classJoinDate !== undefined && (record.classJoinDate === '' || !String(record.classJoinDate).trim())) record.classJoinDate = null;
         // eslint-disable-next-line no-await-in-loop
         await dbService.insert('students', record);
         successCount++;

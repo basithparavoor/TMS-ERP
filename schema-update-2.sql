@@ -820,3 +820,19 @@ NOTIFY pgrst, 'reload schema';
 -- ============================================================================
 ALTER TABLE IF EXISTS public.academic_classes ADD COLUMN IF NOT EXISTS name TEXT;
 UPDATE public.academic_classes SET name = grade WHERE name IS NULL AND grade IS NOT NULL;
+
+
+-- ============================================================================
+-- Section 36: Students Table Section Constraint & Default
+-- ============================================================================
+ALTER TABLE IF EXISTS public.students ALTER COLUMN section SET DEFAULT 'A';
+ALTER TABLE IF EXISTS public.students ALTER COLUMN section DROP NOT NULL;
+
+
+-- ============================================================================
+-- Section 37: App Settings Table Alias Key Column Compatibility
+-- ============================================================================
+ALTER TABLE IF EXISTS public.app_settings ADD COLUMN IF NOT EXISTS key TEXT;
+UPDATE public.app_settings SET key = id WHERE key IS NULL AND id IS NOT NULL;
+
+NOTIFY pgrst, 'reload schema';

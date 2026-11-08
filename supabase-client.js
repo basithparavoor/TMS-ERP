@@ -42,6 +42,11 @@ function rowFromDb(row, collection = null) {
     if (!out.room && out.roomNo) out.room = out.roomNo;
   }
 
+  if (collection === 'app_settings') {
+    if (!out.key && out.id) out.key = out.id;
+    if (!out.id && out.key) out.id = out.key;
+  }
+
   return out;
 }
 
@@ -101,6 +106,16 @@ function rowToDb(row, collection = null) {
     return subjOut;
   }
 
+  if (collection === 'app_settings') {
+    const settingsOut = {};
+    const rowId = row.id || row.key;
+    if (rowId) settingsOut.id = String(rowId);
+    if (row.value !== undefined) settingsOut.value = row.value;
+    if (row.created_at !== undefined) settingsOut.created_at = row.created_at;
+    if (row.updated_at !== undefined) settingsOut.updated_at = row.updated_at;
+    return settingsOut;
+  }
+
   const out = {};
   const meta = {};
 
@@ -130,6 +145,26 @@ function rowToDb(row, collection = null) {
 
   // Sync aadharNo / aadhaar
   if (row.aadharNo && !out.aadhaar) out.aadhaar = row.aadharNo;
+
+  if (collection === 'students') {
+    // 1. Ensure section is always present (students relation has NOT NULL constraint on section)
+    if (!out.section || !String(out.section).trim()) {
+      out.section = 'A';
+    }
+
+    // 2. Normalize date columns: empty strings "" MUST be null in PostgreSQL DATE / TIMESTAMPTZ columns
+    const DATE_COLS = ['dob', 'admission_date', 'class_join_date', 'created_at', 'updated_at'];
+    for (const dCol of DATE_COLS) {
+      if (out[dCol] !== undefined && (out[dCol] === null || out[dCol] === '' || (typeof out[dCol] === 'string' && !out[dCol].trim()))) {
+        out[dCol] = null;
+      }
+    }
+
+    // 3. Ensure grade is never empty
+    if (!out.grade && (row.grade || row.class)) {
+      out.grade = row.grade || row.class;
+    }
+  }
 
   return out;
 }
@@ -200,12 +235,12 @@ class SupabaseDataService {
           await this.client.from(item.collection).delete().eq('id', item.payload.id);
         }
       } catch (err) {
-        const isRls = /row-level security|policy|permission denied|42501|403|unauthorized/i.test(err.message || '') || err.code === '42501';
-        if (!isRls) {
+        const isFatal = /row-level security|policy|permission denied|42501|403|unauthorized|schema cache|syntax for type|violates not-null|violates check/i.test(err.message || '') || err.code === '42501' || err.code === '22007' || err.code === '23502';
+        if (!isFatal) {
           console.warn(`[Offline Sync] Item ${item.id} retry deferred:`, err.message);
           remaining.push(item);
         } else {
-          console.warn(`[Offline Sync] Dropped ${item.collection} item ${item.id} due to cloud policy restriction:`, err.message);
+          console.warn(`[Offline Sync] Dropped ${item.collection} item ${item.id} due to cloud constraint/policy:`, err.message);
         }
       }
     }
@@ -225,13 +260,36 @@ class SupabaseDataService {
       ];
       demoKeys.forEach(k => localStorage.removeItem(k));
 
-      // Clear any stuck RLS-blocked queue entries from offline queue
+      // Sanitize and purge any stuck queue entries from offline queue
       const rawQueue = localStorage.getItem('tms_offline_queue');
       if (rawQueue) {
         try {
           const parsed = JSON.parse(rawQueue);
           if (Array.isArray(parsed)) {
-            const cleaned = parsed.filter(item => item.collection !== 'app_settings' && !(item.collection === 'academic_classes' && item.payload && item.payload.name));
+            const cleaned = parsed.map(item => {
+              if (item.collection === 'app_settings' && item.payload) {
+                if (item.payload.key && !item.payload.id) {
+                  item.payload.id = item.payload.key;
+                  delete item.payload.key;
+                }
+              }
+              if (item.collection === 'students' && item.payload) {
+                if (!item.payload.section || !String(item.payload.section).trim()) {
+                  item.payload.section = 'A';
+                }
+                const DATE_COLS = ['dob', 'admissionDate', 'classJoinDate', 'admission_date', 'class_join_date'];
+                for (const d of DATE_COLS) {
+                  if (item.payload[d] !== undefined && (item.payload[d] === '' || (typeof item.payload[d] === 'string' && !item.payload[d].trim()))) {
+                    item.payload[d] = null;
+                  }
+                }
+              }
+              return item;
+            }).filter(item => {
+              if (item.collection === 'app_settings' && item.payload && item.payload.key) return false;
+              if (item.collection === 'academic_classes' && item.payload && item.payload.name) return false;
+              return true;
+            });
             localStorage.setItem('tms_offline_queue', JSON.stringify(cleaned));
           }
         } catch (_) {
