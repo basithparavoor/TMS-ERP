@@ -659,6 +659,27 @@ export class StudentModule {
     const totalCollected = invoices.reduce((sum, inv) => sum + (inv.paid || 0), 0);
     const clearanceValue = totalBilled > 0 ? `${((totalCollected / totalBilled) * 100).toFixed(1)}%` : '—';
 
+    // Extract dynamic unique classes from current students list
+    const existingGrades = Array.from(new Set(students.map(s => String(s.grade || s.class || '').trim()).filter(Boolean)));
+    const standardGrades = ['Nursery', 'LKG', 'UKG', 'STD-I', 'STD-II', 'STD-III', 'STD-IV', 'STD-V', 'STD-VI', 'STD-VII', 'STD-VIII', 'STD-IX', 'STD-X', 'STD-XI', 'STD-XII', '5', '6', '7', '8', '9', '10', '11', '12'];
+    const allGradeOptions = Array.from(new Set([...existingGrades, ...standardGrades]));
+    allGradeOptions.sort((a, b) => {
+      const numA = parseInt(a.replace(/\D/g, ''), 10);
+      const numB = parseInt(b.replace(/\D/g, ''), 10);
+      if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
+      return a.localeCompare(b);
+    });
+
+    // Extract dynamic categories
+    const existingCats = Array.from(new Set(students.map(s => String(s.category || '').trim()).filter(Boolean)));
+    const standardCats = ['Day Scholar', 'Hosteler', 'TSQ', 'GENERAL', 'OBC-A', 'OBC-B', 'SC', 'ST', 'EWS', 'ORPHAN'];
+    const allCategoryOptions = Array.from(new Set([...existingCats, ...standardCats]));
+
+    // Extract dynamic wings
+    const existingWings = Array.from(new Set(students.map(s => String(s.hostelBlock || '').trim()).filter(Boolean)));
+    const standardWings = ['Hazrat Bilal Boys Wing', 'Fatima-tuz-Zahra Girls Wing', 'Thaiba Boys Hostel Block A', 'Thaiba Girls Hostel Campus'];
+    const allWingOptions = Array.from(new Set([...existingWings, ...standardWings]));
+
     container.innerHTML = `
       <div class="tms-content-wrapper">
         ${UIComponents.renderPageHeader({
@@ -688,12 +709,12 @@ export class StudentModule {
       <!-- Students List Card -->
       <div class="card">
         <div class="card-header">
-          <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; width: 100%;">
+          <div style="display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; width: 100%;">
             <div>
               <h3 class="card-title">Enrolled Students Roster</h3>
-              <p class="card-desc" style="margin-top: 2px;">Comprehensive student profiles with zero horizontal scrolling.</p>
+              <p class="card-desc" style="margin-top: 2px;">Comprehensive student profiles with zero horizontal scrolling and multi-criteria filters.</p>
             </div>
-            <div style="margin-left: auto; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <div style="display: flex; gap: 10px; align-items: center;">
               <div class="tms-view-toggle" id="student-view-toggle">
                 <button type="button" class="view-btn" data-view="cards" title="Switch to Cards View">
                   <i data-lucide="layout-grid"></i> Cards
@@ -702,7 +723,133 @@ export class StudentModule {
                   <i data-lucide="table"></i> Table
                 </button>
               </div>
-              <input type="text" class="form-input" id="search-student-input" placeholder="Search by name or admission no..." style="width: 250px; padding: 6px 12px;">
+            </div>
+          </div>
+        </div>
+
+        <!-- Multi-Criteria Table Filter & Search Panel -->
+        <div class="tms-student-filter-bar" style="background:#ffffff; border:1px solid #e2e8f0; border-radius:12px; padding:12px 14px; margin-bottom:14px; box-shadow:0 1px 3px rgba(0,0,0,0.03);">
+          <!-- Primary Controls Row -->
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+            <!-- Search Input -->
+            <div style="position:relative; flex:1 1 220px; min-width:200px; max-width:320px;">
+              <i data-lucide="search" style="position:absolute; left:11px; top:50%; transform:translateY(-50%); width:15px; height:15px; color:#94a3b8; pointer-events:none;"></i>
+              <input type="text" class="form-input" id="search-student-input" placeholder="Search name, ID, phone, village..." style="padding-left:34px; height:36px; font-size:0.83rem; width:100%;">
+            </div>
+
+            <!-- Quick Filter Selects -->
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <!-- Class Filter -->
+              <div style="display:flex; align-items:center; gap:4px;">
+                <span style="font-size:0.73rem; font-weight:700; color:#64748b; text-transform:uppercase;">Class:</span>
+                <select id="filter-student-class" class="form-select form-select-sm" style="height:36px; min-width:110px; font-size:0.8rem; font-weight:600;">
+                  <option value="">All Classes</option>
+                  ${allGradeOptions.map(g => `<option value="${esc(g)}">${esc(g)}</option>`).join('')}
+                </select>
+              </div>
+
+              <!-- Category Filter -->
+              <div style="display:flex; align-items:center; gap:4px;">
+                <span style="font-size:0.73rem; font-weight:700; color:#64748b; text-transform:uppercase;">Category:</span>
+                <select id="filter-student-category" class="form-select form-select-sm" style="height:36px; min-width:120px; font-size:0.8rem; font-weight:600;">
+                  <option value="">All Categories</option>
+                  ${allCategoryOptions.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('')}
+                </select>
+              </div>
+
+              <!-- Boarding Filter -->
+              <div style="display:flex; align-items:center; gap:4px;">
+                <span style="font-size:0.73rem; font-weight:700; color:#64748b; text-transform:uppercase;">Boarding:</span>
+                <select id="filter-student-boarding" class="form-select form-select-sm" style="height:36px; min-width:130px; font-size:0.8rem; font-weight:600;">
+                  <option value="">All Boarding</option>
+                  <option value="day_scholar">☀ Day Scholar</option>
+                  <option value="hosteller">🏠 Hosteller (All)</option>
+                  <option value="hosteller_assigned">✓ Hosteller (Bed Assigned)</option>
+                  <option value="hosteller_unassigned">⚠ Hosteller (Bed Pending)</option>
+                </select>
+              </div>
+
+              <!-- Gender Filter -->
+              <div style="display:flex; align-items:center; gap:4px;">
+                <span style="font-size:0.73rem; font-weight:700; color:#64748b; text-transform:uppercase;">Gender:</span>
+                <select id="filter-student-gender" class="form-select form-select-sm" style="height:36px; min-width:105px; font-size:0.8rem; font-weight:600;">
+                  <option value="">All Genders</option>
+                  <option value="male">👦 Boys / Male</option>
+                  <option value="female">👧 Girls / Female</option>
+                </select>
+              </div>
+
+              <!-- Status Filter -->
+              <div style="display:flex; align-items:center; gap:4px;">
+                <span style="font-size:0.73rem; font-weight:700; color:#64748b; text-transform:uppercase;">Status:</span>
+                <select id="filter-student-status" class="form-select form-select-sm" style="height:36px; min-width:105px; font-size:0.8rem; font-weight:600;">
+                  <option value="">All Statuses</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="on leave">On Leave</option>
+                  <option value="transferred">Transferred</option>
+                </select>
+              </div>
+
+              <!-- More Filters Toggle Button -->
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-toggle-more-filters" style="height:36px; padding:0 12px; font-weight:700; display:inline-flex; align-items:center; gap:5px;" title="Show Blood Group, Hostel Wing, Orphan filters">
+                <i data-lucide="sliders-horizontal" style="width:14px; height:14px;"></i>
+                <span>More</span>
+                <span id="more-filters-badge" class="badge" style="display:none; background:#2563eb; color:#ffffff; font-size:0.68rem; padding:1px 6px; border-radius:9999px;">0</span>
+              </button>
+
+              <!-- Reset Filters Button -->
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-reset-student-filters" style="height:36px; padding:0 10px; font-weight:700; color:#64748b;" title="Reset all filters">
+                <i data-lucide="rotate-ccw" style="width:13px; height:13px;"></i> Reset
+              </button>
+            </div>
+          </div>
+
+          <!-- Secondary Filters Row (Collapsible) -->
+          <div id="more-filters-collapse" style="display:none; margin-top:10px; padding-top:10px; border-top:1px dashed #e2e8f0; gap:12px; flex-wrap:wrap; align-items:center;">
+            <!-- Blood Group Filter -->
+            <div style="display:flex; align-items:center; gap:4px;">
+              <span style="font-size:0.73rem; font-weight:700; color:#64748b; text-transform:uppercase;">Blood:</span>
+              <select id="filter-student-blood" class="form-select form-select-sm" style="height:34px; min-width:105px; font-size:0.8rem;">
+                <option value="">All Bloods</option>
+                <option value="a+">A+</option>
+                <option value="a-">A-</option>
+                <option value="b+">B+</option>
+                <option value="b-">B-</option>
+                <option value="o+">O+</option>
+                <option value="o-">O-</option>
+                <option value="ab+">AB+</option>
+                <option value="ab-">AB-</option>
+              </select>
+            </div>
+
+            <!-- Hostel Wing Filter -->
+            <div style="display:flex; align-items:center; gap:4px;">
+              <span style="font-size:0.73rem; font-weight:700; color:#64748b; text-transform:uppercase;">Hostel Wing:</span>
+              <select id="filter-student-wing" class="form-select form-select-sm" style="height:34px; min-width:140px; font-size:0.8rem;">
+                <option value="">All Wings</option>
+                ${allWingOptions.map(w => `<option value="${esc(w)}">${esc(w)}</option>`).join('')}
+              </select>
+            </div>
+
+            <!-- Orphan Filter -->
+            <div style="display:flex; align-items:center; gap:4px;">
+              <span style="font-size:0.73rem; font-weight:700; color:#64748b; text-transform:uppercase;">Orphan:</span>
+              <select id="filter-student-orphan" class="form-select form-select-sm" style="height:34px; min-width:105px; font-size:0.8rem;">
+                <option value="">All</option>
+                <option value="yes">Orphans Only</option>
+                <option value="no">Non-Orphans</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Active Filter Chips & Live Result Counter -->
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-top:10px; padding-top:8px; border-top:1px solid #f1f5f9; font-size:0.78rem;">
+            <div id="active-filter-chips" style="display:flex; align-items:center; gap:6px; flex-wrap:wrap; min-height:22px;">
+              <span style="color:#94a3b8; font-size:0.72rem;">No filters active</span>
+            </div>
+            <div style="font-weight:700; color:#475569; margin-left:auto;">
+              Showing <span id="filtered-students-count" style="color:#0f172a; font-weight:800;">${students.length}</span> of <span style="color:#0f172a; font-weight:800;">${students.length}</span> students
             </div>
           </div>
         </div>
@@ -1183,24 +1330,229 @@ export class StudentModule {
     }
     setView(savedView);
 
+    // Multi-Criteria Filtering Engine
     const searchInput = container.querySelector('#search-student-input');
-    if (searchInput) {
-      searchInput.addEventListener('input', (e) => {
-        const query = e.target.value.toLowerCase().trim();
-        // Filter table rows
-        const rows = container.querySelectorAll('#students-table tbody tr');
-        rows.forEach(row => {
-          const text = row.innerText.toLowerCase();
-          row.style.display = text.includes(query) ? '' : 'none';
-        });
-        // Filter cards
-        const cards = container.querySelectorAll('.student-card');
-        cards.forEach(card => {
-          const text = card.innerText.toLowerCase();
-          card.style.display = text.includes(query) ? 'flex' : 'none';
-        });
+    const classFilter = container.querySelector('#filter-student-class');
+    const catFilter = container.querySelector('#filter-student-category');
+    const boardFilter = container.querySelector('#filter-student-boarding');
+    const genderFilter = container.querySelector('#filter-student-gender');
+    const statusFilter = container.querySelector('#filter-student-status');
+    const bloodFilter = container.querySelector('#filter-student-blood');
+    const wingFilter = container.querySelector('#filter-student-wing');
+    const orphanFilter = container.querySelector('#filter-student-orphan');
+    const countDisplay = container.querySelector('#filtered-students-count');
+    const chipsContainer = container.querySelector('#active-filter-chips');
+    const moreBtn = container.querySelector('#btn-toggle-more-filters');
+    const moreCollapse = container.querySelector('#more-filters-collapse');
+    const moreBadge = container.querySelector('#more-filters-badge');
+    const resetBtn = container.querySelector('#btn-reset-student-filters');
+
+    // Toggle more filters collapse
+    if (moreBtn && moreCollapse) {
+      moreBtn.addEventListener('click', () => {
+        const isHidden = moreCollapse.style.display === 'none' || !moreCollapse.style.display;
+        moreCollapse.style.display = isHidden ? 'flex' : 'none';
+        moreBtn.classList.toggle('active', isHidden);
+        UIComponents.refreshIcons();
       });
     }
+
+    const applyFilters = () => {
+      const q = (searchInput?.value || '').toLowerCase().trim();
+      const selClass = (classFilter?.value || '').toLowerCase().trim();
+      const selCat = (catFilter?.value || '').toLowerCase().trim();
+      const selBoard = (boardFilter?.value || '').toLowerCase().trim();
+      const selGender = (genderFilter?.value || '').toLowerCase().trim();
+      const selStatus = (statusFilter?.value || '').toLowerCase().trim();
+      const selBlood = (bloodFilter?.value || '').toLowerCase().trim();
+      const selWing = (wingFilter?.value || '').toLowerCase().trim();
+      const selOrphan = (orphanFilter?.value || '').toLowerCase().trim();
+
+      // Count secondary filters for badge
+      let moreCount = 0;
+      if (selBlood) moreCount++;
+      if (selWing) moreCount++;
+      if (selOrphan) moreCount++;
+      if (moreBadge) {
+        moreBadge.innerText = moreCount;
+        moreBadge.style.display = moreCount > 0 ? 'inline-block' : 'none';
+      }
+
+      // Update active filter chips
+      if (chipsContainer) {
+        const chips = [];
+        if (q) chips.push({ label: `Search: "${q}"`, clear: () => { if (searchInput) searchInput.value = ''; } });
+        if (selClass) chips.push({ label: `Class: ${classFilter.options[classFilter.selectedIndex].text}`, clear: () => { classFilter.value = ''; } });
+        if (selCat) chips.push({ label: `Category: ${catFilter.options[catFilter.selectedIndex].text}`, clear: () => { catFilter.value = ''; } });
+        if (selBoard) chips.push({ label: `Boarding: ${boardFilter.options[boardFilter.selectedIndex].text}`, clear: () => { boardFilter.value = ''; } });
+        if (selGender) chips.push({ label: `Gender: ${genderFilter.options[genderFilter.selectedIndex].text}`, clear: () => { genderFilter.value = ''; } });
+        if (selStatus) chips.push({ label: `Status: ${statusFilter.options[statusFilter.selectedIndex].text}`, clear: () => { statusFilter.value = ''; } });
+        if (selBlood) chips.push({ label: `Blood: ${bloodFilter.options[bloodFilter.selectedIndex].text}`, clear: () => { bloodFilter.value = ''; } });
+        if (selWing) chips.push({ label: `Wing: ${wingFilter.options[wingFilter.selectedIndex].text}`, clear: () => { wingFilter.value = ''; } });
+        if (selOrphan) chips.push({ label: `Orphan: ${orphanFilter.options[orphanFilter.selectedIndex].text}`, clear: () => { orphanFilter.value = ''; } });
+
+        if (chips.length > 0) {
+          chipsContainer.innerHTML = chips.map((c, i) => `
+            <span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:9999px; display:inline-flex; align-items:center; gap:5px;">
+              <span>${UIComponents.escapeHtml(c.label)}</span>
+              <button type="button" class="btn-clear-filter-chip" data-idx="${i}" style="border:none; background:transparent; padding:0; cursor:pointer; color:#0284c7; display:inline-flex; align-items:center; font-size:0.85rem; line-height:1; font-weight:bold;">×</button>
+            </span>
+          `).join('');
+
+          chipsContainer.querySelectorAll('.btn-clear-filter-chip').forEach(b => {
+            b.addEventListener('click', () => {
+              const idx = parseInt(b.dataset.idx, 10);
+              if (chips[idx]) {
+                chips[idx].clear();
+                applyFilters();
+              }
+            });
+          });
+        } else {
+          chipsContainer.innerHTML = '<span style="color:#94a3b8; font-size:0.72rem;">No filters active</span>';
+        }
+      }
+
+      let visibleCount = 0;
+
+      // Filter each student
+      students.forEach(s => {
+        let match = true;
+
+        // Search text
+        if (q) {
+          const searchable = [
+            s.fullName, s.admissionNo, s.grade, s.class, s.category,
+            s.fatherName, s.motherName, s.phone, s.guardianPhone,
+            s.whatsapp, s.village, s.district, s.aadharNo, s.govtStudentId,
+            s.hostelRoom, s.hostelBlock
+          ].filter(Boolean).join(' ').toLowerCase();
+          if (!searchable.includes(q)) match = false;
+        }
+
+        // Class / Grade
+        if (match && selClass) {
+          const g = String(s.grade || s.class || '').toLowerCase().trim();
+          if (g !== selClass && !g.includes(selClass) && !selClass.includes(g)) {
+            match = false;
+          }
+        }
+
+        // Category
+        if (match && selCat) {
+          const cat = String(s.category || '').toLowerCase().trim();
+          if (cat !== selCat && !cat.includes(selCat)) match = false;
+        }
+
+        // Boarding Status
+        if (match && selBoard) {
+          const isDay = StudentModule.isDayScholar(s);
+          const isHost = StudentModule.isHosteller(s);
+          const hasBed = Boolean(s.hostelBlock && s.hostelRoom);
+          if (selBoard === 'day_scholar' && !isDay) match = false;
+          else if (selBoard === 'hosteller' && !isHost) match = false;
+          else if (selBoard === 'hosteller_assigned' && (!isHost || !hasBed)) match = false;
+          else if (selBoard === 'hosteller_unassigned' && (!isHost || hasBed)) match = false;
+        }
+
+        // Gender
+        if (match && selGender) {
+          const g = String(s.gender || '').toLowerCase().trim();
+          if (selGender === 'male' && !['male', 'boy', 'm'].includes(g)) match = false;
+          if (selGender === 'female' && !['female', 'girl', 'f'].includes(g)) match = false;
+        }
+
+        // Status
+        if (match && selStatus) {
+          const st = String(s.status || 'active').toLowerCase().trim();
+          if (st !== selStatus) match = false;
+        }
+
+        // Blood Group
+        if (match && selBlood) {
+          const bg = String(s.bloodGroup || '').toLowerCase().trim();
+          if (bg !== selBlood) match = false;
+        }
+
+        // Hostel Wing
+        if (match && selWing) {
+          const hw = String(s.hostelBlock || '').toLowerCase().trim();
+          if (!hw.includes(selWing)) match = false;
+        }
+
+        // Orphan
+        if (match && selOrphan) {
+          const isOrph = String(s.isOrphan || '').toLowerCase().trim() === 'yes';
+          if (selOrphan === 'yes' && !isOrph) match = false;
+          if (selOrphan === 'no' && isOrph) match = false;
+        }
+
+        if (match) visibleCount++;
+
+        // Update table row
+        const row = container.querySelector(`tr[data-student-row="${s.id}"]`);
+        if (row) row.style.display = match ? '' : 'none';
+
+        // Update card
+        const card = container.querySelector(`.student-card[data-student-card="${s.id}"]`);
+        if (card) card.style.display = match ? 'flex' : 'none';
+      });
+
+      if (countDisplay) countDisplay.innerText = visibleCount;
+
+      // Handle empty state banner in table
+      let emptyRow = container.querySelector('#students-filter-empty-row');
+      if (visibleCount === 0) {
+        if (!emptyRow) {
+          const tbody = container.querySelector('#students-table tbody');
+          if (tbody) {
+            emptyRow = document.createElement('tr');
+            emptyRow.id = 'students-filter-empty-row';
+            emptyRow.innerHTML = `
+              <td colspan="9" style="text-align:center; padding:36px 16px; color:#64748b;">
+                <div style="font-size:1.8rem; margin-bottom:8px;">🔍</div>
+                <div style="font-weight:700; font-size:0.95rem; color:#1e293b; margin-bottom:4px;">No students match the selected filters</div>
+                <div style="font-size:0.8rem; color:#64748b; margin-bottom:12px;">Try adjusting your search criteria or resetting filters.</div>
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-empty-reset-filters" style="font-weight:700;">
+                  <i data-lucide="rotate-ccw"></i> Reset All Filters
+                </button>
+              </td>
+            `;
+            tbody.appendChild(emptyRow);
+            emptyRow.querySelector('#btn-empty-reset-filters')?.addEventListener('click', resetFilters);
+            UIComponents.refreshIcons();
+          }
+        } else {
+          emptyRow.style.display = '';
+        }
+      } else if (emptyRow) {
+        emptyRow.style.display = 'none';
+      }
+    };
+
+    const resetFilters = () => {
+      if (searchInput) searchInput.value = '';
+      if (classFilter) classFilter.value = '';
+      if (catFilter) catFilter.value = '';
+      if (boardFilter) boardFilter.value = '';
+      if (genderFilter) genderFilter.value = '';
+      if (statusFilter) statusFilter.value = '';
+      if (bloodFilter) bloodFilter.value = '';
+      if (wingFilter) wingFilter.value = '';
+      if (orphanFilter) orphanFilter.value = '';
+      applyFilters();
+    };
+
+    searchInput?.addEventListener('input', applyFilters);
+    classFilter?.addEventListener('change', applyFilters);
+    catFilter?.addEventListener('change', applyFilters);
+    boardFilter?.addEventListener('change', applyFilters);
+    genderFilter?.addEventListener('change', applyFilters);
+    statusFilter?.addEventListener('change', applyFilters);
+    bloodFilter?.addEventListener('change', applyFilters);
+    wingFilter?.addEventListener('change', applyFilters);
+    orphanFilter?.addEventListener('change', applyFilters);
+    resetBtn?.addEventListener('click', resetFilters);
 
     /* ---- Selection, bulk actions, edit & delete ---- */
     const students = this._students || [];
@@ -2166,7 +2518,22 @@ export class StudentModule {
 
         <!-- Filter and Search Toolbar -->
         <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
-          <input type="text" id="hostel-filter-input" class="form-input form-input-sm" placeholder="Search boarder by name, room or bed..." style="width:260px; height:34px;">
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <input type="text" id="hostel-filter-input" class="form-input form-input-sm" placeholder="Search boarder, room, bed..." style="width:220px; height:34px;">
+            <select id="hostel-filter-wing" class="form-select form-select-sm" style="height:34px; min-width:130px; font-size:0.78rem;">
+              <option value="">All Wings</option>
+              <option value="hazrat bilal">Hazrat Bilal Boys Wing</option>
+              <option value="fatima">Fatima Girls Wing</option>
+              <option value="block a">Block A</option>
+              <option value="block b">Block B</option>
+              <option value="campus">Girls Campus</option>
+            </select>
+            <select id="hostel-filter-status" class="form-select form-select-sm" style="height:34px; min-width:120px; font-size:0.78rem;">
+              <option value="">All Allocations</option>
+              <option value="assigned">Bed Assigned</option>
+              <option value="pending">Bed Pending</option>
+            </select>
+          </div>
           <div style="display:flex; gap:8px;">
             <button type="button" class="btn btn-primary btn-sm" id="btn-quick-allocate-bed" style="background:#0e623b; border-color:#0e623b; font-weight:700;">
               <i data-lucide="plus"></i> Allocate Bed to Student
@@ -2192,7 +2559,7 @@ export class StudentModule {
             </thead>
             <tbody id="hostel-roster-tbody">
               ${hostellers.length ? hostellers.map(s => `
-                <tr class="hostel-roster-row" data-name="${esc(s.fullName.toLowerCase())}" data-room="${esc((s.hostelRoom || '').toLowerCase())}" data-wing="${esc((s.hostelBlock || '').toLowerCase())}" style="border-bottom:1px solid #f1f5f9;">
+                <tr class="hostel-roster-row" data-name="${esc(s.fullName.toLowerCase())}" data-room="${esc((s.hostelRoom || '').toLowerCase())}" data-wing="${esc((s.hostelBlock || '').toLowerCase())}" data-status="${hasAssigned ? 'assigned' : 'pending'}" style="border-bottom:1px solid #f1f5f9;">
                   <td style="padding:8px 12px;">
                     <div style="font-weight:700; color:#0f172a;">${esc(s.fullName)}</div>
                     <div style="font-size:0.7rem; color:#64748b; font-family:var(--font-mono);">${esc(s.admissionNo)}</div>
@@ -2245,17 +2612,33 @@ export class StudentModule {
       maxWidth: '860px'
     });
 
-    // Search filter in roster
+    // Multi-filter in hostel roster
     const searchInp = document.getElementById('hostel-filter-input');
-    searchInp?.addEventListener('input', () => {
-      const q = (searchInp.value || '').toLowerCase().trim();
+    const wingFilter = document.getElementById('hostel-filter-wing');
+    const statusFilter = document.getElementById('hostel-filter-status');
+
+    const filterHostelRows = () => {
+      const q = (searchInp?.value || '').toLowerCase().trim();
+      const wing = (wingFilter?.value || '').toLowerCase().trim();
+      const st = (statusFilter?.value || '').toLowerCase().trim();
+
       document.querySelectorAll('.hostel-roster-row').forEach(row => {
         const name = row.dataset.name || '';
         const room = row.dataset.room || '';
-        const wing = row.dataset.wing || '';
-        row.style.display = !q || name.includes(q) || room.includes(q) || wing.includes(q) ? '' : 'none';
+        const rWing = row.dataset.wing || '';
+        const rStatus = row.dataset.status || '';
+
+        const matchQ = !q || name.includes(q) || room.includes(q) || rWing.includes(q);
+        const matchWing = !wing || rWing.includes(wing);
+        const matchStatus = !st || rStatus === st;
+
+        row.style.display = matchQ && matchWing && matchStatus ? '' : 'none';
       });
-    });
+    };
+
+    searchInp?.addEventListener('input', filterHostelRows);
+    wingFilter?.addEventListener('change', filterHostelRows);
+    statusFilter?.addEventListener('change', filterHostelRows);
 
     // Allocate button: pick from unassigned students
     document.getElementById('btn-quick-allocate-bed')?.addEventListener('click', () => {
