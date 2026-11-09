@@ -3040,21 +3040,55 @@ export class StudentModule {
   }
 
   /**
-   * Render a prestigious, publication-grade Student Admission & Cumulative Bio-Data Form (A4 printable)
+   * Publication-grade Official Student Bio-Data & Cumulative Enrollment Dossier
+   * Authentic Government / Institutional Gazette Style with Ready-to-Fill Blank Fields
    */
-  static renderStudentDossierHtml(s) {
-    if (!s) return '';
-    const esc = (v) => UIComponents.escapeHtml(v);
-    const val = (v, fallback = '—') => (v !== undefined && v !== null && String(v).trim() !== '') ? esc(String(v).trim()) : fallback;
+  static renderStudentDossierHtml(s = {}) {
+    const esc = (v) => UIComponents.escapeHtml(v || '');
+
+    // Official Fillable Blank Helper:
+    // When data is populated -> prints bold official text.
+    // When data is missing/empty -> prints a clean, ruled, fillable blank line for pen entry!
+    const fill = (v, minWidth = '140px') => {
+      const trimmed = (v !== undefined && v !== null) ? String(v).trim() : '';
+      if (trimmed !== '' && trimmed !== '—' && trimmed !== '-' && trimmed.toLowerCase() !== 'unknown' && trimmed.toLowerCase() !== 'n/a') {
+        return `<span style="font-weight:800; color:#0f172a; word-break:break-word;">${esc(trimmed)}</span>`;
+      }
+      return `<span class="tms-blank-writein" style="display:inline-block; border-bottom:1px dotted #475569; min-width:${minWidth}; height:14px; vertical-align:bottom; margin:0 2px;"></span>`;
+    };
+
+    // Segmented digit boxes for official UID, APAAR & PIN codes
+    const digitBoxes = (val, length = 12, groupSize = 4) => {
+      const clean = String(val || '').replace(/[^0-9A-Za-z]/g, '');
+      const boxes = [];
+      for (let i = 0; i < length; i++) {
+        const char = clean[i] || '';
+        boxes.push(`<span style="display:inline-block; width:13px; height:17px; border:1px solid #475569; text-align:center; line-height:17px; font-size:10.5px; font-weight:800; font-family:monospace; background:${char ? '#ffffff' : '#f8fafc'}; color:#0f172a; margin-right:1px;">${char ? esc(char) : '&nbsp;'}</span>`);
+        if (groupSize && (i + 1) % groupSize === 0 && (i + 1) < length) {
+          boxes.push(`<span style="margin:0 2px; font-weight:700; color:#64748b;">-</span>`);
+        }
+      }
+      return `<span style="display:inline-flex; align-items:center;">${boxes.join('')}</span>`;
+    };
+
+    // Checkbox box helper: [✓] or [ ]
+    const chkBox = (checked, label) => {
+      return `<span style="display:inline-flex; align-items:center; gap:4px; margin-right:10px; font-size:9px; font-weight:600; color:#1e293b;">
+        <span style="display:inline-block; width:11px; height:11px; border:1.5px solid #064e3b; border-radius:2px; text-align:center; line-height:9px; font-size:9px; font-weight:900; color:#064e3b; background:${checked ? '#dcfce7' : '#ffffff'};">
+          ${checked ? '✓' : '&nbsp;'}
+        </span>
+        <span>${esc(label)}</span>
+      </span>`;
+    };
 
     let photoUrl = '';
-    if (s.photo) {
+    if (s && s.photo) {
       photoUrl = admissionService.getPublicUrl('admission-docs', s.photo) || s.photo;
     }
 
     const isBoarder = StudentModule.isHosteller(s);
     let ageStr = '';
-    if (s.dob) {
+    if (s && s.dob) {
       const diff = Date.now() - new Date(s.dob).getTime();
       const ageDate = new Date(diff);
       const calculatedAge = Math.abs(ageDate.getUTCFullYear() - 1970);
@@ -3063,282 +3097,417 @@ export class StudentModule {
       }
     }
 
-    return `
-      <div class="tms-dossier-sheet" style="font-family:'Plus Jakarta Sans', Arial, sans-serif; background:#ffffff; color:#0f172a; border:2.5px solid #064e3b; border-radius:8px; padding:20px; position:relative; box-sizing:border-box; margin:0 auto 28px auto; max-width:820px; page-break-after:always; break-after:page;">
-        
-        <!-- Subtle Ornamental Security Frame -->
-        <div style="position:absolute; top:4px; left:4px; right:4px; bottom:4px; border:1px solid #16a34a; border-radius:6px; pointer-events:none;"></div>
+    const gen = String(s.gender || '').toLowerCase();
+    const isMale = gen === 'male' || gen === 'boy' || gen === 'm';
+    const isFemale = gen === 'female' || gen === 'girl' || gen === 'f';
 
-        <!-- Institutional Header -->
-        <div style="display:flex; align-items:center; gap:16px; border-bottom:2px solid #064e3b; padding-bottom:12px; margin-bottom:12px; position:relative;">
+    const cat = String(s.category || '').toUpperCase();
+    const isGeneral = cat.includes('GEN') || (!cat.includes('OBC') && !cat.includes('SC') && !cat.includes('ST') && !cat.includes('EWS') && !cat.includes('TSQ') && !cat.includes('ORPHAN'));
+    const isObcA = cat.includes('OBC-A') || cat.includes('OBCA');
+    const isObcB = cat.includes('OBC-B') || cat.includes('OBCB');
+    const isSc = cat.includes('SC') && !cat.includes('SCHOLAR');
+    const isSt = cat.includes('ST');
+    const isEws = cat.includes('EWS');
+
+    const formattedDob = s.dob ? String(s.dob).slice(0, 10).split('-').reverse().join(' / ') : '';
+
+    return `
+      <div class="tms-dossier-sheet" style="font-family:'Plus Jakarta Sans', Arial, sans-serif; background:#ffffff; color:#0f172a; border:2.5px solid #064e3b; outline:1px solid #064e3b; outline-offset:-4px; padding:18px 20px; position:relative; box-sizing:border-box; margin:0 auto 28px auto; max-width:840px; page-break-after:always; break-after:page;">
+        
+        <!-- Subtle Institutional Watermark -->
+        <div style="position:absolute; top:42%; left:50%; transform:translate(-50%, -50%) rotate(-30deg); font-size:46px; font-weight:900; color:#064e3b; opacity:0.035; pointer-events:none; white-space:nowrap; text-transform:uppercase; letter-spacing:4px; font-family:'Outfit', serif;">
+          THAIBA MODEL SCHOOL • OFFICIAL DOSSIER
+        </div>
+
+        <!-- Institutional Letterhead Header -->
+        <div style="display:flex; align-items:center; gap:14px; border-bottom:2px solid #064e3b; padding-bottom:10px; margin-bottom:10px; position:relative;">
           <div style="flex-shrink:0;">
-            ${TMS_LOGO.emblemSvg(54)}
+            ${TMS_LOGO.emblemSvg(56)}
           </div>
           <div style="flex:1; text-align:center; line-height:1.25;">
             <div style="font-size:8.5px; font-weight:800; letter-spacing:1px; color:#b45309; text-transform:uppercase;">
               RUN BY : THAIBA HERITAGE, KOLKATA • REGD. TRUST NO. IV 01894/2011
             </div>
-            <h1 style="font-family:'Outfit', serif; font-size:21px; font-weight:900; color:#064e3b; margin:2px 0 3px 0; letter-spacing:0.5px; text-transform:uppercase;">
+            <h1 style="font-family:'Outfit', serif; font-size:22px; font-weight:900; color:#064e3b; margin:2px 0; letter-spacing:0.8px; text-transform:uppercase;">
               ${esc(TMS_CONFIG.institution.name)}
             </h1>
             <div style="font-size:9px; color:#334155; font-weight:600;">
-              Baghait, Tapan, Dakshin Dinajpur, West Bengal - 733127 (Govt. Regd.)
+              Baghait, Tapan, Dakshin Dinajpur, West Bengal - 733127 (Govt. Regd. Co-Educational Senior Institution)
             </div>
             <div style="font-size:8px; color:#64748b; margin-top:2px;">
-              Helpline: +91 8653382851, +91 8167782851 • Web: www.thaibagarden.com • Email: tms@thaibagarden.com
+              Ph: +91 8653382851, +91 8167782851 • Web: www.thaibagarden.com • Email: tms@thaibagarden.com
             </div>
           </div>
-          <div style="text-align:right; flex-shrink:0;">
-            <div style="border:1.5px solid #064e3b; background:#f0fdf4; color:#064e3b; padding:4px 8px; border-radius:4px; font-size:8px; font-weight:800; text-transform:uppercase;">
-              OFFICIAL DOSSIER
+          <div style="text-align:right; flex-shrink:0; font-size:8px;">
+            <div style="border:1.5px solid #064e3b; background:#f0fdf4; color:#064e3b; padding:3px 7px; border-radius:3px; font-weight:800; text-transform:uppercase; margin-bottom:3px;">
+              OFFICIAL FORM
             </div>
-            <div style="font-size:8px; color:#64748b; margin-top:4px;">Date: <strong style="color:#0f172a;">${new Date().toLocaleDateString('en-GB')}</strong></div>
+            <div style="color:#64748b;">SL NO: <strong style="color:#0f172a;">${s.admissionNo ? esc(s.admissionNo) : '................'}</strong></div>
+            <div style="color:#64748b;">DATE: <strong style="color:#0f172a;">${new Date().toLocaleDateString('en-GB')}</strong></div>
           </div>
         </div>
 
-        <!-- Accent Ribbon -->
-        <div style="display:flex; height:3px; width:100%; margin-bottom:10px; border-radius:2px; overflow:hidden;">
-          <div style="flex:3; background:#064e3b;"></div>
+        <!-- Accent Trilateral Ribbon -->
+        <div style="display:flex; height:3px; width:100%; margin-bottom:8px; border-radius:2px; overflow:hidden;">
+          <div style="flex:4; background:#064e3b;"></div>
           <div style="flex:2; background:#b45309;"></div>
           <div style="flex:1; background:#1e3a8a;"></div>
         </div>
 
         <!-- Title Banner -->
-        <div style="display:flex; justify-content:space-between; align-items:center; background:#064e3b; color:#ffffff; padding:6px 12px; border-radius:4px; margin-bottom:12px;">
-          <div style="font-size:11px; font-weight:800; letter-spacing:0.8px; text-transform:uppercase;">
-            OFFICIAL STUDENT BIO-DATA &amp; CUMULATIVE ENROLLMENT DOSSIER
+        <div style="display:flex; justify-content:space-between; align-items:center; background:#064e3b; color:#ffffff; padding:5px 12px; border-radius:3px; margin-bottom:10px;">
+          <div style="font-size:10.5px; font-weight:800; letter-spacing:0.8px; text-transform:uppercase;">
+            CUMULATIVE STUDENT RECORD &amp; ADMISSION BIO-DATA DOSSIER
           </div>
-          <div style="font-size:9px; font-weight:700; color:#fde047;">
+          <div style="font-size:8.5px; font-weight:700; color:#fde047;">
             ACADEMIC SESSION: ${esc(TMS_CONFIG.academic.currentYear || '2026 - 2027')}
           </div>
         </div>
 
-        <!-- Top Hero Identity Grid: Badges + Photo Box -->
-        <div style="display:flex; gap:14px; margin-bottom:12px; align-items:stretch;">
-          <!-- Key Identity Metrics Table (Left) -->
-          <div style="flex:1; border:1px solid #cbd5e1; border-radius:6px; overflow:hidden;">
-            <table style="width:100%; border-collapse:collapse; font-size:10px;">
+        <!-- Hero Identity Block: Core Badges & Photo Attestation Box -->
+        <div style="display:flex; gap:12px; margin-bottom:10px; align-items:stretch;">
+          <!-- Core Identity Table (Left) -->
+          <div style="flex:1; border:1px solid #cbd5e1; border-radius:4px; overflow:hidden;">
+            <table style="width:100%; border-collapse:collapse; font-size:9.5px;">
               <tbody>
                 <tr style="border-bottom:1px solid #e2e8f0;">
-                  <td style="width:28%; padding:5px 8px; background:#f8fafc; font-weight:700; color:#475569;">Admission / ID:</td>
-                  <td style="padding:5px 8px; font-weight:800; font-family:var(--font-mono); font-size:12px; color:#064e3b;">${val(s.admissionNo)}</td>
-                  <td style="width:24%; padding:5px 8px; background:#f8fafc; font-weight:700; color:#475569;">Roll Number:</td>
-                  <td style="padding:5px 8px; font-weight:800; font-family:var(--font-mono); color:#1e3a8a;">${val(s.rollNo)}</td>
+                  <td style="width:24%; padding:4px 7px; background:#f8fafc; font-weight:700; color:#475569;">Admission / ID No:</td>
+                  <td style="padding:4px 7px; font-weight:800; font-family:var(--font-mono); font-size:11.5px; color:#064e3b;">${fill(s.admissionNo, '120px')}</td>
+                  <td style="width:22%; padding:4px 7px; background:#f8fafc; font-weight:700; color:#475569;">Roll Number:</td>
+                  <td style="padding:4px 7px; font-weight:800; font-family:var(--font-mono); color:#1e3a8a;">${fill(s.rollNo, '80px')}</td>
                 </tr>
                 <tr style="border-bottom:1px solid #e2e8f0;">
-                  <td style="padding:5px 8px; background:#f8fafc; font-weight:700; color:#475569;">Enrolled Class:</td>
-                  <td style="padding:5px 8px; font-weight:800; color:#0f172a;">${val(s.grade || s.class)}</td>
-                  <td style="padding:5px 8px; background:#f8fafc; font-weight:700; color:#475569;">Section:</td>
-                  <td style="padding:5px 8px; font-weight:800; color:#0f172a;">Sec ${val(s.section, 'A')}</td>
+                  <td style="padding:4px 7px; background:#f8fafc; font-weight:700; color:#475569;">Class / Standard:</td>
+                  <td style="padding:4px 7px; font-weight:800; color:#0f172a;">${fill(s.grade || s.class, '100px')}</td>
+                  <td style="padding:4px 7px; background:#f8fafc; font-weight:700; color:#475569;">Section Assigned:</td>
+                  <td style="padding:4px 7px; font-weight:800; color:#0f172a;">${fill(s.section ? 'Sec ' + s.section : '', '60px')}</td>
                 </tr>
                 <tr style="border-bottom:1px solid #e2e8f0;">
-                  <td style="padding:5px 8px; background:#f8fafc; font-weight:700; color:#475569;">Boarding Type:</td>
-                  <td style="padding:5px 8px; font-weight:700; color:${isBoarder ? '#b45309' : '#15803d'};">
-                    ${isBoarder ? '🏠 Hostel Resident / Boarder' : '☀️ Day Scholar'}
+                  <td style="padding:4px 7px; background:#f8fafc; font-weight:700; color:#475569;">Boarding Category:</td>
+                  <td style="padding:4px 7px; font-weight:700;">
+                    ${chkBox(!isBoarder, 'Day Scholar')}
+                    ${chkBox(isBoarder, 'Hostel Resident')}
                   </td>
-                  <td style="padding:5px 8px; background:#f8fafc; font-weight:700; color:#475569;">Enrollment Status:</td>
-                  <td style="padding:5px 8px;">
-                    <span style="display:inline-block; padding:1px 6px; border-radius:4px; font-size:9px; font-weight:800; background:#dcfce7; color:#15803d; text-transform:uppercase;">
-                      ${val(s.status, 'Active')}
+                  <td style="padding:4px 7px; background:#f8fafc; font-weight:700; color:#475569;">Enrollment Status:</td>
+                  <td style="padding:4px 7px;">
+                    <span style="display:inline-block; padding:1px 6px; border-radius:3px; font-size:8.5px; font-weight:800; background:#dcfce7; color:#15803d; text-transform:uppercase;">
+                      ${fill(s.status || 'Active', '70px')}
                     </span>
                   </td>
                 </tr>
                 <tr>
-                  <td style="padding:5px 8px; background:#f8fafc; font-weight:700; color:#475569;">Admission Date:</td>
-                  <td style="padding:5px 8px; font-weight:600;">${val(s.admissionDate || s.created_at?.slice(0, 10))}</td>
-                  <td style="padding:5px 8px; background:#f8fafc; font-weight:700; color:#475569;">Class Join Date:</td>
-                  <td style="padding:5px 8px; font-weight:600;">${val(s.classJoinDate)}</td>
+                  <td style="padding:4px 7px; background:#f8fafc; font-weight:700; color:#475569;">Date of Admission:</td>
+                  <td style="padding:4px 7px; font-weight:600;">${fill(s.admissionDate || (s.created_at ? s.created_at.slice(0, 10) : ''), '100px')}</td>
+                  <td style="padding:4px 7px; background:#f8fafc; font-weight:700; color:#475569;">Fee Concession:</td>
+                  <td style="padding:4px 7px; font-weight:600;">${fill(s.concession || (s.category === 'TSQ' ? 'TSQ Merit Scholarship' : ''), '90px')}</td>
                 </tr>
               </tbody>
             </table>
           </div>
 
-          <!-- Official Photo Box (Right) -->
-          <div style="width:105px; flex-shrink:0; display:flex; flex-direction:column; align-items:center; justify-content:center; border:1.5px solid #064e3b; border-radius:6px; background:#f8fafc; padding:3px; box-sizing:border-box;">
-            <div style="width:95px; height:115px; border:1px solid #cbd5e1; border-radius:4px; overflow:hidden; background:#ffffff; display:flex; align-items:center; justify-content:center; text-align:center;">
-              ${photoUrl ? `<img src="${esc(photoUrl)}" alt="Photo" style="width:100%; height:100%; object-fit:cover; display:block;">` : `<div style="font-size:7.5px; color:#94a3b8; font-weight:700; padding:6px; line-height:1.2;">AFFIX RECENT<br>PASSPORT PHOTO<br><br><span style="font-size:16px;">📷</span><br><br>OFFICIALLY VERIFIED</div>`}
+          <!-- Official Passport Photograph Attestation Box (Right) -->
+          <div style="width:105px; flex-shrink:0; display:flex; flex-direction:column; align-items:center; justify-content:center; border:1.5px solid #064e3b; border-radius:4px; background:#f8fafc; padding:3px; box-sizing:border-box;">
+            <div style="width:95px; height:110px; border:1px solid #cbd5e1; border-radius:3px; overflow:hidden; background:#ffffff; display:flex; align-items:center; justify-content:center; text-align:center; position:relative;">
+              ${photoUrl ? `<img src="${esc(photoUrl)}" alt="Student Photo" style="width:100%; height:100%; object-fit:cover; display:block;">` : `
+                <div style="font-size:7px; color:#64748b; font-weight:700; padding:4px; line-height:1.25;">
+                  AFFIX RECENT<br>PASSPORT SIZE<br>COLOUR PHOTO<br>(3.5 cm × 4.5 cm)<br><br>
+                  <span style="font-size:14px; opacity:0.6;">📷</span><br><br>
+                  (Self-Attested Across Photo)
+                </div>
+              `}
             </div>
-            <div style="font-size:6.5px; font-weight:800; color:#064e3b; margin-top:3px; text-transform:uppercase; letter-spacing:0.5px;">
-              ATTESTED RECORD
+            <div style="font-size:6.5px; font-weight:800; color:#064e3b; margin-top:2px; text-transform:uppercase; letter-spacing:0.5px;">
+              VERIFIED RECORD
             </div>
           </div>
         </div>
 
-        <!-- SECTION 1: PERSONAL & STATUTORY IDS -->
-        <div style="margin-bottom:10px;">
-          <div style="background:#f1f5f9; border-left:4px solid #064e3b; padding:4px 8px; font-size:9.5px; font-weight:800; color:#064e3b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">
-            1. Candidate Personal &amp; Statutory Demographics
+        <!-- SECTION I: CANDIDATE PERSONAL PARTICULARS & DEMOGRAPHICS -->
+        <div style="margin-bottom:8px;">
+          <div style="background:#f1f5f9; border-left:4px solid #064e3b; padding:3px 8px; font-size:9px; font-weight:800; color:#064e3b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:3px;">
+            I. Candidate Personal Particulars &amp; Demographics
           </div>
-          <table style="width:100%; border-collapse:collapse; font-size:9.5px; border:1px solid #e2e8f0;">
+          <table style="width:100%; border-collapse:collapse; font-size:9px; border:1px solid #e2e8f0;">
             <tbody>
               <tr style="border-bottom:1px solid #e2e8f0;">
-                <td style="width:18%; padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Full Legal Name:</td>
-                <td style="width:32%; padding:4px 6px; font-weight:800; font-size:10.5px; color:#0f172a;">${val(s.fullName)}</td>
-                <td style="width:18%; padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Gender &amp; DOB:</td>
-                <td style="width:32%; padding:4px 6px; font-weight:600;">${val(s.gender)} • ${val(s.dob)} ${ageStr ? `(${ageStr})` : ''}</td>
+                <td style="width:22%; padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Full Legal Name (Block Letters):</td>
+                <td colspan="3" style="padding:4px 6px; font-weight:800; font-size:10.5px; color:#0f172a;">
+                  ${fill(s.fullName ? s.fullName.toUpperCase() : '', '100%')}
+                </td>
               </tr>
               <tr style="border-bottom:1px solid #e2e8f0;">
-                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Aadhaar UID No:</td>
-                <td style="padding:4px 6px; font-weight:700; font-family:var(--font-mono);">${val(s.aadharNo || s.aadhaar)}</td>
-                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">APAAR / ABC ID:</td>
-                <td style="padding:4px 6px; font-weight:700; font-family:var(--font-mono);">${val(s.apaarId)}</td>
+                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Date of Birth (in Figures):</td>
+                <td style="width:28%; padding:4px 6px; font-weight:700;">
+                  ${fill(formattedDob, '110px')} ${ageStr ? `(${ageStr})` : ''}
+                </td>
+                <td style="width:20%; padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Gender:</td>
+                <td style="width:30%; padding:4px 6px;">
+                  ${chkBox(isMale, 'Male')}
+                  ${chkBox(isFemale, 'Female')}
+                  ${chkBox(!isMale && !isFemale && s.gender, s.gender || 'Other')}
+                </td>
               </tr>
               <tr style="border-bottom:1px solid #e2e8f0;">
-                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Govt / Shiksha ID:</td>
-                <td style="padding:4px 6px; font-family:var(--font-mono);">${val(s.govtStudentId)}</td>
-                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Minority / Kanyashree:</td>
-                <td style="padding:4px 6px; font-family:var(--font-mono);">${val(s.minorityId || s.kanyashreeId)}</td>
+                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Date of Birth (in Words):</td>
+                <td colspan="3" style="padding:4px 6px;">
+                  ${fill(s.dobInWords, '100%')}
+                </td>
+              </tr>
+              <tr style="border-bottom:1px solid #e2e8f0;">
+                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Social Category:</td>
+                <td colspan="3" style="padding:4px 6px;">
+                  ${chkBox(isGeneral, 'General')}
+                  ${chkBox(isObcA, 'OBC-A')}
+                  ${chkBox(isObcB, 'OBC-B')}
+                  ${chkBox(isSc, 'SC')}
+                  ${chkBox(isSt, 'ST')}
+                  ${chkBox(isEws, 'EWS')}
+                  ${chkBox(s.category === 'ORPHAN', 'Orphan / Vulnerable')}
+                </td>
+              </tr>
+              <tr style="border-bottom:1px solid #e2e8f0;">
+                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Blood Group &amp; Mother Tongue:</td>
+                <td style="padding:4px 6px;">
+                  <span style="font-weight:800; color:#ef4444;">${fill(s.bloodGroup || s.blood_group, '60px')}</span>
+                  &nbsp;•&nbsp; Lang: ${fill(s.motherTongue || 'Bengali', '70px')}
+                </td>
+                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Religion &amp; Nationality:</td>
+                <td style="padding:4px 6px;">
+                  ${fill(s.religion || 'Islam', '70px')} &nbsp;•&nbsp; ${fill(s.nationality || 'Indian', '60px')}
+                </td>
               </tr>
               <tr>
-                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Blood Group:</td>
-                <td style="padding:4px 6px; font-weight:800; color:#ef4444;">${val(s.bloodGroup || s.blood_group)}</td>
-                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Religion &amp; Category:</td>
-                <td style="padding:4px 6px; font-weight:600;">${val(s.religion, 'Islam')} • ${val(s.category, 'General')} ${s.isOrphan === 'Yes' ? '• (Orphan)' : ''}</td>
+                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Personal Identification Marks:</td>
+                <td colspan="3" style="padding:4px 6px;">
+                  1) ${fill(s.identificationMark1 || s.idMark1, '42%')} &nbsp;&nbsp;&nbsp; 2) ${fill(s.identificationMark2 || s.idMark2, '42%')}
+                </td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <!-- SECTION 2: PARENTS & GUARDIAN -->
-        <div style="margin-bottom:10px;">
-          <div style="background:#f1f5f9; border-left:4px solid #064e3b; padding:4px 8px; font-size:9.5px; font-weight:800; color:#064e3b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">
-            2. Parent &amp; Family Credentials
+        <!-- SECTION II: STATUTORY GOVERNMENT IDENTIFIERS & SCHOLARSHIPS -->
+        <div style="margin-bottom:8px;">
+          <div style="background:#f1f5f9; border-left:4px solid #064e3b; padding:3px 8px; font-size:9px; font-weight:800; color:#064e3b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:3px;">
+            II. Statutory Government Identifiers &amp; DBT Portals
           </div>
-          <table style="width:100%; border-collapse:collapse; font-size:9.5px; border:1px solid #e2e8f0;">
+          <table style="width:100%; border-collapse:collapse; font-size:9px; border:1px solid #e2e8f0;">
             <tbody>
               <tr style="border-bottom:1px solid #e2e8f0;">
-                <td style="width:18%; padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Father's Name:</td>
-                <td style="width:32%; padding:4px 6px; font-weight:700;">${val(s.fatherName || s.parentName)}</td>
-                <td style="width:18%; padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Occupation &amp; Qual:</td>
-                <td style="width:32%; padding:4px 6px;">${val(s.fatherOccupation)} • ${val(s.fatherQualification)}</td>
+                <td style="width:22%; padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Aadhaar Card UID (12-Digit):</td>
+                <td style="width:28%; padding:4px 6px;">${digitBoxes(s.aadharNo || s.aadhaar, 12, 4)}</td>
+                <td style="width:20%; padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">APAAR / ABC ID (12-Digit):</td>
+                <td style="width:30%; padding:4px 6px;">${digitBoxes(s.apaarId, 12, 4)}</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Banglar Shiksha Student ID:</td>
+                <td style="padding:4px 6px; font-family:var(--font-mono); font-weight:700;">${fill(s.govtStudentId, '130px')}</td>
+                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Minority / Kanyashree ID:</td>
+                <td style="padding:4px 6px; font-family:var(--font-mono); font-weight:700;">${fill(s.minorityId || s.kanyashreeId, '130px')}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- SECTION III: PARENTAGE & GUARDIAN PARTICULARS -->
+        <div style="margin-bottom:8px;">
+          <div style="background:#f1f5f9; border-left:4px solid #064e3b; padding:3px 8px; font-size:9px; font-weight:800; color:#064e3b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:3px;">
+            III. Parentage &amp; Family Credentials
+          </div>
+          <table style="width:100%; border-collapse:collapse; font-size:9px; border:1px solid #e2e8f0;">
+            <tbody>
+              <tr style="border-bottom:1px solid #e2e8f0;">
+                <td style="width:20%; padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Father's Full Name:</td>
+                <td style="width:30%; padding:4px 6px; font-weight:700;">${fill(s.fatherName || s.parentName, '150px')}</td>
+                <td style="width:20%; padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Occupation &amp; Qual:</td>
+                <td style="width:30%; padding:4px 6px;">${fill(s.fatherOccupation, '80px')} &nbsp;•&nbsp; ${fill(s.fatherQualification, '70px')}</td>
               </tr>
               <tr style="border-bottom:1px solid #e2e8f0;">
-                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Mother's Name:</td>
-                <td style="padding:4px 6px; font-weight:700;">${val(s.motherName)}</td>
+                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Mother's Full Name:</td>
+                <td style="padding:4px 6px; font-weight:700;">${fill(s.motherName, '150px')}</td>
                 <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Occupation &amp; Qual:</td>
-                <td style="padding:4px 6px;">${val(s.motherOccupation, 'Homemaker')} • ${val(s.motherQualification)}</td>
+                <td style="padding:4px 6px;">${fill(s.motherOccupation || 'Homemaker', '80px')} &nbsp;•&nbsp; ${fill(s.motherQualification, '70px')}</td>
               </tr>
               <tr style="border-bottom:1px solid #e2e8f0;">
-                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Guardian &amp; Rel:</td>
-                <td style="padding:4px 6px; font-weight:700;">${val(s.guardianName || s.fatherName)} (${val(s.relation, 'Father')})</td>
-                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Annual Income:</td>
-                <td style="padding:4px 6px; font-family:var(--font-mono);">${s.annualIncome ? '₹ ' + esc(s.annualIncome) : '—'}</td>
+                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Legal Guardian &amp; Rel:</td>
+                <td style="padding:4px 6px;">${fill(s.guardianName || s.fatherName, '120px')} (${fill(s.relation || 'Father', '60px')})</td>
+                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Annual Family Income:</td>
+                <td style="padding:4px 6px; font-family:var(--font-mono);">${s.annualIncome ? '₹ ' + esc(s.annualIncome) : fill('', '100px')}</td>
               </tr>
               <tr>
-                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Emergency Phone:</td>
-                <td style="padding:4px 6px; font-weight:700; font-family:var(--font-mono); color:#15803d;">${val(s.guardianPhone || s.fatherPhone || s.phone)}</td>
-                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">WhatsApp No:</td>
-                <td style="padding:4px 6px; font-family:var(--font-mono);">${val(s.whatsapp || s.fatherWhatsapp || s.motherWhatsapp)}</td>
+                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Emergency Phone (Calling):</td>
+                <td style="padding:4px 6px; font-weight:700; font-family:var(--font-mono); color:#15803d;">${fill(s.guardianPhone || s.fatherPhone || s.phone, '120px')}</td>
+                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">WhatsApp &amp; Email:</td>
+                <td style="padding:4px 6px; font-family:var(--font-mono);">${fill(s.whatsapp || s.fatherWhatsapp, '100px')} &nbsp;•&nbsp; ${fill(s.email, '100px')}</td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <!-- SECTION 3: ADDRESS & SECTION 4: HOSTEL (SIDE BY SIDE) -->
-        <div style="display:grid; grid-template-columns:1.2fr 0.8fr; gap:10px; margin-bottom:10px;">
-          <!-- Address -->
+        <!-- SECTION IV: ADDRESS & SECTION V: HOSTEL (SIDE BY SIDE 2-COLUMN) -->
+        <div style="display:grid; grid-template-columns:1.15fr 0.85fr; gap:8px; margin-bottom:8px;">
+          <!-- Permanent Postal Address -->
           <div>
-            <div style="background:#f1f5f9; border-left:4px solid #064e3b; padding:4px 8px; font-size:9.5px; font-weight:800; color:#064e3b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">
-              3. Permanent &amp; Residential Address
+            <div style="background:#f1f5f9; border-left:4px solid #064e3b; padding:3px 8px; font-size:9px; font-weight:800; color:#064e3b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:3px;">
+              IV. Permanent &amp; Postal Address
             </div>
-            <table style="width:100%; border-collapse:collapse; font-size:9.5px; border:1px solid #e2e8f0; height:calc(100% - 24px);">
+            <table style="width:100%; border-collapse:collapse; font-size:9px; border:1px solid #e2e8f0; height:calc(100% - 22px);">
               <tbody>
                 <tr style="border-bottom:1px solid #e2e8f0;">
-                  <td style="width:26%; padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Village / Town:</td>
-                  <td style="padding:4px 6px; font-weight:600;">${val(s.village)}</td>
+                  <td style="width:30%; padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Village / Street:</td>
+                  <td style="padding:4px 6px; font-weight:600;">${fill(s.village || s.address, '100%')}</td>
                 </tr>
                 <tr style="border-bottom:1px solid #e2e8f0;">
-                  <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">PO &amp; PS:</td>
-                  <td style="padding:4px 6px;">${val(s.postOffice)} • ${val(s.policeStation)}</td>
+                  <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">P.O. &amp; P.S.:</td>
+                  <td style="padding:4px 6px;">PO: ${fill(s.postOffice, '70px')} &nbsp;•&nbsp; PS: ${fill(s.policeStation, '70px')}</td>
                 </tr>
                 <tr>
-                  <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Dist &amp; PIN:</td>
-                  <td style="padding:4px 6px;">${val(s.district, 'Dakshin Dinajpur')} - ${val(s.pinCode)} (${val(s.state, 'West Bengal')})</td>
+                  <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Dist, State &amp; PIN:</td>
+                  <td style="padding:4px 6px;">
+                    ${fill(s.district || 'Dakshin Dinajpur', '80px')} (${fill(s.state || 'West Bengal', '70px')})<br>
+                    PIN: ${digitBoxes(s.pinCode || '733127', 6, null)}
+                  </td>
                 </tr>
               </tbody>
             </table>
           </div>
 
-          <!-- Hostel & Boarding -->
+          <!-- Residential Hostel Allocation -->
           <div>
-            <div style="background:#f1f5f9; border-left:4px solid #064e3b; padding:4px 8px; font-size:9.5px; font-weight:800; color:#064e3b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">
-              4. Residential Boarding / Hostel
+            <div style="background:#f1f5f9; border-left:4px solid #064e3b; padding:3px 8px; font-size:9px; font-weight:800; color:#064e3b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:3px;">
+              V. Residential Boarding / Hostel
             </div>
-            <table style="width:100%; border-collapse:collapse; font-size:9.5px; border:1px solid #e2e8f0; height:calc(100% - 24px);">
+            <table style="width:100%; border-collapse:collapse; font-size:9px; border:1px solid #e2e8f0; height:calc(100% - 22px);">
               <tbody>
                 <tr style="border-bottom:1px solid #e2e8f0;">
-                  <td style="width:34%; padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Hostel Wing:</td>
-                  <td style="padding:4px 6px; font-weight:700; color:#1e40af;">${val(s.hostelBlock, isBoarder ? 'Hostel Wing Pending' : 'Non-Residential')}</td>
+                  <td style="width:35%; padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Hostel Wing:</td>
+                  <td style="padding:4px 6px; font-weight:700; color:#1e40af;">${isBoarder ? fill(s.hostelBlock, '100%') : 'Non-Residential (Day Scholar)'}</td>
                 </tr>
                 <tr style="border-bottom:1px solid #e2e8f0;">
                   <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Room &amp; Bed:</td>
-                  <td style="padding:4px 6px; font-weight:700; font-family:var(--font-mono); color:#16a34a;">${isBoarder ? `${val(s.hostelRoom, 'Room —')} • ${val(s.hostelBed, 'Bed —')}` : 'Day Scholar'}</td>
+                  <td style="padding:4px 6px; font-weight:700; font-family:var(--font-mono); color:#16a34a;">
+                    ${isBoarder ? `Room: ${fill(s.hostelRoom, '45px')} • Bed: ${fill(s.hostelBed, '45px')}` : 'Day Scholar (No Bed)'}
+                  </td>
                 </tr>
                 <tr>
-                  <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Mess / Board:</td>
-                  <td style="padding:4px 6px;">${isBoarder ? 'Full Residential Boarding' : 'Regular Day Scholar'}</td>
+                  <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Local Caretaker:</td>
+                  <td style="padding:4px 6px;">${fill(s.localGuardian || s.emergencyPhysician, '100%')}</td>
                 </tr>
               </tbody>
             </table>
           </div>
         </div>
 
-        <!-- SECTION 5: HEALTH & ACADEMIC -->
-        <div style="margin-bottom:12px;">
-          <div style="background:#f1f5f9; border-left:4px solid #064e3b; padding:4px 8px; font-size:9.5px; font-weight:800; color:#064e3b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">
-            5. Health &amp; Previous Academic Record
+        <!-- SECTION VI: PREVIOUS ACADEMICS & SECTION VII: BANK DETAILS (SIDE BY SIDE 2-COLUMN) -->
+        <div style="display:grid; grid-template-columns:1.05fr 0.95fr; gap:8px; margin-bottom:8px;">
+          <!-- Previous Academic Qualification -->
+          <div>
+            <div style="background:#f1f5f9; border-left:4px solid #064e3b; padding:3px 8px; font-size:9px; font-weight:800; color:#064e3b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:3px;">
+              VI. Previous Academic History &amp; TC
+            </div>
+            <table style="width:100%; border-collapse:collapse; font-size:9px; border:1px solid #e2e8f0; height:calc(100% - 22px);">
+              <tbody>
+                <tr style="border-bottom:1px solid #e2e8f0;">
+                  <td style="width:32%; padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Last School:</td>
+                  <td style="padding:4px 6px; font-weight:600;">${fill(s.previousSchool, '100%')}</td>
+                </tr>
+                <tr style="border-bottom:1px solid #e2e8f0;">
+                  <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Class Passed:</td>
+                  <td style="padding:4px 6px;">Class ${fill(s.previousClass, '40px')} &nbsp;•&nbsp; Marks: ${fill(s.previousMarks, '50px')}</td>
+                </tr>
+                <tr>
+                  <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">TC No. &amp; Date:</td>
+                  <td style="padding:4px 6px; font-family:var(--font-mono);">TC: ${fill(s.tcNo, '60px')} &nbsp;•&nbsp; Dt: ${fill(s.tcDate, '60px')}</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
-          <table style="width:100%; border-collapse:collapse; font-size:9.5px; border:1px solid #e2e8f0;">
-            <tbody>
-              <tr style="border-bottom:1px solid #e2e8f0;">
-                <td style="width:18%; padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Allergies / Health:</td>
-                <td style="width:32%; padding:4px 6px; color:#ef4444; font-weight:600;">${val(s.allergies || s.medicalConditions, 'No known chronic allergies')}</td>
-                <td style="width:18%; padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Hospital Contact:</td>
-                <td style="width:32%; padding:4px 6px; font-family:var(--font-mono);">${val(s.emergencyHospitalPhone || s.emergencyPhysician, 'Campus Medical Center')}</td>
-              </tr>
-              <tr>
-                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Previous School:</td>
-                <td style="padding:4px 6px; font-weight:600;">${val(s.previousSchool)}</td>
-                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Medical Notes:</td>
-                <td style="padding:4px 6px;">${val(s.medicalNotes || s.medical_notes, 'Fit for academic and physical activities')}</td>
-              </tr>
-            </tbody>
-          </table>
+
+          <!-- Bank Account Details (DBT / Scholarships) -->
+          <div>
+            <div style="background:#f1f5f9; border-left:4px solid #064e3b; padding:3px 8px; font-size:9px; font-weight:800; color:#064e3b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:3px;">
+              VII. Bank Particulars (DBT / Scholarship)
+            </div>
+            <table style="width:100%; border-collapse:collapse; font-size:9px; border:1px solid #e2e8f0; height:calc(100% - 22px);">
+              <tbody>
+                <tr style="border-bottom:1px solid #e2e8f0;">
+                  <td style="width:32%; padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Bank &amp; Branch:</td>
+                  <td style="padding:4px 6px;">${fill(s.bankName, '70px')} (${fill(s.bankBranch, '50px')})</td>
+                </tr>
+                <tr style="border-bottom:1px solid #e2e8f0;">
+                  <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">A/C Number:</td>
+                  <td style="padding:4px 6px; font-family:var(--font-mono); font-weight:700;">${fill(s.bankAccountNo, '100%')}</td>
+                </tr>
+                <tr>
+                  <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">IFS Code:</td>
+                  <td style="padding:4px 6px; font-family:var(--font-mono); font-weight:700;">${fill(s.bankIfsc, '90px')}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        <!-- SECTION 6: STATUTORY DECLARATION & SIGNATURE BLOCKS -->
-        <div style="border:1.5px solid #cbd5e1; border-radius:6px; padding:10px 12px; background:#fafafa; margin-bottom:8px;">
-          <div style="font-size:8.5px; line-height:1.35; color:#475569; text-align:justify; margin-bottom:18px;">
-            <strong>OFFICIAL UNDERTAKING:</strong> I hereby solemnly declare that all particulars entered in this Cumulative Student Record &amp; Admission Dossier are true, authentic, and verified from statutory certificates. The candidate shall abide by all academic standards, institutional discipline, and code of conduct formulated by Thaiba Model School.
+        <!-- SECTION VIII: STATUTORY UNDERTAKING BY PARENT / GUARDIAN -->
+        <div style="border:1.5px solid #cbd5e1; border-radius:4px; padding:8px 10px; background:#fafafa; margin-bottom:8px;">
+          <div style="font-size:8px; line-height:1.35; color:#334155; text-align:justify; margin-bottom:14px;">
+            <strong>STATUTORY UNDERTAKING &amp; DECLARATION:</strong> I hereby solemnly declare that all particulars entered in this Cumulative Student Bio-Data &amp; Admission Dossier are true, authentic, and verified from statutory certificates. No facts have been concealed. The candidate and parents/guardians shall strictly abide by all academic standards, institutional discipline, code of conduct, and fee regulations formulated by Thaiba Model School.
           </div>
 
           <div style="display:flex; justify-content:space-between; align-items:flex-end; font-size:8px; color:#334155;">
-            <div style="text-align:center; width:170px;">
-              <div style="border-bottom:1px solid #475569; height:24px; margin-bottom:4px;"></div>
-              <div style="font-weight:700; text-transform:uppercase;">Signature of Parent / Guardian</div>
-              <div style="font-size:7px; color:#64748b;">Date: ____________________</div>
+            <div style="text-align:center; width:160px;">
+              <div style="border-bottom:1px solid #475569; height:20px; margin-bottom:3px;"></div>
+              <div style="font-weight:700; text-transform:uppercase;">Signature / LTI of Father</div>
+              <div style="font-size:7px; color:#64748b;">Date: ........................</div>
+            </div>
+
+            <div style="text-align:center; width:160px;">
+              <div style="border-bottom:1px solid #475569; height:20px; margin-bottom:3px;"></div>
+              <div style="font-weight:700; text-transform:uppercase;">Signature / LTI of Mother</div>
+              <div style="font-size:7px; color:#64748b;">Date: ........................</div>
             </div>
 
             <div style="text-align:center; width:170px;">
-              <div style="border-bottom:1px solid #475569; height:24px; margin-bottom:4px;"></div>
+              <div style="border-bottom:1px solid #475569; height:20px; margin-bottom:3px;"></div>
+              <div style="font-weight:700; text-transform:uppercase;">Candidate's Signature</div>
+              <div style="font-size:7px; color:#64748b;">Specimen Signature</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION IX: FOR OFFICE USE ONLY (SCRUTINY & PRINCIPAL SANCTION) -->
+        <div style="border:1.5px solid #064e3b; border-radius:4px; padding:7px 10px; background:#f0fdf4; margin-bottom:6px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; font-size:8px; font-weight:800; color:#064e3b; text-transform:uppercase; border-bottom:1px dashed #86efac; padding-bottom:3px;">
+            <span>IX. For Office Use Only — Scrutiny &amp; Attestation Block</span>
+            <span>Checklist: [ ] Birth Cert &nbsp; [ ] Aadhaar &nbsp; [ ] TC &nbsp; [ ] Marksheet &nbsp; [ ] Photos</span>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; align-items:flex-end; font-size:8px; color:#1e293b;">
+            <div style="text-align:center; width:160px;">
+              <div style="border-bottom:1px solid #475569; height:18px; margin-bottom:3px;"></div>
+              <div style="font-weight:700; text-transform:uppercase;">Dealing Assistant / Clerk</div>
+              <div style="font-size:7px; color:#64748b;">Documents Checked &amp; Verified</div>
+            </div>
+
+            <div style="text-align:center; width:160px;">
+              <div style="border-bottom:1px solid #475569; height:18px; margin-bottom:3px;"></div>
               <div style="font-weight:700; text-transform:uppercase;">Class Teacher / Counselor</div>
-              <div style="font-size:7px; color:#64748b;">Attestation &amp; Verification</div>
+              <div style="font-size:7px; color:#64748b;">Attestation &amp; Roll Allocated</div>
             </div>
 
-            <div style="text-align:center; width:190px;">
-              <div style="font-family:'Brush Script MT', cursive; font-size:15px; color:#064e3b; line-height:1; margin-bottom:2px;">Thaiba Authority</div>
-              <div style="border-bottom:1.5px solid #064e3b; height:6px; margin-bottom:4px;"></div>
-              <div style="font-weight:800; color:#064e3b; text-transform:uppercase;">Principal / Head of Institution</div>
+            <div style="text-align:center; width:180px;">
+              <div style="font-family:'Brush Script MT', cursive; font-size:14px; color:#064e3b; line-height:1; margin-bottom:2px;">Thaiba Authority</div>
+              <div style="border-bottom:1.5px solid #064e3b; height:4px; margin-bottom:3px;"></div>
+              <div style="font-weight:800; color:#064e3b; text-transform:uppercase;">Principal / Headmaster</div>
               <div style="font-size:7px; color:#64748b;">Official Seal &amp; Institutional Stamp</div>
             </div>
           </div>
         </div>
 
         <!-- Tamper-evident Security Footer -->
-        <div style="display:flex; justify-content:space-between; align-items:center; font-size:7.5px; color:#94a3b8; border-top:1px dashed #cbd5e1; padding-top:4px;">
-          <div>● SECURE CUMULATIVE STUDENT RECORD • THAIBA MODEL SCHOOL ERP</div>
-          <div>REF NO: <span style="font-family:var(--font-mono); color:#475569; font-weight:700;">TMS-DOS-${esc(s.admissionNo || s.id)}</span></div>
-          <div>GENERATED: <strong>${new Date().toISOString().replace('T', ' ').slice(0, 19)}</strong></div>
+        <div style="display:flex; justify-content:space-between; align-items:center; font-size:7px; color:#64748b; border-top:1px dashed #cbd5e1; padding-top:3px;">
+          <div>● SECURE CUMULATIVE STUDENT DOSSIER • THAIBA MODEL SCHOOL ERP</div>
+          <div>RECORD ID: <span style="font-family:var(--font-mono); color:#0f172a; font-weight:700;">TMS-DOS-${esc(s.admissionNo || s.id || 'NEW')}</span></div>
+          <div>PRINTED: <strong>${new Date().toISOString().replace('T', ' ').slice(0, 19)}</strong></div>
         </div>
       </div>
     `;
@@ -3420,6 +3589,17 @@ export class StudentModule {
               </button>
             </div>
           </div>
+
+          <!-- Option 3: Blank Official Form (Ready to Fill by Pen) -->
+          <div style="background:#fefce8; border:1px solid #fef08a; border-radius:10px; padding:12px 14px; display:flex; align-items:center; justify-content:space-between; gap:12px;">
+            <div>
+              <div style="font-weight:700; font-size:0.86rem; color:#854d0e;">Print Blank Official Form</div>
+              <div style="font-size:0.75rem; color:#a16207;">Pristine blank form with write-in lines and boxes ready for manual pen entry by walk-in applicants.</div>
+            </div>
+            <button type="button" class="btn btn-secondary" id="btn-batch-dl-blank" style="font-weight:700; height:36px; white-space:nowrap; border-color:#fde047; color:#854d0e; background:#ffffff;">
+              <i data-lucide="printer"></i> Print Blank Form
+            </button>
+          </div>
         </div>
       </div>
     `;
@@ -3451,6 +3631,11 @@ export class StudentModule {
       }
       UIComponents.closeModal();
       StudentModule.bulkDownloadStudentDossiers(filtered);
+    });
+
+    document.getElementById('btn-batch-dl-blank')?.addEventListener('click', () => {
+      UIComponents.closeModal();
+      StudentModule.downloadStudentDossier({});
     });
   }
 
