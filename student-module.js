@@ -1639,17 +1639,33 @@ export class StudentModule {
     /* ---- Selection, bulk actions, edit & delete ---- */
     const students = this._students || [];
     const canManage = PermissionEngine.can(CAPABILITIES.MANAGE_STUDENTS);
-    const checked = () => Array.from(container.querySelectorAll('.student-row-check:checked')).map((c) => c.value);
+    // De-duplicate checked student IDs using Set (prevents 2x double-count from responsive mobile cards + desktop table)
+    const checked = () => Array.from(new Set(Array.from(container.querySelectorAll('.student-row-check:checked')).map((c) => c.value)));
     const syncCount = () => {
-      const cnt = checked().length;
+      const selectedIds = checked();
+      const cnt = selectedIds.length;
       const el = container.querySelector('#students-selected-count');
       if (el) el.innerText = cnt;
       const bulkFormsEl = container.querySelector('#bulk-forms-count');
       if (bulkFormsEl) bulkFormsEl.innerText = cnt;
+      const selectAllEl = container.querySelector('#students-select-all-cb');
+      if (selectAllEl) {
+        const totalUnique = (this._students || students).length;
+        selectAllEl.checked = totalUnique > 0 && cnt === totalUnique;
+        selectAllEl.indeterminate = cnt > 0 && cnt < totalUnique;
+      }
     };
-    const selectedStudents = () => students.filter((s) => checked().includes(s.id));
+    const selectedStudents = () => (this._students || students).filter((s) => checked().includes(s.id));
 
-    container.querySelectorAll('.student-row-check').forEach((c) => c.addEventListener('change', syncCount));
+    container.querySelectorAll('.student-row-check').forEach((c) => {
+      c.addEventListener('change', () => {
+        // Sync both desktop table checkbox and mobile card checkbox for this student
+        const sid = c.value;
+        const state = c.checked;
+        container.querySelectorAll(`.student-row-check[value="${sid}"]`).forEach((b) => { b.checked = state; });
+        syncCount();
+      });
+    });
     const selectAllCb = container.querySelector('#students-select-all-cb');
     if (selectAllCb) {
       selectAllCb.addEventListener('change', () => {
