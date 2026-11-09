@@ -363,6 +363,7 @@ class SupabaseDataService {
 
   setLocal(collection, data) {
     try {
+      this.invalidateCache(collection);
       localStorage.setItem(`tms_${collection}`, JSON.stringify(data));
       window.dispatchEvent(new CustomEvent(`tms_data_${collection}`, { detail: data }));
     } catch (e) {

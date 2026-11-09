@@ -81,11 +81,28 @@ export class AcademicModule {
     ]);
 
     this._staff = staff || [];
-    this._subjects = (dbSubjects && dbSubjects.length) ? dbSubjects : DEFAULT_SUBJECTS;
+
+    // 1. Subjects initialization & persistence
+    const isSubjectsInitialized = localStorage.getItem('tms_subjects_initialized') === 'true';
+    if (!dbSubjects || dbSubjects.length === 0) {
+      if (!isSubjectsInitialized) {
+        this._subjects = DEFAULT_SUBJECTS;
+        dbService.setLocal('academic_subjects', DEFAULT_SUBJECTS);
+        localStorage.setItem('tms_subjects_initialized', 'true');
+        for (const s of DEFAULT_SUBJECTS) {
+          dbService.upsert('academic_subjects', s).catch(() => {});
+        }
+      } else {
+        this._subjects = [];
+      }
+    } else {
+      this._subjects = dbSubjects;
+    }
+
+    // 2. Classes initialization & persistence
     const isClassesInitialized = localStorage.getItem('tms_classes_initialized') === 'true';
     if (!dbClasses || dbClasses.length === 0) {
       if (!isClassesInitialized) {
-        // First-time load: build and persist standard classes so they are real DB records
         const defaultClasses = TMS_CONFIG.academic.classes.map((cls, idx) => ({
           id: `cls-${idx + 1}`,
           grade: cls,
@@ -98,19 +115,51 @@ export class AcademicModule {
           status: 'Active'
         }));
         this._classes = defaultClasses;
+        dbService.setLocal('academic_classes', defaultClasses);
         localStorage.setItem('tms_classes_initialized', 'true');
         for (const c of defaultClasses) {
           dbService.upsert('academic_classes', c).catch(() => {});
         }
       } else {
-        // User intentionally deleted classes
         this._classes = [];
       }
     } else {
       this._classes = dbClasses;
     }
-    this._periods = (dbPeriods && dbPeriods.length) ? dbPeriods.sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0)) : DEFAULT_PERIODS;
-    this._sessions = (dbSessions && dbSessions.length) ? dbSessions : DEFAULT_SESSIONS;
+
+    // 3. Periods / Bell Schedule initialization & persistence
+    const isPeriodsInitialized = localStorage.getItem('tms_periods_initialized') === 'true';
+    if (!dbPeriods || dbPeriods.length === 0) {
+      if (!isPeriodsInitialized) {
+        this._periods = DEFAULT_PERIODS;
+        dbService.setLocal('academic_periods', DEFAULT_PERIODS);
+        localStorage.setItem('tms_periods_initialized', 'true');
+        for (const p of DEFAULT_PERIODS) {
+          dbService.upsert('academic_periods', p).catch(() => {});
+        }
+      } else {
+        this._periods = [];
+      }
+    } else {
+      this._periods = dbPeriods.sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
+    }
+
+    // 4. Sessions initialization & persistence
+    const isSessionsInitialized = localStorage.getItem('tms_sessions_initialized') === 'true';
+    if (!dbSessions || dbSessions.length === 0) {
+      if (!isSessionsInitialized) {
+        this._sessions = DEFAULT_SESSIONS;
+        dbService.setLocal('academic_sessions', DEFAULT_SESSIONS);
+        localStorage.setItem('tms_sessions_initialized', 'true');
+        for (const s of DEFAULT_SESSIONS) {
+          dbService.upsert('academic_sessions', s).catch(() => {});
+        }
+      } else {
+        this._sessions = [];
+      }
+    } else {
+      this._sessions = dbSessions;
+    }
     this._syllabus = (dbSyllabus && dbSyllabus.length) ? dbSyllabus : DEFAULT_SYLLABUS;
 
     this._currentTab = this._currentTab || 'classes';
@@ -242,7 +291,7 @@ export class AcademicModule {
                 <i data-lucide="table"></i> Table
               </button>
             </div>
-            <button class="btn btn-secondary btn-sm" id="btn-restore-classes-default" title="Restore standard classes"><i data-lucide="rotate-ccw"></i> Restore Classes</button>
+            <button class="btn btn-secondary btn-sm" id="btn-restore-classes-default" title="Restore standard classes"><i data-lucide="rotate-ccw"></i> Restore Classes</button>
             <button class="btn btn-primary btn-sm" id="btn-add-class-inner"><i data-lucide="plus"></i> New Class</button>
           </div>
         </div>
@@ -426,7 +475,7 @@ export class AcademicModule {
         </div>
 
         <div class="tms-cards-grid">
-          ${this._periods.map(p => {
+          ${!this._periods.length ? '<div style="grid-column:1/-1; padding:36px; text-align:center; color:#64748b; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:12px;">No period timings or bell schedule configured. Click <strong>"Add Period / Bell Time"</strong> above to register a slot.</div>' : this._periods.map(p => {
             const isBreak = p.isBreak;
             const borderCol = isBreak ? '#f59e0b' : '#16a34a';
             const iconName = isBreak ? 'coffee' : 'clock';
@@ -568,7 +617,7 @@ export class AcademicModule {
         </div>
 
         <div class="tms-cards-grid">
-          ${this._subjects.map(s => `
+          ${!this._subjects.length ? '<div style="grid-column:1/-1; padding:36px; text-align:center; color:#64748b; background:#f8fafc; border:1px dashed #cbd5e1; border-radius:12px;">No curriculum subjects registered. Click <strong>"New Subject"</strong> above to register a subject.</div>' : this._subjects.map(s => `
             <div class="tms-data-card">
               <div class="tms-data-card-header">
                 <div>
@@ -839,12 +888,10 @@ export class AcademicModule {
       const remaining = this._classes.filter(c => c.id !== classId);
       this._classes = remaining;
 
-      // Ensure all remaining classes are persisted in DB so default classes do not resurrect
-      for (const rem of remaining) {
-        await dbService.upsert('academic_classes', rem);
-      }
+      // Instantly update local cache for zero delay
+      dbService.setLocal('academic_classes', remaining);
 
-      // Delete from DB and local cache
+      // Asynchronously delete from DB without slow loops
       await dbService.delete('academic_classes', classId);
 
       await auditService.log('CLASS_DELETED', 'ACADEMIC', { grade: cls.grade, section: cls.section || 'A' });
@@ -880,7 +927,8 @@ export class AcademicModule {
           status: 'Active'
         };
         try {
-          await dbService.upsert('bell_schedule', periodRecord);
+          localStorage.setItem('tms_periods_initialized', 'true');
+          await dbService.upsert('academic_periods', periodRecord);
           await auditService.log(initialData ? 'PERIOD_UPDATED' : 'PERIOD_CREATED', 'ACADEMIC', periodRecord);
         } catch (err) {
           console.warn('Period save fallback:', err);
@@ -910,6 +958,11 @@ export class AcademicModule {
     if (!ok) return;
 
     try {
+      localStorage.setItem('tms_periods_initialized', 'true');
+      const remaining = this._periods.filter(p => p.id !== periodId);
+      this._periods = remaining;
+      dbService.setLocal('academic_periods', remaining);
+
       await dbService.delete('academic_periods', periodId);
       UIComponents.showToast(`Period "${prd.name}" deleted.`, 'success');
       await this.render(this._container);
@@ -1079,6 +1132,11 @@ export class AcademicModule {
     if (!ok) return;
 
     try {
+      localStorage.setItem('tms_sessions_initialized', 'true');
+      const remaining = this._sessions.filter(x => x.id !== sessionId);
+      this._sessions = remaining;
+      dbService.setLocal('academic_sessions', remaining);
+
       await dbService.delete('academic_sessions', sessionId);
       UIComponents.showToast(`Session "${s.sessionName}" deleted.`, 'success');
       await this.render(this._container);
@@ -1213,6 +1271,11 @@ export class AcademicModule {
     if (!ok) return;
 
     try {
+      localStorage.setItem('tms_subjects_initialized', 'true');
+      const remaining = this._subjects.filter(x => x.id !== subjectId);
+      this._subjects = remaining;
+      dbService.setLocal('academic_subjects', remaining);
+
       await dbService.delete('academic_subjects', subjectId);
       UIComponents.showToast(`Subject "${s.name}" deleted.`, 'success');
       await this.render(this._container);
