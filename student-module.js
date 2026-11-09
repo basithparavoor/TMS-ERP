@@ -955,8 +955,7 @@ export class StudentModule {
                 <th style="padding:12px 16px; font-weight:800; font-size:0.75rem; letter-spacing:0.04em; color:#475569;">STUDENT INFO</th>
                 <th style="padding:12px 16px; font-weight:800; font-size:0.75rem; letter-spacing:0.04em; color:#475569;">ID NUMBER</th>
                 <th style="padding:12px 16px; font-weight:800; font-size:0.75rem; letter-spacing:0.04em; color:#475569;">CLASS</th>
-                <th style="padding:12px 16px; font-weight:800; font-size:0.75rem; letter-spacing:0.04em; color:#475569;">CATEGORY</th>
-                <th style="padding:12px 16px; font-weight:800; font-size:0.75rem; letter-spacing:0.04em; color:#475569;">HOSTEL / BED</th>
+                <th style="padding:12px 16px; font-weight:800; font-size:0.75rem; letter-spacing:0.04em; color:#475569;">CATEGORY / BOARDING</th>
                 <th style="padding:12px 16px; font-weight:800; font-size:0.75rem; letter-spacing:0.04em; color:#475569;">PARENT / CONTACT</th>
                 <th style="padding:12px 16px; font-weight:800; font-size:0.75rem; letter-spacing:0.04em; color:#475569;">STATUS</th>
                 <th style="padding:12px 16px; text-align:right; font-weight:800; font-size:0.75rem; letter-spacing:0.04em; color:#475569;">ACTIONS</th>
@@ -988,37 +987,41 @@ export class StudentModule {
                     <span style="font-weight:800; font-size:0.92rem; color:#0F172A;">${esc(s.grade || s.class || 'STD-I')}</span>
                   </td>
                   <td style="padding:14px 16px;">
-                    <span class="tms-category-badge">${esc(s.category || 'GENERAL')}</span>
-                  </td>
-                  <td style="padding:14px 16px;">
                     ${StudentModule.isDayScholar(s) ? `
-                      <div style="display:flex; align-items:center; gap:6px;">
-                        <span class="badge" style="background:#f8fafc; color:#64748b; border:1px solid #e2e8f0; font-size:0.75rem; font-weight:600; padding:4px 9px; border-radius:6px; display:inline-flex; align-items:center; gap:5px;">
-                          <i data-lucide="sun" style="width:13px; height:13px; color:#d97706;"></i> Day Scholar
+                      <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-start;">
+                        <span class="tms-category-badge" style="background:#f1f5f9; color:#475569; font-size:0.75rem; font-weight:700; padding:3px 9px; border-radius:6px; border:1px solid #e2e8f0;">
+                          ${esc(s.category || 'Day Scholar')}
                         </span>
-                        <button type="button" class="btn btn-secondary btn-sm btn-assign-hostel-bed" data-id="${esc(s.id)}" title="Assign Hostel Bed & Convert" style="padding:2px 7px; font-size:0.7rem; border-radius:6px; font-weight:700; color:#0e623b; border-color:#bbf7d0;">
-                          <i data-lucide="plus" style="width:11px; height:11px;"></i> Bed
-                        </button>
                       </div>
                     ` : (s.hostelBlock && s.hostelBlock.trim() && s.hostelRoom && s.hostelRoom.trim()) ? `
-                      <div style="display:flex; flex-direction:column; gap:2px;">
-                        <div style="font-weight:700; font-size:0.84rem; color:#1e293b; display:flex; align-items:center; gap:5px;">
-                          <i data-lucide="home" style="width:13px; height:13px; color:#16a34a; flex-shrink:0;"></i>
-                          <span>${esc(s.hostelBlock)}</span>
+                      <div style="display:flex; flex-direction:column; gap:3px; align-items:flex-start;">
+                        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                          <span class="tms-category-badge" style="background:#ecfdf5; color:#0e623b; font-size:0.72rem; font-weight:800; padding:2px 8px; border-radius:6px; border:1px solid #bbf7d0;">
+                            ${esc(s.category || 'Hosteler')}
+                          </span>
+                          <span style="font-size:0.78rem; font-weight:700; color:#1e293b; display:inline-flex; align-items:center; gap:4px;">
+                            <i data-lucide="home" style="width:12px; height:12px; color:#16a34a; flex-shrink:0;"></i>
+                            <span>${esc(s.hostelBlock)}</span>
+                          </span>
                         </div>
-                        <div style="font-size:0.75rem; color:#64748b; font-family:var(--font-mono);">
-                          ${esc(s.hostelRoom)} • ${esc(s.hostelBed || 'Bed 1')}
+                        <div style="font-size:0.74rem; color:#64748b; font-family:var(--font-mono); display:flex; align-items:center; gap:6px; margin-top:1px;">
+                          <span>${esc(s.hostelRoom)} • ${esc(s.hostelBed || 'Bed 1')}</span>
+                          <button type="button" class="btn btn-secondary btn-sm btn-change-bed" data-id="${esc(s.id)}" title="Change Room/Bed" style="padding:1px 7px; font-size:0.68rem; border-radius:5px; color:#0e623b; font-weight:700; height:20px; line-height:18px;">
+                            <i data-lucide="bed" style="width:11px; height:11px;"></i> Change
+                          </button>
                         </div>
-                        <button type="button" class="btn btn-secondary btn-sm btn-change-bed" data-id="${esc(s.id)}" style="align-self:flex-start; margin-top:3px; padding:1px 7px; font-size:0.7rem; border-radius:6px; color:#0e623b; font-weight:700;">
-                          <i data-lucide="bed" style="width:11px; height:11px;"></i> Change Bed
-                        </button>
                       </div>
                     ` : `
                       <div style="display:flex; flex-direction:column; gap:4px; align-items:flex-start;">
-                        <span class="badge" style="background:#fef3c7; color:#92400e; border:1px solid #fde68a; font-size:0.72rem; font-weight:700; padding:2px 8px; border-radius:6px; display:inline-flex; align-items:center; gap:4px;">
-                          <i data-lucide="alert-circle" style="width:11px; height:11px; color:#d97706;"></i> Unassigned Bed
-                        </span>
-                        <button type="button" class="btn btn-primary btn-sm btn-change-bed" data-id="${esc(s.id)}" style="background:#0e623b; border-color:#0e623b; padding:2px 9px; font-size:0.72rem; border-radius:6px; color:#ffffff; font-weight:700; display:inline-flex; align-items:center; gap:4px;">
+                        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                          <span class="tms-category-badge" style="background:#fef3c7; color:#92400e; font-size:0.72rem; font-weight:800; padding:2px 8px; border-radius:6px; border:1px solid #fde68a;">
+                            ${esc(s.category || 'Hosteler')}
+                          </span>
+                          <span class="badge" style="background:#fffbeb; color:#b45309; border:1px solid #fde68a; font-size:0.7rem; font-weight:700; padding:1px 6px; border-radius:5px; display:inline-flex; align-items:center; gap:3px;">
+                            <i data-lucide="alert-circle" style="width:10px; height:10px;"></i> Pending Bed
+                          </span>
+                        </div>
+                        <button type="button" class="btn btn-primary btn-sm btn-change-bed" data-id="${esc(s.id)}" title="Assign Hostel Room & Bed" style="background:#0e623b; border-color:#0e623b; padding:2px 9px; font-size:0.71rem; border-radius:6px; color:#ffffff; font-weight:700; display:inline-flex; align-items:center; gap:4px; height:22px;">
                           <i data-lucide="plus" style="width:11px; height:11px;"></i> Assign Bed
                         </button>
                       </div>
