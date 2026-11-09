@@ -987,9 +987,14 @@ export class StudentModule {
                   </td>
                   <td style="padding:14px 16px;">
                     ${StudentModule.isDayScholar(s) ? `
-                      <span class="badge" style="background:#f8fafc; color:#64748b; border:1px solid #e2e8f0; font-size:0.75rem; font-weight:600; padding:4px 9px; border-radius:6px; display:inline-flex; align-items:center; gap:5px;">
-                        <i data-lucide="sun" style="width:13px; height:13px; color:#d97706;"></i> Day Scholar
-                      </span>
+                      <div style="display:flex; align-items:center; gap:6px;">
+                        <span class="badge" style="background:#f8fafc; color:#64748b; border:1px solid #e2e8f0; font-size:0.75rem; font-weight:600; padding:4px 9px; border-radius:6px; display:inline-flex; align-items:center; gap:5px;">
+                          <i data-lucide="sun" style="width:13px; height:13px; color:#d97706;"></i> Day Scholar
+                        </span>
+                        <button type="button" class="btn btn-secondary btn-sm btn-assign-hostel-bed" data-id="${esc(s.id)}" title="Assign Hostel Bed & Convert" style="padding:2px 7px; font-size:0.7rem; border-radius:6px; font-weight:700; color:#0e623b; border-color:#bbf7d0;">
+                          <i data-lucide="plus" style="width:11px; height:11px;"></i> Bed
+                        </button>
+                      </div>
                     ` : (s.hostelBlock && s.hostelBlock.trim() && s.hostelRoom && s.hostelRoom.trim()) ? `
                       <div style="display:flex; flex-direction:column; gap:2px;">
                         <div style="font-weight:700; font-size:0.84rem; color:#1e293b; display:flex; align-items:center; gap:5px;">
@@ -1029,6 +1034,9 @@ export class StudentModule {
                       <button type="button" class="tms-table-action-btn btn-view-profile" data-id="${esc(s.id)}" title="View Profile">
                         <i data-lucide="eye" style="width:16px;height:16px;"></i>
                       </button>
+                      <button type="button" class="tms-table-action-btn btn-print-id" data-id="${esc(s.id)}" title="Print Smart PVC ID Card" style="color:#0e623b;">
+                        <i data-lucide="credit-card" style="width:16px;height:16px;"></i>
+                      </button>
                       <button type="button" class="tms-table-action-btn btn-edit-student" data-id="${esc(s.id)}" title="Edit Student">
                         <i data-lucide="edit-3" style="width:16px;height:16px;"></i>
                       </button>
@@ -1057,6 +1065,7 @@ export class StudentModule {
   static openStudentEditModal(student, container) {
     const esc = (v) => UIComponents.escapeHtml(v);
     const s = student || {};
+    const isDayScholar = StudentModule.isDayScholar(s);
     const fields = this.getFieldConfigs().filter(f => f.active !== false);
 
     const categoriesOrder = [
@@ -1120,18 +1129,35 @@ export class StudentModule {
 
         <form id="form-edit-student">
           <!-- Hostel Boarding Section -->
-          <div class="tms-section-card" style="margin-bottom:14px;">
+          <div class="tms-section-card" style="margin-bottom:14px;" id="ed-hostel-section-card">
             <div class="tms-section-card-header">
               <div class="tms-section-title">
                 <i data-lucide="home" style="width:16px; height:16px; color:#16a34a;"></i>
                 <span>Hostel &amp; Residential Boarding</span>
               </div>
-              <span style="font-size:0.72rem; color:#64748b; font-weight:600;">Dormitory &amp; Bed Setup</span>
+              <span id="ed-hostel-status-pill" class="badge" style="font-size:0.72rem; padding:3px 10px; font-weight:700; background:${isDayScholar ? '#f1f5f9' : '#dcfce7'}; color:${isDayScholar ? '#64748b' : '#15803d'};">
+                ${isDayScholar ? '☀️ Day Scholar' : '🏠 Hosteller'}
+              </span>
             </div>
-            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px; padding:12px 14px; background:#f8fafc; border-radius:10px;">
+
+            <!-- Day Scholar Notice -->
+            <div id="ed-hostel-day-scholar-notice" style="${isDayScholar ? 'display:flex;' : 'display:none;'} padding:12px 14px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; margin-bottom:10px; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:1.2rem;">☀️</span>
+                <div>
+                  <div style="font-weight:700; font-size:0.84rem; color:#166534;">Enrolled as Day Scholar</div>
+                  <div style="font-size:0.74rem; color:#15803d;">Hostel &amp; bed allocation is not required for Day Scholars.</div>
+                </div>
+              </div>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-ed-assign-bed" style="font-size:0.75rem; font-weight:700; white-space:nowrap; border-color:#86efac; color:#166534; background:#ffffff;">
+                <i data-lucide="plus" style="width:12px; height:12px;"></i> Convert to Hosteller &amp; Assign Bed
+              </button>
+            </div>
+
+            <div id="ed-hostel-fields-wrap" style="${isDayScholar ? 'display:none;' : 'display:grid;'} grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px; padding:12px 14px; background:#f8fafc; border-radius:10px;">
               <div>
                 <label class="form-label" style="font-size:0.78rem; font-weight:700;">Hostel Wing / Block</label>
-                <input type="text" class="form-input" id="ed-hostel-block" name="hostelBlock" value="${esc(s.hostelBlock || '')}" placeholder="e.g. Hazrat Bilal Boys Wing, Fatima Girls Wing (empty for Day Scholar)">
+                <input type="text" class="form-input" id="ed-hostel-block" name="hostelBlock" value="${esc(s.hostelBlock || '')}" placeholder="e.g. Hazrat Bilal Boys Wing, Fatima Girls Wing">
               </div>
               <div>
                 <label class="form-label" style="font-size:0.78rem; font-weight:700;">Room Number</label>
@@ -1218,6 +1244,51 @@ export class StudentModule {
         }
       });
     }
+
+    // Day Scholar / Hosteller Dynamic Section Toggle
+    document.getElementById('btn-ed-assign-bed')?.addEventListener('click', () => {
+      const catInput = document.getElementById('ed-category');
+      if (catInput) {
+        catInput.value = 'Hosteler';
+        catInput.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      const notice = document.getElementById('ed-hostel-day-scholar-notice');
+      if (notice) notice.style.display = 'none';
+      const wrap = document.getElementById('ed-hostel-fields-wrap');
+      if (wrap) wrap.style.display = 'grid';
+      const pill = document.getElementById('ed-hostel-status-pill');
+      if (pill) {
+        pill.textContent = '🏠 Hosteller';
+        pill.style.background = '#dcfce7';
+        pill.style.color = '#15803d';
+      }
+      document.getElementById('ed-hostel-block')?.focus();
+    });
+
+    document.getElementById('ed-category')?.addEventListener('change', (e) => {
+      const val = e.target.value;
+      const isDay = /day[\s_-]*scholar/i.test(val);
+      const notice = document.getElementById('ed-hostel-day-scholar-notice');
+      const wrap = document.getElementById('ed-hostel-fields-wrap');
+      const pill = document.getElementById('ed-hostel-status-pill');
+      if (isDay) {
+        if (notice) notice.style.display = 'flex';
+        if (wrap) wrap.style.display = 'none';
+        if (pill) {
+          pill.textContent = '☀️ Day Scholar';
+          pill.style.background = '#f1f5f9';
+          pill.style.color = '#64748b';
+        }
+      } else {
+        if (notice) notice.style.display = 'none';
+        if (wrap) wrap.style.display = 'grid';
+        if (pill) {
+          pill.textContent = '🏠 Hosteller';
+          pill.style.background = '#dcfce7';
+          pill.style.color = '#15803d';
+        }
+      }
+    });
 
     document.getElementById('ed-save')?.addEventListener('click', async () => {
       const updates = { photo: uploadedPhotoUrl };
@@ -1661,7 +1732,7 @@ export class StudentModule {
         if (s) this.deleteStudents([s], container);
       }));
 
-    container.querySelectorAll('.btn-change-bed').forEach((b) =>
+    container.querySelectorAll('.btn-change-bed, .btn-assign-hostel-bed').forEach((b) =>
       b.addEventListener('click', () => {
         const s = (this._students || students).find((x) => x.id === b.dataset.id);
         if (s) StudentModule.openHostelBedModal(s, container);
@@ -2182,12 +2253,17 @@ export class StudentModule {
 
     const footerHtml = `
       <div style="display:flex; justify-content:space-between; align-items:center; width:100%; flex-wrap:wrap; gap:10px;">
-        <button class="btn btn-primary" id="btn-modal-enroll-biometrics" style="border-radius:12px; padding:9px 20px; font-weight:700; background:#0E623B; border-color:#0E623B; display:inline-flex; align-items:center; gap:7px;">
-          <i data-lucide="radio" style="width:16px; height:16px;"></i> Smart Biometrics &amp; NFC
-        </button>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="btn btn-primary" id="btn-modal-enroll-biometrics" style="border-radius:12px; padding:9px 18px; font-weight:700; background:#0E623B; border-color:#0E623B; display:inline-flex; align-items:center; gap:7px;">
+            <i data-lucide="radio" style="width:16px; height:16px;"></i> Smart Biometrics &amp; NFC
+          </button>
+          <button class="btn btn-secondary" id="btn-modal-print-id-card" style="border-radius:12px; padding:9px 16px; font-weight:700; color:#0e623b; border-color:#86efac; display:inline-flex; align-items:center; gap:6px;">
+            <i data-lucide="credit-card" style="width:15px; height:15px;"></i> Print PVC ID Card
+          </button>
+        </div>
         <div style="display:flex; gap:10px;">
           <button class="btn btn-secondary" id="btn-modal-edit-student" style="border-radius:12px; padding:9px 18px; font-weight:700; display:inline-flex; align-items:center; gap:6px;">
-            <i data-lucide="edit-3" style="width:15px; height:15px;"></i> Edit Student Record
+            <i data-lucide="edit-3" style="width:15px; height:15px;"></i> Edit Record
           </button>
           <button class="btn btn-secondary" id="btn-modal-del-student" style="border-radius:12px; padding:9px 18px; font-weight:700; color:#EF4444; border-color:#FCA5A5; display:inline-flex; align-items:center; gap:6px;">
             <i data-lucide="trash-2" style="width:15px; height:15px;"></i> Delete
@@ -2263,6 +2339,11 @@ export class StudentModule {
           StudentModule.render(container);
         }
       });
+    });
+
+    document.getElementById('btn-modal-print-id-card')?.addEventListener('click', async () => {
+      UIComponents.closeModal();
+      await StudentModule.openStudentIdCardModal(s);
     });
 
     document.getElementById('btn-modal-edit-student')?.addEventListener('click', () => {
@@ -2516,87 +2597,175 @@ export class StudentModule {
           </div>
         </div>
 
-        <!-- Filter and Search Toolbar -->
-        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
-          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-            <input type="text" id="hostel-filter-input" class="form-input form-input-sm" placeholder="Search boarder, room, bed..." style="width:220px; height:34px;">
-            <select id="hostel-filter-wing" class="form-select form-select-sm" style="height:34px; min-width:130px; font-size:0.78rem;">
-              <option value="">All Wings</option>
-              <option value="hazrat bilal">Hazrat Bilal Boys Wing</option>
-              <option value="fatima">Fatima Girls Wing</option>
-              <option value="block a">Block A</option>
-              <option value="block b">Block B</option>
-              <option value="campus">Girls Campus</option>
-            </select>
-            <select id="hostel-filter-status" class="form-select form-select-sm" style="height:34px; min-width:120px; font-size:0.78rem;">
-              <option value="">All Allocations</option>
-              <option value="assigned">Bed Assigned</option>
-              <option value="pending">Bed Pending</option>
-            </select>
+        <!-- View Switcher -->
+        <div style="display:flex; gap:8px; border-bottom:1.5px solid #e2e8f0; margin-bottom:14px; padding-bottom:8px;">
+          <button type="button" class="btn btn-primary btn-sm btn-hostel-tab" data-tab="roster" id="tab-hostel-roster" style="font-weight:700; background:#0e623b; border-color:#0e623b; color:#ffffff;">
+            <i data-lucide="list"></i> Student Roster (${hostellers.length})
+          </button>
+          <button type="button" class="btn btn-secondary btn-sm btn-hostel-tab" data-tab="matrix" id="tab-hostel-matrix" style="font-weight:700; background:#ffffff; border-color:#cbd5e1; color:#475569;">
+            <i data-lucide="layout-grid"></i> Visual Rooms &amp; Bed Matrix
+          </button>
+        </div>
+
+        <div id="hostel-view-roster">
+          <!-- Filter and Search Toolbar -->
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+              <input type="text" id="hostel-filter-input" class="form-input form-input-sm" placeholder="Search boarder, room, bed..." style="width:220px; height:34px;">
+              <select id="hostel-filter-wing" class="form-select form-select-sm" style="height:34px; min-width:130px; font-size:0.78rem;">
+                <option value="">All Wings</option>
+                <option value="hazrat bilal">Hazrat Bilal Boys Wing</option>
+                <option value="fatima">Fatima Girls Wing</option>
+                <option value="block a">Block A</option>
+                <option value="block b">Block B</option>
+                <option value="campus">Girls Campus</option>
+              </select>
+              <select id="hostel-filter-status" class="form-select form-select-sm" style="height:34px; min-width:120px; font-size:0.78rem;">
+                <option value="">All Allocations</option>
+                <option value="assigned">Bed Assigned</option>
+                <option value="pending">Bed Pending</option>
+              </select>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button type="button" class="btn btn-primary btn-sm" id="btn-quick-allocate-bed" style="background:#0e623b; border-color:#0e623b; font-weight:700;">
+                <i data-lucide="plus"></i> Allocate Bed to Student
+              </button>
+              <a href="#/admin" class="btn btn-secondary btn-sm" id="btn-goto-hostel-admin" style="font-weight:700;">
+                <i data-lucide="sliders"></i> Full Hostel Settings
+              </a>
+            </div>
           </div>
-          <div style="display:flex; gap:8px;">
-            <button type="button" class="btn btn-primary btn-sm" id="btn-quick-allocate-bed" style="background:#0e623b; border-color:#0e623b; font-weight:700;">
-              <i data-lucide="plus"></i> Allocate Bed to Student
-            </button>
-            <a href="#/admin" class="btn btn-secondary btn-sm" id="btn-goto-hostel-admin" style="font-weight:700;">
-              <i data-lucide="sliders"></i> Full Hostel Settings
-            </a>
+
+          <!-- Bed Allotment Table -->
+          <div class="table-responsive" style="max-height:46vh; overflow-y:auto; border:1.5px solid #e2e8f0; border-radius:10px; background:#ffffff;">
+            <table class="tms-table" style="width:100%; font-size:0.8rem; border-collapse:collapse;">
+              <thead>
+                <tr style="background:#f8fafc; border-bottom:1.5px solid #cbd5e1; position:sticky; top:0; z-index:10;">
+                  <th style="padding:10px 12px; text-align:left;">Student</th>
+                  <th style="padding:10px 12px; text-align:left;">Class</th>
+                  <th style="padding:10px 12px; text-align:left;">Hostel Wing</th>
+                  <th style="padding:10px 12px; text-align:left;">Room No</th>
+                  <th style="padding:10px 12px; text-align:left;">Bed No</th>
+                  <th style="padding:10px 12px; text-align:right;">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="hostel-roster-tbody">
+                ${hostellers.length ? hostellers.map(s => `
+                  <tr class="hostel-roster-row" data-name="${esc(s.fullName.toLowerCase())}" data-room="${esc((s.hostelRoom || '').toLowerCase())}" data-wing="${esc((s.hostelBlock || '').toLowerCase())}" data-status="${Boolean(s.hostelBlock && s.hostelRoom) ? 'assigned' : 'pending'}" style="border-bottom:1px solid #f1f5f9;">
+                    <td style="padding:8px 12px;">
+                      <div style="font-weight:700; color:#0f172a;">${esc(s.fullName)}</div>
+                      <div style="font-size:0.7rem; color:#64748b; font-family:var(--font-mono);">${esc(s.admissionNo)}</div>
+                    </td>
+                    <td style="padding:8px 12px; font-weight:600;">${esc(s.grade || '—')}</td>
+                    ${Boolean(s.hostelBlock && s.hostelRoom) ? `
+                      <td style="padding:8px 12px; font-weight:600; color:#1e40af;">${esc(s.hostelBlock)}</td>
+                      <td style="padding:8px 12px; font-weight:700; font-family:var(--font-mono); color:#0f172a;">${esc(s.hostelRoom)}</td>
+                      <td style="padding:8px 12px; font-weight:700; font-family:var(--font-mono); color:#16a34a;">${esc(s.hostelBed || 'Bed 1')}</td>
+                      <td style="padding:8px 12px; text-align:right;">
+                        <button type="button" class="btn btn-secondary btn-sm btn-edit-hostel-bed" data-id="${esc(s.id)}" style="padding:2px 8px; font-size:0.72rem; font-weight:700; margin-right:4px;">
+                          <i data-lucide="edit-2" style="width:12px;height:12px;"></i> Change
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-sm btn-vacate-hostel-bed" data-id="${esc(s.id)}" style="padding:2px 8px; font-size:0.72rem; font-weight:700; color:#ef4444; border-color:#fca5a5;">
+                          <i data-lucide="x" style="width:12px;height:12px;"></i> Vacate
+                        </button>
+                      </td>
+                    ` : `
+                      <td style="padding:8px 12px;"><span class="badge" style="background:#fef3c7; color:#92400e; font-weight:700;">Pending Wing</span></td>
+                      <td style="padding:8px 12px; color:#94a3b8;">—</td>
+                      <td style="padding:8px 12px; color:#94a3b8;">—</td>
+                      <td style="padding:8px 12px; text-align:right;">
+                        <button type="button" class="btn btn-primary btn-sm btn-edit-hostel-bed" data-id="${esc(s.id)}" style="background:#0e623b; border-color:#0e623b; padding:2px 8px; font-size:0.72rem; font-weight:700; color:#ffffff;">
+                          <i data-lucide="plus" style="width:12px;height:12px;"></i> Assign Bed
+                        </button>
+                      </td>
+                    `}
+                  </tr>
+                `).join('') : `
+                  <tr>
+                    <td colspan="6" style="padding:30px; text-align:center; color:#64748b;">
+                      No students currently allocated to hostel beds. Click <strong>"Allocate Bed to Student"</strong> above to assign a room.
+                    </td>
+                  </tr>
+                `}
+              </tbody>
+            </table>
           </div>
         </div>
 
-        <!-- Bed Allotment Table -->
-        <div class="table-responsive" style="max-height:46vh; overflow-y:auto; border:1.5px solid #e2e8f0; border-radius:10px; background:#ffffff;">
-          <table class="tms-table" style="width:100%; font-size:0.8rem; border-collapse:collapse;">
-            <thead>
-              <tr style="background:#f8fafc; border-bottom:1.5px solid #cbd5e1; position:sticky; top:0; z-index:10;">
-                <th style="padding:10px 12px; text-align:left;">Student</th>
-                <th style="padding:10px 12px; text-align:left;">Class</th>
-                <th style="padding:10px 12px; text-align:left;">Hostel Wing</th>
-                <th style="padding:10px 12px; text-align:left;">Room No</th>
-                <th style="padding:10px 12px; text-align:left;">Bed No</th>
-                <th style="padding:10px 12px; text-align:right;">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="hostel-roster-tbody">
-              ${hostellers.length ? hostellers.map(s => `
-                <tr class="hostel-roster-row" data-name="${esc(s.fullName.toLowerCase())}" data-room="${esc((s.hostelRoom || '').toLowerCase())}" data-wing="${esc((s.hostelBlock || '').toLowerCase())}" data-status="${hasAssigned ? 'assigned' : 'pending'}" style="border-bottom:1px solid #f1f5f9;">
-                  <td style="padding:8px 12px;">
-                    <div style="font-weight:700; color:#0f172a;">${esc(s.fullName)}</div>
-                    <div style="font-size:0.7rem; color:#64748b; font-family:var(--font-mono);">${esc(s.admissionNo)}</div>
-                  </td>
-                  <td style="padding:8px 12px; font-weight:600;">${esc(s.grade || '—')}</td>
-                  ${Boolean(s.hostelBlock && s.hostelRoom) ? `
-                    <td style="padding:8px 12px; font-weight:600; color:#1e40af;">${esc(s.hostelBlock)}</td>
-                    <td style="padding:8px 12px; font-weight:700; font-family:var(--font-mono); color:#0f172a;">${esc(s.hostelRoom)}</td>
-                    <td style="padding:8px 12px; font-weight:700; font-family:var(--font-mono); color:#16a34a;">${esc(s.hostelBed || 'Bed 1')}</td>
-                    <td style="padding:8px 12px; text-align:right;">
-                      <button type="button" class="btn btn-secondary btn-sm btn-edit-hostel-bed" data-id="${esc(s.id)}" style="padding:2px 8px; font-size:0.72rem; font-weight:700; margin-right:4px;">
-                        <i data-lucide="edit-2" style="width:12px;height:12px;"></i> Change
-                      </button>
-                      <button type="button" class="btn btn-secondary btn-sm btn-vacate-hostel-bed" data-id="${esc(s.id)}" style="padding:2px 8px; font-size:0.72rem; font-weight:700; color:#ef4444; border-color:#fca5a5;">
-                        <i data-lucide="x" style="width:12px;height:12px;"></i> Vacate
-                      </button>
-                    </td>
-                  ` : `
-                    <td style="padding:8px 12px;"><span class="badge" style="background:#fef3c7; color:#92400e; font-weight:700;">Pending Wing</span></td>
-                    <td style="padding:8px 12px; color:#94a3b8;">—</td>
-                    <td style="padding:8px 12px; color:#94a3b8;">—</td>
-                    <td style="padding:8px 12px; text-align:right;">
-                      <button type="button" class="btn btn-primary btn-sm btn-edit-hostel-bed" data-id="${esc(s.id)}" style="background:#0e623b; border-color:#0e623b; padding:2px 8px; font-size:0.72rem; font-weight:700; color:#ffffff;">
-                        <i data-lucide="plus" style="width:12px;height:12px;"></i> Assign Bed
-                      </button>
-                    </td>
-                  `}
-                </tr>
-              `).join('') : `
-                <tr>
-                  <td colspan="6" style="padding:30px; text-align:center; color:#64748b;">
-                    No students currently allocated to hostel beds. Click <strong>"Allocate Bed to Student"</strong> above to assign a room.
-                  </td>
-                </tr>
-              `}
-            </tbody>
-          </table>
+        <!-- Visual Matrix View -->
+        <div id="hostel-view-matrix" style="display:none; max-height:48vh; overflow-y:auto; padding:4px;">
+          <div style="display:flex; flex-direction:column; gap:16px;">
+            ${[
+              { name: 'Thaiba Boys Hostel Block A', badge: 'Boys Wing', color: '#1e40af', rooms: ['Room 101', 'Room 102', 'Room 103', 'Room 201', 'Room 202'] },
+              { name: 'Thaiba Girls Hostel Campus', badge: 'Girls Wing', color: '#7e22ce', rooms: ['Room 101', 'Room 102', 'Room 103', 'Room 201', 'Room 202'] },
+              { name: 'Hazrat Bilal Boys Wing', badge: 'Boys Wing', color: '#0e623b', rooms: ['Room 101', 'Room 102', 'Room 103'] },
+              { name: 'Fatima-tuz-Zahra Girls Wing', badge: 'Girls Wing', color: '#b45309', rooms: ['Room 101', 'Room 102', 'Room 103'] }
+            ].map(w => `
+              <div style="background:#ffffff; border:1.5px solid #e2e8f0; border-radius:12px; padding:14px; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; border-bottom:1px solid #f1f5f9; padding-bottom:8px;">
+                  <div style="font-weight:800; font-size:0.92rem; color:${w.color}; display:flex; align-items:center; gap:6px;">
+                    <i data-lucide="building" style="width:16px; height:16px;"></i>
+                    ${esc(w.name)}
+                  </div>
+                  <span class="badge" style="font-size:0.72rem; padding:2px 8px; border-radius:9999px; background:#f1f5f9; color:#475569; font-weight:700;">
+                    ${w.badge} • ${w.rooms.length} Rooms
+                  </span>
+                </div>
+
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:12px;">
+                  ${w.rooms.map(rm => {
+                    const beds = ['Bed 1', 'Bed 2'];
+                    return `
+                      <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px;">
+                        <div style="font-weight:700; font-size:0.82rem; color:#0f172a; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+                          <span style="font-family:var(--font-mono);">${esc(rm)}</span>
+                          <span style="font-size:0.7rem; color:#64748b;">Capacity: 2 Beds</span>
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:6px;">
+                          ${beds.map(bed => {
+                            const occupant = hostellers.find(s => 
+                              (s.hostelBlock || '').toLowerCase().includes(w.name.toLowerCase().slice(0, 12)) &&
+                              (s.hostelRoom || '').toLowerCase().trim() === rm.toLowerCase().trim() &&
+                              (s.hostelBed || '').toLowerCase().trim() === bed.toLowerCase().trim()
+                            );
+                            if (occupant) {
+                              return `
+                                <div style="background:#ffffff; border:1.5px solid #fca5a5; border-radius:8px; padding:6px 10px; display:flex; justify-content:space-between; align-items:center;">
+                                  <div style="display:flex; align-items:center; gap:6px; min-width:0;">
+                                    <span style="font-size:0.68rem; font-weight:800; color:#ef4444; background:#fee2e2; padding:2px 5px; border-radius:4px; flex-shrink:0;">${bed}</span>
+                                    <div style="min-width:0;">
+                                      <div style="font-weight:700; font-size:0.78rem; color:#0f172a; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${esc(occupant.fullName)}</div>
+                                      <div style="font-size:0.68rem; color:#64748b;">${esc(occupant.grade || '')} • ${esc(occupant.admissionNo || '')}</div>
+                                    </div>
+                                  </div>
+                                  <div style="display:flex; gap:3px; flex-shrink:0;">
+                                    <button type="button" class="btn btn-secondary btn-sm btn-edit-hostel-bed" data-id="${esc(occupant.id)}" style="padding:1px 6px; font-size:0.68rem; font-weight:700;">Edit</button>
+                                    <button type="button" class="btn btn-secondary btn-sm btn-vacate-hostel-bed" data-id="${esc(occupant.id)}" style="padding:1px 6px; font-size:0.68rem; font-weight:700; color:#ef4444; border-color:#fca5a5;">Vacate</button>
+                                  </div>
+                                </div>
+                              `;
+                            } else {
+                              return `
+                                <div style="background:#f0fdf4; border:1.5px dashed #86efac; border-radius:8px; padding:6px 10px; display:flex; justify-content:space-between; align-items:center;">
+                                  <div style="display:flex; align-items:center; gap:6px;">
+                                    <span style="font-size:0.68rem; font-weight:800; color:#16a34a; background:#dcfce7; padding:2px 5px; border-radius:4px;">${bed}</span>
+                                    <span style="font-size:0.75rem; font-weight:600; color:#15803d;">Available</span>
+                                  </div>
+                                  <button type="button" class="btn btn-primary btn-sm btn-matrix-allocate" data-wing="${esc(w.name)}" data-room="${esc(rm)}" data-bed="${esc(bed)}" style="background:#0e623b; border-color:#0e623b; padding:1px 8px; font-size:0.68rem; font-weight:700; color:#ffffff;">
+                                    + Assign
+                                  </button>
+                                </div>
+                              `;
+                            }
+                          }).join('')}
+                        </div>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+            `).join('')}
+          </div>
         </div>
       </div>
     `;
@@ -2610,6 +2779,107 @@ export class StudentModule {
       bodyHtml,
       footerHtml,
       maxWidth: '860px'
+    });
+
+    // Tab switcher logic
+    const tabRoster = document.getElementById('tab-hostel-roster');
+    const tabMatrix = document.getElementById('tab-hostel-matrix');
+    const viewRoster = document.getElementById('hostel-view-roster');
+    const viewMatrix = document.getElementById('hostel-view-matrix');
+
+    tabRoster?.addEventListener('click', () => {
+      tabRoster.className = 'btn btn-primary btn-sm btn-hostel-tab';
+      tabRoster.style.background = '#0e623b';
+      tabRoster.style.borderColor = '#0e623b';
+      tabRoster.style.color = '#ffffff';
+
+      tabMatrix.className = 'btn btn-secondary btn-sm btn-hostel-tab';
+      tabMatrix.style.background = '#ffffff';
+      tabMatrix.style.borderColor = '#cbd5e1';
+      tabMatrix.style.color = '#475569';
+
+      if (viewRoster) viewRoster.style.display = 'block';
+      if (viewMatrix) viewMatrix.style.display = 'none';
+      UIComponents.refreshIcons();
+    });
+
+    tabMatrix?.addEventListener('click', () => {
+      tabMatrix.className = 'btn btn-primary btn-sm btn-hostel-tab';
+      tabMatrix.style.background = '#0e623b';
+      tabMatrix.style.borderColor = '#0e623b';
+      tabMatrix.style.color = '#ffffff';
+
+      tabRoster.className = 'btn btn-secondary btn-sm btn-hostel-tab';
+      tabRoster.style.background = '#ffffff';
+      tabRoster.style.borderColor = '#cbd5e1';
+      tabRoster.style.color = '#475569';
+
+      if (viewRoster) viewRoster.style.display = 'none';
+      if (viewMatrix) viewMatrix.style.display = 'block';
+      UIComponents.refreshIcons();
+    });
+
+    // Matrix + Assign handler
+    document.querySelectorAll('.btn-matrix-allocate').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const wing = btn.dataset.wing;
+        const room = btn.dataset.room;
+        const bed = btn.dataset.bed;
+
+        const pool = unallocatedHostellers.length ? unallocatedHostellers : students;
+        const studentOptions = pool.map(s => {
+          const isH = StudentModule.isHosteller(s);
+          return `<option value="${esc(s.id)}">${esc(s.fullName)} (${esc(s.admissionNo)}) - ${esc(s.grade)} [${isH ? 'Hosteller - Pending Bed' : 'Day Scholar'}]</option>`;
+        }).join('');
+
+        const pickHtml = `
+          <div style="padding:10px 0;">
+            <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; padding:10px 12px; margin-bottom:12px; font-size:0.82rem;">
+              <strong>Target Bed:</strong> ${esc(wing)} • <strong>${esc(room)}</strong> • <span style="color:#16a34a; font-weight:700;">${esc(bed)}</span>
+            </div>
+            <p style="font-size:0.86rem; color:#475569; margin-bottom:10px;">Select student to allocate to this vacant bed:</p>
+            <select id="pick-matrix-student" class="form-select" style="width:100%; height:38px;">
+              ${studentOptions}
+            </select>
+          </div>
+        `;
+
+        UIComponents.openModal({
+          title: `Assign ${bed} in ${room}`,
+          bodyHtml: pickHtml,
+          footerHtml: `
+            <button class="btn btn-secondary" onclick="document.getElementById('global-modal-close').click()">Cancel</button>
+            <button class="btn btn-primary" id="btn-confirm-matrix-alloc" style="background:#0e623b; border-color:#0e623b; font-weight:700;">Confirm Allocation</button>
+          `,
+          maxWidth: '520px'
+        });
+
+        document.getElementById('btn-confirm-matrix-alloc')?.addEventListener('click', async () => {
+          const chosenId = document.getElementById('pick-matrix-student')?.value;
+          const chosen = students.find(x => x.id === chosenId);
+          if (chosen) {
+            chosen.hostelBlock = wing;
+            chosen.hostelRoom = room;
+            chosen.hostelBed = bed;
+            chosen.category = 'Hosteler';
+            chosen.boardingType = 'hosteller';
+            try {
+              await dbService.update('students', chosen.id, {
+                hostelBlock: wing,
+                hostelRoom: room,
+                hostelBed: bed,
+                category: 'Hosteler',
+                boardingType: 'hosteller'
+              });
+              UIComponents.closeModal();
+              UIComponents.showToast(`Allocated ${bed} in ${room} to ${chosen.fullName}!`, 'success');
+              StudentModule.render(container);
+            } catch (err) {
+              UIComponents.showToast(`Allocation error: ${err.message}`, 'error');
+            }
+          }
+        });
+      });
     });
 
     // Multi-filter in hostel roster

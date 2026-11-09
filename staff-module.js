@@ -99,6 +99,53 @@ export class StaffModule {
           </div>
         </div>
 
+        <!-- Compound Search & Filter Bar -->
+        <div style="background:var(--bg-subtle, #f8fafc); border:1px solid var(--border-color, #e2e8f0); border-radius:12px; padding:12px 16px; margin:0 0 14px 0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; flex:1;">
+            <div style="position:relative; min-width:210px; max-width:320px; flex:1;">
+              <input type="text" id="staff-search-input" class="form-input form-input-sm" placeholder="Search employee, ID, email, phone..." style="padding-left:32px; height:36px; border-radius:8px;">
+              <i data-lucide="search" style="position:absolute; left:10px; top:10px; width:15px; height:15px; color:#94a3b8;"></i>
+            </div>
+
+            <!-- Department Filter -->
+            <div style="display:flex; align-items:center; gap:4px;">
+              <span style="font-size:0.73rem; font-weight:700; color:#64748b; text-transform:uppercase;">Dept:</span>
+              <select id="staff-filter-dept" class="form-select form-select-sm" style="height:36px; min-width:140px; font-size:0.8rem; font-weight:600;">
+                <option value="">All Departments</option>
+                ${Array.from(new Set(staff.map(s => s.department).filter(Boolean))).map(d => `<option value="${esc(d)}">${esc(d)}</option>`).join('')}
+              </select>
+            </div>
+
+            <!-- Role Filter -->
+            <div style="display:flex; align-items:center; gap:4px;">
+              <span style="font-size:0.73rem; font-weight:700; color:#64748b; text-transform:uppercase;">Role:</span>
+              <select id="staff-filter-role" class="form-select form-select-sm" style="height:36px; min-width:130px; font-size:0.8rem; font-weight:600;">
+                <option value="">All Roles</option>
+                ${Object.entries(ROLE_LABELS).map(([k, v]) => `<option value="${esc(k)}">${esc(v)}</option>`).join('')}
+              </select>
+            </div>
+
+            <!-- Status Filter -->
+            <div style="display:flex; align-items:center; gap:4px;">
+              <span style="font-size:0.73rem; font-weight:700; color:#64748b; text-transform:uppercase;">Status:</span>
+              <select id="staff-filter-status" class="form-select form-select-sm" style="height:36px; min-width:115px; font-size:0.8rem; font-weight:600;">
+                <option value="">All Statuses</option>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+                <option value="On Leave">On Leave</option>
+              </select>
+            </div>
+
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-staff-reset-filters" style="height:36px; padding:0 10px; font-weight:700; color:#64748b;" title="Reset filters">
+              <i data-lucide="rotate-ccw" style="width:13px; height:13px;"></i> Reset
+            </button>
+          </div>
+
+          <div style="font-size:0.8rem; font-weight:700; color:#475569;">
+            Showing <span id="staff-filtered-count" style="color:#0f172a; font-weight:800;">${staff.length}</span> of ${staff.length} employees
+          </div>
+        </div>
+
         ${canManage ? `
         <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:12px;">
           <button class="btn btn-secondary btn-sm" id="btn-staff-select-all"><i data-lucide="check-square"></i> Select All</button>
@@ -130,7 +177,7 @@ export class StaffModule {
               ${staff.length ? staff.map((emp) => {
                 const cred = credByStaff[emp.id];
                 return `
-                <tr data-id="${esc(emp.id)}">
+                <tr class="staff-row" data-id="${esc(emp.id)}" data-search="${esc(`${emp.name} ${emp.empId} ${emp.email || ''} ${emp.phone || ''} ${emp.department || ''} ${emp.designation || ''}`)}" data-dept="${esc(emp.department || '')}" data-role="${esc(emp.role || '')}" data-status="${esc(emp.status || '')}">
                   ${canManage ? `<td><input type="checkbox" class="staff-row-check" value="${esc(emp.id)}"></td>` : ''}
                   <td><span class="font-mono" style="font-weight: 600;">${esc(emp.empId)}</span></td>
                   <td>
@@ -257,6 +304,56 @@ export class StaffModule {
         this.exportCsv(rows);
       });
     }
+
+    // Compound Filter & Search engine
+    const searchInp = container.querySelector('#staff-search-input');
+    const deptFilter = container.querySelector('#staff-filter-dept');
+    const roleFilter = container.querySelector('#staff-filter-role');
+    const statusFilter = container.querySelector('#staff-filter-status');
+    const countEl = container.querySelector('#staff-filtered-count');
+    const staffRows = container.querySelectorAll('.staff-row');
+
+    const filterStaffRows = () => {
+      const q = (searchInp?.value || '').toLowerCase().trim();
+      const d = (deptFilter?.value || '').toLowerCase().trim();
+      const r = (roleFilter?.value || '').toLowerCase().trim();
+      const s = (statusFilter?.value || '').toLowerCase().trim();
+      let visible = 0;
+
+      staffRows.forEach(row => {
+        const searchTxt = (row.dataset.search || '').toLowerCase();
+        const rowDept = (row.dataset.dept || '').toLowerCase();
+        const rowRole = (row.dataset.role || '').toLowerCase();
+        const rowStatus = (row.dataset.status || '').toLowerCase();
+
+        const matchQ = !q || searchTxt.includes(q);
+        const matchD = !d || rowDept === d;
+        const matchR = !r || rowRole === r;
+        const matchS = !s || rowStatus === s;
+
+        if (matchQ && matchD && matchR && matchS) {
+          row.style.display = '';
+          visible++;
+        } else {
+          row.style.display = 'none';
+        }
+      });
+
+      if (countEl) countEl.textContent = String(visible);
+    };
+
+    searchInp?.addEventListener('input', filterStaffRows);
+    deptFilter?.addEventListener('change', filterStaffRows);
+    roleFilter?.addEventListener('change', filterStaffRows);
+    statusFilter?.addEventListener('change', filterStaffRows);
+
+    container.querySelector('#btn-staff-reset-filters')?.addEventListener('click', () => {
+      if (searchInp) searchInp.value = '';
+      if (deptFilter) deptFilter.value = '';
+      if (roleFilter) roleFilter.value = '';
+      if (statusFilter) statusFilter.value = '';
+      filterStaffRows();
+    });
   }
 
   /* ------------------------------------------------------------------ */

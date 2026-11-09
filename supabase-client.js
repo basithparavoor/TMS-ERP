@@ -152,17 +152,31 @@ function rowToDb(row, collection = null) {
       out.section = 'A';
     }
 
-    // 2. Normalize date columns: empty strings "" MUST be null in PostgreSQL DATE / TIMESTAMPTZ columns
-    const DATE_COLS = ['dob', 'admission_date', 'class_join_date', 'created_at', 'updated_at'];
-    for (const dCol of DATE_COLS) {
-      if (out[dCol] !== undefined && (out[dCol] === null || out[dCol] === '' || (typeof out[dCol] === 'string' && !out[dCol].trim()))) {
-        out[dCol] = null;
-      }
-    }
-
-    // 3. Ensure grade is never empty
+    // 2. Ensure grade is never empty
     if (!out.grade && (row.grade || row.class)) {
       out.grade = row.grade || row.class;
+    } else if (!out.grade) {
+      out.grade = 'STD-I';
+    }
+
+    // 3. Ensure full_name and status
+    if (!out.full_name && row.fullName) {
+      out.full_name = row.fullName;
+    }
+    if (!out.status) {
+      out.status = 'active';
+    }
+  }
+
+  // Universal Sanitization for ANY collection:
+  // Convert empty strings "" in date/time/timestamp/numeric fields to null to satisfy PostgreSQL strict typings
+  for (const [col, val] of Object.entries(out)) {
+    if (typeof val === 'string') {
+      const trimmed = val.trim();
+      const isDateCol = col.endsWith('_date') || col.endsWith('_at') || col.includes('dob') || col === 'date' || col === 'due_date' || col === 'paid_date' || col === 'start_date' || col === 'end_date' || col === 'join_date';
+      if (trimmed === '' && isDateCol) {
+        out[col] = null;
+      }
     }
   }
 

@@ -364,47 +364,77 @@ export class FinanceModule {
         const mode = e.currentTarget.dataset.mode;
         const esc = (v) => UIComponents.escapeHtml(v);
 
+        const studentObj = (this._students || []).find(s => s.fullName === name || s.id === inv.studentId);
+        const admNo = studentObj?.admissionNo || '—';
+        const gradeSec = studentObj ? `${studentObj.grade || ''} - ${studentObj.section || 'A'}` : 'STD-X';
+        const guardian = studentObj?.guardianName || studentObj?.parentName || 'Parent / Guardian';
+
         UIComponents.openModal({
-          title: `Fee Receipt — ${inv}`,
+          title: `Official Fee Receipt — ${inv}`,
           bodyHtml: `
-            <div id="printable-receipt" style="background: #fff; color: #0f172a; padding: 24px; border: 2px dashed #0f172a; border-radius: 8px;">
-              <div style="text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 16px;">
-                <h2 style="font-size: 1.3rem; margin-bottom: 2px;">${esc(TMS_CONFIG.institution.name)}</h2>
-                <p style="font-size: 0.8rem; color: #64748b;">OFFICIAL FEE RECEIPT • BURSAR'S OFFICE</p>
-                <div style="font-size: 0.85rem; font-weight: 700; margin-top: 6px;">Receipt #${esc(inv)}</div>
+            <div id="printable-receipt" style="background:#ffffff; color:#0f172a; padding:28px; border:2px solid #0e623b; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,0.08); position:relative; font-family:'Plus Jakarta Sans', sans-serif;">
+              <!-- Header -->
+              <div style="display:flex; align-items:center; gap:16px; border-bottom:2px solid #0e623b; padding-bottom:14px; margin-bottom:18px;">
+                <div style="flex-shrink:0;">${TMS_LOGO.emblemSvg(48)}</div>
+                <div style="flex:1;">
+                  <h2 style="font-size:1.35rem; font-weight:800; color:#0e623b; margin:0 0 2px 0; letter-spacing:0.02em;">${esc(TMS_CONFIG.institution.name)}</h2>
+                  <div style="font-size:0.75rem; color:#475569; line-height:1.3;">
+                    Run by : Thaiba Heritage, Kolkata • Registered Educational Trust<br>
+                    Campus: Baghait, Tapan, Dakshin Dinajpur, West Bengal - 733127 • Helpline: +91 8653382851
+                  </div>
+                </div>
+                <div style="text-align:right;">
+                  <span class="badge" style="background:#dcfce7; color:#15803d; border:1.5px solid #86efac; font-size:0.78rem; font-weight:800; padding:4px 10px; border-radius:6px; text-transform:uppercase;">
+                    ✓ Fee Receipt
+                  </span>
+                  <div style="font-size:0.78rem; font-family:var(--font-mono); font-weight:700; color:#0f172a; margin-top:4px;">${esc(inv)}</div>
+                </div>
               </div>
 
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.85rem; margin-bottom: 16px;">
-                <div><strong>Student:</strong> ${esc(name)}</div>
-                <div><strong>Date:</strong> ${esc(date)}</div>
-                <div><strong>Payment Mode:</strong> ${esc(mode)}</div>
-                <div><strong>Academic Year:</strong> ${esc(TMS_CONFIG.academic.currentYear)}</div>
+              <!-- Student Details Grid -->
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:0.84rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:12px 14px; margin-bottom:18px;">
+                <div><span style="color:#64748b;">Student Name:</span> <strong style="color:#0f172a;">${esc(name)}</strong></div>
+                <div><span style="color:#64748b;">Receipt Date:</span> <strong class="font-mono">${esc(date || new Date().toISOString().slice(0, 10))}</strong></div>
+                <div><span style="color:#64748b;">Admission / Roll No:</span> <strong class="font-mono" style="color:#1e40af;">${esc(admNo)}</strong></div>
+                <div><span style="color:#64748b;">Payment Mode:</span> <strong style="color:#15803d;">${esc(mode || 'Cash Counter')}</strong></div>
+                <div><span style="color:#64748b;">Class &amp; Section:</span> <strong>${esc(gradeSec)}</strong></div>
+                <div><span style="color:#64748b;">Academic Session:</span> <strong>${esc(TMS_CONFIG.academic.currentYear || '2026-2027')}</strong></div>
+                <div style="grid-column:1/-1;"><span style="color:#64748b;">Parent / Guardian:</span> <strong>${esc(guardian)}</strong></div>
               </div>
 
-              <table class="tms-table" style="font-size: 0.82rem; margin-bottom: 16px;">
+              <!-- Itemized Table -->
+              <table class="tms-table" style="font-size:0.84rem; width:100%; border-collapse:collapse; margin-bottom:18px;">
                 <thead>
-                  <tr style="background: #f1f5f9; color: #0f172a;">
-                    <th>Particulars</th>
-                    <th style="text-align: right;">Amount (₹)</th>
+                  <tr style="background:#0e623b; color:#ffffff;">
+                    <th style="padding:8px 12px; text-align:left; border-top-left-radius:6px;">Particulars / Description</th>
+                    <th style="padding:8px 12px; text-align:right; border-top-right-radius:6px;">Amount (₹)</th>
                   </tr>
                 </thead>
                 <tbody>
-                  <tr>
-                    <td>Tuition & Laboratory Term Fee</td>
-                    <td style="text-align: right;">₹ ${esc(parseFloat(amt).toLocaleString())}</td>
+                  <tr style="border-bottom:1px solid #e2e8f0;">
+                    <td style="padding:10px 12px;">Tuition, Academic Term Instruction &amp; Library Access</td>
+                    <td style="padding:10px 12px; text-align:right; font-family:var(--font-mono); font-weight:600;">₹ ${esc(parseFloat(amt).toLocaleString())}</td>
                   </tr>
-                  <tr style="font-weight: 700;">
-                    <td>Net Amount Received</td>
-                    <td style="text-align: right; color: #10b981;">₹ ${esc(parseFloat(amt).toLocaleString())}</td>
+                  <tr style="border-bottom:1.5px solid #0e623b; background:#f0fdf4;">
+                    <td style="padding:12px; font-weight:800; color:#14532d;">Net Total Received</td>
+                    <td style="padding:12px; text-align:right; font-size:1.05rem; font-weight:800; color:#16a34a; font-family:var(--font-mono);">
+                      ₹ ${esc(parseFloat(amt).toLocaleString())}
+                    </td>
                   </tr>
                 </tbody>
               </table>
 
-              <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 30px; font-size: 0.78rem;">
-                <div>Computer Generated • No Physical Signature Required</div>
-                <div style="text-align: center;">
-                  ____________________<br>
-                  <strong>Accounts Cashier Seal</strong>
+              <!-- Signatures & Disclaimer -->
+              <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top:24px; font-size:0.75rem; color:#64748b;">
+                <div>
+                  <div style="font-weight:700; color:#0e623b;">● Computer Generated Official Document</div>
+                  <div>Valid without physical signature when stamped by Bursar.</div>
+                </div>
+                <div style="text-align:center;">
+                  <div style="font-family:'Brush Script MT', cursive, sans-serif; font-size:16px; color:#0e623b; margin-bottom:2px;">Thaiba Accounts</div>
+                  <div style="border-top:1.5px dashed #94a3b8; padding-top:4px; font-weight:700; color:#0f172a; width:160px;">
+                    Authorized Signatory / Bursar
+                  </div>
                 </div>
               </div>
             </div>
@@ -412,8 +442,45 @@ export class FinanceModule {
           footerHtml: `
             <button class="btn btn-secondary" onclick="document.getElementById('global-modal-close').click()">Close</button>
             <button class="btn btn-secondary" id="btn-share-fee-receipt"><i data-lucide="share-2"></i> Share Receipt</button>
-            <button class="btn btn-primary" onclick="window.print()"><i data-lucide="printer"></i> Print Official Receipt</button>
-          `
+            <button class="btn btn-secondary" id="btn-download-pdf-receipt"><i data-lucide="download"></i> Download PDF</button>
+            <button class="btn btn-primary" id="btn-print-official-receipt" style="background:#0e623b; border-color:#0e623b;"><i data-lucide="printer"></i> Print Receipt</button>
+          `,
+          maxWidth: '680px'
+        });
+
+        // PDF Download
+        document.getElementById('btn-download-pdf-receipt')?.addEventListener('click', () => {
+          const printable = document.getElementById('printable-receipt');
+          if (printable) {
+            exportPdf(`TMS-Receipt-${inv}-${name.replace(/\s+/g, '_')}`, printable.outerHTML, {
+              title: `Fee Receipt ${inv}`,
+              schoolName: TMS_CONFIG.institution.name
+            });
+          }
+        });
+
+        // Print handler
+        document.getElementById('btn-print-official-receipt')?.addEventListener('click', () => {
+          const printContent = document.getElementById('printable-receipt')?.outerHTML;
+          if (!printContent) return;
+          const printWin = window.open('', '_blank');
+          printWin.document.write(`
+            <html>
+              <head>
+                <title>Receipt ${esc(inv)} - ${esc(name)}</title>
+                <style>
+                  @page { size: A4; margin: 20mm; }
+                  body { font-family: 'Plus Jakarta Sans', Arial, sans-serif; margin: 0; padding: 20px; background: #fff; }
+                  table { width: 100%; border-collapse: collapse; }
+                </style>
+              </head>
+              <body>
+                ${printContent}
+                <script>window.onload = function() { window.print(); window.close(); }<\/script>
+              </body>
+            </html>
+          `);
+          printWin.document.close();
         });
 
         const shareReceiptBtn = document.getElementById('btn-share-fee-receipt');
@@ -421,7 +488,7 @@ export class FinanceModule {
           shareReceiptBtn.addEventListener('click', async () => {
             await shareContent({
               title: `Fee Payment Receipt — ${name}`,
-              text: `Official Fee Payment Receipt\nStudent: ${name}\nInvoice No: ${inv}\nAmount Paid: ₹ ${amt}\nPayment Mode: ${mode}\nDate: ${date}\n${TMS_CONFIG.institution.name}, Kolkata`,
+              text: `Official Fee Payment Receipt\nStudent: ${name} (${admNo})\nInvoice No: ${inv}\nAmount Paid: ₹ ${amt}\nPayment Mode: ${mode}\nDate: ${date}\n${TMS_CONFIG.institution.name}, Kolkata`,
               url: window.location.href
             });
             UIComponents.showToast('Receipt shared / copied to clipboard!', 'success');
