@@ -258,6 +258,8 @@ export function exportPdf(title, bodyHtml, options = {}) {
     ? formatPdfFilename(options.filename)
     : formatPdfFilename(title, options.documentId || options.id);
 
+  const isDossier = bodyHtml && bodyHtml.includes('tms-dossier-page');
+
   // Resolve application stylesheet against current origin
   let cssHref = '';
   try {
@@ -294,6 +296,7 @@ export function exportPdf(title, bodyHtml, options = {}) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${attrEsc(defaultFilename)}</title>
   <link rel="stylesheet" href="${cssHref}">
+  <script src="html2pdf.bundle.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700;800&family=Outfit:wght@500;600;700;800;900&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
@@ -304,7 +307,7 @@ export function exportPdf(title, bodyHtml, options = {}) {
 
     @page {
       size: A4 ${orientation};
-      margin: 10mm 12mm 12mm 12mm;
+      margin: ${isDossier ? '0' : '10mm 12mm 12mm 12mm'};
     }
 
     html, body {
@@ -407,15 +410,15 @@ export function exportPdf(title, bodyHtml, options = {}) {
 
     /* Document Sheet Wrapper */
     .tms-pdf-sheet {
-      max-width: ${orientation === 'landscape' ? '287mm' : '210mm'};
-      margin: 16px auto;
-      background: #ffffff;
-      padding: 12mm 14mm;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-      border: 1px solid #cbd5e1;
+      max-width: ${isDossier ? '210mm' : (orientation === 'landscape' ? '287mm' : '210mm')};
+      margin: ${isDossier ? '10px auto' : '16px auto'};
+      background: ${isDossier ? 'transparent' : '#ffffff'};
+      padding: ${isDossier ? '0' : '12mm 14mm'};
+      box-shadow: ${isDossier ? 'none' : '0 10px 30px rgba(0,0,0,0.1)'};
+      border: ${isDossier ? 'none' : '1px solid #cbd5e1'};
       border-radius: 4px;
       position: relative;
-      min-height: ${orientation === 'landscape' ? '190mm' : '285mm'};
+      min-height: ${isDossier ? 'auto' : (orientation === 'landscape' ? '190mm' : '285mm')};
       box-sizing: border-box;
     }
 
@@ -424,6 +427,7 @@ export function exportPdf(title, bodyHtml, options = {}) {
       html, body {
         background: #ffffff !important;
         padding: 0 !important;
+        margin: 0 !important;
       }
       .no-print, .tms-pdf-toolbar, .tms-toolbar-tip {
         display: none !important;
@@ -436,6 +440,19 @@ export function exportPdf(title, bodyHtml, options = {}) {
         border: none !important;
         box-shadow: none !important;
         min-height: auto !important;
+      }
+      .tms-dossier-page {
+        width: 210mm !important;
+        max-width: 210mm !important;
+        height: 297mm !important;
+        max-height: 297mm !important;
+        page-break-after: always !important;
+        break-after: page !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        overflow: hidden !important;
+        margin: 0 auto !important;
+        box-shadow: none !important;
       }
     }
 
@@ -716,11 +733,14 @@ export function exportPdf(title, bodyHtml, options = {}) {
       </div>
     </div>
     <div class="tms-toolbar-actions">
-      <button class="tms-btn tms-btn-secondary" onclick="window.close()" title="Close document preview">
-        ✕ Close
+      <button class="tms-btn" id="tms-btn-direct-download" style="background:#0284c7; color:#ffffff; font-weight:800; box-shadow:0 2px 6px rgba(2,132,199,0.35);" title="Download PDF file directly to your computer">
+        📥 Direct Download PDF
       </button>
       <button class="tms-btn tms-btn-primary" onclick="window.print()" title="Print or Save as PDF (Ctrl + P)">
         🖨️ Print / Save as PDF
+      </button>
+      <button class="tms-btn tms-btn-secondary" onclick="window.close()" title="Close document preview">
+        ✕ Close
       </button>
     </div>
   </div>
@@ -736,13 +756,49 @@ export function exportPdf(title, bodyHtml, options = {}) {
     ${footerHtml}
   </main>
 
-  ${autoPrint ? `<script>
+  <script>
+    // Direct PDF Download Button Handler
+    document.getElementById('tms-btn-direct-download')?.addEventListener('click', function() {
+      var btn = this;
+      btn.disabled = true;
+      btn.innerHTML = '⏳ Generating PDF...';
+      var element = document.querySelector('.tms-pdf-sheet') || document.body;
+      var filename = '${attrEsc(defaultFilename)}';
+      if (!filename.toLowerCase().endsWith('.pdf')) filename += '.pdf';
+
+      var opt = {
+        margin: 0,
+        filename: filename,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: '${orientation}' },
+        pagebreak: { mode: ['css', 'legacy'] }
+      };
+
+      if (window.html2pdf) {
+        window.html2pdf().set(opt).from(element).save().then(function() {
+          btn.disabled = false;
+          btn.innerHTML = '✓ Downloaded!';
+          setTimeout(function() { btn.innerHTML = '📥 Direct Download PDF'; }, 2500);
+        }).catch(function(err) {
+          console.error('html2pdf error:', err);
+          btn.disabled = false;
+          btn.innerHTML = '📥 Direct Download PDF';
+          window.print();
+        });
+      } else {
+        window.print();
+      }
+    });
+
+    ${autoPrint ? `
     window.addEventListener('load', function() {
       setTimeout(function() {
         window.print();
       }, 450);
     });
-  <\/script>` : ''}
+    ` : ''}
+  </script>
 </body>
 </html>`;
 
@@ -779,3 +835,61 @@ export async function shareContent({ title, text, url }) {
 }
 
 export default { downloadCsv, exportPdf, formatPdfFilename, renderDocumentHeader, renderDocumentFooter, kvTable, shareContent };
+
+/**
+ * Direct client-side PDF file download without opening popup or print dialog.
+ * Uses html2pdf.js to generate and download the binary PDF file directly.
+ */
+export async function downloadDirectPdf(filename, htmlContent, options = {}) {
+  // Ensure html2pdf is available
+  if (typeof window !== 'undefined' && typeof window.html2pdf === 'undefined') {
+    await new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'html2pdf.bundle.min.js';
+      script.onload = resolve;
+      script.onerror = () => {
+        const cdnScript = document.createElement('script');
+        cdnScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+        cdnScript.onload = resolve;
+        cdnScript.onerror = resolve;
+        document.head.appendChild(cdnScript);
+      };
+      document.head.appendChild(script);
+    });
+  }
+
+  // Create temporary container
+  const container = document.createElement('div');
+  container.id = 'tms-pdf-direct-sandbox';
+  container.style.position = 'fixed';
+  container.style.top = '-99999px';
+  container.style.left = '0';
+  container.style.width = '210mm';
+  container.style.background = '#ffffff';
+  container.style.zIndex = '-99999';
+  container.innerHTML = htmlContent;
+  document.body.appendChild(container);
+
+  const cleanFilename = filename.toLowerCase().endsWith('.pdf') ? filename : `${filename}.pdf`;
+
+  const opt = {
+    margin: 0,
+    filename: cleanFilename,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true, logging: false },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: options.orientation || 'portrait' },
+    pagebreak: { mode: ['css', 'legacy'] }
+  };
+
+  try {
+    if (typeof window !== 'undefined' && window.html2pdf) {
+      await window.html2pdf().set(opt).from(container).save();
+    } else {
+      exportPdf(cleanFilename, htmlContent, { ...options, filename: cleanFilename });
+    }
+  } finally {
+    if (container.parentNode) {
+      container.parentNode.removeChild(container);
+    }
+  }
+}
