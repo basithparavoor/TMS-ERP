@@ -1628,14 +1628,14 @@ export class AdminWebsiteCms {
             <div>
               <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 4px; flex-wrap: wrap;">
                 <h3 style="font-family: var(--font-display); font-size: 1.25rem; font-weight: 800; color: #0f172a; margin: 0;">
-                  Hostel Managing Setup &amp; Public Portal
+                  Public Website Hostel Showcase &amp; Navbar Link
                 </h3>
                 <span id="hostel-live-badge" class="badge" style="font-size: 0.78rem; padding: 4px 11px; font-weight: 700; border-radius: 9999px; ${isLive ? 'background:#dcfce7; color:#15803d; border:1px solid #86efac;' : 'background:#f1f5f9; color:#64748b; border:1px solid #cbd5e1;'}">
                   ${isLive ? '● Live: Hostel Button Active' : '○ Disabled: Hostel Button Hidden'}
                 </span>
               </div>
               <p style="font-size: 0.84rem; color: #64748b; margin: 0; font-weight: 500; max-width: 650px;">
-                If Admin turns this ON, the school website enables the <strong>"Hostel"</strong> button on the navbar and activates the <strong>#hostel</strong> showcase &amp; admission inquiry.
+                This controls the public marketing showcase, dorm tour, daily routine, and mess menu brochure on the school website (<strong>#hostel</strong>). To assign student beds or manage live student rosters, open the <a href="#students" onclick="window.location.hash='#students'; return false;" style="color:#059669; font-weight:700; text-decoration:underline;">Students Directory</a> or <a href="#operations" onclick="window.location.hash='#operations'; return false;" style="color:#059669; font-weight:700; text-decoration:underline;">Campus Operations</a>.
               </p>
             </div>
           </div>

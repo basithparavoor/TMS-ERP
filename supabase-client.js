@@ -191,7 +191,13 @@ class SupabaseDataService {
     this.isOnline = navigator.onLine;
     this._memCache = new Map();
     this._memCacheTime = new Map();
-    this._missingTables = new Set();
+    // Missing tables cache (in-memory + sessionStorage) to avoid repeated 404s
+    try {
+      const storedMissing = typeof sessionStorage !== 'undefined' ? sessionStorage.getItem('tms_missing_tables') : null;
+      this._missingTables = storedMissing ? new Set(JSON.parse(storedMissing)) : new Set();
+    } catch {
+      this._missingTables = new Set();
+    }
     this._cacheTTL = 60000; // 60 seconds memory cache
     this.cleanLegacyDemoData();
     this.initClient();
@@ -199,6 +205,16 @@ class SupabaseDataService {
     if (this.isOnline) {
       setTimeout(() => this.processQueue(), 1500);
     }
+  }
+
+  _recordMissingTable(collection) {
+    if (!this._missingTables) this._missingTables = new Set();
+    this._missingTables.add(collection);
+    try {
+      if (typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem('tms_missing_tables', JSON.stringify(Array.from(this._missingTables)));
+      }
+    } catch { /* ignore */ }
   }
 
   getQueue() {
@@ -421,8 +437,8 @@ class SupabaseDataService {
       if (this.client && this.isOnline && !this._missingTables.has(collection)) {
         this.client.from(collection).select('*').then(({ data, error }) => {
           if (error) {
-            if (error.code === '42P01' || error.status === 404 || String(error.message || '').includes('does not exist')) {
-              this._missingTables.add(collection);
+            if (error.code === '42P01' || error.status === 404 || String(error.message || '').includes('does not exist') || String(error.message || '').includes('404')) {
+              this._recordMissingTable(collection);
             }
             return;
           }
@@ -442,7 +458,7 @@ class SupabaseDataService {
     }
 
     // 3. Fetch from Supabase if online (when forced or first time on empty cache)
-    if (this.client && this.isOnline) {
+    if (this.client && this.isOnline && !this._missingTables.has(collection)) {
       try {
         const { data, error } = await this.client.from(collection).select('*');
         if (error) throw error;
@@ -465,8 +481,7 @@ class SupabaseDataService {
         }
       } catch (err) {
         if (err && (err.code === '42P01' || err.status === 404 || String(err.message || '').includes('404') || String(err.message || '').includes('does not exist'))) {
-          if (!this._missingTables) this._missingTables = new Set();
-          this._missingTables.add(collection);
+          this._recordMissingTable(collection);
         }
         console.warn(`Supabase select failed for ${collection}, using local cache:`, err.message);
       }

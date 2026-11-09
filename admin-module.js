@@ -398,7 +398,7 @@ export class AdminModule {
         { key: 'website-about', label: 'About & Leadership', icon: 'book-open' },
         { key: 'website-academics', label: 'Academic Programs', icon: 'graduation-cap' },
         { key: 'website-facilities', label: 'Campus Facilities', icon: 'building' },
-        { key: 'website-hostel', label: 'Hostel Managing Setup', icon: 'home' },
+        { key: 'website-hostel', label: 'Public Hostel Showcase', icon: 'home' },
         { key: 'website-notices', label: 'Notice Board Bulletins', icon: 'megaphone' },
         { key: 'website-gallery', label: 'Photo Gallery', icon: 'image' },
         { key: 'website-testimonials', label: 'Parent Testimonials', icon: 'message-square-quote' },
@@ -406,7 +406,7 @@ export class AdminModule {
         { key: 'website-backup', label: 'CMS Backup & Reset', icon: 'database' }
       ],
       hostel: [
-        { key: 'website-hostel', label: 'Hostel Managing Setup & Button', icon: 'sliders' },
+        { key: 'website-hostel', label: 'Website Showcase & Navbar Toggle', icon: 'globe' },
         { key: 'hostel-wings', label: 'Dormitories & Wings', icon: 'home' },
         { key: 'hostel-features', label: 'Facilities & Amenities', icon: 'sparkles' },
         { key: 'hostel-routine', label: 'Daily Life Routine', icon: 'clock' },
