@@ -1,6 +1,7 @@
 // THAIBA MODEL SCHOOL ERP — Universal Custom Dropdown Engine
 // Replaces standard browser <select> dropdowns with modern pill-shaped triggers,
 // body-portal floating rounded menu cards, green checkmarks on selected options, and smooth animations.
+// Zero layout shifts: popup menus are positioned via fixed coordinates and never affect the surrounding interface flow.
 
 function ensureDropdownStyles() {
   if (typeof document === 'undefined') return;
@@ -28,22 +29,6 @@ function ensureDropdownStyles() {
   display: inline-block !important;
   width: 100% !important;
   box-sizing: border-box !important;
-}
-
-.tms-custom-select-wrapper.is-open {
-  z-index: 10050 !important;
-  position: relative !important;
-}
-
-.tms-has-open-select,
-.card:has(.tms-custom-select-wrapper.is-open),
-.form-group:has(.tms-custom-select-wrapper.is-open),
-[class*="card"]:has(.tms-custom-select-wrapper.is-open),
-.modal-content:has(.tms-custom-select-wrapper.is-open),
-.modal-body:has(.tms-custom-select-wrapper.is-open) {
-  z-index: 9999 !important;
-  position: relative !important;
-  overflow: visible !important;
 }
 
 .tms-custom-select-trigger {
@@ -105,17 +90,23 @@ function ensureDropdownStyles() {
   transform: rotate(180deg) !important;
 }
 
+/* THE POPUP MENU: Fixed overlay attached directly to body. NEVER shifts or expands the interface */
 .tms-custom-select-menu {
-  display: none;
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  display: none !important;
   background: #FFFFFF !important;
   border: 1.5px solid #E2E8F0 !important;
-  border-radius: 16px !important;
+  border-radius: 14px !important;
   padding: 6px !important;
-  box-shadow: 0 20px 45px -8px rgba(15, 23, 42, 0.22), 0 6px 16px -2px rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 18px 40px -4px rgba(15, 23, 42, 0.22), 0 4px 14px -2px rgba(0, 0, 0, 0.08) !important;
   max-height: 280px !important;
   overflow-y: auto !important;
   box-sizing: border-box !important;
-  z-index: 999999 !important;
+  z-index: 9999999 !important;
+  margin: 0 !important;
+  pointer-events: auto !important;
 }
 
 .tms-custom-select-menu::-webkit-scrollbar {
@@ -132,10 +123,9 @@ function ensureDropdownStyles() {
   background: #16A34A !important;
 }
 
-.tms-custom-select-menu.is-active-portal,
-.tms-custom-select-wrapper.is-open .tms-custom-select-menu {
+.tms-custom-select-menu.is-active-portal {
   display: block !important;
-  animation: tmsSelectMenuFade 0.16s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  animation: tmsSelectMenuFade 0.14s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 @keyframes tmsSelectMenuFade {
@@ -200,28 +190,13 @@ const CHEVRON_SVG = `
 function closeWrapper(w) {
   if (!w) return;
   w.classList.remove('is-open', 'is-open-above');
-  w.style.removeProperty('z-index');
   const trig = w.querySelector('.tms-custom-select-trigger');
   if (trig) trig.setAttribute('aria-expanded', 'false');
 
-  const m = w.__menuRef || w.querySelector('.tms-custom-select-menu');
+  const m = w.__menuRef;
   if (m) {
     m.style.setProperty('display', 'none', 'important');
     m.classList.remove('is-active-portal', 'is-open-above');
-    if (m.parentElement === document.body) {
-      w.appendChild(m);
-    }
-  }
-
-  if (w.__elevatedAncestors) {
-    w.__elevatedAncestors.forEach(({ el, prevZ, prevOverflow }) => {
-      if (prevZ) el.style.zIndex = prevZ;
-      else el.style.removeProperty('z-index');
-      if (prevOverflow) el.style.overflow = prevOverflow;
-      else el.style.removeProperty('overflow');
-      el.classList.remove('tms-has-open-select');
-    });
-    w.__elevatedAncestors = null;
   }
 }
 
@@ -325,12 +300,15 @@ export function enhanceSelect(select) {
   trigger.appendChild(arrowSpan);
   wrapper.appendChild(trigger);
 
-  // Create Dropdown Menu
+  // Create Dropdown Menu: permanently in document.body so it NEVER displaces in-page content
   const menu = document.createElement('div');
-  menu.className = 'tms-custom-select-menu';
+  menu.className = 'tms-custom-select-menu is-portal';
   menu.setAttribute('role', 'listbox');
-  menu.style.display = 'none';
-  wrapper.appendChild(menu);
+  menu.style.setProperty('position', 'fixed', 'important');
+  menu.style.setProperty('display', 'none', 'important');
+  if (document.body) {
+    document.body.appendChild(menu);
+  }
 
   wrapper.__menuRef = menu;
   menu.__wrapper = wrapper;
@@ -439,12 +417,12 @@ export function enhanceSelect(select) {
     }
 
     const triggerWidth = rect.width;
-    const menuWidth = Math.max(triggerWidth, 200);
+    const menuWidth = Math.max(triggerWidth, 180);
 
     menu.style.setProperty('position', 'fixed', 'important');
-    menu.style.setProperty('z-index', '999999', 'important');
+    menu.style.setProperty('z-index', '9999999', 'important');
     menu.style.setProperty('min-width', `${Math.round(menuWidth)}px`, 'important');
-    menu.style.setProperty('max-width', `${Math.max(menuWidth, 320)}px`, 'important');
+    menu.style.setProperty('max-width', `${Math.max(menuWidth, 340)}px`, 'important');
 
     // Horizontal placement
     let left = rect.left;
@@ -460,22 +438,22 @@ export function enhanceSelect(select) {
     const spaceBelow = viewportHeight - rect.bottom;
     const spaceAbove = rect.top;
 
-    // Strong downward bias: only open above if space below is genuinely tiny (< 150px) AND space above is significantly larger (> 220px)
-    const shouldOpenAbove = spaceBelow < 150 && spaceAbove > 220;
+    // Prefer downward opening unless space below is tight (<150px) and space above is larger
+    const shouldOpenAbove = spaceBelow < 150 && spaceAbove > 200;
 
     if (shouldOpenAbove) {
       wrapper.classList.add('is-open-above');
       menu.classList.add('is-open-above');
       menu.style.setProperty('top', 'auto', 'important');
-      menu.style.setProperty('bottom', `${Math.round(viewportHeight - rect.top + 6)}px`, 'important');
-      const availHeight = Math.max(140, Math.min(280, spaceAbove - 24));
+      menu.style.setProperty('bottom', `${Math.round(viewportHeight - rect.top + 4)}px`, 'important');
+      const availHeight = Math.max(120, Math.min(280, spaceAbove - 16));
       menu.style.setProperty('max-height', `${Math.round(availHeight)}px`, 'important');
     } else {
       wrapper.classList.remove('is-open-above');
       menu.classList.remove('is-open-above');
-      menu.style.setProperty('top', `${Math.round(rect.bottom + 6)}px`, 'important');
+      menu.style.setProperty('top', `${Math.round(rect.bottom + 4)}px`, 'important');
       menu.style.setProperty('bottom', 'auto', 'important');
-      const availHeight = Math.max(160, Math.min(280, spaceBelow - 24));
+      const availHeight = Math.max(140, Math.min(280, spaceBelow - 16));
       menu.style.setProperty('max-height', `${Math.round(availHeight)}px`, 'important');
     }
   }
@@ -492,37 +470,29 @@ export function enhanceSelect(select) {
     } else {
       closeAllCustomSelects(wrapper);
 
-      wrapper.classList.add('is-open');
-      wrapper.style.setProperty('z-index', '10050', 'important');
-
-      // Elevate ancestors
-      let ancestor = wrapper.parentElement;
-      const elevatedAncestors = [];
-      while (ancestor && ancestor !== document.body) {
-        const comp = window.getComputedStyle(ancestor);
-        if (comp.position === 'relative' || comp.position === 'absolute' || comp.position === 'sticky' || comp.transform !== 'none' || ancestor.classList.contains('card')) {
-          elevatedAncestors.push({ el: ancestor, prevZ: ancestor.style.zIndex, prevOverflow: ancestor.style.overflow });
-          ancestor.style.setProperty('z-index', '9999', 'important');
-          ancestor.classList.add('tms-has-open-select');
-        }
-        ancestor = ancestor.parentElement;
+      // Ensure menu is mounted in document.body
+      if (menu.parentElement !== document.body && document.body) {
+        document.body.appendChild(menu);
       }
-      wrapper.__elevatedAncestors = elevatedAncestors;
 
-      // Portal to document.body to prevent clipping from parent overflow
-      menu.classList.add('is-portal', 'is-active-portal');
-      document.body.appendChild(menu);
-      menu.style.setProperty('display', 'block', 'important');
-
+      wrapper.classList.add('is-open');
       repositionMenu();
+
+      menu.classList.add('is-active-portal');
+      menu.style.setProperty('display', 'block', 'important');
       trigger.setAttribute('aria-expanded', 'true');
 
-      // Scroll selected item into view or reset to top
+      // Scroll selected item into view inside menu only (never scrolling whole window)
       const selectedItem = menu.querySelector('.tms-custom-select-option.is-selected');
       if (selectedItem) {
-        setTimeout(() => {
-          selectedItem.scrollIntoView({ block: 'nearest' });
-        }, 30);
+        const itemTop = selectedItem.offsetTop;
+        const itemHeight = selectedItem.offsetHeight;
+        const menuHeight = menu.clientHeight;
+        if (itemTop < menu.scrollTop) {
+          menu.scrollTop = itemTop;
+        } else if (itemTop + itemHeight > menu.scrollTop + menuHeight) {
+          menu.scrollTop = itemTop + itemHeight - menuHeight;
+        }
       } else {
         menu.scrollTop = 0;
       }
@@ -554,8 +524,18 @@ export function enhanceSelect(select) {
         nextIdx = activeIdx > 0 ? activeIdx - 1 : items.length - 1;
       }
       items.forEach((it) => it.classList.remove('is-highlighted'));
-      items[nextIdx].classList.add('is-highlighted');
-      items[nextIdx].scrollIntoView({ block: 'nearest' });
+      const targetItem = items[nextIdx];
+      if (targetItem) {
+        targetItem.classList.add('is-highlighted');
+        const itemTop = targetItem.offsetTop;
+        const itemHeight = targetItem.offsetHeight;
+        const menuHeight = menu.clientHeight;
+        if (itemTop < menu.scrollTop) {
+          menu.scrollTop = itemTop;
+        } else if (itemTop + itemHeight > menu.scrollTop + menuHeight) {
+          menu.scrollTop = itemTop + itemHeight - menuHeight;
+        }
+      }
     }
   });
 
