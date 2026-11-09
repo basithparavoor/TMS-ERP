@@ -10,7 +10,7 @@ import { dbService } from './supabase-client.js';
 import { UIComponents } from './ui-components.js';
 import { auditService } from './audit-service.js';
 import { PermissionEngine, CAPABILITIES } from './permission-engine.js';
-import { downloadCsv, formatPdfFilename } from './export-utils.js';
+import { downloadCsv, exportPdf, formatPdfFilename } from './export-utils.js';
 import { TMS_LOGO } from './logo.js';
 import { admissionService } from './admission-service.js';
 import { BiometricCredentialModal } from './biometric-credential-modal.js';
@@ -691,6 +691,7 @@ export class StudentModule {
             <button class="btn btn-secondary" id="btn-infirmary-roster"><i data-lucide="cross"></i> Medical Roster</button>
             <button class="btn btn-secondary" id="btn-hostel-mgmt" style="font-weight:700;"><i data-lucide="home" style="color:#16a34a;"></i> Hostel &amp; Beds</button>
             <button class="btn btn-secondary" id="btn-bulk-print-id-cards"><i data-lucide="printer"></i> Bulk Print PVC ID</button>
+            <button class="btn btn-secondary" id="btn-batch-download-student-forms" style="font-weight:700;"><i data-lucide="file-down" style="color:#0e623b;"></i> Download Forms (PDF)</button>
             <a href="/admission" target="_blank" class="btn btn-secondary"><i data-lucide="file-text"></i> Admission Form (A4)</a>
             ${canManage ? `
             <button class="btn btn-secondary" id="btn-bulk-import-students"><i data-lucide="file-up"></i> Bulk Import (CSV)</button>
@@ -880,6 +881,9 @@ export class StudentModule {
           <button type="button" class="btn btn-secondary btn-sm" id="btn-students-bulk-export" title="Export all fields of selected students">
             <i data-lucide="download"></i> Export CSV
           </button>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-students-bulk-download-forms" title="Download Official Student Bio-Data Dossier Forms (PDF)" style="font-weight:700; color:#0e623b; border-color:#86efac; background:#ffffff;">
+            <i data-lucide="file-text" style="color:#0e623b;"></i> Download PDF Forms (<span id="bulk-forms-count">0</span>)
+          </button>
           <button type="button" class="btn btn-secondary btn-sm" id="btn-students-bulk-delete" style="color:#ef4444;" title="Delete selected students">
             <i data-lucide="trash-2"></i> Delete
           </button>
@@ -928,6 +932,7 @@ export class StudentModule {
               </div>
               <div class="tms-data-card-actions">
                 <button class="btn btn-secondary btn-sm btn-print-id" data-id="${esc(s.id)}" title="Print ID Card"><i data-lucide="id-card"></i> ID</button>
+                <button class="btn btn-secondary btn-sm btn-download-student-form" data-id="${esc(s.id)}" title="Download Bio-Data Form (PDF)" style="color: #0e623b;"><i data-lucide="file-text"></i> Form</button>
                 <button class="btn btn-secondary btn-sm btn-merit-log" data-id="${esc(s.id)}" title="Merits &amp; Conduct" style="color: #16a34a;"><i data-lucide="shield-check"></i> Merit</button>
                 <button class="btn btn-secondary btn-sm btn-view-profile" data-id="${esc(s.id)}" title="View Details"><i data-lucide="eye"></i> View</button>
                 ${canManage ? `
@@ -1036,6 +1041,9 @@ export class StudentModule {
                       </button>
                       <button type="button" class="tms-table-action-btn btn-print-id" data-id="${esc(s.id)}" title="Print Smart PVC ID Card" style="color:#0e623b;">
                         <i data-lucide="credit-card" style="width:16px;height:16px;"></i>
+                      </button>
+                      <button type="button" class="tms-table-action-btn btn-download-student-form" data-id="${esc(s.id)}" title="Download Official Student Bio-Data Form (PDF)" style="color:#0e623b;">
+                        <i data-lucide="file-text" style="width:16px;height:16px;"></i>
                       </button>
                       <button type="button" class="tms-table-action-btn btn-edit-student" data-id="${esc(s.id)}" title="Edit Student">
                         <i data-lucide="edit-3" style="width:16px;height:16px;"></i>
@@ -1630,8 +1638,11 @@ export class StudentModule {
     const canManage = PermissionEngine.can(CAPABILITIES.MANAGE_STUDENTS);
     const checked = () => Array.from(container.querySelectorAll('.student-row-check:checked')).map((c) => c.value);
     const syncCount = () => {
+      const cnt = checked().length;
       const el = container.querySelector('#students-selected-count');
-      if (el) el.innerText = checked().length;
+      if (el) el.innerText = cnt;
+      const bulkFormsEl = container.querySelector('#bulk-forms-count');
+      if (bulkFormsEl) bulkFormsEl.innerText = cnt;
     };
     const selectedStudents = () => students.filter((s) => checked().includes(s.id));
 
@@ -1721,6 +1732,30 @@ export class StudentModule {
         UIComponents.showToast(`${rows.length} student(s) exported with all ${fields.length} columns.`, 'success');
       });
     }
+
+    const bulkDownloadForms = container.querySelector('#btn-students-bulk-download-forms');
+    if (bulkDownloadForms) {
+      bulkDownloadForms.addEventListener('click', () => {
+        const rows = selectedStudents();
+        if (!rows.length) {
+          UIComponents.showToast('Please select at least one student checkbox.', 'warning');
+          return;
+        }
+        StudentModule.bulkDownloadStudentDossiers(rows);
+      });
+    }
+
+    const batchFormsTopBtn = container.querySelector('#btn-batch-download-student-forms');
+    if (batchFormsTopBtn) {
+      batchFormsTopBtn.addEventListener('click', () => {
+        const rows = selectedStudents();
+        if (rows.length > 0) {
+          StudentModule.bulkDownloadStudentDossiers(rows);
+        } else {
+          StudentModule.openBatchDownloadModal(container, this._students || students);
+        }
+      });
+    }
     container.querySelectorAll('.btn-edit-student').forEach((b) =>
       b.addEventListener('click', () => {
         const s = students.find((x) => x.id === b.dataset.id);
@@ -1767,6 +1802,17 @@ export class StudentModule {
         const s = students.find(item => item.id === id);
         if (!s) return;
         await StudentModule.openStudentIdCardModal(s);
+      });
+    });
+
+    // Individual Student Bio-Data Dossier Form Download
+    container.querySelectorAll('.btn-download-student-form').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const id = e.currentTarget.dataset.id;
+        const students = await dbService.select('students');
+        const s = students.find(item => item.id === id);
+        if (!s) return;
+        StudentModule.downloadStudentDossier(s);
       });
     });
 
@@ -2260,6 +2306,9 @@ export class StudentModule {
           <button class="btn btn-secondary" id="btn-modal-print-id-card" style="border-radius:12px; padding:9px 16px; font-weight:700; color:#0e623b; border-color:#86efac; display:inline-flex; align-items:center; gap:6px;">
             <i data-lucide="credit-card" style="width:15px; height:15px;"></i> Print PVC ID Card
           </button>
+          <button class="btn btn-secondary" id="btn-modal-download-form" style="border-radius:12px; padding:9px 16px; font-weight:700; color:#0e623b; border-color:#86efac; display:inline-flex; align-items:center; gap:6px;">
+            <i data-lucide="file-text" style="width:15px; height:15px;"></i> Download PDF Form
+          </button>
         </div>
         <div style="display:flex; gap:10px;">
           <button class="btn btn-secondary" id="btn-modal-edit-student" style="border-radius:12px; padding:9px 18px; font-weight:700; display:inline-flex; align-items:center; gap:6px;">
@@ -2344,6 +2393,10 @@ export class StudentModule {
     document.getElementById('btn-modal-print-id-card')?.addEventListener('click', async () => {
       UIComponents.closeModal();
       await StudentModule.openStudentIdCardModal(s);
+    });
+
+    document.getElementById('btn-modal-download-form')?.addEventListener('click', () => {
+      StudentModule.downloadStudentDossier(s);
     });
 
     document.getElementById('btn-modal-edit-student')?.addEventListener('click', () => {
@@ -2984,6 +3037,421 @@ export class StudentModule {
     });
 
     UIComponents.refreshIcons();
+  }
+
+  /**
+   * Render a prestigious, publication-grade Student Admission & Cumulative Bio-Data Form (A4 printable)
+   */
+  static renderStudentDossierHtml(s) {
+    if (!s) return '';
+    const esc = (v) => UIComponents.escapeHtml(v);
+    const val = (v, fallback = '—') => (v !== undefined && v !== null && String(v).trim() !== '') ? esc(String(v).trim()) : fallback;
+
+    let photoUrl = '';
+    if (s.photo) {
+      photoUrl = admissionService.getPublicUrl('admission-docs', s.photo) || s.photo;
+    }
+
+    const isBoarder = StudentModule.isHosteller(s);
+    let ageStr = '';
+    if (s.dob) {
+      const diff = Date.now() - new Date(s.dob).getTime();
+      const ageDate = new Date(diff);
+      const calculatedAge = Math.abs(ageDate.getUTCFullYear() - 1970);
+      if (!isNaN(calculatedAge) && calculatedAge > 0 && calculatedAge < 100) {
+        ageStr = `${calculatedAge} Yrs`;
+      }
+    }
+
+    return `
+      <div class="tms-dossier-sheet" style="font-family:'Plus Jakarta Sans', Arial, sans-serif; background:#ffffff; color:#0f172a; border:2.5px solid #064e3b; border-radius:8px; padding:20px; position:relative; box-sizing:border-box; margin:0 auto 28px auto; max-width:820px; page-break-after:always; break-after:page;">
+        
+        <!-- Subtle Ornamental Security Frame -->
+        <div style="position:absolute; top:4px; left:4px; right:4px; bottom:4px; border:1px solid #16a34a; border-radius:6px; pointer-events:none;"></div>
+
+        <!-- Institutional Header -->
+        <div style="display:flex; align-items:center; gap:16px; border-bottom:2px solid #064e3b; padding-bottom:12px; margin-bottom:12px; position:relative;">
+          <div style="flex-shrink:0;">
+            ${TMS_LOGO.emblemSvg(54)}
+          </div>
+          <div style="flex:1; text-align:center; line-height:1.25;">
+            <div style="font-size:8.5px; font-weight:800; letter-spacing:1px; color:#b45309; text-transform:uppercase;">
+              RUN BY : THAIBA HERITAGE, KOLKATA • REGD. TRUST NO. IV 01894/2011
+            </div>
+            <h1 style="font-family:'Outfit', serif; font-size:21px; font-weight:900; color:#064e3b; margin:2px 0 3px 0; letter-spacing:0.5px; text-transform:uppercase;">
+              ${esc(TMS_CONFIG.institution.name)}
+            </h1>
+            <div style="font-size:9px; color:#334155; font-weight:600;">
+              Baghait, Tapan, Dakshin Dinajpur, West Bengal - 733127 (Govt. Regd.)
+            </div>
+            <div style="font-size:8px; color:#64748b; margin-top:2px;">
+              Helpline: +91 8653382851, +91 8167782851 • Web: www.thaibagarden.com • Email: tms@thaibagarden.com
+            </div>
+          </div>
+          <div style="text-align:right; flex-shrink:0;">
+            <div style="border:1.5px solid #064e3b; background:#f0fdf4; color:#064e3b; padding:4px 8px; border-radius:4px; font-size:8px; font-weight:800; text-transform:uppercase;">
+              OFFICIAL DOSSIER
+            </div>
+            <div style="font-size:8px; color:#64748b; margin-top:4px;">Date: <strong style="color:#0f172a;">${new Date().toLocaleDateString('en-GB')}</strong></div>
+          </div>
+        </div>
+
+        <!-- Accent Ribbon -->
+        <div style="display:flex; height:3px; width:100%; margin-bottom:10px; border-radius:2px; overflow:hidden;">
+          <div style="flex:3; background:#064e3b;"></div>
+          <div style="flex:2; background:#b45309;"></div>
+          <div style="flex:1; background:#1e3a8a;"></div>
+        </div>
+
+        <!-- Title Banner -->
+        <div style="display:flex; justify-content:space-between; align-items:center; background:#064e3b; color:#ffffff; padding:6px 12px; border-radius:4px; margin-bottom:12px;">
+          <div style="font-size:11px; font-weight:800; letter-spacing:0.8px; text-transform:uppercase;">
+            OFFICIAL STUDENT BIO-DATA &amp; CUMULATIVE ENROLLMENT DOSSIER
+          </div>
+          <div style="font-size:9px; font-weight:700; color:#fde047;">
+            ACADEMIC SESSION: ${esc(TMS_CONFIG.academic.currentYear || '2026 - 2027')}
+          </div>
+        </div>
+
+        <!-- Top Hero Identity Grid: Badges + Photo Box -->
+        <div style="display:flex; gap:14px; margin-bottom:12px; align-items:stretch;">
+          <!-- Key Identity Metrics Table (Left) -->
+          <div style="flex:1; border:1px solid #cbd5e1; border-radius:6px; overflow:hidden;">
+            <table style="width:100%; border-collapse:collapse; font-size:10px;">
+              <tbody>
+                <tr style="border-bottom:1px solid #e2e8f0;">
+                  <td style="width:28%; padding:5px 8px; background:#f8fafc; font-weight:700; color:#475569;">Admission / ID:</td>
+                  <td style="padding:5px 8px; font-weight:800; font-family:var(--font-mono); font-size:12px; color:#064e3b;">${val(s.admissionNo)}</td>
+                  <td style="width:24%; padding:5px 8px; background:#f8fafc; font-weight:700; color:#475569;">Roll Number:</td>
+                  <td style="padding:5px 8px; font-weight:800; font-family:var(--font-mono); color:#1e3a8a;">${val(s.rollNo)}</td>
+                </tr>
+                <tr style="border-bottom:1px solid #e2e8f0;">
+                  <td style="padding:5px 8px; background:#f8fafc; font-weight:700; color:#475569;">Enrolled Class:</td>
+                  <td style="padding:5px 8px; font-weight:800; color:#0f172a;">${val(s.grade || s.class)}</td>
+                  <td style="padding:5px 8px; background:#f8fafc; font-weight:700; color:#475569;">Section:</td>
+                  <td style="padding:5px 8px; font-weight:800; color:#0f172a;">Sec ${val(s.section, 'A')}</td>
+                </tr>
+                <tr style="border-bottom:1px solid #e2e8f0;">
+                  <td style="padding:5px 8px; background:#f8fafc; font-weight:700; color:#475569;">Boarding Type:</td>
+                  <td style="padding:5px 8px; font-weight:700; color:${isBoarder ? '#b45309' : '#15803d'};">
+                    ${isBoarder ? '🏠 Hostel Resident / Boarder' : '☀️ Day Scholar'}
+                  </td>
+                  <td style="padding:5px 8px; background:#f8fafc; font-weight:700; color:#475569;">Enrollment Status:</td>
+                  <td style="padding:5px 8px;">
+                    <span style="display:inline-block; padding:1px 6px; border-radius:4px; font-size:9px; font-weight:800; background:#dcfce7; color:#15803d; text-transform:uppercase;">
+                      ${val(s.status, 'Active')}
+                    </span>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="padding:5px 8px; background:#f8fafc; font-weight:700; color:#475569;">Admission Date:</td>
+                  <td style="padding:5px 8px; font-weight:600;">${val(s.admissionDate || s.created_at?.slice(0, 10))}</td>
+                  <td style="padding:5px 8px; background:#f8fafc; font-weight:700; color:#475569;">Class Join Date:</td>
+                  <td style="padding:5px 8px; font-weight:600;">${val(s.classJoinDate)}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Official Photo Box (Right) -->
+          <div style="width:105px; flex-shrink:0; display:flex; flex-direction:column; align-items:center; justify-content:center; border:1.5px solid #064e3b; border-radius:6px; background:#f8fafc; padding:3px; box-sizing:border-box;">
+            <div style="width:95px; height:115px; border:1px solid #cbd5e1; border-radius:4px; overflow:hidden; background:#ffffff; display:flex; align-items:center; justify-content:center; text-align:center;">
+              ${photoUrl ? `<img src="${esc(photoUrl)}" alt="Photo" style="width:100%; height:100%; object-fit:cover; display:block;">` : `<div style="font-size:7.5px; color:#94a3b8; font-weight:700; padding:6px; line-height:1.2;">AFFIX RECENT<br>PASSPORT PHOTO<br><br><span style="font-size:16px;">📷</span><br><br>OFFICIALLY VERIFIED</div>`}
+            </div>
+            <div style="font-size:6.5px; font-weight:800; color:#064e3b; margin-top:3px; text-transform:uppercase; letter-spacing:0.5px;">
+              ATTESTED RECORD
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION 1: PERSONAL & STATUTORY IDS -->
+        <div style="margin-bottom:10px;">
+          <div style="background:#f1f5f9; border-left:4px solid #064e3b; padding:4px 8px; font-size:9.5px; font-weight:800; color:#064e3b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">
+            1. Candidate Personal &amp; Statutory Demographics
+          </div>
+          <table style="width:100%; border-collapse:collapse; font-size:9.5px; border:1px solid #e2e8f0;">
+            <tbody>
+              <tr style="border-bottom:1px solid #e2e8f0;">
+                <td style="width:18%; padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Full Legal Name:</td>
+                <td style="width:32%; padding:4px 6px; font-weight:800; font-size:10.5px; color:#0f172a;">${val(s.fullName)}</td>
+                <td style="width:18%; padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Gender &amp; DOB:</td>
+                <td style="width:32%; padding:4px 6px; font-weight:600;">${val(s.gender)} • ${val(s.dob)} ${ageStr ? `(${ageStr})` : ''}</td>
+              </tr>
+              <tr style="border-bottom:1px solid #e2e8f0;">
+                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Aadhaar UID No:</td>
+                <td style="padding:4px 6px; font-weight:700; font-family:var(--font-mono);">${val(s.aadharNo || s.aadhaar)}</td>
+                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">APAAR / ABC ID:</td>
+                <td style="padding:4px 6px; font-weight:700; font-family:var(--font-mono);">${val(s.apaarId)}</td>
+              </tr>
+              <tr style="border-bottom:1px solid #e2e8f0;">
+                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Govt / Shiksha ID:</td>
+                <td style="padding:4px 6px; font-family:var(--font-mono);">${val(s.govtStudentId)}</td>
+                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Minority / Kanyashree:</td>
+                <td style="padding:4px 6px; font-family:var(--font-mono);">${val(s.minorityId || s.kanyashreeId)}</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Blood Group:</td>
+                <td style="padding:4px 6px; font-weight:800; color:#ef4444;">${val(s.bloodGroup || s.blood_group)}</td>
+                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Religion &amp; Category:</td>
+                <td style="padding:4px 6px; font-weight:600;">${val(s.religion, 'Islam')} • ${val(s.category, 'General')} ${s.isOrphan === 'Yes' ? '• (Orphan)' : ''}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- SECTION 2: PARENTS & GUARDIAN -->
+        <div style="margin-bottom:10px;">
+          <div style="background:#f1f5f9; border-left:4px solid #064e3b; padding:4px 8px; font-size:9.5px; font-weight:800; color:#064e3b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">
+            2. Parent &amp; Family Credentials
+          </div>
+          <table style="width:100%; border-collapse:collapse; font-size:9.5px; border:1px solid #e2e8f0;">
+            <tbody>
+              <tr style="border-bottom:1px solid #e2e8f0;">
+                <td style="width:18%; padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Father's Name:</td>
+                <td style="width:32%; padding:4px 6px; font-weight:700;">${val(s.fatherName || s.parentName)}</td>
+                <td style="width:18%; padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Occupation &amp; Qual:</td>
+                <td style="width:32%; padding:4px 6px;">${val(s.fatherOccupation)} • ${val(s.fatherQualification)}</td>
+              </tr>
+              <tr style="border-bottom:1px solid #e2e8f0;">
+                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Mother's Name:</td>
+                <td style="padding:4px 6px; font-weight:700;">${val(s.motherName)}</td>
+                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Occupation &amp; Qual:</td>
+                <td style="padding:4px 6px;">${val(s.motherOccupation, 'Homemaker')} • ${val(s.motherQualification)}</td>
+              </tr>
+              <tr style="border-bottom:1px solid #e2e8f0;">
+                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Guardian &amp; Rel:</td>
+                <td style="padding:4px 6px; font-weight:700;">${val(s.guardianName || s.fatherName)} (${val(s.relation, 'Father')})</td>
+                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Annual Income:</td>
+                <td style="padding:4px 6px; font-family:var(--font-mono);">${s.annualIncome ? '₹ ' + esc(s.annualIncome) : '—'}</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Emergency Phone:</td>
+                <td style="padding:4px 6px; font-weight:700; font-family:var(--font-mono); color:#15803d;">${val(s.guardianPhone || s.fatherPhone || s.phone)}</td>
+                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">WhatsApp No:</td>
+                <td style="padding:4px 6px; font-family:var(--font-mono);">${val(s.whatsapp || s.fatherWhatsapp || s.motherWhatsapp)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- SECTION 3: ADDRESS & SECTION 4: HOSTEL (SIDE BY SIDE) -->
+        <div style="display:grid; grid-template-columns:1.2fr 0.8fr; gap:10px; margin-bottom:10px;">
+          <!-- Address -->
+          <div>
+            <div style="background:#f1f5f9; border-left:4px solid #064e3b; padding:4px 8px; font-size:9.5px; font-weight:800; color:#064e3b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">
+              3. Permanent &amp; Residential Address
+            </div>
+            <table style="width:100%; border-collapse:collapse; font-size:9.5px; border:1px solid #e2e8f0; height:calc(100% - 24px);">
+              <tbody>
+                <tr style="border-bottom:1px solid #e2e8f0;">
+                  <td style="width:26%; padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Village / Town:</td>
+                  <td style="padding:4px 6px; font-weight:600;">${val(s.village)}</td>
+                </tr>
+                <tr style="border-bottom:1px solid #e2e8f0;">
+                  <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">PO &amp; PS:</td>
+                  <td style="padding:4px 6px;">${val(s.postOffice)} • ${val(s.policeStation)}</td>
+                </tr>
+                <tr>
+                  <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Dist &amp; PIN:</td>
+                  <td style="padding:4px 6px;">${val(s.district, 'Dakshin Dinajpur')} - ${val(s.pinCode)} (${val(s.state, 'West Bengal')})</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Hostel & Boarding -->
+          <div>
+            <div style="background:#f1f5f9; border-left:4px solid #064e3b; padding:4px 8px; font-size:9.5px; font-weight:800; color:#064e3b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">
+              4. Residential Boarding / Hostel
+            </div>
+            <table style="width:100%; border-collapse:collapse; font-size:9.5px; border:1px solid #e2e8f0; height:calc(100% - 24px);">
+              <tbody>
+                <tr style="border-bottom:1px solid #e2e8f0;">
+                  <td style="width:34%; padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Hostel Wing:</td>
+                  <td style="padding:4px 6px; font-weight:700; color:#1e40af;">${val(s.hostelBlock, isBoarder ? 'Hostel Wing Pending' : 'Non-Residential')}</td>
+                </tr>
+                <tr style="border-bottom:1px solid #e2e8f0;">
+                  <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Room &amp; Bed:</td>
+                  <td style="padding:4px 6px; font-weight:700; font-family:var(--font-mono); color:#16a34a;">${isBoarder ? `${val(s.hostelRoom, 'Room —')} • ${val(s.hostelBed, 'Bed —')}` : 'Day Scholar'}</td>
+                </tr>
+                <tr>
+                  <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Mess / Board:</td>
+                  <td style="padding:4px 6px;">${isBoarder ? 'Full Residential Boarding' : 'Regular Day Scholar'}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- SECTION 5: HEALTH & ACADEMIC -->
+        <div style="margin-bottom:12px;">
+          <div style="background:#f1f5f9; border-left:4px solid #064e3b; padding:4px 8px; font-size:9.5px; font-weight:800; color:#064e3b; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">
+            5. Health &amp; Previous Academic Record
+          </div>
+          <table style="width:100%; border-collapse:collapse; font-size:9.5px; border:1px solid #e2e8f0;">
+            <tbody>
+              <tr style="border-bottom:1px solid #e2e8f0;">
+                <td style="width:18%; padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Allergies / Health:</td>
+                <td style="width:32%; padding:4px 6px; color:#ef4444; font-weight:600;">${val(s.allergies || s.medicalConditions, 'No known chronic allergies')}</td>
+                <td style="width:18%; padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Hospital Contact:</td>
+                <td style="width:32%; padding:4px 6px; font-family:var(--font-mono);">${val(s.emergencyHospitalPhone || s.emergencyPhysician, 'Campus Medical Center')}</td>
+              </tr>
+              <tr>
+                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Previous School:</td>
+                <td style="padding:4px 6px; font-weight:600;">${val(s.previousSchool)}</td>
+                <td style="padding:4px 6px; background:#f8fafc; font-weight:700; color:#475569;">Medical Notes:</td>
+                <td style="padding:4px 6px;">${val(s.medicalNotes || s.medical_notes, 'Fit for academic and physical activities')}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- SECTION 6: STATUTORY DECLARATION & SIGNATURE BLOCKS -->
+        <div style="border:1.5px solid #cbd5e1; border-radius:6px; padding:10px 12px; background:#fafafa; margin-bottom:8px;">
+          <div style="font-size:8.5px; line-height:1.35; color:#475569; text-align:justify; margin-bottom:18px;">
+            <strong>OFFICIAL UNDERTAKING:</strong> I hereby solemnly declare that all particulars entered in this Cumulative Student Record &amp; Admission Dossier are true, authentic, and verified from statutory certificates. The candidate shall abide by all academic standards, institutional discipline, and code of conduct formulated by Thaiba Model School.
+          </div>
+
+          <div style="display:flex; justify-content:space-between; align-items:flex-end; font-size:8px; color:#334155;">
+            <div style="text-align:center; width:170px;">
+              <div style="border-bottom:1px solid #475569; height:24px; margin-bottom:4px;"></div>
+              <div style="font-weight:700; text-transform:uppercase;">Signature of Parent / Guardian</div>
+              <div style="font-size:7px; color:#64748b;">Date: ____________________</div>
+            </div>
+
+            <div style="text-align:center; width:170px;">
+              <div style="border-bottom:1px solid #475569; height:24px; margin-bottom:4px;"></div>
+              <div style="font-weight:700; text-transform:uppercase;">Class Teacher / Counselor</div>
+              <div style="font-size:7px; color:#64748b;">Attestation &amp; Verification</div>
+            </div>
+
+            <div style="text-align:center; width:190px;">
+              <div style="font-family:'Brush Script MT', cursive; font-size:15px; color:#064e3b; line-height:1; margin-bottom:2px;">Thaiba Authority</div>
+              <div style="border-bottom:1.5px solid #064e3b; height:6px; margin-bottom:4px;"></div>
+              <div style="font-weight:800; color:#064e3b; text-transform:uppercase;">Principal / Head of Institution</div>
+              <div style="font-size:7px; color:#64748b;">Official Seal &amp; Institutional Stamp</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tamper-evident Security Footer -->
+        <div style="display:flex; justify-content:space-between; align-items:center; font-size:7.5px; color:#94a3b8; border-top:1px dashed #cbd5e1; padding-top:4px;">
+          <div>● SECURE CUMULATIVE STUDENT RECORD • THAIBA MODEL SCHOOL ERP</div>
+          <div>REF NO: <span style="font-family:var(--font-mono); color:#475569; font-weight:700;">TMS-DOS-${esc(s.admissionNo || s.id)}</span></div>
+          <div>GENERATED: <strong>${new Date().toISOString().replace('T', ' ').slice(0, 19)}</strong></div>
+        </div>
+      </div>
+    `;
+  }
+
+  static downloadStudentDossier(s) {
+    if (!s) return;
+    const bodyHtml = StudentModule.renderStudentDossierHtml(s);
+    exportPdf(`Student-Dossier-${s.admissionNo || s.id}`, bodyHtml, {
+      filename: `TMS_Student_Dossier_${s.admissionNo || s.id}_${(s.fullName || 'Student').replace(/\s+/g, '_')}`,
+      title: `Student Bio-Data Dossier — ${s.fullName}`,
+      showHeader: false,
+      showFooter: false,
+      autoPrint: true
+    });
+    UIComponents.showToast(`Official form generated for ${s.fullName}!`, 'success');
+  }
+
+  static bulkDownloadStudentDossiers(studentsList) {
+    if (!studentsList || !studentsList.length) {
+      UIComponents.showToast('Please select at least one student to download forms.', 'warning');
+      return;
+    }
+    const bodyHtml = studentsList
+      .map(s => StudentModule.renderStudentDossierHtml(s))
+      .join('<div style="page-break-after:always; break-after:page; height:0; margin:0; padding:0;"></div>');
+
+    exportPdf(`Batch-Student-Dossiers-${studentsList.length}`, bodyHtml, {
+      filename: `TMS_Batch_Student_Dossiers_${studentsList.length}_Students`,
+      title: `Batch Student Forms (${studentsList.length} Students)`,
+      showHeader: false,
+      showFooter: false,
+      autoPrint: true
+    });
+    UIComponents.showToast(`Compiled ${studentsList.length} student forms for PDF download!`, 'success');
+  }
+
+  static openBatchDownloadModal(container, students) {
+    const esc = (v) => UIComponents.escapeHtml(v);
+    const allGradeOptions = Array.from(new Set(students.map(s => s.grade || s.class).filter(Boolean))).sort();
+
+    const bodyHtml = `
+      <div style="font-family:inherit; padding:6px 0;">
+        <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:12px 14px; margin-bottom:16px; display:flex; align-items:center; gap:12px;">
+          <div style="width:42px; height:42px; border-radius:50%; background:#dcfce7; display:flex; align-items:center; justify-content:center; color:#16a34a; font-size:1.4rem; flex-shrink:0;">
+            📄
+          </div>
+          <div>
+            <div style="font-weight:800; font-size:0.95rem; color:#166534;">Official Student Bio-Data Forms (PDF)</div>
+            <div style="font-size:0.78rem; color:#15803d;">Generate standardized A4 dossiers for admissions, office archives, and inspection audits.</div>
+          </div>
+        </div>
+
+        <p style="font-size:0.86rem; color:#475569; margin-bottom:14px;">Select the scope of students you want to download forms for:</p>
+
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <!-- Option 1: All Students -->
+          <button type="button" class="btn btn-primary" id="btn-batch-dl-all" style="background:#0e623b; border-color:#0e623b; padding:12px 16px; font-weight:700; display:flex; justify-content:space-between; align-items:center; border-radius:10px;">
+            <div style="text-align:left;">
+              <div style="font-size:0.92rem;">Download All Enrolled Students</div>
+              <div style="font-size:0.75rem; color:#dcfce7; font-weight:500;">Generates a complete batch booklet of all ${students.length} student forms</div>
+            </div>
+            <i data-lucide="download" style="width:20px; height:20px;"></i>
+          </button>
+
+          <!-- Option 2: By Class -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:14px;">
+            <div style="font-weight:700; font-size:0.84rem; color:#0f172a; margin-bottom:8px;">Download Forms by Class / Grade</div>
+            <div style="display:flex; gap:8px;">
+              <select id="batch-dl-class-select" class="form-select" style="flex:1; height:38px;">
+                <option value="">Choose Class / Grade...</option>
+                ${allGradeOptions.map(g => {
+                  const count = students.filter(s => (s.grade || s.class) === g).length;
+                  return `<option value="${esc(g)}">${esc(g)} (${count} students)</option>`;
+                }).join('')}
+              </select>
+              <button type="button" class="btn btn-secondary" id="btn-batch-dl-by-class" style="font-weight:700; height:38px; white-space:nowrap; border-color:#cbd5e1;">
+                <i data-lucide="download"></i> Download Class
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    UIComponents.openModal({
+      title: 'Batch Download Student Bio-Data Forms',
+      bodyHtml,
+      footerHtml: `
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('global-modal-close').click()" style="padding:8px 20px; font-weight:700;">Close</button>
+      `,
+      maxWidth: '560px'
+    });
+
+    document.getElementById('btn-batch-dl-all')?.addEventListener('click', () => {
+      UIComponents.closeModal();
+      StudentModule.bulkDownloadStudentDossiers(students);
+    });
+
+    document.getElementById('btn-batch-dl-by-class')?.addEventListener('click', () => {
+      const chosenClass = document.getElementById('batch-dl-class-select')?.value;
+      if (!chosenClass) {
+        UIComponents.showToast('Please select a class from the dropdown.', 'warning');
+        return;
+      }
+      const filtered = students.filter(s => (s.grade || s.class) === chosenClass);
+      if (!filtered.length) {
+        UIComponents.showToast(`No students enrolled in ${chosenClass}.`, 'warning');
+        return;
+      }
+      UIComponents.closeModal();
+      StudentModule.bulkDownloadStudentDossiers(filtered);
+    });
   }
 
   static renderIdCardMarkup(s, photoUrl, cardPrefix = 'id-card-qr') {
