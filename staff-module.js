@@ -397,26 +397,6 @@ export class StaffModule {
 
     const bodyHtml = `
       <form id="form-new-staff">
-        ${isEdit ? '' : `
-        <div style="display:flex; justify-content:space-between; align-items:center; background:linear-gradient(135deg, #f0fdf4 0%, #eff6ff 100%); border:1px solid #bbf7d0; border-radius:10px; padding:12px 16px; margin-bottom:16px; gap:12px; flex-wrap:wrap;">
-          <div style="display:flex; align-items:center; gap:10px;">
-            <div style="width:34px; height:34px; border-radius:8px; background:#16a34a; color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-              <i data-lucide="users" style="width:18px; height:18px;"></i>
-            </div>
-            <div>
-              <div style="font-weight:700; color:#14532d; font-size:0.86rem;">Onboarding Previous Staff in Bulk?</div>
-              <div style="font-size:0.75rem; color:#475569; margin-top:1px;">Import multiple existing faculty &amp; staff records at once using a formatted CSV template.</div>
-            </div>
-          </div>
-          <div style="display:flex; gap:8px; align-items:center; flex-shrink:0;">
-            <button type="button" class="btn btn-secondary btn-sm" id="btn-modal-dl-staff-template" style="background:#fff; border-color:#86efac; color:#166534; font-weight:700; font-size:0.78rem;">
-              <i data-lucide="download"></i> Template CSV
-            </button>
-            <button type="button" class="btn btn-primary btn-sm" id="btn-modal-switch-bulk-staff" style="background:#16a34a; border-color:#16a34a; font-weight:700; font-size:0.78rem;">
-              <i data-lucide="file-up"></i> Bulk Onboard (CSV)
-            </button>
-          </div>
-        </div>`}
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
           <div class="form-group">
             <label class="form-label">Full Name *</label>
@@ -503,18 +483,6 @@ export class StaffModule {
       if (isEdit) await this.saveStaffEdit(e, container);
       else await this.createStaff(container);
     });
-
-    if (!isEdit) {
-      document.getElementById('btn-modal-dl-staff-template')?.addEventListener('click', (ev) => {
-        ev.preventDefault();
-        StaffModule.downloadStaffTemplate();
-      });
-      document.getElementById('btn-modal-switch-bulk-staff')?.addEventListener('click', (ev) => {
-        ev.preventDefault();
-        UIComponents.closeModal();
-        StaffModule.openBulkStaffModal(container);
-      });
-    }
     UIComponents.refreshIcons();
   }
 
@@ -1187,14 +1155,9 @@ export class StaffModule {
   static openBulkStaffModal(container) {
     const bodyHtml = `
       <div style="max-width:880px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--border-color); flex-wrap:wrap; gap:10px;">
-          <div>
-            <div style="font-weight:800; font-size:1.05rem; color:#0f172a;">Bulk Onboard Faculty &amp; Staff Members</div>
-            <div style="font-size:0.78rem; color:var(--text-muted);">Quickly import multiple previous or existing staff records and optionally generate secure logins.</div>
-          </div>
-          <button type="button" class="btn btn-secondary btn-sm" id="btn-switch-single-appoint" style="display:inline-flex; align-items:center; gap:6px; font-weight:600;">
-            <i data-lucide="user-plus"></i> Switch to Single Appointment
-          </button>
+        <div style="margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--border-color);">
+          <div style="font-weight:800; font-size:1.05rem; color:#0f172a;">Bulk Onboard Faculty &amp; Staff Members</div>
+          <div style="font-size:0.78rem; color:var(--text-muted);">Quickly import multiple previous or existing staff records and optionally generate secure logins.</div>
         </div>
 
         <!-- Step 1: Download Template Card -->
@@ -1290,10 +1253,6 @@ export class StaffModule {
     });
 
     document.getElementById('btn-cancel-bulk-staff')?.addEventListener('click', () => UIComponents.closeModal());
-    document.getElementById('btn-switch-single-appoint')?.addEventListener('click', () => {
-      UIComponents.closeModal();
-      StaffModule.openStaffModal(null, container);
-    });
 
     document.getElementById('btn-dl-staff-template')?.addEventListener('click', () => {
       StaffModule.downloadStaffTemplate();
