@@ -991,18 +991,54 @@ export class StaffModule {
 
   static normalizeDate(val) {
     if (!val) return null;
+    if (typeof val === 'number') {
+      if (val > 30000 && val < 60000) {
+        const d = new Date((val - 25569) * 86400 * 1000);
+        if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+      }
+    }
     const s = String(val).trim();
     if (!s) return null;
-    const dmy = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+
+    if (/^\d{5}$/.test(s)) {
+      const num = parseInt(s, 10);
+      if (num > 30000 && num < 60000) {
+        const d = new Date((num - 25569) * 86400 * 1000);
+        if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+      }
+    }
+
+    // 1. YYYY-MM-DD or YYYY-DD-MM
+    const ymd = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+    if (ymd) {
+      const year = ymd[1];
+      const p1 = parseInt(ymd[2], 10);
+      const p2 = parseInt(ymd[3], 10);
+      if (p1 > 12 && p2 <= 12) {
+        // YYYY-DD-MM swapped
+        return `${year}-${String(p2).padStart(2, '0')}-${String(p1).padStart(2, '0')}`;
+      }
+      return `${year}-${String(p1).padStart(2, '0')}-${String(p2).padStart(2, '0')}`;
+    }
+
+    // 2. DD/MM/YYYY or MM/DD/YYYY
+    const dmy = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
     if (dmy) {
-      const day = dmy[1].padStart(2, '0');
-      const month = dmy[2].padStart(2, '0');
+      const p1 = parseInt(dmy[1], 10);
+      const p2 = parseInt(dmy[2], 10);
       const year = dmy[3];
-      return `${year}-${month}-${day}`;
+      if (p1 > 12 && p2 <= 12) {
+        // Definitely DD/MM/YYYY
+        return `${year}-${String(p2).padStart(2, '0')}-${String(p1).padStart(2, '0')}`;
+      }
+      if (p2 > 12 && p1 <= 12) {
+        // Definitely MM/DD/YYYY
+        return `${year}-${String(p1).padStart(2, '0')}-${String(p2).padStart(2, '0')}`;
+      }
+      // Both <= 12: Standard Indian school format DD/MM/YYYY
+      return `${year}-${String(p2).padStart(2, '0')}-${String(p1).padStart(2, '0')}`;
     }
-    if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
-      return s.slice(0, 10);
-    }
+
     const parsed = new Date(s);
     if (!isNaN(parsed.getTime())) {
       return parsed.toISOString().slice(0, 10);

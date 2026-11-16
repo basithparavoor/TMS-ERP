@@ -18,6 +18,46 @@ const KNOWN_STUDENT_COLS = new Set([
   'allergies', 'medical_conditions', 'emergency_physician', 'emergency_hospital_phone', 'medical_notes'
 ]);
 
+function sanitizeIsoDate(val) {
+  if (!val) return val;
+  const s = String(val).trim();
+  if (!s) return val;
+
+  // 1. YYYY-MM-DD or YYYY-DD-MM
+  const ymd = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+  if (ymd) {
+    const year = ymd[1];
+    const p1 = parseInt(ymd[2], 10);
+    const p2 = parseInt(ymd[3], 10);
+    if (p1 > 12 && p2 <= 12) {
+      // Swapped YYYY-DD-MM -> YYYY-MM-DD
+      return `${year}-${String(p2).padStart(2, '0')}-${String(p1).padStart(2, '0')}`;
+    }
+    return `${year}-${String(p1).padStart(2, '0')}-${String(p2).padStart(2, '0')}`;
+  }
+
+  // 2. DD/MM/YYYY or MM/DD/YYYY
+  const dmy = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if (dmy) {
+    const p1 = parseInt(dmy[1], 10);
+    const p2 = parseInt(dmy[2], 10);
+    const year = dmy[3];
+    if (p1 > 12 && p2 <= 12) {
+      return `${year}-${String(p2).padStart(2, '0')}-${String(p1).padStart(2, '0')}`;
+    }
+    if (p2 > 12 && p1 <= 12) {
+      return `${year}-${String(p1).padStart(2, '0')}-${String(p2).padStart(2, '0')}`;
+    }
+    return `${year}-${String(p2).padStart(2, '0')}-${String(p1).padStart(2, '0')}`;
+  }
+
+  const parsed = new Date(s);
+  if (!isNaN(parsed.getTime())) {
+    return parsed.toISOString().slice(0, 10);
+  }
+  return val;
+}
+
 function rowFromDb(row, collection = null) {
   if (!row || typeof row !== 'object') return row;
   const out = {};
@@ -172,13 +212,15 @@ function rowToDb(row, collection = null) {
   }
 
   // Universal Sanitization for ANY collection:
-  // Convert empty strings "" in date/time/timestamp/numeric fields to null to satisfy PostgreSQL strict typings
+  // Convert empty strings "" in date/time/timestamp/numeric fields to null, and sanitize any date format into ISO YYYY-MM-DD
   for (const [col, val] of Object.entries(out)) {
     if (typeof val === 'string') {
       const trimmed = val.trim();
-      const isDateCol = col.endsWith('_date') || col.endsWith('_at') || col.includes('dob') || col === 'date' || col === 'due_date' || col === 'paid_date' || col === 'start_date' || col === 'end_date' || col === 'join_date';
+      const isDateCol = col.endsWith('_date') || col.endsWith('_at') || col.includes('dob') || col === 'date' || col === 'due_date' || col === 'paid_date' || col === 'start_date' || col === 'end_date' || col === 'join_date' || col === 'joining_date';
       if (trimmed === '' && isDateCol) {
         out[col] = null;
+      } else if (isDateCol && trimmed) {
+        out[col] = sanitizeIsoDate(trimmed);
       }
     }
   }
@@ -317,6 +359,10 @@ class SupabaseDataService {
                   }
                 }
               }
+              if (item.collection === 'staff' && item.payload) {
+                if (item.payload.joiningDate) item.payload.joiningDate = sanitizeIsoDate(item.payload.joiningDate);
+                if (item.payload.joining_date) item.payload.joining_date = sanitizeIsoDate(item.payload.joining_date);
+              }
               return item;
             }).filter(item => {
               if (item.collection === 'app_settings' && item.payload && item.payload.key) return false;
@@ -329,6 +375,27 @@ class SupabaseDataService {
           localStorage.removeItem('tms_offline_queue');
         }
       }
+
+      // Auto-heal any out-of-range dates in local staff storage
+      try {
+        const rawStaff = localStorage.getItem('tms_staff');
+        if (rawStaff) {
+          const staffList = JSON.parse(rawStaff);
+          if (Array.isArray(staffList)) {
+            let changed = false;
+            staffList.forEach(s => {
+              if (s && s.joiningDate) {
+                const fixed = sanitizeIsoDate(s.joiningDate);
+                if (fixed !== s.joiningDate) {
+                  s.joiningDate = fixed;
+                  changed = true;
+                }
+              }
+            });
+            if (changed) localStorage.setItem('tms_staff', JSON.stringify(staffList));
+          }
+        }
+      } catch (_) {}
 
       const collections = [
         'assignments',
