@@ -20,6 +20,7 @@ import { downloadCsv, exportPdf, formatPdfFilename, kvTable } from './export-uti
 import { AdminWebsiteCms } from './admin-website-cms.js';
 import { websiteService } from './website-service.js';
 import { WindowPermissionsService, WINDOW_ROLES, ROLE_THEMES, WINDOW_CATEGORIES, DEFAULT_RBAC_MATRIX } from './window-permissions.js';
+import { orgStructureService } from './org-structure-service.js';
 
 const esc = (v) => UIComponents.escapeHtml(v);
 const safeOn = (id, event, fn) => {
@@ -385,6 +386,7 @@ export class AdminModule {
       ],
       users: [
         { key: 'users', label: 'User Logins, Roles & Permissions', icon: 'users', showPendingBadge: true },
+        { key: 'org-structure', label: 'Departments, Designations & Roles', icon: 'layers' },
         { key: 'google-approvals', label: 'Google Approvals Queue', icon: 'user-check' },
         { key: 'staff-onboarding', label: 'Staff Onboarding & Governance', icon: 'user-cog' },
         ...(isSuperAdmin ? [{ key: 'user-sessions', label: 'Login & Logout Sessions', icon: 'history' }] : []),
@@ -419,6 +421,7 @@ export class AdminModule {
       ],
       system: [
         { key: 'institution-details', label: 'Institution Profile & Campus Status', icon: 'building-2' },
+        { key: 'org-structure', label: 'Departments, Designations & Roles', icon: 'layers' },
         { key: 'branding', label: 'Institute Logo & Emblem', icon: 'image' },
         { key: 'backup', label: 'JSON Disaster Recovery', icon: 'database' }
       ],
@@ -567,6 +570,7 @@ export class AdminModule {
       else if (tabKey === 'payment-settings') await this.renderPaymentSettingsTab(tabContent);
       else if (tabKey === 'notifications') await this.renderNotificationsTab(tabContent);
       else if (tabKey === 'users') await this.renderUsersTab(tabContent);
+      else if (tabKey === 'org-structure') await this.renderOrgStructureTab(tabContent);
       else if (tabKey === 'staff-onboarding') await this.renderStaffOnboardingTab(tabContent);
       else if (tabKey === 'google-approvals') await this.renderGoogleApprovalsTab(tabContent);
       else if (tabKey === 'institution-details') await this.renderInstitutionDetailsTab(tabContent);
@@ -4586,6 +4590,11 @@ export class AdminModule {
                   <span class="tab-label-full">Assign Windows (RBAC)</span>
                   <span class="tab-label-short">RBAC</span>
                 </button>
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-tab-open-org-structure" style="display:inline-flex; align-items:center; gap:5px; margin-left:6px; color:#2563eb; font-weight:700;">
+                  <i data-lucide="layers" style="width:14px;height:14px;"></i>
+                  <span class="tab-label-full">Departments, Designations &amp; Roles</span>
+                  <span class="tab-label-short">Org Structure</span>
+                </button>
               </div>
               <button type="button" class="tms-tab-nav-btn tms-tab-nav-next" aria-label="Scroll right" title="Scroll tabs right">
                 <i data-lucide="chevron-right"></i>
@@ -4632,6 +4641,10 @@ export class AdminModule {
 
     safeOn('btn-config-cred-share', 'click', () => {
       this.openCredentialTemplateModal();
+    });
+
+    safeOn('btn-tab-open-org-structure', 'click', () => {
+      this.renderTab('org-structure');
     });
 
     UIComponents.refreshIcons();
@@ -6398,8 +6411,817 @@ export class AdminModule {
     UIComponents.refreshIcons();
   }
 
-  /**
-   * Institution Profile & Campus Status Tab
+  /* ================================================================== */
+  /* Institutional Organization Structure (Depts, Designations, Roles) */
+  /* ================================================================== */
+
+  static async renderOrgStructureTab(tabContent) {
+    const orgData = await orgStructureService.load();
+    const departments = orgData.departments || [];
+    const designations = orgData.designations || [];
+    const roles = orgData.roles || [];
+
+    let staff = [];
+    try { staff = await dbService.select('staff'); } catch (e) { staff = []; }
+
+    let profiles = [];
+    try { profiles = await dbService.select('profiles'); } catch (e) { profiles = []; }
+
+    if (!this._orgActiveTab) {
+      this._orgActiveTab = 'departments';
+    }
+    const currentTab = this._orgActiveTab;
+
+    // Staff counts
+    const staffByDept = {};
+    staff.forEach(s => {
+      const d = (s.department || '').toLowerCase().trim();
+      if (d) staffByDept[d] = (staffByDept[d] || 0) + 1;
+    });
+
+    const staffByDesig = {};
+    staff.forEach(s => {
+      const d = (s.designation || '').toLowerCase().trim();
+      if (d) staffByDesig[d] = (staffByDesig[d] || 0) + 1;
+    });
+
+    const usersByRole = {};
+    profiles.forEach(p => {
+      const r = (p.role || '').toLowerCase().trim();
+      if (r) usersByRole[r] = (usersByRole[r] || 0) + 1;
+    });
+
+    tabContent.innerHTML = `
+      <div style="display:flex; flex-direction:column; gap:16px;">
+        <!-- Header -->
+        <div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px; margin-bottom:0;">
+          <div class="page-title-group">
+            <h2 style="font-size:1.4rem; font-weight:800; color:var(--text-main); margin:0; display:flex; align-items:center; gap:8px;">
+              <i data-lucide="layers" style="color:#2563eb; width:24px; height:24px;"></i> Organization Structure &amp; Roles Master
+            </h2>
+            <p style="font-size:0.85rem; color:var(--text-muted); margin:4px 0 0 0;">
+              Manage institutional Departments, Faculty Designations, and Authorization Roles. Edits dynamically sync with Staff profiles, Dropdown pickers, and Access Control.
+            </p>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <button class="btn btn-secondary btn-sm" id="btn-export-org-json" title="Export complete organizational structure as JSON">
+              <i data-lucide="download"></i> Export JSON
+            </button>
+            <button class="btn btn-secondary btn-sm" id="btn-reset-org-defaults" style="color:#ef4444;" title="Reset back to standard institutional defaults">
+              <i data-lucide="rotate-ccw"></i> Reset Defaults
+            </button>
+          </div>
+        </div>
+
+        <!-- Subtabs Navigation Bar -->
+        <div class="card" style="padding:0; overflow:visible;">
+          <div class="card-header" style="padding:0.75rem 1rem; border-bottom:1px solid var(--border-color); background:var(--bg-surface); border-radius:16px 16px 0 0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <div style="display:inline-flex; gap:8px; align-items:center; overflow-x:auto;">
+              <button class="btn ${currentTab === 'departments' ? 'btn-primary' : 'btn-secondary'} btn-sm org-subtab-btn" data-orgtab="departments" style="display:inline-flex; align-items:center; gap:6px;">
+                <i data-lucide="building" style="width:14px;height:14px;"></i>
+                <span>Departments (${departments.length})</span>
+              </button>
+              <button class="btn ${currentTab === 'designations' ? 'btn-primary' : 'btn-secondary'} btn-sm org-subtab-btn" data-orgtab="designations" style="display:inline-flex; align-items:center; gap:6px;">
+                <i data-lucide="badge-check" style="width:14px;height:14px;"></i>
+                <span>Designations (${designations.length})</span>
+              </button>
+              <button class="btn ${currentTab === 'roles' ? 'btn-primary' : 'btn-secondary'} btn-sm org-subtab-btn" data-orgtab="roles" style="display:inline-flex; align-items:center; gap:6px;">
+                <i data-lucide="shield-check" style="width:14px;height:14px;"></i>
+                <span>Institutional Roles (${roles.length})</span>
+              </button>
+            </div>
+            <div id="org-action-btn-placeholder"></div>
+          </div>
+
+          <div class="card-body" style="padding:1.25rem;" id="org-structure-content">
+            <!-- Dynamic Content -->
+          </div>
+        </div>
+      </div>
+    `;
+
+    const subContent = document.getElementById('org-structure-content');
+    const actionPlaceholder = document.getElementById('org-action-btn-placeholder');
+
+    if (currentTab === 'designations') {
+      this.renderDesignationsView(subContent, actionPlaceholder, designations, departments, staffByDesig);
+    } else if (currentTab === 'roles') {
+      this.renderRolesView(subContent, actionPlaceholder, roles, usersByRole);
+    } else {
+      this.renderDepartmentsView(subContent, actionPlaceholder, departments, staffByDept);
+    }
+
+    // Attach tab switches
+    tabContent.querySelectorAll('.org-subtab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        this._orgActiveTab = btn.dataset.orgtab;
+        this.renderOrgStructureTab(tabContent);
+      });
+    });
+
+    // Export JSON
+    safeOn('btn-export-org-json', 'click', () => {
+      const exportBlob = new Blob([JSON.stringify(orgData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(exportBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `TMS_Org_Structure_${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      UIComponents.showToast('Organization structure JSON exported.', 'success');
+    });
+
+    // Reset Defaults
+    safeOn('btn-reset-org-defaults', 'click', async () => {
+      if (!confirm('Are you sure you want to restore all Departments, Designations, and Roles back to institutional system defaults? Any custom modifications will be reset.')) return;
+      await orgStructureService.resetToDefaults();
+      UIComponents.showToast('Organization structure restored to institutional defaults.', 'success');
+      this.renderOrgStructureTab(tabContent);
+    });
+
+    UIComponents.refreshIcons();
+  }
+
+  static renderDepartmentsView(container, actionContainer, departments, staffByDept) {
+    if (actionContainer) {
+      actionContainer.innerHTML = `
+        <button class="btn btn-primary btn-sm" id="btn-add-department" style="display:inline-flex; align-items:center; gap:6px; background:#16a34a; border-color:#16a34a;">
+          <i data-lucide="plus-circle" style="width:14px;height:14px;"></i> Add Department
+        </button>
+      `;
+    }
+
+    container.innerHTML = `
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+          <div style="position:relative; min-width:240px; max-width:360px; flex:1;">
+            <input type="text" id="dept-search-input" class="form-input form-input-sm" placeholder="Search departments by name or code..." style="padding-left:32px; height:36px; border-radius:8px;">
+            <i data-lucide="search" style="position:absolute; left:10px; top:10px; width:15px; height:15px; color:#94a3b8;"></i>
+          </div>
+          <div style="font-size:0.8rem; color:var(--text-muted);">
+            Showing <strong id="dept-count-display">${departments.length}</strong> department(s)
+          </div>
+        </div>
+
+        <div class="table-responsive" style="border:1px solid var(--border-color); border-radius:10px; overflow:hidden;">
+          <table class="tms-table" style="font-size:0.84rem;">
+            <thead>
+              <tr>
+                <th style="width:90px;">CODE</th>
+                <th>DEPARTMENT NAME</th>
+                <th>DESCRIPTION / FOCUS AREAS</th>
+                <th style="width:140px;">STAFF ASSIGNED</th>
+                <th style="width:150px; text-align:right;">ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody id="dept-table-tbody">
+              ${departments.map(d => {
+                const count = staffByDept[d.name.toLowerCase().trim()] || 0;
+                return `
+                  <tr class="dept-row" data-search="${esc((d.name + ' ' + d.code + ' ' + (d.description || '')).toLowerCase())}">
+                    <td><span class="badge badge-info font-mono" style="font-weight:700;">${esc(d.code || '—')}</span></td>
+                    <td>
+                      <strong style="color:var(--text-main); font-size:0.9rem;">${esc(d.name)}</strong>
+                    </td>
+                    <td style="color:var(--text-muted); font-size:0.8rem;">${esc(d.description || '—')}</td>
+                    <td>
+                      <span class="badge ${count > 0 ? 'badge-success' : 'badge-subtle'}" style="font-weight:600;">
+                        ${count} Staff Member${count === 1 ? '' : 's'}
+                      </span>
+                    </td>
+                    <td style="text-align:right;">
+                      <div style="display:inline-flex; gap:6px;">
+                        <button class="btn btn-secondary btn-sm btn-edit-dept" data-id="${esc(d.id)}" title="Edit department">
+                          <i data-lucide="edit-2" style="width:13px;height:13px;"></i> Edit
+                        </button>
+                        <button class="btn btn-secondary btn-sm btn-del-dept" data-id="${esc(d.id)}" style="color:#ef4444;" title="Delete department">
+                          <i data-lucide="trash-2" style="width:13px;height:13px;"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+
+    // Filter
+    const searchInp = document.getElementById('dept-search-input');
+    const rows = container.querySelectorAll('.dept-row');
+    const countDisplay = document.getElementById('dept-count-display');
+    searchInp?.addEventListener('input', () => {
+      const q = searchInp.value.toLowerCase().trim();
+      let visible = 0;
+      rows.forEach(r => {
+        const match = !q || r.dataset.search.includes(q);
+        r.style.display = match ? '' : 'none';
+        if (match) visible++;
+      });
+      if (countDisplay) countDisplay.textContent = visible;
+    });
+
+    // Add button
+    document.getElementById('btn-add-department')?.addEventListener('click', () => {
+      this.openDepartmentModal(null);
+    });
+
+    // Edit buttons
+    container.querySelectorAll('.btn-edit-dept').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.id;
+        const dept = departments.find(d => d.id === id);
+        if (dept) this.openDepartmentModal(dept);
+      });
+    });
+
+    // Delete buttons
+    container.querySelectorAll('.btn-del-dept').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        const dept = departments.find(d => d.id === id);
+        if (dept) await this.deleteDepartment(dept, staffByDept[dept.name.toLowerCase().trim()] || 0);
+      });
+    });
+
+    UIComponents.refreshIcons();
+  }
+
+  static openDepartmentModal(dept) {
+    const isEdit = !!dept;
+    const d = dept || {};
+
+    const bodyHtml = `
+      <form id="form-dept-editor" onsubmit="return false;">
+        <div style="display:flex; flex-direction:column; gap:14px;">
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Department Name *</label>
+            <input class="form-input" id="dept-name-inp" required value="${esc(d.name || '')}" placeholder="e.g. Science / Mathematics / Robotics">
+            <span style="font-size:0.72rem; color:var(--text-muted);">The primary name displayed on staff directory, report cards, and timetables.</span>
+          </div>
+
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Department Code *</label>
+            <input class="form-input font-mono" id="dept-code-inp" required value="${esc(d.code || '')}" placeholder="e.g. SCI / MATH / ROB" style="text-transform:uppercase;">
+            <span style="font-size:0.72rem; color:var(--text-muted);">2-5 character short identifier.</span>
+          </div>
+
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Description / Academic Focus</label>
+            <textarea class="form-input" id="dept-desc-inp" rows="3" placeholder="Subject focus, grade range, or laboratory facilities...">${esc(d.description || '')}</textarea>
+          </div>
+        </div>
+      </form>
+    `;
+
+    const footerHtml = `
+      <button class="btn btn-secondary" onclick="UIComponents.closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="btn-save-dept" style="background:#16a34a; border-color:#16a34a; display:inline-flex; align-items:center; gap:6px;">
+        <i data-lucide="save"></i> ${isEdit ? 'Save Department' : 'Create Department'}
+      </button>
+    `;
+
+    UIComponents.openModal({
+      title: isEdit ? `Edit Department — ${d.name}` : 'Add New Department',
+      bodyHtml,
+      footerHtml,
+      maxWidth: '520px'
+    });
+
+    document.getElementById('btn-save-dept')?.addEventListener('click', async () => {
+      const name = document.getElementById('dept-name-inp')?.value.trim();
+      const code = document.getElementById('dept-code-inp')?.value.trim().toUpperCase();
+      const description = document.getElementById('dept-desc-inp')?.value.trim();
+
+      if (!name) {
+        UIComponents.showToast('Please enter a department name.', 'warning');
+        return;
+      }
+      if (!code) {
+        UIComponents.showToast('Please enter a department code.', 'warning');
+        return;
+      }
+
+      try {
+        await orgStructureService.saveDepartment({
+          id: d.id,
+          name,
+          code,
+          description
+        });
+        UIComponents.showToast(`Department "${name}" saved successfully!`, 'success');
+        UIComponents.closeModal();
+        this.renderTab('org-structure');
+      } catch (err) {
+        UIComponents.showToast(err.message, 'danger');
+      }
+    });
+
+    UIComponents.refreshIcons();
+  }
+
+  static async deleteDepartment(dept, staffCount) {
+    let warningMsg = `Are you sure you want to delete the department "${dept.name}" (${dept.code})?`;
+    if (staffCount > 0) {
+      warningMsg += `\n\n⚠️ Caution: ${staffCount} faculty/staff member(s) are currently assigned to this department. Deleting it will keep staff records intact, but this department will no longer appear in new selection menus.`;
+    }
+    if (!confirm(warningMsg)) return;
+
+    try {
+      await orgStructureService.deleteDepartment(dept.id);
+      UIComponents.showToast(`Department "${dept.name}" deleted.`, 'success');
+      this.renderTab('org-structure');
+    } catch (err) {
+      UIComponents.showToast(`Could not delete department: ${err.message}`, 'danger');
+    }
+  }
+
+  static renderDesignationsView(container, actionContainer, designations, departments, staffByDesig) {
+    if (actionContainer) {
+      actionContainer.innerHTML = `
+        <button class="btn btn-primary btn-sm" id="btn-add-designation" style="display:inline-flex; align-items:center; gap:6px; background:#16a34a; border-color:#16a34a;">
+          <i data-lucide="plus-circle" style="width:14px;height:14px;"></i> Add Designation
+        </button>
+      `;
+    }
+
+    const categories = ['All', 'Teaching', 'Non-Teaching', 'Administrative'];
+
+    container.innerHTML = `
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; flex:1;">
+            <div style="position:relative; min-width:220px; max-width:320px; flex:1;">
+              <input type="text" id="desig-search-input" class="form-input form-input-sm" placeholder="Search designations..." style="padding-left:32px; height:36px; border-radius:8px;">
+              <i data-lucide="search" style="position:absolute; left:10px; top:10px; width:15px; height:15px; color:#94a3b8;"></i>
+            </div>
+            <select id="desig-filter-cat" class="form-select form-select-sm" style="height:36px; min-width:140px; font-size:0.8rem; font-weight:600;">
+              ${categories.map(c => `<option value="${c}">${c === 'All' ? 'All Categories' : c}</option>`).join('')}
+            </select>
+            <select id="desig-filter-dept" class="form-select form-select-sm" style="height:36px; min-width:140px; font-size:0.8rem; font-weight:600;">
+              <option value="">All Departments</option>
+              ${departments.map(d => `<option value="${esc(d.name)}">${esc(d.name)}</option>`).join('')}
+            </select>
+          </div>
+          <div style="font-size:0.8rem; color:var(--text-muted);">
+            Showing <strong id="desig-count-display">${designations.length}</strong> designation(s)
+          </div>
+        </div>
+
+        <div class="table-responsive" style="border:1px solid var(--border-color); border-radius:10px; overflow:hidden;">
+          <table class="tms-table" style="font-size:0.84rem;">
+            <thead>
+              <tr>
+                <th>DESIGNATION TITLE</th>
+                <th style="width:130px;">CATEGORY</th>
+                <th style="width:160px;">DEPARTMENT</th>
+                <th style="width:140px;">HOLDING STAFF</th>
+                <th>DESCRIPTION</th>
+                <th style="width:150px; text-align:right;">ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody id="desig-table-tbody">
+              ${designations.map(d => {
+                const count = staffByDesig[d.title.toLowerCase().trim()] || 0;
+                const catClass = d.category === 'Teaching' ? 'badge-success' : d.category === 'Administrative' ? 'badge-primary' : 'badge-warning';
+                return `
+                  <tr class="desig-row" data-cat="${esc(d.category || '')}" data-dept="${esc(d.department || '')}" data-search="${esc((d.title + ' ' + (d.category || '') + ' ' + (d.department || '') + ' ' + (d.description || '')).toLowerCase())}">
+                    <td>
+                      <strong style="color:var(--text-main); font-size:0.9rem;">${esc(d.title)}</strong>
+                    </td>
+                    <td><span class="badge ${catClass}" style="font-weight:600;">${esc(d.category || 'General')}</span></td>
+                    <td><span class="badge badge-subtle">${esc(d.department || 'All Departments')}</span></td>
+                    <td>
+                      <span class="badge ${count > 0 ? 'badge-success' : 'badge-subtle'}" style="font-weight:600;">
+                        ${count} Employee${count === 1 ? '' : 's'}
+                      </span>
+                    </td>
+                    <td style="color:var(--text-muted); font-size:0.8rem;">${esc(d.description || '—')}</td>
+                    <td style="text-align:right;">
+                      <div style="display:inline-flex; gap:6px;">
+                        <button class="btn btn-secondary btn-sm btn-edit-desig" data-id="${esc(d.id)}" title="Edit designation">
+                          <i data-lucide="edit-2" style="width:13px;height:13px;"></i> Edit
+                        </button>
+                        <button class="btn btn-secondary btn-sm btn-del-desig" data-id="${esc(d.id)}" style="color:#ef4444;" title="Delete designation">
+                          <i data-lucide="trash-2" style="width:13px;height:13px;"></i>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+
+    // Filter
+    const searchInp = document.getElementById('desig-search-input');
+    const catSelect = document.getElementById('desig-filter-cat');
+    const deptSelect = document.getElementById('desig-filter-dept');
+    const rows = container.querySelectorAll('.desig-row');
+    const countDisplay = document.getElementById('desig-count-display');
+
+    const filterRows = () => {
+      const q = searchInp.value.toLowerCase().trim();
+      const cat = catSelect.value;
+      const dept = deptSelect.value.toLowerCase().trim();
+      let visible = 0;
+      rows.forEach(r => {
+        const matchQ = !q || r.dataset.search.includes(q);
+        const matchCat = cat === 'All' || r.dataset.cat === cat;
+        const matchDept = !dept || r.dataset.dept.toLowerCase() === dept;
+        const ok = matchQ && matchCat && matchDept;
+        r.style.display = ok ? '' : 'none';
+        if (ok) visible++;
+      });
+      if (countDisplay) countDisplay.textContent = visible;
+    };
+
+    searchInp?.addEventListener('input', filterRows);
+    catSelect?.addEventListener('change', filterRows);
+    deptSelect?.addEventListener('change', filterRows);
+
+    // Add button
+    document.getElementById('btn-add-designation')?.addEventListener('click', () => {
+      this.openDesignationModal(null, departments);
+    });
+
+    // Edit buttons
+    container.querySelectorAll('.btn-edit-desig').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.id;
+        const desig = designations.find(d => d.id === id);
+        if (desig) this.openDesignationModal(desig, departments);
+      });
+    });
+
+    // Delete buttons
+    container.querySelectorAll('.btn-del-desig').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        const desig = designations.find(d => d.id === id);
+        if (desig) await this.deleteDesignation(desig, staffByDesig[desig.title.toLowerCase().trim()] || 0);
+      });
+    });
+
+    UIComponents.refreshIcons();
+  }
+
+  static openDesignationModal(desig, departments) {
+    const isEdit = !!desig;
+    const d = desig || {};
+    const depts = departments || [];
+
+    const bodyHtml = `
+      <form id="form-desig-editor" onsubmit="return false;">
+        <div style="display:flex; flex-direction:column; gap:14px;">
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Designation Title *</label>
+            <input class="form-input" id="desig-title-inp" required value="${esc(d.title || '')}" placeholder="e.g. PGT Physics / Senior Accountant">
+            <span style="font-size:0.72rem; color:var(--text-muted);">Official job title printed on appointment letters, ID cards, and rosters.</span>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Category *</label>
+              <select class="form-select" id="desig-cat-inp">
+                <option value="Teaching" ${d.category === 'Teaching' ? 'selected' : ''}>Teaching Faculty</option>
+                <option value="Non-Teaching" ${d.category === 'Non-Teaching' ? 'selected' : ''}>Non-Teaching / Support</option>
+                <option value="Administrative" ${d.category === 'Administrative' ? 'selected' : ''}>Administrative &amp; Leadership</option>
+              </select>
+            </div>
+
+            <div class="form-group" style="margin:0;">
+              <label class="form-label">Primary Department</label>
+              <select class="form-select" id="desig-dept-inp">
+                <option value="All Departments">All Departments / General</option>
+                ${depts.map(dp => `<option value="${esc(dp.name)}" ${d.department === dp.name ? 'selected' : ''}>${esc(dp.name)}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Job Description / Responsibilities</label>
+            <textarea class="form-input" id="desig-desc-inp" rows="3" placeholder="Core job responsibilities and stage of classes covered...">${esc(d.description || '')}</textarea>
+          </div>
+        </div>
+      </form>
+    `;
+
+    const footerHtml = `
+      <button class="btn btn-secondary" onclick="UIComponents.closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="btn-save-desig" style="background:#16a34a; border-color:#16a34a; display:inline-flex; align-items:center; gap:6px;">
+        <i data-lucide="save"></i> ${isEdit ? 'Save Designation' : 'Create Designation'}
+      </button>
+    `;
+
+    UIComponents.openModal({
+      title: isEdit ? `Edit Designation — ${d.title}` : 'Add New Designation',
+      bodyHtml,
+      footerHtml,
+      maxWidth: '540px'
+    });
+
+    document.getElementById('btn-save-desig')?.addEventListener('click', async () => {
+      const title = document.getElementById('desig-title-inp')?.value.trim();
+      const category = document.getElementById('desig-cat-inp')?.value;
+      const department = document.getElementById('desig-dept-inp')?.value;
+      const description = document.getElementById('desig-desc-inp')?.value.trim();
+
+      if (!title) {
+        UIComponents.showToast('Please enter a designation title.', 'warning');
+        return;
+      }
+
+      try {
+        await orgStructureService.saveDesignation({
+          id: d.id,
+          title,
+          category,
+          department,
+          description
+        });
+        UIComponents.showToast(`Designation "${title}" saved successfully!`, 'success');
+        UIComponents.closeModal();
+        this.renderTab('org-structure');
+      } catch (err) {
+        UIComponents.showToast(err.message, 'danger');
+      }
+    });
+
+    UIComponents.refreshIcons();
+  }
+
+  static async deleteDesignation(desig, staffCount) {
+    let warningMsg = `Are you sure you want to delete the designation "${desig.title}"?`;
+    if (staffCount > 0) {
+      warningMsg += `\n\n⚠️ Caution: ${staffCount} employee(s) currently hold this designation title in the staff registry.`;
+    }
+    if (!confirm(warningMsg)) return;
+
+    try {
+      await orgStructureService.deleteDesignation(desig.id);
+      UIComponents.showToast(`Designation "${desig.title}" deleted.`, 'success');
+      this.renderTab('org-structure');
+    } catch (err) {
+      UIComponents.showToast(`Could not delete designation: ${err.message}`, 'danger');
+    }
+  }
+
+  static renderRolesView(container, actionContainer, roles, usersByRole) {
+    if (actionContainer) {
+      actionContainer.innerHTML = `
+        <button class="btn btn-primary btn-sm" id="btn-add-role" style="display:inline-flex; align-items:center; gap:6px; background:#16a34a; border-color:#16a34a;">
+          <i data-lucide="plus-circle" style="width:14px;height:14px;"></i> Add Custom Role
+        </button>
+      `;
+    }
+
+    container.innerHTML = `
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+          <div style="position:relative; min-width:240px; max-width:360px; flex:1;">
+            <input type="text" id="role-search-input" class="form-input form-input-sm" placeholder="Search roles by name or code..." style="padding-left:32px; height:36px; border-radius:8px;">
+            <i data-lucide="search" style="position:absolute; left:10px; top:10px; width:15px; height:15px; color:#94a3b8;"></i>
+          </div>
+          <div style="font-size:0.8rem; color:var(--text-muted);">
+            Showing <strong id="role-count-display">${roles.length}</strong> role(s)
+          </div>
+        </div>
+
+        <div class="table-responsive" style="border:1px solid var(--border-color); border-radius:10px; overflow:hidden;">
+          <table class="tms-table" style="font-size:0.84rem;">
+            <thead>
+              <tr>
+                <th>ROLE DISPLAY NAME</th>
+                <th style="width:110px;">TYPE</th>
+                <th style="width:150px;">DEFAULT SCOPE</th>
+                <th style="width:130px;">ACCOUNTS</th>
+                <th>DESCRIPTION &amp; ACCESS PRIVILEGE</th>
+                <th style="width:200px; text-align:right;">ACTIONS</th>
+              </tr>
+            </thead>
+            <tbody id="role-table-tbody">
+              ${roles.map(r => {
+                const count = usersByRole[r.code.toLowerCase().trim()] || 0;
+                return `
+                  <tr class="role-row" data-search="${esc((r.label + ' ' + r.code + ' ' + (r.scope || '') + ' ' + (r.description || '')).toLowerCase())}">
+                    <td>
+                      <strong style="color:var(--text-main); font-size:0.9rem;">${esc(r.label)}</strong>
+                      <div class="font-mono" style="font-size:0.75rem; color:#64748b;">code: ${esc(r.code)}</div>
+                    </td>
+                    <td>
+                      <span class="badge ${r.isSystem ? 'badge-primary' : 'badge-success'}" style="font-weight:600;">
+                        ${r.isSystem ? 'System Core' : 'Custom'}
+                      </span>
+                    </td>
+                    <td>
+                      <span class="badge badge-subtle font-mono" style="font-size:0.75rem;">
+                        ${esc(r.scope || 'school_wide')}
+                      </span>
+                    </td>
+                    <td>
+                      <span class="badge ${count > 0 ? 'badge-info' : 'badge-subtle'}" style="font-weight:600;">
+                        ${count} User Account${count === 1 ? '' : 's'}
+                      </span>
+                    </td>
+                    <td style="color:var(--text-muted); font-size:0.8rem;">${esc(r.description || '—')}</td>
+                    <td style="text-align:right;">
+                      <div style="display:inline-flex; gap:6px;">
+                        <button class="btn btn-secondary btn-sm btn-edit-role" data-id="${esc(r.id)}" title="Edit role">
+                          <i data-lucide="edit-2" style="width:13px;height:13px;"></i> Edit
+                        </button>
+                        ${r.isSystem ? `
+                          <span class="badge badge-subtle" title="Protected core role cannot be deleted" style="padding:4px 8px; font-size:0.72rem;">Protected</span>
+                        ` : `
+                          <button class="btn btn-secondary btn-sm btn-del-role" data-id="${esc(r.id)}" style="color:#ef4444;" title="Delete custom role">
+                            <i data-lucide="trash-2" style="width:13px;height:13px;"></i>
+                          </button>
+                        `}
+                        <button class="btn btn-secondary btn-sm btn-rbac-role" data-code="${esc(r.code)}" title="Configure window permissions for this role">
+                          <i data-lucide="shield-check" style="width:13px;height:13px;color:#2563eb;"></i> RBAC
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+
+    // Filter
+    const searchInp = document.getElementById('role-search-input');
+    const rows = container.querySelectorAll('.role-row');
+    const countDisplay = document.getElementById('role-count-display');
+    searchInp?.addEventListener('input', () => {
+      const q = searchInp.value.toLowerCase().trim();
+      let visible = 0;
+      rows.forEach(r => {
+        const match = !q || r.dataset.search.includes(q);
+        r.style.display = match ? '' : 'none';
+        if (match) visible++;
+      });
+      if (countDisplay) countDisplay.textContent = visible;
+    });
+
+    // Add button
+    document.getElementById('btn-add-role')?.addEventListener('click', () => {
+      this.openRoleModal(null);
+    });
+
+    // Edit buttons
+    container.querySelectorAll('.btn-edit-role').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id = btn.dataset.id;
+        const role = roles.find(r => r.id === id);
+        if (role) this.openRoleModal(role);
+      });
+    });
+
+    // Delete buttons
+    container.querySelectorAll('.btn-del-role').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const id = btn.dataset.id;
+        const role = roles.find(r => r.id === id);
+        if (role) await this.deleteRole(role, usersByRole[role.code.toLowerCase().trim()] || 0);
+      });
+    });
+
+    // RBAC shortcut
+    container.querySelectorAll('.btn-rbac-role').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const code = btn.dataset.code;
+        this._rbacActiveRole = code;
+        this._usersCurrentTab = 'rbac';
+        this.renderTab('users');
+      });
+    });
+
+    UIComponents.refreshIcons();
+  }
+
+  static openRoleModal(role) {
+    const isEdit = !!role;
+    const r = role || {};
+
+    const scopes = [
+      { key: 'school_wide', label: 'school_wide — Full Institution Records' },
+      { key: 'assigned_class', label: 'assigned_class — Assigned Class / Section Only' },
+      { key: 'department_scope', label: 'department_scope — Own Department Only' },
+      { key: 'finance_scope', label: 'finance_scope — Fee Invoices, Payments & Ledgers' },
+      { key: 'operations_scope', label: 'operations_scope — Transport, Hostel & Maintenance' },
+      { key: 'own_records', label: 'own_records — Personal User Record Only' }
+    ];
+
+    const bodyHtml = `
+      <form id="form-role-editor" onsubmit="return false;">
+        <div style="display:flex; flex-direction:column; gap:14px;">
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Role Display Name *</label>
+            <input class="form-input" id="role-label-inp" required value="${esc(r.label || '')}" placeholder="e.g. Exam Incharge / Boarding Warden">
+            <span style="font-size:0.72rem; color:var(--text-muted);">Friendly label shown across user accounts and profile editors.</span>
+          </div>
+
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Role Code Identifier *</label>
+            <input class="form-input font-mono" id="role-code-inp" ${r.isSystem ? 'disabled' : ''} required value="${esc(r.code || '')}" placeholder="e.g. exam_incharge" style="text-transform:lowercase;">
+            <span style="font-size:0.72rem; color:var(--text-muted);">${r.isSystem ? 'Core system role codes are fixed to maintain internal security authorization.' : 'Lowercase identifier (alphanumeric and underscores).'}</span>
+          </div>
+
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Default Access Scope *</label>
+            <select class="form-select" id="role-scope-inp">
+              ${scopes.map(s => `<option value="${s.key}" ${r.scope === s.key ? 'selected' : ''}>${s.label}</option>`).join('')}
+            </select>
+            <span style="font-size:0.72rem; color:var(--text-muted);">Defines what slice of institutional data users with this role can query.</span>
+          </div>
+
+          <div class="form-group" style="margin:0;">
+            <label class="form-label">Description &amp; Purpose</label>
+            <textarea class="form-input" id="role-desc-inp" rows="3" placeholder="Outline the administrative scope, operational authority, or portal duties...">${esc(r.description || '')}</textarea>
+          </div>
+        </div>
+      </form>
+    `;
+
+    const footerHtml = `
+      <button class="btn btn-secondary" onclick="UIComponents.closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="btn-save-role" style="background:#16a34a; border-color:#16a34a; display:inline-flex; align-items:center; gap:6px;">
+        <i data-lucide="save"></i> ${isEdit ? 'Save Role' : 'Create Role'}
+      </button>
+    `;
+
+    UIComponents.openModal({
+      title: isEdit ? `Edit Role — ${r.label}` : 'Add Custom Role',
+      bodyHtml,
+      footerHtml,
+      maxWidth: '540px'
+    });
+
+    document.getElementById('btn-save-role')?.addEventListener('click', async () => {
+      const label = document.getElementById('role-label-inp')?.value.trim();
+      const code = document.getElementById('role-code-inp')?.value.trim().toLowerCase();
+      const scope = document.getElementById('role-scope-inp')?.value;
+      const description = document.getElementById('role-desc-inp')?.value.trim();
+
+      if (!label) {
+        UIComponents.showToast('Please enter a role display name.', 'warning');
+        return;
+      }
+      if (!code) {
+        UIComponents.showToast('Please enter a role code identifier.', 'warning');
+        return;
+      }
+
+      try {
+        await orgStructureService.saveRole({
+          id: r.id,
+          label,
+          code,
+          scope,
+          description
+        });
+        UIComponents.showToast(`Role "${label}" saved successfully!`, 'success');
+        UIComponents.closeModal();
+        this.renderTab('org-structure');
+      } catch (err) {
+        UIComponents.showToast(err.message, 'danger');
+      }
+    });
+
+    UIComponents.refreshIcons();
+  }
+
+  static async deleteRole(role, userCount) {
+    if (role.isSystem) {
+      UIComponents.showToast(`Core system role "${role.label}" cannot be deleted.`, 'warning');
+      return;
+    }
+
+    let warningMsg = `Are you sure you want to delete the custom role "${role.label}" (${role.code})?`;
+    if (userCount > 0) {
+      warningMsg += `\n\n⚠️ Caution: ${userCount} user account(s) currently hold this role in the Users directory.`;
+    }
+    if (!confirm(warningMsg)) return;
+
+    try {
+      await orgStructureService.deleteRole(role.id);
+      UIComponents.showToast(`Role "${role.label}" deleted.`, 'success');
+      this.renderTab('org-structure');
+    } catch (err) {
+      UIComponents.showToast(`Could not delete role: ${err.message}`, 'danger');
+    }
+  }
+
    * Editable institutional registration, trust body, campus location, support contacts,
    * and Head of Institution.
    */

@@ -16,6 +16,7 @@ import { auditService } from './audit-service.js';
 import { PermissionEngine, CAPABILITIES } from './permission-engine.js';
 import { staffService } from './staff-service.js';
 import { exportPdf, downloadCsv } from './export-utils.js';
+import { orgStructureService } from './org-structure-service.js';
 
 const ROLE_OPTIONS = [
   { value: 'teacher', label: 'Teaching Faculty' },
@@ -64,8 +65,10 @@ export class StaffModule {
 
     let staff = [];
     let credentials = [];
+    let orgData = { departments: [], designations: [], roles: [] };
     try {
       staff = await dbService.select('staff');
+      orgData = await orgStructureService.load();
     } catch (e) {
       staff = [];
     }
@@ -130,7 +133,7 @@ export class StaffModule {
               <span style="font-size:0.73rem; font-weight:700; color:#64748b; text-transform:uppercase;">Dept:</span>
               <select id="staff-filter-dept" class="form-select form-select-sm" style="height:36px; min-width:140px; font-size:0.8rem; font-weight:600;">
                 <option value="">All Departments</option>
-                ${Array.from(new Set(staff.map(s => s.department).filter(Boolean))).map(d => `<option value="${esc(d)}">${esc(d)}</option>`).join('')}
+                ${Array.from(new Set([...(orgData.departments || []).map(d => d.name), ...staff.map(s => s.department)].filter(Boolean))).map(d => `<option value="${esc(d)}">${esc(d)}</option>`).join('')}
               </select>
             </div>
 
@@ -139,7 +142,7 @@ export class StaffModule {
               <span style="font-size:0.73rem; font-weight:700; color:#64748b; text-transform:uppercase;">Role:</span>
               <select id="staff-filter-role" class="form-select form-select-sm" style="height:36px; min-width:130px; font-size:0.8rem; font-weight:600;">
                 <option value="">All Roles</option>
-                ${Object.entries(ROLE_LABELS).map(([k, v]) => `<option value="${esc(k)}">${esc(v)}</option>`).join('')}
+                ${(orgData.roles && orgData.roles.length ? orgData.roles.map(r => [r.code, r.label]) : Object.entries(ROLE_LABELS)).map(([k, v]) => `<option value="${esc(k)}">${esc(v)}</option>`).join('')}
               </select>
             </div>
 
@@ -389,11 +392,17 @@ export class StaffModule {
     return `TMS-EMP-${(maxSeq + 1).toString().padStart(3, '0')}`;
   }
 
-  static openStaffModal(emp, container) {
+  static async openStaffModal(emp, container) {
     const isEdit = !!emp;
     const e = emp || {};
     const classes = ['', ...(TMS_CONFIG.academic && TMS_CONFIG.academic.classes ? TMS_CONFIG.academic.classes : [])];
     const sections = ['', ...(TMS_CONFIG.academic && TMS_CONFIG.academic.sections ? TMS_CONFIG.academic.sections : ['A', 'B', 'C'])];
+
+    let orgData = { departments: [], designations: [], roles: [] };
+    try { orgData = await orgStructureService.load(); } catch (err) {}
+    const rolesList = (orgData.roles && orgData.roles.length) ? orgData.roles.map(r => ({ value: r.code, label: r.label })) : ROLE_OPTIONS;
+    const deptList = (orgData.departments && orgData.departments.length) ? orgData.departments : [];
+    const desigList = (orgData.designations && orgData.designations.length) ? orgData.designations : [];
 
     const bodyHtml = `
       <form id="form-new-staff">
@@ -410,16 +419,22 @@ export class StaffModule {
           <div class="form-group">
             <label class="form-label">Role Category</label>
             <select class="form-select" id="stf-role">
-              ${ROLE_OPTIONS.map((r) => `<option value="${esc(r.value)}" ${e.role === r.value ? 'selected' : ''}>${esc(r.label)}</option>`).join('')}
+              ${rolesList.map((r) => `<option value="${esc(r.value)}" ${e.role === r.value ? 'selected' : ''}>${esc(r.label)}</option>`).join('')}
             </select>
           </div>
           <div class="form-group">
             <label class="form-label">Department *</label>
-            <input class="form-input" id="stf-dept" required value="${esc(e.department || '')}" placeholder="e.g. Science / English / IT">
+            <input class="form-input" id="stf-dept" list="stf-dept-options" required value="${esc(e.department || '')}" placeholder="Select or type department...">
+            <datalist id="stf-dept-options">
+              ${deptList.map(d => `<option value="${esc(d.name)}">${esc(d.code ? `[${d.code}] ` : '')}${esc(d.name)}</option>`).join('')}
+            </datalist>
           </div>
           <div class="form-group">
             <label class="form-label">Designation *</label>
-            <input class="form-input" id="stf-desig" required value="${esc(e.designation || '')}" placeholder="e.g. PGT Physics">
+            <input class="form-input" id="stf-desig" list="stf-desig-options" required value="${esc(e.designation || '')}" placeholder="Select or type designation...">
+            <datalist id="stf-desig-options">
+              ${desigList.map(d => `<option value="${esc(d.title)}">${esc(d.category ? `(${d.category}) ` : '')}${esc(d.title)}</option>`).join('')}
+            </datalist>
           </div>
           <div class="form-group">
             <label class="form-label">Phone Number</label>
