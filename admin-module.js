@@ -7222,6 +7222,7 @@ export class AdminModule {
     }
   }
 
+  /**
    * Editable institutional registration, trust body, campus location, support contacts,
    * and Head of Institution.
    */
