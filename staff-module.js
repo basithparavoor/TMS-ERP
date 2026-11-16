@@ -162,8 +162,20 @@ export class StaffModule {
             </button>
           </div>
 
-          <div style="font-size:0.8rem; font-weight:700; color:#475569;">
-            Showing <span id="staff-filtered-count" style="color:#0f172a; font-weight:800;">${staff.length}</span> of ${staff.length} employees
+          <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+            <!-- View Mode Toggle (Table / Grid Cards) -->
+            <div style="display:inline-flex; border:1px solid var(--border-color, #cbd5e1); border-radius:8px; overflow:hidden; background:var(--bg-surface);">
+              <button type="button" class="btn btn-sm ${StaffModule.getViewMode() === 'table' ? 'btn-primary' : 'btn-secondary'}" id="btn-view-mode-table" title="Table View" style="border-radius:0; padding:6px 12px; font-weight:700; display:inline-flex; align-items:center; gap:5px;">
+                <i data-lucide="list" style="width:14px;height:14px;"></i> Table
+              </button>
+              <button type="button" class="btn btn-sm ${StaffModule.getViewMode() === 'grid' ? 'btn-primary' : 'btn-secondary'}" id="btn-view-mode-grid" title="Cards Grid View" style="border-radius:0; padding:6px 12px; font-weight:700; display:inline-flex; align-items:center; gap:5px;">
+                <i data-lucide="layout-grid" style="width:14px;height:14px;"></i> Cards
+              </button>
+            </div>
+
+            <div style="font-size:0.8rem; font-weight:700; color:#475569;">
+              Showing <span id="staff-filtered-count" style="color:#0f172a; font-weight:800;">${staff.length}</span> of ${staff.length} employees
+            </div>
           </div>
         </div>
 
@@ -177,13 +189,14 @@ export class StaffModule {
           <button class="btn btn-secondary btn-sm" id="btn-staff-bulk-delete" style="color:#ef4444;"><i data-lucide="trash-2"></i> Delete Selected (<span id="staff-selected-count">0</span>)</button>
         </div>` : ''}
 
-        <div class="table-responsive">
+        <!-- TABLE VIEW -->
+        <div class="table-responsive" id="staff-table-view" style="display:${StaffModule.getViewMode() === 'table' ? 'block' : 'none'};">
           <table class="tms-table" id="staff-table">
             <thead>
               <tr>
                 ${canManage ? '<th style="width:34px;"><input type="checkbox" id="staff-select-all"></th>' : ''}
                 <th>Emp ID</th>
-                <th>Employee</th>
+                <th>Employee &amp; Dossier</th>
                 <th>Department</th>
                 <th>Designation</th>
                 <th>Role</th>
@@ -191,48 +204,133 @@ export class StaffModule {
                 <th>Joined</th>
                 <th>Status</th>
                 <th>Login</th>
-                <th>Actions</th>
+                <th style="text-align:right;">Actions</th>
               </tr>
             </thead>
             <tbody>
               ${staff.length ? staff.map((emp) => {
                 const cred = credByStaff[emp.id];
+                const initials = (emp.name || 'S').slice(0, 2).toUpperCase();
                 return `
                 <tr class="staff-row" data-id="${esc(emp.id)}" data-search="${esc(`${emp.name} ${emp.empId} ${emp.email || ''} ${emp.phone || ''} ${emp.department || ''} ${emp.designation || ''}`)}" data-dept="${esc(emp.department || '')}" data-role="${esc(emp.role || '')}" data-status="${esc(emp.status || '')}">
                   ${canManage ? `<td><input type="checkbox" class="staff-row-check" value="${esc(emp.id)}"></td>` : ''}
-                  <td><span class="font-mono" style="font-weight: 600;">${esc(emp.empId)}</span></td>
+                  <td><span class="font-mono" style="font-weight: 700; color:#2563eb;">${esc(emp.empId)}</span></td>
                   <td>
-                    <strong>${esc(emp.name)}</strong>
-                    <div style="font-size: 0.75rem; color: var(--text-muted);">${esc(emp.email)}</div>
+                    <div style="display:flex; align-items:center; gap:9px;">
+                      <div style="width:32px; height:32px; border-radius:50%; background:linear-gradient(135deg, #10b981, #047857); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.75rem; flex-shrink:0;">
+                        ${esc(initials)}
+                      </div>
+                      <div>
+                        <a href="javascript:void(0)" class="staff-view-dossier-link" data-id="${esc(emp.id)}" style="font-weight:700; color:var(--text-main); text-decoration:none;" title="Click to view full Service Dossier &amp; ID Card">
+                          ${esc(emp.name)}
+                        </a>
+                        <div style="font-size: 0.72rem; color: var(--text-muted);">${esc(emp.email)}</div>
+                      </div>
+                    </div>
                   </td>
                   <td>${esc(emp.department)}</td>
                   <td><strong>${esc(emp.designation)}</strong></td>
                   <td>${esc(ROLE_LABELS[emp.role] || emp.role || '—')}</td>
-                  <td class="font-mono" style="font-size: 0.82rem;">${esc(emp.phone)}</td>
+                  <td class="font-mono" style="font-size: 0.82rem;">${esc(emp.phone || '—')}</td>
                   <td>${fmtDate(emp.joiningDate)}</td>
-                  <td><span class="badge ${emp.status === 'Active' ? 'badge-success' : 'badge-warning'}">${esc(emp.status || '—')}</span></td>
+                  <td><span class="badge ${emp.status === 'Active' ? 'badge-success' : 'badge-warning'}">${esc(emp.status || 'Active')}</span></td>
                   <td>
                     ${cred
                       ? `<span class="font-mono" style="font-size:0.78rem;">${esc(cred.username)}</span>`
                       : '<span style="color:var(--text-muted);font-size:0.78rem;">No login</span>'}
                   </td>
-                  <td style="white-space:nowrap;">
+                  <td style="white-space:nowrap; text-align:right;">
+                    <button class="btn btn-secondary btn-sm btn-view-staff" data-id="${esc(emp.id)}" title="View Service File &amp; Dossier" style="color:#0f172a;"><i data-lucide="file-text"></i></button>
+                    <button class="btn btn-secondary btn-sm btn-idcard-staff" data-id="${esc(emp.id)}" title="Print Official ID Card" style="color:#16a34a;"><i data-lucide="badge-check"></i></button>
                     ${canManage ? `
                       <button class="btn btn-secondary btn-sm btn-edit-staff" data-id="${esc(emp.id)}" title="Edit details"><i data-lucide="pencil"></i></button>
                       <button class="btn btn-secondary btn-sm btn-login-staff" data-id="${esc(emp.id)}" title="Login credentials"><i data-lucide="key-round"></i></button>
                       <button class="btn btn-secondary btn-sm btn-del-staff" data-id="${esc(emp.id)}" title="Delete staff" style="color:#ef4444;"><i data-lucide="trash-2"></i></button>
-                    ` : `
-                      <button class="btn btn-secondary btn-sm" onclick="alert('Viewing service file for ${esc(emp.name)}')"><i data-lucide="file-text"></i></button>
-                    `}
+                    ` : ''}
                   </td>
                 </tr>`;
               }).join('') : `
                 <tr>
-                  <td colspan="${canManage ? 11 : 10}" style="text-align: center; color: var(--text-muted); padding: 30px;">No records available yet.</td>
+                  <td colspan="${canManage ? 11 : 10}" style="text-align: center; color: var(--text-muted); padding: 30px;">No staff records found.</td>
                 </tr>
               `}
             </tbody>
           </table>
+        </div>
+
+        <!-- CARDS GRID VIEW -->
+        <div id="staff-grid-view" style="display:${StaffModule.getViewMode() === 'grid' ? 'grid' : 'none'}; grid-template-columns:repeat(auto-fill, minmax(295px, 1fr)); gap:16px;">
+          ${staff.map((emp) => {
+            const cred = credByStaff[emp.id];
+            const initials = (emp.name || 'S').slice(0, 2).toUpperCase();
+            const isTeacher = emp.role === 'teacher';
+            return `
+            <div class="card staff-card" data-id="${esc(emp.id)}" data-search="${esc(`${emp.name} ${emp.empId} ${emp.email || ''} ${emp.phone || ''} ${emp.department || ''} ${emp.designation || ''}`)}" data-dept="${esc(emp.department || '')}" data-role="${esc(emp.role || '')}" data-status="${esc(emp.status || '')}" style="margin:0; border:1px solid var(--border-color); border-radius:14px; padding:16px; display:flex; flex-direction:column; justify-content:space-between; position:relative; overflow:hidden; background:var(--bg-surface);">
+              <div style="position:absolute; top:0; left:0; right:0; height:4px; background:${emp.status === 'Active' ? '#16a34a' : '#f59e0b'};"></div>
+              
+              <div>
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; margin-bottom:12px;">
+                  <div style="display:flex; align-items:center; gap:11px;">
+                    <div style="width:44px; height:44px; border-radius:50%; background:linear-gradient(135deg, #10b981, #059669); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:1rem; box-shadow:0 2px 8px rgba(16,185,129,0.25); flex-shrink:0;">
+                      ${esc(initials)}
+                    </div>
+                    <div>
+                      <a href="javascript:void(0)" class="staff-view-dossier-link" data-id="${esc(emp.id)}" style="font-size:0.95rem; font-weight:800; color:var(--text-main); text-decoration:none;">
+                        ${esc(emp.name)}
+                      </a>
+                      <div style="font-size:0.75rem; color:#2563eb; font-family:monospace; font-weight:700;">${esc(emp.empId)}</div>
+                    </div>
+                  </div>
+                  <span class="badge ${emp.status === 'Active' ? 'badge-success' : 'badge-warning'}" style="font-size:0.68rem;">${esc(emp.status || 'Active')}</span>
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:14px; font-size:0.8rem;">
+                  <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="color:#64748b; font-size:0.75rem; font-weight:600;">Designation:</span>
+                    <strong style="color:#0f172a; text-align:right;">${esc(emp.designation || '—')}</strong>
+                  </div>
+                  <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="color:#64748b; font-size:0.75rem; font-weight:600;">Department:</span>
+                    <span class="badge badge-info" style="font-size:0.7rem; font-weight:600;">${esc(emp.department || '—')}</span>
+                  </div>
+                  ${isTeacher && emp.assignedClass ? `
+                  <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="color:#64748b; font-size:0.75rem; font-weight:600;">Class In-Charge:</span>
+                    <span style="font-weight:700; color:#16a34a;">${esc(emp.assignedClass)} ${esc(emp.assignedSection || '')}</span>
+                  </div>` : ''}
+                  <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="color:#64748b; font-size:0.75rem; font-weight:600;">Email:</span>
+                    <span style="font-family:monospace; font-size:0.74rem; color:#334155;">${esc(emp.email)}</span>
+                  </div>
+                  <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="color:#64748b; font-size:0.75rem; font-weight:600;">Phone:</span>
+                    <span style="font-family:monospace; font-size:0.74rem; color:#334155;">${esc(emp.phone || '—')}</span>
+                  </div>
+                  <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="color:#64748b; font-size:0.75rem; font-weight:600;">Service Tenure:</span>
+                    <span style="font-size:0.74rem; color:#475569; font-weight:600;">${StaffModule.calculateTenure(emp.joiningDate)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div style="border-top:1px solid var(--border-color); padding-top:10px; display:flex; justify-content:space-between; align-items:center; gap:6px;">
+                <div style="display:inline-flex; gap:6px;">
+                  <button class="btn btn-secondary btn-sm btn-view-staff" data-id="${esc(emp.id)}" title="View Service File &amp; Dossier" style="font-size:0.75rem; font-weight:700; display:inline-flex; align-items:center; gap:4px;">
+                    <i data-lucide="file-text" style="width:13px;height:13px;"></i> Dossier
+                  </button>
+                  <button class="btn btn-secondary btn-sm btn-idcard-staff" data-id="${esc(emp.id)}" title="Print Official ID Card" style="font-size:0.75rem; color:#16a34a; display:inline-flex; align-items:center; gap:4px;">
+                    <i data-lucide="badge-check" style="width:13px;height:13px;"></i> ID Card
+                  </button>
+                </div>
+                ${canManage ? `
+                <div style="display:inline-flex; gap:4px;">
+                  <button class="btn btn-secondary btn-sm btn-edit-staff" data-id="${esc(emp.id)}" title="Edit"><i data-lucide="pencil" style="width:13px;height:13px;"></i></button>
+                  <button class="btn btn-secondary btn-sm btn-login-staff" data-id="${esc(emp.id)}" title="Login credentials"><i data-lucide="key-round" style="width:13px;height:13px;"></i></button>
+                  <button class="btn btn-secondary btn-sm btn-del-staff" data-id="${esc(emp.id)}" title="Delete" style="color:#ef4444;"><i data-lucide="trash-2" style="width:13px;height:13px;"></i></button>
+                </div>` : ''}
+              </div>
+            </div>`;
+          }).join('')}
         </div>
       </div>
     </div>
@@ -250,6 +348,46 @@ export class StaffModule {
 
     const bulkStaffBtn = container.querySelector('#btn-bulk-staff');
     if (bulkStaffBtn) bulkStaffBtn.addEventListener('click', () => this.openBulkStaffModal(container));
+
+    // Dossier & Service File view
+    container.querySelectorAll('.btn-view-staff, .staff-view-dossier-link').forEach((b) =>
+      b.addEventListener('click', (e) => {
+        e.preventDefault();
+        const emp = staff.find((s) => s.id === b.dataset.id);
+        if (emp) this.openStaffDossierModal(emp, container, 'overview');
+      }));
+
+    // ID Card direct print/view
+    container.querySelectorAll('.btn-idcard-staff').forEach((b) =>
+      b.addEventListener('click', () => {
+        const emp = staff.find((s) => s.id === b.dataset.id);
+        if (emp) this.openStaffDossierModal(emp, container, 'idcard');
+      }));
+
+    // View Mode Switcher (Table vs Grid Cards)
+    const btnTable = container.querySelector('#btn-view-mode-table');
+    const btnGrid = container.querySelector('#btn-view-mode-grid');
+    const viewTable = container.querySelector('#staff-table-view');
+    const viewGrid = container.querySelector('#staff-grid-view');
+
+    const switchView = (mode) => {
+      StaffModule.setViewMode(mode);
+      if (mode === 'grid') {
+        if (btnTable) { btnTable.classList.remove('btn-primary'); btnTable.classList.add('btn-secondary'); }
+        if (btnGrid) { btnGrid.classList.remove('btn-secondary'); btnGrid.classList.add('btn-primary'); }
+        if (viewTable) viewTable.style.display = 'none';
+        if (viewGrid) viewGrid.style.display = 'grid';
+      } else {
+        if (btnTable) { btnTable.classList.remove('btn-secondary'); btnTable.classList.add('btn-primary'); }
+        if (btnGrid) { btnGrid.classList.remove('btn-primary'); btnGrid.classList.add('btn-secondary'); }
+        if (viewTable) viewTable.style.display = 'block';
+        if (viewGrid) viewGrid.style.display = 'none';
+      }
+      UIComponents.refreshIcons();
+    };
+
+    btnTable?.addEventListener('click', () => switchView('table'));
+    btnGrid?.addEventListener('click', () => switchView('grid'));
 
     container.querySelectorAll('.btn-edit-staff').forEach((b) =>
       b.addEventListener('click', () => {
@@ -336,6 +474,7 @@ export class StaffModule {
     const statusFilter = container.querySelector('#staff-filter-status');
     const countEl = container.querySelector('#staff-filtered-count');
     const staffRows = container.querySelectorAll('.staff-row');
+    const staffCards = container.querySelectorAll('.staff-card');
 
     const filterStaffRows = () => {
       const q = (searchInp?.value || '').toLowerCase().trim();
@@ -344,23 +483,27 @@ export class StaffModule {
       const s = (statusFilter?.value || '').toLowerCase().trim();
       let visible = 0;
 
+      const checkMatch = (el) => {
+        const searchTxt = (el.dataset.search || '').toLowerCase();
+        const rowDept = (el.dataset.dept || '').toLowerCase();
+        const rowRole = (el.dataset.role || '').toLowerCase();
+        const rowStatus = (el.dataset.status || '').toLowerCase();
+
+        return (!q || searchTxt.includes(q)) &&
+               (!d || rowDept === d) &&
+               (!r || rowRole === r) &&
+               (!s || rowStatus === s);
+      };
+
       staffRows.forEach(row => {
-        const searchTxt = (row.dataset.search || '').toLowerCase();
-        const rowDept = (row.dataset.dept || '').toLowerCase();
-        const rowRole = (row.dataset.role || '').toLowerCase();
-        const rowStatus = (row.dataset.status || '').toLowerCase();
+        const match = checkMatch(row);
+        row.style.display = match ? '' : 'none';
+        if (match) visible++;
+      });
 
-        const matchQ = !q || searchTxt.includes(q);
-        const matchD = !d || rowDept === d;
-        const matchR = !r || rowRole === r;
-        const matchS = !s || rowStatus === s;
-
-        if (matchQ && matchD && matchR && matchS) {
-          row.style.display = '';
-          visible++;
-        } else {
-          row.style.display = 'none';
-        }
+      staffCards.forEach(card => {
+        const match = checkMatch(card);
+        card.style.display = match ? 'flex' : 'none';
       });
 
       if (countEl) countEl.textContent = String(visible);
@@ -378,6 +521,41 @@ export class StaffModule {
       if (statusFilter) statusFilter.value = '';
       filterStaffRows();
     });
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* View Mode & Helpers                                                */
+  /* ------------------------------------------------------------------ */
+
+  static getViewMode() {
+    try {
+      return localStorage.getItem('tms_staff_view_mode') || 'table';
+    } catch {
+      return 'table';
+    }
+  }
+
+  static setViewMode(mode) {
+    try {
+      localStorage.setItem('tms_staff_view_mode', mode);
+    } catch {}
+  }
+
+  static calculateTenure(joiningDate) {
+    if (!joiningDate) return 'Tenure not available';
+    const start = new Date(joiningDate);
+    if (isNaN(start.getTime())) return 'Tenure not available';
+    const now = new Date();
+    let years = now.getFullYear() - start.getFullYear();
+    let months = now.getMonth() - start.getMonth();
+    if (months < 0) {
+      years--;
+      months += 12;
+    }
+    const yStr = years > 0 ? `${years} yr${years > 1 ? 's' : ''}` : '';
+    const mStr = months > 0 ? `${months} mo${months > 1 ? 's' : ''}` : '';
+    const parts = [yStr, mStr].filter(Boolean);
+    return parts.length ? parts.join(' ') : 'Joined recently';
   }
 
   /* ------------------------------------------------------------------ */
@@ -405,73 +583,145 @@ export class StaffModule {
     const desigList = (orgData.designations && orgData.designations.length) ? orgData.designations : [];
 
     const bodyHtml = `
-      <form id="form-new-staff">
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
-          <div class="form-group">
-            <label class="form-label">Full Name *</label>
-            <input class="form-input" id="stf-name" required value="${esc(e.name || '')}" placeholder="e.g. Mrs. Khadija Beevi">
+      <form id="form-new-staff" onsubmit="return false;">
+        <div style="display: flex; flex-direction: column; gap: 14px;">
+          
+          <!-- Section 1: Basic & Contact -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px;">
+            <div style="font-size:0.75rem; font-weight:800; color:#1e293b; text-transform:uppercase; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+              <i data-lucide="user" style="width:14px;height:14px;color:#2563eb;"></i> Personal &amp; Account Identity
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">Full Name *</label>
+                <input class="form-input" id="stf-name" required value="${esc(e.name || '')}" placeholder="e.g. Mrs. Khadija Beevi">
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">Official Email *</label>
+                <input type="email" class="form-input" id="stf-email" required value="${esc(e.email || '')}" placeholder="khadija@thaibaschool.edu.in">
+                <span style="font-size:0.7rem; color:var(--text-subtle);">This becomes their sign-in account e-mail.</span>
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">Phone Number</label>
+                <input class="form-input font-mono" id="stf-phone" value="${esc(e.phone || '')}" placeholder="+91 98470 12345">
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">Gender</label>
+                <select class="form-select" id="stf-gender">
+                  <option value="Female" ${e.gender === 'Female' ? 'selected' : ''}>Female</option>
+                  <option value="Male" ${e.gender === 'Male' ? 'selected' : ''}>Male</option>
+                  <option value="Other" ${e.gender === 'Other' ? 'selected' : ''}>Other</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">Blood Group</label>
+                <select class="form-select" id="stf-blood">
+                  <option value="">Select blood group...</option>
+                  ${['A+','A-','B+','B-','O+','O-','AB+','AB-'].map(bg => `<option value="${bg}" ${e.bloodGroup === bg ? 'selected' : ''}>${bg}</option>`).join('')}
+                </select>
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">Employment Status</label>
+                <select class="form-select" id="stf-status">
+                  <option ${e.status === 'Active' || !e.status ? 'selected' : ''}>Active</option>
+                  <option ${e.status === 'Inactive' ? 'selected' : ''}>Inactive</option>
+                  <option ${e.status === 'On Leave' ? 'selected' : ''}>On Leave</option>
+                  <option ${e.status === 'Resigned' ? 'selected' : ''}>Resigned</option>
+                </select>
+              </div>
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label">Official Email *</label>
-            <input type="email" class="form-input" id="stf-email" required value="${esc(e.email || '')}" placeholder="khadija@thaibaschool.edu.in">
-            <span style="font-size:0.7rem; color:var(--text-subtle);">This becomes their sign-in account e-mail.</span>
+
+          <!-- Section 2: Organizational Placement -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px;">
+            <div style="font-size:0.75rem; font-weight:800; color:#1e293b; text-transform:uppercase; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+              <i data-lucide="building" style="width:14px;height:14px;color:#16a34a;"></i> Institutional Deployment
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">Role Category</label>
+                <select class="form-select" id="stf-role">
+                  ${rolesList.map((r) => `<option value="${esc(r.value)}" ${e.role === r.value ? 'selected' : ''}>${esc(r.label)}</option>`).join('')}
+                </select>
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">Department *</label>
+                <input class="form-input" id="stf-dept" list="stf-dept-options" required value="${esc(e.department || '')}" placeholder="Select or type department...">
+                <datalist id="stf-dept-options">
+                  ${deptList.map(d => `<option value="${esc(d.name)}">${esc(d.code ? `[${d.code}] ` : '')}${esc(d.name)}</option>`).join('')}
+                </datalist>
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">Designation *</label>
+                <input class="form-input" id="stf-desig" list="stf-desig-options" required value="${esc(e.designation || '')}" placeholder="Select or type designation...">
+                <datalist id="stf-desig-options">
+                  ${desigList.map(d => `<option value="${esc(d.title)}">${esc(d.category ? `(${d.category}) ` : '')}${esc(d.title)}</option>`).join('')}
+                </datalist>
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">Joining Date</label>
+                <input type="date" class="form-input font-mono" id="stf-joining" value="${esc((e.joiningDate || new Date().toISOString()).slice(0, 10))}">
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">Assigned Class (In-Charge)</label>
+                <select class="form-select" id="stf-class">
+                  ${classes.map((c) => `<option value="${esc(c)}" ${e.assignedClass === c ? 'selected' : ''}>${c ? esc(c) : '—'}</option>`).join('')}
+                </select>
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">Assigned Section</label>
+                <select class="form-select" id="stf-section">
+                  ${sections.map((s) => `<option value="${esc(s)}" ${e.assignedSection === s ? 'selected' : ''}>${s || '—'}</option>`).join('')}
+                </select>
+              </div>
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label">Role Category</label>
-            <select class="form-select" id="stf-role">
-              ${rolesList.map((r) => `<option value="${esc(r.value)}" ${e.role === r.value ? 'selected' : ''}>${esc(r.label)}</option>`).join('')}
-            </select>
+
+          <!-- Section 3: Professional Background & Emergency -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px;">
+            <div style="font-size:0.75rem; font-weight:800; color:#1e293b; text-transform:uppercase; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+              <i data-lucide="graduation-cap" style="width:14px;height:14px;color:#8b5cf6;"></i> Qualifications, Experience &amp; Emergency Next-of-Kin
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">Highest Qualification</label>
+                <input class="form-input" id="stf-qualification" value="${esc(e.qualification || '')}" placeholder="e.g. M.Sc Physics, B.Ed / M.A English">
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">Total Teaching / Work Experience</label>
+                <input class="form-input" id="stf-experience" value="${esc(e.experience || '')}" placeholder="e.g. 6 Years Senior Secondary">
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">Emergency Contact Person</label>
+                <input class="form-input" id="stf-emergency-name" value="${esc(e.emergencyContactName || '')}" placeholder="e.g. Spouse / Parent / Guardian">
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">Emergency Contact Phone</label>
+                <input class="form-input font-mono" id="stf-emergency-phone" value="${esc(e.emergencyContactPhone || '')}" placeholder="+91 98470 00000">
+              </div>
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label">Department *</label>
-            <input class="form-input" id="stf-dept" list="stf-dept-options" required value="${esc(e.department || '')}" placeholder="Select or type department...">
-            <datalist id="stf-dept-options">
-              ${deptList.map(d => `<option value="${esc(d.name)}">${esc(d.code ? `[${d.code}] ` : '')}${esc(d.name)}</option>`).join('')}
-            </datalist>
+
+          <!-- Section 4: Compensation -->
+          <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px 14px;">
+            <div style="font-size:0.75rem; font-weight:800; color:#1e293b; text-transform:uppercase; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+              <i data-lucide="wallet" style="width:14px;height:14px;color:#d97706;"></i> Monthly Payroll &amp; Compensation
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">Basic Salary (₹ / Month) *</label>
+                <input type="number" class="form-input font-mono" id="stf-salary" value="${e.basicPay != null ? esc(e.basicPay) : ''}" placeholder="35000">
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">Allowances / HRA (₹ / Month)</label>
+                <input type="number" class="form-input font-mono" id="stf-allowances" value="${e.allowances != null ? esc(e.allowances) : ''}" placeholder="5000">
+              </div>
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label">Designation *</label>
-            <input class="form-input" id="stf-desig" list="stf-desig-options" required value="${esc(e.designation || '')}" placeholder="Select or type designation...">
-            <datalist id="stf-desig-options">
-              ${desigList.map(d => `<option value="${esc(d.title)}">${esc(d.category ? `(${d.category}) ` : '')}${esc(d.title)}</option>`).join('')}
-            </datalist>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Phone Number</label>
-            <input class="form-input" id="stf-phone" value="${esc(e.phone || '')}" placeholder="+91 98470 12345">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Basic Salary (₹)</label>
-            <input type="number" class="form-input" id="stf-salary" value="${e.basicPay != null ? esc(e.basicPay) : ''}" placeholder="35000">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Joining Date</label>
-            <input type="date" class="form-input" id="stf-joining" value="${esc((e.joiningDate || new Date().toISOString()).slice(0, 10))}">
-          </div>
-          <div class="form-group">
-            <label class="form-label">Assigned Class</label>
-            <select class="form-select" id="stf-class">
-              ${classes.map((c) => `<option value="${esc(c)}" ${e.assignedClass === c ? 'selected' : ''}>${c ? esc(c) : '—'}</option>`).join('')}
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Assigned Section</label>
-            <select class="form-select" id="stf-section">
-              ${sections.map((s) => `<option value="${esc(s)}" ${e.assignedSection === s ? 'selected' : ''}>${s || '—'}</option>`).join('')}
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Employment Status</label>
-            <select class="form-select" id="stf-status">
-              <option ${e.status === 'Active' || !e.status ? 'selected' : ''}>Active</option>
-              <option ${e.status === 'Inactive' ? 'selected' : ''}>Inactive</option>
-              <option ${e.status === 'On Leave' ? 'selected' : ''}>On Leave</option>
-              <option ${e.status === 'Resigned' ? 'selected' : ''}>Resigned</option>
-            </select>
-          </div>
+
           ${isEdit ? '' : `
-          <div class="form-group" style="grid-column:1/-1; border-top:1px solid var(--border-color); padding-top:12px;">
-            <label class="form-label">Login Credentials</label>
+          <div class="form-group" style="border-top:1px solid var(--border-color); padding-top:12px; margin:0;">
+            <label class="form-label">Portal Sign-in Credentials</label>
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
               <input class="form-input font-mono" id="stf-username" placeholder="Username (auto-generated if blank)">
               <input class="form-input font-mono" id="stf-password" placeholder="Password (auto-generated if blank)">
@@ -484,17 +734,20 @@ export class StaffModule {
 
     const footerHtml = `
       <button class="btn btn-secondary" id="btn-cancel-staff">Cancel</button>
-      <button class="btn btn-primary" id="btn-save-staff"><i data-lucide="save"></i> ${isEdit ? 'Save Changes' : 'Issue Appointment'}</button>
+      <button class="btn btn-primary" id="btn-save-staff" style="background:#16a34a; border-color:#16a34a; display:inline-flex; align-items:center; gap:6px;">
+        <i data-lucide="save"></i> ${isEdit ? 'Save Changes' : 'Issue Appointment'}
+      </button>
     `;
 
     UIComponents.openModal({
       title: isEdit ? `Edit Staff — ${e.name || ''}` : 'Appoint New Staff Member',
       bodyHtml,
-      footerHtml
+      footerHtml,
+      maxWidth: '680px'
     });
 
-    document.getElementById('btn-cancel-staff').addEventListener('click', () => UIComponents.closeModal());
-    document.getElementById('btn-save-staff').addEventListener('click', async () => {
+    document.getElementById('btn-cancel-staff')?.addEventListener('click', () => UIComponents.closeModal());
+    document.getElementById('btn-save-staff')?.addEventListener('click', async () => {
       if (isEdit) await this.saveStaffEdit(e, container);
       else await this.createStaff(container);
     });
@@ -503,17 +756,24 @@ export class StaffModule {
 
   static readStaffForm() {
     return {
-      name: document.getElementById('stf-name').value.trim(),
-      email: document.getElementById('stf-email').value.trim(),
-      role: document.getElementById('stf-role').value,
-      department: document.getElementById('stf-dept').value.trim(),
-      designation: document.getElementById('stf-desig').value.trim(),
-      phone: document.getElementById('stf-phone').value.trim(),
-      basicPay: parseFloat(document.getElementById('stf-salary').value) || 0,
-      joiningDate: document.getElementById('stf-joining').value,
-      assignedClass: document.getElementById('stf-class').value,
-      assignedSection: document.getElementById('stf-section').value,
-      status: document.getElementById('stf-status').value
+      name: document.getElementById('stf-name')?.value.trim() || '',
+      email: document.getElementById('stf-email')?.value.trim() || '',
+      role: document.getElementById('stf-role')?.value || 'teacher',
+      department: document.getElementById('stf-dept')?.value.trim() || '',
+      designation: document.getElementById('stf-desig')?.value.trim() || '',
+      phone: document.getElementById('stf-phone')?.value.trim() || '',
+      gender: document.getElementById('stf-gender')?.value || 'Female',
+      bloodGroup: document.getElementById('stf-blood')?.value || '',
+      qualification: document.getElementById('stf-qualification')?.value.trim() || '',
+      experience: document.getElementById('stf-experience')?.value.trim() || '',
+      emergencyContactName: document.getElementById('stf-emergency-name')?.value.trim() || '',
+      emergencyContactPhone: document.getElementById('stf-emergency-phone')?.value.trim() || '',
+      basicPay: parseFloat(document.getElementById('stf-salary')?.value) || 0,
+      allowances: parseFloat(document.getElementById('stf-allowances')?.value) || 0,
+      joiningDate: document.getElementById('stf-joining')?.value || '',
+      assignedClass: document.getElementById('stf-class')?.value || '',
+      assignedSection: document.getElementById('stf-section')?.value || '',
+      status: document.getElementById('stf-status')?.value || 'Active'
     };
   }
 
@@ -549,7 +809,14 @@ export class StaffModule {
       department: form.department,
       designation: form.designation,
       phone: form.phone,
+      gender: form.gender,
+      bloodGroup: form.bloodGroup,
+      qualification: form.qualification,
+      experience: form.experience,
+      emergencyContactName: form.emergencyContactName,
+      emergencyContactPhone: form.emergencyContactPhone,
       basicPay: form.basicPay,
+      allowances: form.allowances,
       joiningDate: form.joiningDate || null,
       assignedClass: form.assignedClass || null,
       assignedSection: form.assignedSection || null,
@@ -621,7 +888,14 @@ export class StaffModule {
       department: form.department,
       designation: form.designation,
       phone: form.phone,
+      gender: form.gender,
+      bloodGroup: form.bloodGroup,
+      qualification: form.qualification,
+      experience: form.experience,
+      emergencyContactName: form.emergencyContactName,
+      emergencyContactPhone: form.emergencyContactPhone,
       basicPay: form.basicPay,
+      allowances: form.allowances,
       joiningDate: form.joiningDate || null,
       assignedClass: form.assignedClass || null,
       assignedSection: form.assignedSection || null,
@@ -651,9 +925,528 @@ export class StaffModule {
     }
 
     await auditService.log('STAFF_UPDATED', 'HR', { staffId: emp.id, name: form.name, role: form.role }, emp.id);
-    UIComponents.showToast('Staff details updated.', 'success');
+    UIComponents.showToast(`Changes saved for ${form.name}.`, 'success');
     UIComponents.closeModal();
     await StaffModule.render(container);
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Staff Dossier & Printable ID Badge                                  */
+  /* ------------------------------------------------------------------ */
+
+  static openStaffDossierModal(emp, container, initialTab = 'overview') {
+    if (!emp) return;
+    const cred = (this._credByStaff || {})[emp.id];
+    const initials = (emp.name || 'S').slice(0, 2).toUpperCase();
+    const basic = parseFloat(emp.basicPay) || 0;
+    const allowances = parseFloat(emp.allowances) || 0;
+    const grossMonthly = basic + allowances;
+    const annualCtc = grossMonthly * 12;
+    const tenure = this.calculateTenure(emp.joiningDate);
+    const isTeacher = emp.role === 'teacher';
+
+    const bodyHtml = `
+      <div style="display:flex; flex-direction:column; gap:16px;">
+        <!-- Hero Header -->
+        <div style="background:linear-gradient(135deg, #f8fafc, #f1f5f9); border:1px solid var(--border-color); border-radius:14px; padding:16px 20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px;">
+          <div style="display:flex; align-items:center; gap:14px;">
+            <div style="width:58px; height:58px; border-radius:50%; background:linear-gradient(135deg, #10b981, #047857); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:1.35rem; box-shadow:0 4px 12px rgba(16,185,129,0.3); border:2px solid #fff; flex-shrink:0;">
+              ${esc(initials)}
+            </div>
+            <div>
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <h3 style="margin:0; font-size:1.25rem; font-weight:800; color:var(--text-main);">${esc(emp.name)}</h3>
+                <span class="badge ${emp.status === 'Active' ? 'badge-success' : 'badge-warning'}" style="font-size:0.72rem;">${esc(emp.status || 'Active')}</span>
+              </div>
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:4px;">
+                <span style="font-family:monospace; font-weight:700; color:#2563eb; background:#eff6ff; padding:2px 8px; border-radius:6px; font-size:0.78rem;">${esc(emp.empId)}</span>
+                <span style="color:#059669; font-weight:700; font-size:0.85rem;">${esc(emp.designation || 'Staff')}</span>
+                <span style="color:#94a3b8;">•</span>
+                <span style="color:#64748b; font-size:0.82rem;">${esc(emp.department || 'General')}</span>
+              </div>
+            </div>
+          </div>
+          <div style="display:inline-flex; gap:8px;">
+            <button class="btn btn-secondary btn-sm" id="btn-dossier-print-card-quick" style="color:#16a34a; font-weight:700; display:inline-flex; align-items:center; gap:6px;">
+              <i data-lucide="printer"></i> Print ID Badge
+            </button>
+            <button class="btn btn-secondary btn-sm" id="btn-dossier-edit-quick" style="font-weight:700; display:inline-flex; align-items:center; gap:6px;">
+              <i data-lucide="pencil"></i> Edit Profile
+            </button>
+          </div>
+        </div>
+
+        <!-- Dossier Subtab Navigation -->
+        <div style="display:flex; gap:8px; border-bottom:1px solid var(--border-color); padding-bottom:8px; overflow-x:auto;">
+          <button class="btn ${initialTab === 'overview' ? 'btn-primary' : 'btn-secondary'} btn-sm dossier-tab-btn" data-target="dossier-pane-overview" style="display:inline-flex; align-items:center; gap:6px;">
+            <i data-lucide="file-text" style="width:14px;height:14px;"></i> Service Record &amp; Bio
+          </button>
+          <button class="btn ${initialTab === 'idcard' ? 'btn-primary' : 'btn-secondary'} btn-sm dossier-tab-btn" data-target="dossier-pane-idcard" style="display:inline-flex; align-items:center; gap:6px;">
+            <i data-lucide="badge-check" style="width:14px;height:14px;"></i> Official Staff ID Badge
+          </button>
+          <button class="btn ${initialTab === 'payroll' ? 'btn-primary' : 'btn-secondary'} btn-sm dossier-tab-btn" data-target="dossier-pane-payroll" style="display:inline-flex; align-items:center; gap:6px;">
+            <i data-lucide="wallet" style="width:14px;height:14px;"></i> Compensation &amp; Payroll
+          </button>
+          <button class="btn ${initialTab === 'access' ? 'btn-primary' : 'btn-secondary'} btn-sm dossier-tab-btn" data-target="dossier-pane-access" style="display:inline-flex; align-items:center; gap:6px;">
+            <i data-lucide="shield-check" style="width:14px;height:14px;"></i> Security &amp; Login
+          </button>
+        </div>
+
+        <!-- TAB 1: OVERVIEW -->
+        <div class="dossier-pane" id="dossier-pane-overview" style="display:${initialTab === 'overview' ? 'block' : 'none'};">
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:14px;">
+            
+            <!-- Academic & Placement -->
+            <div class="card" style="margin:0; padding:14px; border:1px solid var(--border-color); border-radius:12px;">
+              <h4 style="margin:0 0 10px 0; font-size:0.85rem; font-weight:800; color:#0f172a; display:flex; align-items:center; gap:6px;">
+                <i data-lucide="building" style="color:#2563eb; width:15px; height:15px;"></i> Academic &amp; Deployment Placement
+              </h4>
+              <div style="display:flex; flex-direction:column; gap:8px; font-size:0.82rem;">
+                <div style="display:flex; justify-content:space-between;"><span style="color:#64748b;">Department:</span><strong>${esc(emp.department || '—')}</strong></div>
+                <div style="display:flex; justify-content:space-between;"><span style="color:#64748b;">Official Title:</span><strong style="color:#059669;">${esc(emp.designation || '—')}</strong></div>
+                <div style="display:flex; justify-content:space-between;"><span style="color:#64748b;">Role Scope:</span><span class="badge badge-info">${esc(ROLE_LABELS[emp.role] || emp.role || '—')}</span></div>
+                ${isTeacher ? `
+                <div style="display:flex; justify-content:space-between;"><span style="color:#64748b;">Assigned Class In-Charge:</span><strong style="color:#2563eb;">${esc(emp.assignedClass || '—')} ${esc(emp.assignedSection || '')}</strong></div>
+                ` : ''}
+                <div style="display:flex; justify-content:space-between;"><span style="color:#64748b;">Date of Joining:</span><strong>${fmtDate(emp.joiningDate)}</strong></div>
+                <div style="display:flex; justify-content:space-between;"><span style="color:#64748b;">Service Tenure:</span><span style="font-weight:700; color:#16a34a;">${tenure}</span></div>
+              </div>
+            </div>
+
+            <!-- Professional & Personal -->
+            <div class="card" style="margin:0; padding:14px; border:1px solid var(--border-color); border-radius:12px;">
+              <h4 style="margin:0 0 10px 0; font-size:0.85rem; font-weight:800; color:#0f172a; display:flex; align-items:center; gap:6px;">
+                <i data-lucide="graduation-cap" style="color:#10b981; width:15px; height:15px;"></i> Professional Background &amp; Profile
+              </h4>
+              <div style="display:flex; flex-direction:column; gap:8px; font-size:0.82rem;">
+                <div style="display:flex; justify-content:space-between;"><span style="color:#64748b;">Highest Qualification:</span><strong>${esc(emp.qualification || 'Post Graduate / Certified')}</strong></div>
+                <div style="display:flex; justify-content:space-between;"><span style="color:#64748b;">Work Experience:</span><strong>${esc(emp.experience || 'Experienced Faculty')}</strong></div>
+                <div style="display:flex; justify-content:space-between;"><span style="color:#64748b;">Gender:</span><strong>${esc(emp.gender || '—')}</strong></div>
+                <div style="display:flex; justify-content:space-between;"><span style="color:#64748b;">Blood Group:</span><span class="badge" style="background:#fee2e2; color:#b91c1c; font-weight:800;">${esc(emp.bloodGroup || '—')}</span></div>
+                <div style="display:flex; justify-content:space-between;"><span style="color:#64748b;">Official Email:</span><span style="font-family:monospace;">${esc(emp.email)}</span></div>
+                <div style="display:flex; justify-content:space-between;"><span style="color:#64748b;">Contact Phone:</span><span style="font-family:monospace;">${esc(emp.phone || '—')}</span></div>
+              </div>
+            </div>
+
+            <!-- Emergency & Support -->
+            <div class="card" style="margin:0; padding:14px; border:1px solid var(--border-color); border-radius:12px; grid-column:1/-1;">
+              <h4 style="margin:0 0 10px 0; font-size:0.85rem; font-weight:800; color:#0f172a; display:flex; align-items:center; gap:6px;">
+                <i data-lucide="heart-pulse" style="color:#ef4444; width:15px; height:15px;"></i> Emergency Contact &amp; Next of Kin
+              </h4>
+              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; font-size:0.82rem;">
+                <div><span style="color:#64748b;">Emergency Contact Person:</span><div style="font-weight:700; color:#0f172a; margin-top:2px;">${esc(emp.emergencyContactName || 'Family / Guardian on file')}</div></div>
+                <div><span style="color:#64748b;">Emergency Helpline Phone:</span><div style="font-family:monospace; font-weight:700; color:#0f172a; margin-top:2px;">${esc(emp.emergencyContactPhone || emp.phone || '—')}</div></div>
+                <div><span style="color:#64748b;">Campus Authority Emergency:</span><div style="font-family:monospace; font-weight:700; color:#16a34a; margin-top:2px;">+91 8653382851</div></div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- TAB 2: OFFICIAL PRINTABLE ID CARD -->
+        <div class="dossier-pane" id="dossier-pane-idcard" style="display:${initialTab === 'idcard' ? 'block' : 'none'};">
+          <div style="display:flex; flex-direction:column; align-items:center; gap:16px;">
+            <div style="background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:10px 16px; font-size:0.82rem; color:#166534; display:flex; justify-content:space-between; align-items:center; width:100%; max-width:440px;">
+              <span><strong>Ready for Print</strong> (Standard Staff Badge dimensions)</span>
+              <button class="btn btn-primary btn-sm" id="btn-print-id-card-action" style="background:#16a34a; border-color:#16a34a; display:inline-flex; align-items:center; gap:5px; font-weight:700;">
+                <i data-lucide="printer" style="width:14px;height:14px;"></i> Print ID Badge
+              </button>
+            </div>
+
+            <!-- Standard Official Staff ID Card Container -->
+            <div id="tms-printable-card-target" style="width:330px; background:#ffffff; border:1.5px solid #cbd5e1; border-radius:16px; overflow:hidden; box-shadow:0 12px 30px rgba(0,0,0,0.12); font-family:system-ui, -apple-system, sans-serif; position:relative;">
+              
+              <!-- Card Header Ribbon -->
+              <div style="background:linear-gradient(135deg, #064e3b, #047857); padding:14px 12px 10px 12px; text-align:center; color:#ffffff; position:relative;">
+                <div style="display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:4px;">
+                  <div style="width:24px; height:24px; border-radius:50%; background:#ffffff; color:#047857; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:0.75rem;">
+                    TMS
+                  </div>
+                  <strong style="font-size:0.92rem; letter-spacing:0.5px; text-transform:uppercase;">THAIBA MODEL SCHOOL</strong>
+                </div>
+                <div style="font-size:0.62rem; color:#d1fae5; letter-spacing:0.3px;">Enterprise Campus • Regd. No: IV 01894/2011</div>
+                <div style="margin-top:6px; background:#fbbf24; color:#78350f; font-size:0.65rem; font-weight:900; letter-spacing:1px; text-transform:uppercase; padding:2px 8px; border-radius:10px; display:inline-block;">
+                  STAFF IDENTITY CARD
+                </div>
+              </div>
+
+              <!-- Card Body -->
+              <div style="padding:16px 14px 12px 14px; display:flex; flex-direction:column; align-items:center; text-align:center;">
+                <!-- Photo Avatar Frame -->
+                <div style="width:84px; height:84px; border-radius:50%; border:3px solid #10b981; padding:3px; background:#ffffff; box-shadow:0 4px 10px rgba(0,0,0,0.1); margin-bottom:8px;">
+                  <div style="width:100%; height:100%; border-radius:50%; background:linear-gradient(135deg, #10b981, #047857); color:#ffffff; display:flex; align-items:center; justify-content:center; font-size:1.75rem; font-weight:900;">
+                    ${esc(initials)}
+                  </div>
+                </div>
+
+                <!-- Name & Title -->
+                <h3 style="margin:0; font-size:1.05rem; font-weight:900; color:#0f172a; text-transform:uppercase; letter-spacing:0.3px;">
+                  ${esc(emp.name)}
+                </h3>
+                <div style="font-size:0.78rem; font-weight:800; color:#059669; margin:2px 0 10px 0;">
+                  ${esc(emp.designation || 'Faculty Member')}
+                </div>
+
+                <!-- Attribute Table -->
+                <div style="width:100%; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:10px 12px; margin-bottom:12px; font-size:0.74rem; text-align:left;">
+                  <div style="display:grid; grid-template-columns:90px 1fr; gap:4px; margin-bottom:4px;">
+                    <span style="color:#64748b; font-weight:700;">EMP ID:</span>
+                    <strong style="color:#2563eb; font-family:monospace; font-size:0.8rem;">${esc(emp.empId)}</strong>
+                  </div>
+                  <div style="display:grid; grid-template-columns:90px 1fr; gap:4px; margin-bottom:4px;">
+                    <span style="color:#64748b; font-weight:700;">DEPARTMENT:</span>
+                    <strong style="color:#0f172a;">${esc(emp.department || 'General')}</strong>
+                  </div>
+                  <div style="display:grid; grid-template-columns:90px 1fr; gap:4px; margin-bottom:4px;">
+                    <span style="color:#64748b; font-weight:700;">BLOOD GRP:</span>
+                    <strong style="color:#b91c1c;">${esc(emp.bloodGroup || '—')}</strong>
+                  </div>
+                  <div style="display:grid; grid-template-columns:90px 1fr; gap:4px; margin-bottom:4px;">
+                    <span style="color:#64748b; font-weight:700;">CONTACT:</span>
+                    <span style="color:#0f172a; font-family:monospace;">${esc(emp.phone || '—')}</span>
+                  </div>
+                  <div style="display:grid; grid-template-columns:90px 1fr; gap:4px;">
+                    <span style="color:#64748b; font-weight:700;">VALID TILL:</span>
+                    <span style="color:#16a34a; font-weight:700;">31-MAR-2027</span>
+                  </div>
+                </div>
+
+                <!-- Simulated Barcode & Signature Section -->
+                <div style="width:100%; display:flex; justify-content:space-between; align-items:center; padding:0 8px; margin-bottom:10px;">
+                  <div style="display:flex; flex-direction:column; align-items:flex-start;">
+                    <!-- Barcode stripes -->
+                    <div style="display:flex; gap:2px; height:24px; align-items:stretch;">
+                      <span style="width:2px; background:#0f172a;"></span>
+                      <span style="width:3px; background:#0f172a;"></span>
+                      <span style="width:1px; background:#0f172a;"></span>
+                      <span style="width:4px; background:#0f172a;"></span>
+                      <span style="width:2px; background:#0f172a;"></span>
+                      <span style="width:1px; background:#0f172a;"></span>
+                      <span style="width:3px; background:#0f172a;"></span>
+                      <span style="width:2px; background:#0f172a;"></span>
+                      <span style="width:4px; background:#0f172a;"></span>
+                      <span style="width:1px; background:#0f172a;"></span>
+                      <span style="width:3px; background:#0f172a;"></span>
+                      <span style="width:2px; background:#0f172a;"></span>
+                    </div>
+                    <span style="font-family:monospace; font-size:0.6rem; color:#64748b; margin-top:2px;">${esc(emp.empId)}</span>
+                  </div>
+
+                  <!-- Stamp / Signature -->
+                  <div style="text-align:right;">
+                    <div style="font-family:'Brush Script MT', cursive, serif; font-size:0.95rem; color:#1e3a8a; line-height:1;">Abdul Basith</div>
+                    <div style="border-top:1px solid #94a3b8; font-size:0.55rem; color:#475569; font-weight:700; text-transform:uppercase; margin-top:2px;">
+                      Authorized Signatory
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Card Footer -->
+                <div style="font-size:0.58rem; color:#94a3b8; border-top:1px dashed #e2e8f0; padding-top:6px; width:100%;">
+                  Campus: Baghait, Tapan, Dakshin Dinajpur, WB • Helpline: +91 8653382851
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 3: PAYROLL & COMPENSATION -->
+        <div class="dossier-pane" id="dossier-pane-payroll" style="display:${initialTab === 'payroll' ? 'block' : 'none'};">
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:12px; margin-bottom:14px;">
+            <div class="card" style="margin:0; padding:14px; border:1px solid #bbf7d0; background:#f0fdf4; border-radius:12px;">
+              <span style="font-size:0.75rem; color:#166534; font-weight:700; text-transform:uppercase;">Basic Pay</span>
+              <div style="font-size:1.35rem; font-weight:900; color:#15803d; margin-top:4px;">₹ ${basic.toLocaleString()}</div>
+              <span style="font-size:0.7rem; color:#16a34a;">Monthly Fixed</span>
+            </div>
+
+            <div class="card" style="margin:0; padding:14px; border:1px solid #bfdbfe; background:#eff6ff; border-radius:12px;">
+              <span style="font-size:0.75rem; color:#1e40af; font-weight:700; text-transform:uppercase;">HRA &amp; Allowances</span>
+              <div style="font-size:1.35rem; font-weight:900; color:#1d4ed8; margin-top:4px;">₹ ${allowances.toLocaleString()}</div>
+              <span style="font-size:0.7rem; color:#2563eb;">Monthly Variable</span>
+            </div>
+
+            <div class="card" style="margin:0; padding:14px; border:1px solid #fed7aa; background:#fff7ed; border-radius:12px;">
+              <span style="font-size:0.75rem; color:#9a3412; font-weight:700; text-transform:uppercase;">Gross Monthly</span>
+              <div style="font-size:1.35rem; font-weight:900; color:#c2410c; margin-top:4px;">₹ ${grossMonthly.toLocaleString()}</div>
+              <span style="font-size:0.7rem; color:#ea580c;">Total Monthly CTC</span>
+            </div>
+
+            <div class="card" style="margin:0; padding:14px; border:1px solid #ddd6fe; background:#f5f3ff; border-radius:12px;">
+              <span style="font-size:0.75rem; color:#5b21b6; font-weight:700; text-transform:uppercase;">Annual CTC</span>
+              <div style="font-size:1.35rem; font-weight:900; color:#6d28d9; margin-top:4px;">₹ ${annualCtc.toLocaleString()}</div>
+              <span style="font-size:0.7rem; color:#7c3aed;">12-Month Financial Budget</span>
+            </div>
+          </div>
+
+          <div style="background:#f8fafc; border:1px solid var(--border-color); border-radius:10px; padding:12px 16px; font-size:0.8rem; color:#475569;">
+            <i data-lucide="info" style="width:14px; height:14px; color:#2563eb; vertical-align:middle; margin-right:4px;"></i>
+            Salary allowances are computed automatically for monthly payroll dispatch. To adjust compensation structure, click <strong>Edit Profile</strong>.
+          </div>
+        </div>
+
+        <!-- TAB 4: ACCESS & SECURITY -->
+        <div class="dossier-pane" id="dossier-pane-access" style="display:${initialTab === 'access' ? 'block' : 'none'};">
+          <div class="card" style="margin:0; padding:16px; border:1px solid var(--border-color); border-radius:12px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+              <div>
+                <h4 style="margin:0; font-size:0.95rem; font-weight:800; color:#0f172a;">Portal Sign-in &amp; RBAC Authorization</h4>
+                <p style="margin:2px 0 0 0; font-size:0.78rem; color:#64748b;">Credentials give this staff member access to the Attendance, Gradebook, and Class registers.</p>
+              </div>
+              <button class="btn btn-primary btn-sm" id="btn-dossier-manage-login" style="display:inline-flex; align-items:center; gap:5px;">
+                <i data-lucide="key-round" style="width:13px;height:13px;"></i> Manage Credentials
+              </button>
+            </div>
+
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px; font-size:0.82rem; background:#f8fafc; padding:12px; border-radius:8px;">
+              <div><span style="color:#64748b;">Official Account Username:</span><div style="font-family:monospace; font-weight:700; color:#0f172a; margin-top:2px;">${esc(cred ? cred.username : 'No login issued yet')}</div></div>
+              <div><span style="color:#64748b;">Account Email:</span><div style="font-family:monospace; font-weight:700; color:#0f172a; margin-top:2px;">${esc(emp.email)}</div></div>
+              <div><span style="color:#64748b;">Security Role:</span><div style="font-weight:700; color:#059669; margin-top:2px;">${esc(ROLE_LABELS[emp.role] || emp.role)}</div></div>
+              <div><span style="color:#64748b;">Login Status:</span><div style="font-weight:700; color:${cred ? '#16a34a' : '#ef4444'}; margin-top:2px;">${cred ? 'Active & Verified' : 'Unconfigured'}</div></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    `;
+
+    const footerHtml = `
+      <button class="btn btn-secondary" onclick="UIComponents.closeModal()">Close</button>
+      <button class="btn btn-primary" id="btn-dossier-print-card-footer" style="background:#16a34a; border-color:#16a34a; display:inline-flex; align-items:center; gap:6px;">
+        <i data-lucide="printer"></i> Print ID Badge
+      </button>
+    `;
+
+    UIComponents.openModal({
+      title: `Staff Service Dossier — ${emp.name}`,
+      bodyHtml,
+      footerHtml,
+      maxWidth: '720px'
+    });
+
+    // Subtab switching
+    document.querySelectorAll('.dossier-tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.dossier-tab-btn').forEach(b => {
+          b.classList.remove('btn-primary');
+          b.classList.add('btn-secondary');
+        });
+        btn.classList.remove('btn-secondary');
+        btn.classList.add('btn-primary');
+        const targetId = btn.dataset.target;
+        document.querySelectorAll('.dossier-pane').forEach(p => p.style.display = 'none');
+        const pane = document.getElementById(targetId);
+        if (pane) pane.style.display = 'block';
+        UIComponents.refreshIcons();
+      });
+    });
+
+    // Quick actions
+    document.getElementById('btn-dossier-print-card-quick')?.addEventListener('click', () => this.printStaffIdCard(emp.id));
+    document.getElementById('btn-print-id-card-action')?.addEventListener('click', () => this.printStaffIdCard(emp.id));
+    document.getElementById('btn-dossier-print-card-footer')?.addEventListener('click', () => this.printStaffIdCard(emp.id));
+    document.getElementById('btn-dossier-edit-quick')?.addEventListener('click', () => {
+      UIComponents.closeModal();
+      this.openStaffModal(emp, container);
+    });
+    document.getElementById('btn-dossier-manage-login')?.addEventListener('click', () => {
+      UIComponents.closeModal();
+      this.openCredentialsModal(emp, container);
+    });
+
+    UIComponents.refreshIcons();
+  }
+
+  static printStaffIdCard(empId) {
+    const emp = (this._staff || []).find(s => s.id === empId);
+    if (!emp) {
+      UIComponents.showToast('Staff member not found.', 'warning');
+      return;
+    }
+
+    const initials = (emp.name || 'S').slice(0, 2).toUpperCase();
+    const printWindow = window.open('', '_blank', 'width=650,height=800');
+    if (!printWindow) {
+      UIComponents.showToast('Please allow popups to print Staff ID Badge.', 'warning');
+      return;
+    }
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Staff ID Badge — ${esc(emp.name)} (${esc(emp.empId)})</title>
+        <style>
+          @page { size: auto; margin: 15mm; }
+          body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+          }
+          .id-card {
+            width: 320px;
+            background: #ffffff;
+            border: 2px solid #0f172a;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+            text-align: center;
+          }
+          .card-header {
+            background: #064e3b;
+            color: #ffffff;
+            padding: 16px 12px 12px 12px;
+          }
+          .school-title {
+            font-size: 0.95rem;
+            font-weight: 900;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+          }
+          .card-badge {
+            background: #fbbf24;
+            color: #78350f;
+            font-size: 0.65rem;
+            font-weight: 900;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            padding: 3px 10px;
+            border-radius: 10px;
+            display: inline-block;
+            margin-top: 6px;
+          }
+          .card-body {
+            padding: 16px 14px;
+          }
+          .avatar-box {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: 3px solid #10b981;
+            margin: 0 auto 10px auto;
+            background: #047857;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.75rem;
+            font-weight: 900;
+          }
+          .emp-name {
+            font-size: 1.05rem;
+            font-weight: 900;
+            color: #0f172a;
+            text-transform: uppercase;
+            margin: 0 0 2px 0;
+          }
+          .emp-desig {
+            font-size: 0.8rem;
+            font-weight: 800;
+            color: #059669;
+            margin-bottom: 12px;
+          }
+          .info-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.74rem;
+            margin-bottom: 12px;
+            text-align: left;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+          }
+          .info-table td {
+            padding: 5px 8px;
+          }
+          .info-label {
+            color: #64748b;
+            font-weight: 700;
+            width: 90px;
+          }
+          .barcode-line {
+            display: flex;
+            gap: 2px;
+            height: 22px;
+            align-items: stretch;
+          }
+          .barcode-line span {
+            background: #0f172a;
+          }
+          .card-footer {
+            font-size: 0.6rem;
+            color: #64748b;
+            border-top: 1px dashed #cbd5e1;
+            padding-top: 8px;
+            margin-top: 6px;
+          }
+          @media print {
+            body { background: transparent; padding: 0; }
+            .no-print { display: none !important; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="no-print" style="margin-bottom: 20px; text-align: center;">
+          <button onclick="window.print()" style="background:#16a34a; color:#fff; border:none; padding:8px 18px; border-radius:8px; font-weight:700; cursor:pointer; font-size:0.9rem;">
+            Print ID Badge Now
+          </button>
+        </div>
+
+        <div class="id-card">
+          <div class="card-header">
+            <div class="school-title">THAIBA MODEL SCHOOL</div>
+            <div style="font-size:0.62rem; color:#d1fae5;">Campus Regd: IV 01894/2011</div>
+            <div class="card-badge">STAFF IDENTITY CARD</div>
+          </div>
+          <div class="card-body">
+            <div class="avatar-box">${esc(initials)}</div>
+            <div class="emp-name">${esc(emp.name)}</div>
+            <div class="emp-desig">${esc(emp.designation || 'Staff')}</div>
+
+            <table class="info-table">
+              <tr><td class="info-label">EMP ID:</td><td><strong style="color:#2563eb; font-family:monospace;">${esc(emp.empId)}</strong></td></tr>
+              <tr><td class="info-label">DEPARTMENT:</td><td><strong>${esc(emp.department || 'General')}</strong></td></tr>
+              <tr><td class="info-label">BLOOD GRP:</td><td><strong style="color:#b91c1c;">${esc(emp.bloodGroup || '—')}</strong></td></tr>
+              <tr><td class="info-label">PHONE:</td><td><span style="font-family:monospace;">${esc(emp.phone || '—')}</span></td></tr>
+              <tr><td class="info-label">VALID TILL:</td><td><strong style="color:#16a34a;">31-MAR-2027</strong></td></tr>
+            </table>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <div>
+                <div class="barcode-line">
+                  <span style="width:2px;"></span><span style="width:3px;"></span><span style="width:1px;"></span>
+                  <span style="width:4px;"></span><span style="width:2px;"></span><span style="width:1px;"></span>
+                  <span style="width:3px;"></span><span style="width:2px;"></span><span style="width:4px;"></span>
+                </div>
+                <div style="font-family:monospace; font-size:0.6rem; color:#64748b; margin-top:2px;">${esc(emp.empId)}</div>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-family:'Brush Script MT', cursive; font-size:0.95rem; color:#1e3a8a;">Abdul Basith</div>
+                <div style="border-top:1px solid #94a3b8; font-size:0.55rem; color:#475569; font-weight:700;">AUTHORIZED SIGNATORY</div>
+              </div>
+            </div>
+
+            <div class="card-footer">
+              Baghait, Tapan, Dakshin Dinajpur, WB - 733127 • Helpline: +91 8653382851
+            </div>
+          </div>
+        </div>
+
+        <script>
+          window.onload = function() {
+            setTimeout(function() {
+              window.print();
+            }, 300);
+          };
+        </script>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
   }
 
   /* ------------------------------------------------------------------ */

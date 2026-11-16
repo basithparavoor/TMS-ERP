@@ -871,4 +871,49 @@ ALTER TABLE IF EXISTS public.students ALTER COLUMN section DROP NOT NULL;
 ALTER TABLE IF EXISTS public.app_settings ADD COLUMN IF NOT EXISTS key TEXT;
 UPDATE public.app_settings SET key = id WHERE key IS NULL AND id IS NOT NULL;
 
+-- ============================================================================
+-- Section 38: User Active Tracking Sessions
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.user_sessions (
+    id TEXT PRIMARY KEY,
+    user_id TEXT,
+    user_email TEXT,
+    user_name TEXT,
+    user_role TEXT,
+    login_at TIMESTAMPTZ DEFAULT NOW(),
+    last_active_at TIMESTAMPTZ DEFAULT NOW(),
+    logout_at TIMESTAMPTZ,
+    status TEXT DEFAULT 'active',
+    client_agent TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.user_sessions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "user_sessions_all" ON public.user_sessions;
+CREATE POLICY "user_sessions_all" ON public.user_sessions FOR ALL TO anon, authenticated USING (true);
+
+-- ============================================================================
+-- Section 39: Student Leaves Relation
+-- ============================================================================
+CREATE TABLE IF NOT EXISTS public.student_leaves (
+    id TEXT PRIMARY KEY,
+    student_id TEXT,
+    student_name TEXT,
+    grade TEXT,
+    section TEXT DEFAULT 'A',
+    leave_type TEXT DEFAULT 'medical',
+    start_date DATE,
+    end_date DATE,
+    total_days INT DEFAULT 1,
+    reason TEXT,
+    guardian_phone TEXT,
+    status TEXT DEFAULT 'pending',
+    applied_by TEXT DEFAULT 'parent',
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.student_leaves ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "student_leaves_all" ON public.student_leaves;
+CREATE POLICY "student_leaves_all" ON public.student_leaves FOR ALL TO anon, authenticated USING (true);
+
 NOTIFY pgrst, 'reload schema';

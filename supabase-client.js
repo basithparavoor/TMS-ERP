@@ -367,6 +367,7 @@ class SupabaseDataService {
             }).filter(item => {
               if (item.collection === 'app_settings' && item.payload && item.payload.key) return false;
               if (item.collection === 'academic_classes' && item.payload && item.payload.name) return false;
+              if (item.collection === 'user_sessions') return false;
               return true;
             });
             localStorage.setItem('tms_offline_queue', JSON.stringify(cleaned));
@@ -572,7 +573,7 @@ class SupabaseDataService {
           }
         }
       } catch (err) {
-        if (err && (err.code === '42P01' || err.status === 404 || String(err.message || '').includes('404') || String(err.message || '').includes('does not exist'))) {
+        if (err && (err.code === '42P01' || err.status === 404 || err.status === 400 || String(err.message || '').includes('404') || String(err.message || '').includes('does not exist'))) {
           this._recordMissingTable(collection);
         }
         console.warn(`Supabase select failed for ${collection}, using local cache:`, err.message);
@@ -599,16 +600,20 @@ class SupabaseDataService {
     this.setLocal(collection, items);
 
     // Sync to Supabase
-    if (this.client && this.isOnline) {
+    if (this.client && this.isOnline && !this._missingTables.has(collection)) {
       try {
         const { error } = await this.client.from(collection).insert([rowToDb(enriched, collection)]);
         if (error) throw error;
       } catch (e) {
-        console.error(`Supabase insert FAILED for ${collection}:`, e.message);
-        this.addToQueue('insert', collection, enriched);
-        return { ...enriched, _syncError: e.message, _queued: true };
+        if (e && (e.code === '42P01' || e.status === 404 || e.status === 400 || String(e.message || '').includes('does not exist') || String(e.message || '').includes('404'))) {
+          this._recordMissingTable(collection);
+        } else {
+          console.error(`Supabase insert FAILED for ${collection}:`, e.message);
+          this.addToQueue('insert', collection, enriched);
+        }
+        return { ...enriched, _syncError: e.message, _queued: false };
       }
-    } else {
+    } else if (!this._missingTables.has(collection)) {
       this.addToQueue('insert', collection, enriched);
     }
     return enriched;
