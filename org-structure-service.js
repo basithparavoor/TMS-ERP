@@ -68,10 +68,10 @@ class OrgStructureService {
     };
   }
 
-  async load() {
-    if (this._cache) return this._cache;
+  async load(forceRefresh = false) {
+    if (this._cache && !forceRefresh) return this._cache;
 
-    // 1. Try LocalStorage for instant render
+    // 1. Read LocalStorage first
     let localData = null;
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
@@ -84,7 +84,7 @@ class OrgStructureService {
     let remoteData = null;
     try {
       const rows = await dbService.select('app_settings');
-      const row = (rows || []).find(r => r.id === SETTINGS_ID);
+      const row = (rows || []).find(r => r.id === SETTINGS_ID || r.key === SETTINGS_ID);
       if (row && row.value && typeof row.value === 'object') {
         remoteData = row.value;
       }
@@ -93,12 +93,24 @@ class OrgStructureService {
     }
 
     const defaults = this.getDefaults();
-    const source = remoteData || localData || defaults;
+
+    // Authoritative Reconciliation:
+    // If localData has an updatedAt timestamp and is newer or equal to remoteData,
+    // preserve localData so edits & deletions are never wiped by older remote data.
+    let source = null;
+    if (localData && remoteData) {
+      const localTime = Number(localData.updatedAt) || 0;
+      const remoteTime = Number(remoteData.updatedAt) || (remoteData.updated_at ? new Date(remoteData.updated_at).getTime() : 0);
+      source = (localTime >= remoteTime) ? localData : remoteData;
+    } else {
+      source = localData || remoteData || defaults;
+    }
 
     this._cache = {
-      departments: Array.isArray(source.departments) && source.departments.length ? source.departments : defaults.departments,
-      designations: Array.isArray(source.designations) && source.designations.length ? source.designations : defaults.designations,
-      roles: Array.isArray(source.roles) && source.roles.length ? source.roles : defaults.roles
+      departments: Array.isArray(source.departments) ? source.departments : defaults.departments,
+      designations: Array.isArray(source.designations) ? source.designations : defaults.designations,
+      roles: Array.isArray(source.roles) ? source.roles : defaults.roles,
+      updatedAt: source.updatedAt || Date.now()
     };
 
     try {
@@ -109,22 +121,49 @@ class OrgStructureService {
   }
 
   async save(data) {
+    const timestamp = Date.now();
     this._cache = {
-      departments: data.departments || [],
-      designations: data.designations || [],
-      roles: data.roles || []
+      departments: Array.isArray(data.departments) ? data.departments : [],
+      designations: Array.isArray(data.designations) ? data.designations : [],
+      roles: Array.isArray(data.roles) ? data.roles : [],
+      updatedAt: timestamp
     };
 
+    // 1. Persist to localStorage immediately
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(this._cache));
+    } catch (e) {
+      console.warn('Could not write org structure to localStorage:', e);
+    }
+
+    // 2. Keep dbService local storage synchronized
+    try {
+      const appSettingsList = dbService.getLocal('app_settings') || [];
+      const idx = appSettingsList.findIndex(item => item.id === SETTINGS_ID || item.key === SETTINGS_ID);
+      const appSettingRecord = {
+        id: SETTINGS_ID,
+        key: SETTINGS_ID,
+        value: this._cache,
+        updated_at: new Date(timestamp).toISOString()
+      };
+      if (idx !== -1) appSettingsList[idx] = appSettingRecord;
+      else appSettingsList.push(appSettingRecord);
+      dbService.setLocal('app_settings', appSettingsList);
     } catch (e) {}
 
+    // 3. Notify app components
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('tms_org_structure_changed', { detail: this._cache }));
+    }
+
+    // 4. Best-effort async save to Supabase app_settings
     let res = null;
     try {
       res = await dbService.upsert('app_settings', {
         id: SETTINGS_ID,
+        key: SETTINGS_ID,
         value: this._cache,
-        updated_at: new Date().toISOString()
+        updated_at: new Date(timestamp).toISOString()
       });
     } catch (e) {
       console.warn('Failed to persist org structure to Supabase:', e);

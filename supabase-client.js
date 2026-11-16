@@ -109,7 +109,10 @@ function rowToDb(row, collection = null) {
   if (collection === 'app_settings') {
     const settingsOut = {};
     const rowId = row.id || row.key;
-    if (rowId) settingsOut.id = String(rowId);
+    if (rowId) {
+      settingsOut.id = String(rowId);
+      settingsOut.key = String(rowId);
+    }
     if (row.value !== undefined) settingsOut.value = row.value;
     if (row.created_at !== undefined) settingsOut.created_at = row.created_at;
     if (row.updated_at !== undefined) settingsOut.updated_at = row.updated_at;
@@ -446,9 +449,31 @@ class SupabaseDataService {
             const mapped = data.map(r => rowFromDb(r, collection));
             const currentLocal = this.getLocal(collection);
             if (mapped.length > 0 || currentLocal.length === 0) {
-              this._memCache.set(collection, mapped);
-              this._memCacheTime.set(collection, Date.now());
-              this.setLocal(collection, mapped);
+              if (collection === 'app_settings' && Array.isArray(currentLocal) && currentLocal.length > 0) {
+                const localMap = new Map(currentLocal.map(item => [item.id || item.key, item]));
+                const merged = mapped.map(remoteItem => {
+                  const id = remoteItem.id || remoteItem.key;
+                  const localItem = localMap.get(id);
+                  if (!localItem) return remoteItem;
+                  const localVal = localItem.value || {};
+                  const remoteVal = remoteItem.value || {};
+                  const localTime = Number(localVal.updatedAt) || (localItem.updated_at ? new Date(localItem.updated_at).getTime() : 0);
+                  const remoteTime = Number(remoteVal.updatedAt) || (remoteItem.updated_at ? new Date(remoteItem.updated_at).getTime() : 0);
+                  return localTime > remoteTime ? localItem : remoteItem;
+                });
+                const mappedIds = new Set(mapped.map(m => m.id || m.key));
+                currentLocal.forEach(loc => {
+                  const lid = loc.id || loc.key;
+                  if (lid && !mappedIds.has(lid)) merged.push(loc);
+                });
+                this._memCache.set(collection, merged);
+                this._memCacheTime.set(collection, Date.now());
+                this.setLocal(collection, merged);
+              } else {
+                this._memCache.set(collection, mapped);
+                this._memCacheTime.set(collection, Date.now());
+                this.setLocal(collection, mapped);
+              }
             }
           }
         }).catch(() => {});

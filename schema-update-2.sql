@@ -59,8 +59,14 @@ CREATE POLICY "admission_form_fields_select" ON admission_form_fields
 DROP POLICY IF EXISTS "admission_form_fields_manage" ON admission_form_fields;
 CREATE POLICY "admission_form_fields_manage" ON admission_form_fields
   FOR ALL TO authenticated
-  USING (public.has_role(ARRAY['admin','principal']))
-  WITH CHECK (public.has_role(ARRAY['admin','principal']));
+  USING (
+    public.has_role(ARRAY['admin','principal','super_admin'])
+    OR lower(auth.jwt()->>'email') = lower('cmbasith786@gmail.com')
+  )
+  WITH CHECK (
+    public.has_role(ARRAY['admin','principal','super_admin'])
+    OR lower(auth.jwt()->>'email') = lower('cmbasith786@gmail.com')
+  );
 
 CREATE TABLE IF NOT EXISTS admission_fees (
     id TEXT PRIMARY KEY,
@@ -81,8 +87,14 @@ CREATE POLICY "admission_fees_select" ON admission_fees
 DROP POLICY IF EXISTS "admission_fees_manage" ON admission_fees;
 CREATE POLICY "admission_fees_manage" ON admission_fees
   FOR ALL TO authenticated
-  USING (public.has_role(ARRAY['admin','principal']))
-  WITH CHECK (public.has_role(ARRAY['admin','principal']));
+  USING (
+    public.has_role(ARRAY['admin','principal','super_admin'])
+    OR lower(auth.jwt()->>'email') = lower('cmbasith786@gmail.com')
+  )
+  WITH CHECK (
+    public.has_role(ARRAY['admin','principal','super_admin'])
+    OR lower(auth.jwt()->>'email') = lower('cmbasith786@gmail.com')
+  );
 
 CREATE TABLE IF NOT EXISTS admission_settings (
     id TEXT PRIMARY KEY DEFAULT 'default',
@@ -106,8 +118,14 @@ CREATE POLICY "admission_settings_select" ON admission_settings
 DROP POLICY IF EXISTS "admission_settings_manage" ON admission_settings;
 CREATE POLICY "admission_settings_manage" ON admission_settings
   FOR ALL TO authenticated
-  USING (public.has_role(ARRAY['admin','principal']))
-  WITH CHECK (public.has_role(ARRAY['admin','principal']));
+  USING (
+    public.has_role(ARRAY['admin','principal','super_admin'])
+    OR lower(auth.jwt()->>'email') = lower('cmbasith786@gmail.com')
+  )
+  WITH CHECK (
+    public.has_role(ARRAY['admin','principal','super_admin'])
+    OR lower(auth.jwt()->>'email') = lower('cmbasith786@gmail.com')
+  );
 
 -- ============================================================================
 -- 17. Parent credentials (generated at submission; admin-readable, anon-writable)
@@ -134,8 +152,14 @@ CREATE POLICY "parent_credentials_admin_read" ON parent_credentials
 DROP POLICY IF EXISTS "parent_credentials_admin_update" ON parent_credentials;
 CREATE POLICY "parent_credentials_admin_update" ON parent_credentials
   FOR UPDATE TO authenticated
-  USING (public.has_role(ARRAY['admin','principal']))
-  WITH CHECK (public.has_role(ARRAY['admin','principal']));
+  USING (
+    public.has_role(ARRAY['admin','principal','super_admin'])
+    OR lower(auth.jwt()->>'email') = lower('cmbasith786@gmail.com')
+  )
+  WITH CHECK (
+    public.has_role(ARRAY['admin','principal','super_admin'])
+    OR lower(auth.jwt()->>'email') = lower('cmbasith786@gmail.com')
+  );
 DROP POLICY IF EXISTS "parent_credentials_admin_delete" ON parent_credentials;
 CREATE POLICY "parent_credentials_admin_delete" ON parent_credentials
   FOR DELETE TO authenticated USING (public.has_role(ARRAY['admin','principal']));
@@ -172,8 +196,14 @@ CREATE POLICY "notifications_select" ON notifications
 DROP POLICY IF EXISTS "notifications_manage" ON notifications;
 CREATE POLICY "notifications_manage" ON notifications
   FOR ALL TO authenticated
-  USING (public.has_role(ARRAY['admin','principal']))
-  WITH CHECK (public.has_role(ARRAY['admin','principal']));
+  USING (
+    public.has_role(ARRAY['admin','principal','super_admin'])
+    OR lower(auth.jwt()->>'email') = lower('cmbasith786@gmail.com')
+  )
+  WITH CHECK (
+    public.has_role(ARRAY['admin','principal','super_admin'])
+    OR lower(auth.jwt()->>'email') = lower('cmbasith786@gmail.com')
+  );
 
 CREATE TABLE IF NOT EXISTS notification_reads (
     id TEXT PRIMARY KEY,
@@ -479,8 +509,14 @@ CREATE POLICY "app_settings_read" ON app_settings
 DROP POLICY IF EXISTS "app_settings_manage" ON app_settings;
 CREATE POLICY "app_settings_manage" ON app_settings
   FOR ALL TO authenticated
-  USING (public.has_role(ARRAY['admin','principal']))
-  WITH CHECK (public.has_role(ARRAY['admin','principal']));
+  USING (
+    public.has_role(ARRAY['admin','principal','super_admin'])
+    OR lower(auth.jwt()->>'email') = lower('cmbasith786@gmail.com')
+  )
+  WITH CHECK (
+    public.has_role(ARRAY['admin','principal','super_admin'])
+    OR lower(auth.jwt()->>'email') = lower('cmbasith786@gmail.com')
+  );
 
 -- ============================================================================
 -- 30. Let HR (alongside admin/principal) maintain user profiles, so appointing
