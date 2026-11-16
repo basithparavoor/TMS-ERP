@@ -33,6 +33,23 @@ const ROLE_LABELS = ROLE_OPTIONS.reduce((acc, r) => {
   return acc;
 }, {});
 
+export const STAFF_IMPORT_FIELDS = [
+  { key: 'empId', label: 'Employee ID', required: false, keywords: ['emp id', 'employee id', 'staff id', 'emp code', 'code'] },
+  { key: 'name', label: 'Full Name', required: true, keywords: ['full name', 'employee name', 'staff name', 'faculty name', 'teacher name', 'name'] },
+  { key: 'email', label: 'Official Email', required: true, keywords: ['official email', 'login email', 'email id', 'email', 'mail', 'e mail'] },
+  { key: 'role', label: 'Role Category', required: false, keywords: ['role category', 'staff role', 'job role', 'role', 'category'] },
+  { key: 'department', label: 'Department', required: false, keywords: ['department name', 'department', 'dept', 'stream', 'subject'] },
+  { key: 'designation', label: 'Designation', required: false, keywords: ['designation title', 'job title', 'designation', 'post', 'title'] },
+  { key: 'phone', label: 'Phone Number', required: false, keywords: ['phone number', 'contact number', 'mobile number', 'phone', 'mobile', 'contact'] },
+  { key: 'basicPay', label: 'Basic Salary (₹)', required: false, keywords: ['basic salary', 'basic pay', 'monthly salary', 'salary', 'pay', 'ctc', 'basic'] },
+  { key: 'joiningDate', label: 'Joining Date', required: false, keywords: ['joining date', 'date of joining', 'appointment date', 'joined date', 'doj', 'joined'] },
+  { key: 'assignedClass', label: 'Assigned Class', required: false, keywords: ['assigned class', 'assigned grade', 'class teacher', 'class', 'grade', 'standard'] },
+  { key: 'assignedSection', label: 'Assigned Section', required: false, keywords: ['assigned section', 'section', 'sec', 'division'] },
+  { key: 'status', label: 'Employment Status', required: false, keywords: ['employment status', 'current status', 'status'] },
+  { key: 'username', label: 'Preferred Username', required: false, keywords: ['preferred username', 'login username', 'user name', 'username', 'login id'] },
+  { key: 'password', label: 'Initial Password', required: false, keywords: ['initial password', 'default password', 'password', 'pass'] }
+];
+
 const esc = (v) => UIComponents.escapeHtml(v);
 
 function fmtDate(value) {
@@ -80,6 +97,7 @@ export class StaffModule {
           badge: `${staff.length} Employees`,
           actionsHtml: `
             <button class="btn btn-secondary" id="btn-export-staff"><i data-lucide="file-spreadsheet"></i> Export CSV</button>
+            ${canManage ? '<button class="btn btn-secondary" id="btn-bulk-staff"><i data-lucide="file-up"></i> Bulk Add Staff (CSV)</button>' : ''}
             ${canManage ? '<button class="btn btn-primary" id="btn-add-staff"><i data-lucide="user-plus"></i> Appoint New Staff</button>' : ''}
           `
         })}
@@ -226,6 +244,9 @@ export class StaffModule {
 
     const addBtn = container.querySelector('#btn-add-staff');
     if (addBtn) addBtn.addEventListener('click', () => this.openStaffModal(null, container));
+
+    const bulkStaffBtn = container.querySelector('#btn-bulk-staff');
+    if (bulkStaffBtn) bulkStaffBtn.addEventListener('click', () => this.openBulkStaffModal(container));
 
     container.querySelectorAll('.btn-edit-staff').forEach((b) =>
       b.addEventListener('click', () => {
@@ -376,6 +397,26 @@ export class StaffModule {
 
     const bodyHtml = `
       <form id="form-new-staff">
+        ${isEdit ? '' : `
+        <div style="display:flex; justify-content:space-between; align-items:center; background:linear-gradient(135deg, #f0fdf4 0%, #eff6ff 100%); border:1px solid #bbf7d0; border-radius:10px; padding:12px 16px; margin-bottom:16px; gap:12px; flex-wrap:wrap;">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <div style="width:34px; height:34px; border-radius:8px; background:#16a34a; color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+              <i data-lucide="users" style="width:18px; height:18px;"></i>
+            </div>
+            <div>
+              <div style="font-weight:700; color:#14532d; font-size:0.86rem;">Onboarding Previous Staff in Bulk?</div>
+              <div style="font-size:0.75rem; color:#475569; margin-top:1px;">Import multiple existing faculty &amp; staff records at once using a formatted CSV template.</div>
+            </div>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center; flex-shrink:0;">
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-modal-dl-staff-template" style="background:#fff; border-color:#86efac; color:#166534; font-weight:700; font-size:0.78rem;">
+              <i data-lucide="download"></i> Template CSV
+            </button>
+            <button type="button" class="btn btn-primary btn-sm" id="btn-modal-switch-bulk-staff" style="background:#16a34a; border-color:#16a34a; font-weight:700; font-size:0.78rem;">
+              <i data-lucide="file-up"></i> Bulk Onboard (CSV)
+            </button>
+          </div>
+        </div>`}
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
           <div class="form-group">
             <label class="form-label">Full Name *</label>
@@ -462,6 +503,18 @@ export class StaffModule {
       if (isEdit) await this.saveStaffEdit(e, container);
       else await this.createStaff(container);
     });
+
+    if (!isEdit) {
+      document.getElementById('btn-modal-dl-staff-template')?.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        StaffModule.downloadStaffTemplate();
+      });
+      document.getElementById('btn-modal-switch-bulk-staff')?.addEventListener('click', (ev) => {
+        ev.preventDefault();
+        UIComponents.closeModal();
+        StaffModule.openBulkStaffModal(container);
+      });
+    }
     UIComponents.refreshIcons();
   }
 
@@ -919,6 +972,613 @@ export class StaffModule {
     });
     downloadCsv(`TMS-Staff-${new Date().toISOString().slice(0, 10)}.csv`, [header, ...data]);
     UIComponents.showToast('Staff CSV exported.', 'success');
+  }
+
+  /* ------------------------------------------------------------------ */
+  /* Bulk Staff Onboarding & CSV Import                                 */
+  /* ------------------------------------------------------------------ */
+
+  static parseCsv(text) {
+    const lines = [];
+    let row = [''];
+    let inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      const next = text[i + 1];
+      if (c === '"') {
+        if (inQuotes && next === '"') {
+          row[row.length - 1] += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (c === ',' && !inQuotes) {
+        row.push('');
+      } else if ((c === '\r' || c === '\n') && !inQuotes) {
+        if (c === '\r' && next === '\n') i++;
+        if (row.length > 1 || row[0] !== '') lines.push(row);
+        row = [''];
+      } else {
+        row[row.length - 1] += c;
+      }
+    }
+    if (row.length > 1 || row[0] !== '') lines.push(row);
+    return lines;
+  }
+
+  static normalizeDate(val) {
+    if (!val) return null;
+    const s = String(val).trim();
+    if (!s) return null;
+    const dmy = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (dmy) {
+      const day = dmy[1].padStart(2, '0');
+      const month = dmy[2].padStart(2, '0');
+      const year = dmy[3];
+      return `${year}-${month}-${day}`;
+    }
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+      return s.slice(0, 10);
+    }
+    const parsed = new Date(s);
+    if (!isNaN(parsed.getTime())) {
+      return parsed.toISOString().slice(0, 10);
+    }
+    return null;
+  }
+
+  static normalizeRole(roleInput) {
+    const r = String(roleInput || '').toLowerCase().trim();
+    if (!r) return 'teacher';
+    if (r.includes('teach') || r.includes('faculty') || r.includes('pgt') || r.includes('tgt') || r.includes('prt')) return 'teacher';
+    if (r.includes('coord')) return 'coordinator';
+    if (r.includes('finan') || r.includes('account') || r.includes('cashier')) return 'finance';
+    if (r.includes('hr') || r.includes('human')) return 'hr';
+    if (r.includes('lib')) return 'librarian';
+    if (r.includes('operat') || r.includes('transp') || r.includes('driver')) return 'operations';
+    if (r.includes('boy') || r.includes('peon') || r.includes('data entry') || r.includes('office')) return 'office_boy';
+    if (r.includes('princ') || r.includes('head') || r.includes('director')) return 'principal';
+    if (ROLE_LABELS[r]) return r;
+    return 'teacher';
+  }
+
+  static downloadStaffTemplate() {
+    const headers = [
+      'Full Name',
+      'Official Email',
+      'Role Category',
+      'Department',
+      'Designation',
+      'Phone Number',
+      'Basic Salary (INR)',
+      'Joining Date (YYYY-MM-DD)',
+      'Assigned Class',
+      'Assigned Section',
+      'Employment Status',
+      'Preferred Username (Optional)',
+      'Initial Password (Optional)'
+    ];
+
+    const sampleRows = [
+      [
+        'Mrs. Khadija Beevi',
+        'khadija@thaibaschool.edu.in',
+        'Teaching Faculty',
+        'Science',
+        'PGT Physics',
+        '+91 98470 12345',
+        '35000',
+        '2021-06-01',
+        'Grade 9',
+        'A',
+        'Active',
+        'khadija.beevi',
+        'Thaiba@2026'
+      ],
+      [
+        'Mr. Mohammed Salman',
+        'salman@thaibaschool.edu.in',
+        'Teaching Faculty',
+        'Mathematics',
+        'TGT Mathematics',
+        '+91 98470 54321',
+        '32000',
+        '2022-08-15',
+        'Grade 8',
+        'B',
+        'Active',
+        'salman.math',
+        ''
+      ],
+      [
+        'Mr. Abdul Rasheed',
+        'rasheed@thaibaschool.edu.in',
+        'Finance & Accounts',
+        'Accounts',
+        'Senior Accountant',
+        '+91 98470 67890',
+        '28000',
+        '2020-03-10',
+        '',
+        '',
+        'Active',
+        'rasheed.acc',
+        ''
+      ],
+      [
+        'Dr. Farooq Ahmed',
+        'farooq@thaibaschool.edu.in',
+        'Academic Coordinator',
+        'Academics',
+        'Senior Academic Coordinator',
+        '+91 98470 33445',
+        '42000',
+        '2019-07-01',
+        '',
+        '',
+        'Active',
+        '',
+        ''
+      ]
+    ];
+
+    downloadCsv('Staff_Bulk_Import_Template', [headers, ...sampleRows]);
+    UIComponents.showToast('Staff Bulk Import CSV Template downloaded.', 'success');
+  }
+
+  static showBulkCredentialsModal(credentialsList, totalImported) {
+    const list = credentialsList || [];
+    const bodyHtml = `
+      <div style="border:1.5px solid #10b981; border-radius:10px; padding:16px; background:#f0fdf4;">
+        <div style="font-weight:800; font-size:1.05rem; color:#065f46; margin-bottom:8px; display:flex; align-items:center; gap:8px;">
+          <i data-lucide="check-circle" style="color:#059669; width:22px; height:22px;"></i>
+          Successfully Appointed ${totalImported} Staff Member(s)!
+        </div>
+        <p style="font-size:0.82rem; color:#166534; margin:0 0 14px 0;">
+          ${list.length} staff login credentials have been provisioned and configured in <strong>Admin → Users &amp; Roles</strong>.
+          You can download this master credentials report to securely distribute account details to staff.
+        </p>
+        <div class="table-responsive" style="max-height:240px; overflow-y:auto; border:1px solid #bbf7d0; border-radius:8px; background:#fff;">
+          <table class="tms-table" style="font-size:0.8rem;">
+            <thead>
+              <tr>
+                <th>Emp ID</th>
+                <th>Full Name</th>
+                <th>Username</th>
+                <th>Initial Password</th>
+                <th>Official Email</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${list.map(c => `
+                <tr>
+                  <td class="font-mono">${esc(c.empId)}</td>
+                  <td style="font-weight:600;">${esc(c.name)}</td>
+                  <td class="font-mono" style="color:#2563eb; font-weight:700;">${esc(c.username)}</td>
+                  <td class="font-mono" style="color:#059669; font-weight:700;">${esc(c.password)}</td>
+                  <td class="font-mono" style="color:#64748b;">${esc(c.email)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+
+    const footerHtml = `
+      <button class="btn btn-secondary" id="btn-dl-cred-report"><i data-lucide="download"></i> Download Credentials Master (CSV)</button>
+      <button class="btn btn-primary" id="btn-bulk-cred-done">Done</button>
+    `;
+
+    UIComponents.openModal({ title: 'Staff Onboarding & Credentials Master', bodyHtml, footerHtml, maxWidth: '800px' });
+
+    document.getElementById('btn-bulk-cred-done')?.addEventListener('click', () => UIComponents.closeModal());
+    document.getElementById('btn-dl-cred-report')?.addEventListener('click', () => {
+      const headers = ['Emp ID', 'Full Name', 'Official Email', 'Role', 'Department', 'Designation', 'Username', 'Initial Password'];
+      const rows = list.map(c => [
+        c.empId, c.name, c.email, c.role || '', c.department || '', c.designation || '', c.username, c.password
+      ]);
+      downloadCsv(`TMS_Staff_Logins_Master_${new Date().toISOString().slice(0, 10)}`, [headers, ...rows]);
+      UIComponents.showToast('Credentials master CSV downloaded.', 'success');
+    });
+    UIComponents.refreshIcons();
+  }
+
+  static openBulkStaffModal(container) {
+    const bodyHtml = `
+      <div style="max-width:880px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; padding-bottom:12px; border-bottom:1px solid var(--border-color); flex-wrap:wrap; gap:10px;">
+          <div>
+            <div style="font-weight:800; font-size:1.05rem; color:#0f172a;">Bulk Onboard Faculty &amp; Staff Members</div>
+            <div style="font-size:0.78rem; color:var(--text-muted);">Quickly import multiple previous or existing staff records and optionally generate secure logins.</div>
+          </div>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-switch-single-appoint" style="display:inline-flex; align-items:center; gap:6px; font-weight:600;">
+            <i data-lucide="user-plus"></i> Switch to Single Appointment
+          </button>
+        </div>
+
+        <!-- Step 1: Download Template Card -->
+        <div class="card" style="margin-bottom:16px; border:1px solid #bfdbfe; background:#f8fafc; border-radius:10px; padding:16px;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
+            <div>
+              <h4 style="font-size:0.92rem; font-weight:800; color:#1e40af; margin:0 0 4px 0; display:flex; align-items:center; gap:6px;">
+                <i data-lucide="download" style="width:16px; height:16px; color:#2563eb;"></i> 1. Download Staff CSV Template
+              </h4>
+              <div style="font-size:0.77rem; color:#475569; max-width:580px; line-height:1.45;">
+                Download the verified CSV template with sample data for Teaching Faculty, Coordinators, Finance, HR, and Support staff. Fill in your existing staff data in Excel or Google Sheets.
+              </div>
+              <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap; font-size:0.72rem;">
+                <span style="background:#dbeafe; color:#1e40af; padding:2px 8px; border-radius:4px; font-weight:700;">Required: Full Name, Official Email</span>
+                <span style="background:#e0f2fe; color:#0369a1; padding:2px 8px; border-radius:4px;">Auto: TMS-EMP-XXX ID</span>
+                <span style="background:#f0fdf4; color:#166534; padding:2px 8px; border-radius:4px;">Auto: Secure Login Credentials</span>
+              </div>
+            </div>
+            <button type="button" class="btn btn-primary btn-sm" id="btn-dl-staff-template" style="background:#2563eb; border-color:#2563eb; display:inline-flex; align-items:center; gap:6px; font-weight:700;">
+              <i data-lucide="download"></i> Download Template (.csv)
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 2: Upload CSV File Card -->
+        <div class="card" style="margin-bottom:16px; border:1px solid var(--border-color); border-radius:10px; padding:16px;">
+          <h4 style="font-size:0.92rem; font-weight:800; color:#0f172a; margin:0 0 6px 0; display:flex; align-items:center; gap:6px;">
+            <i data-lucide="file-up" style="width:16px; height:16px; color:#16a34a;"></i> 2. Upload Completed Staff CSV (.csv)
+          </h4>
+          <div style="font-size:0.77rem; color:var(--text-muted); margin-bottom:10px;">
+            Upload your filled CSV file. Names, emails, roles, salary, dates, and designations are automatically detected and formatted.
+          </div>
+          <input type="file" id="staff-bulk-file-input" accept=".csv,text/csv" class="form-input" style="padding:10px; border-radius:8px;">
+          <div id="staff-detected-cols-strip" style="display:none; margin-top:8px; font-size:0.78rem; color:#15803d; font-weight:600; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:6px; padding:6px 12px;"></div>
+        </div>
+
+        <!-- Step 3: Preview Area -->
+        <div id="staff-import-preview-area" style="display:none;">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+            <div id="staff-import-stats-bar" style="display:flex; gap:8px; flex-wrap:wrap;"></div>
+            <div style="display:flex; gap:14px; align-items:center; flex-wrap:wrap;">
+              <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.78rem; font-weight:600; color:#1e293b; cursor:pointer;">
+                <input type="checkbox" id="chk-staff-create-logins" checked style="width:15px; height:15px;">
+                Auto-create logins &amp; credentials
+              </label>
+              <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.78rem; font-weight:600; color:#1e293b; cursor:pointer;">
+                <input type="checkbox" id="chk-staff-skip-duplicates" checked style="width:15px; height:15px;">
+                Skip existing emails
+              </label>
+            </div>
+          </div>
+
+          <div style="font-weight:700; font-size:0.84rem; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
+            <span>Preview Records (First 15):</span>
+            <span style="font-size:0.72rem; color:var(--text-muted); font-weight:400;">Columns automatically matched from your uploaded file</span>
+          </div>
+
+          <div class="table-responsive" style="max-height:260px; overflow-y:auto; border:1px solid var(--border-color); border-radius:8px;">
+            <table class="tms-table" style="font-size:0.78rem;" id="staff-import-preview-table">
+              <thead>
+                <tr>
+                  <th>Status</th>
+                  <th>Emp ID</th>
+                  <th>Full Name</th>
+                  <th>Official Email</th>
+                  <th>Role</th>
+                  <th>Department</th>
+                  <th>Designation</th>
+                  <th>Class / Sec</th>
+                  <th>Basic Salary</th>
+                  <th>Joined</th>
+                </tr>
+              </thead>
+              <tbody id="staff-import-preview-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    `;
+
+    const footerHtml = `
+      <button class="btn btn-secondary" id="btn-cancel-bulk-staff">Cancel</button>
+      <button class="btn btn-primary" id="btn-confirm-bulk-staff" disabled style="display:inline-flex; align-items:center; gap:6px; background:#16a34a; border-color:#16a34a;">
+        <i data-lucide="upload-cloud"></i> Import Staff Members
+      </button>
+    `;
+
+    UIComponents.openModal({
+      title: 'Bulk Onboard Staff Members (CSV)',
+      bodyHtml,
+      footerHtml,
+      maxWidth: '880px'
+    });
+
+    document.getElementById('btn-cancel-bulk-staff')?.addEventListener('click', () => UIComponents.closeModal());
+    document.getElementById('btn-switch-single-appoint')?.addEventListener('click', () => {
+      UIComponents.closeModal();
+      StaffModule.openStaffModal(null, container);
+    });
+
+    document.getElementById('btn-dl-staff-template')?.addEventListener('click', () => {
+      StaffModule.downloadStaffTemplate();
+    });
+
+    let parsedStaffToImport = [];
+
+    const fileInput = document.getElementById('staff-bulk-file-input');
+    fileInput?.addEventListener('change', async (ev) => {
+      const file = ev.target.files && ev.target.files[0];
+      if (!file) return;
+
+      const text = await file.text();
+      const rows = StaffModule.parseCsv(text);
+      if (rows.length < 2) {
+        UIComponents.showToast('CSV file is empty or missing headers.', 'warning');
+        return;
+      }
+
+      const headers = rows[0].map(h => (h || '').toLowerCase().trim());
+      const colMap = {};
+
+      const matchHeader = (h) => {
+        const cleanH = (h || '').toLowerCase().replace(/[^a-z0-9]/g, ' ').trim().replace(/\s+/g, ' ');
+
+        // Pass 1: Exact matches against label or keywords
+        for (const f of STAFF_IMPORT_FIELDS) {
+          const fLabel = f.label.toLowerCase().replace(/[^a-z0-9]/g, ' ').trim().replace(/\s+/g, ' ');
+          if (cleanH === fLabel) return f;
+          if (f.keywords) {
+            for (const k of f.keywords) {
+              const cleanK = k.toLowerCase().replace(/[^a-z0-9]/g, ' ').trim().replace(/\s+/g, ' ');
+              if (cleanH === cleanK) return f;
+            }
+          }
+        }
+
+        // Pass 2: Partial matches with boundary safety
+        let bestMatch = null;
+        let bestLen = 0;
+        for (const f of STAFF_IMPORT_FIELDS) {
+          if (f.keywords) {
+            for (const k of f.keywords) {
+              const cleanK = k.toLowerCase().replace(/[^a-z0-9]/g, ' ').trim().replace(/\s+/g, ' ');
+              if (cleanK === 'name' && cleanH.includes('user')) continue;
+              if (cleanH.includes(cleanK) || cleanK.includes(cleanH)) {
+                if (cleanK.length > bestLen) {
+                  bestLen = cleanK.length;
+                  bestMatch = f;
+                }
+              }
+            }
+          }
+        }
+        return bestMatch;
+      };
+
+      headers.forEach((h, colIdx) => {
+        const matched = matchHeader(h);
+        if (matched && colMap[matched.key] === undefined) {
+          colMap[matched.key] = colIdx;
+        }
+      });
+
+      const detectedStrip = document.getElementById('staff-detected-cols-strip');
+      if (detectedStrip) {
+        const detectedKeys = Object.keys(colMap);
+        const matchedLabels = detectedKeys.map(k => {
+          const f = STAFF_IMPORT_FIELDS.find(x => x.key === k);
+          return f ? f.label : k;
+        });
+        detectedStrip.style.display = 'block';
+        detectedStrip.innerHTML = `<i data-lucide="check-circle-2" style="width:14px;height:14px;display:inline-block;vertical-align:middle;margin-right:4px;"></i> Detected ${detectedKeys.length} column(s): <strong>${esc(matchedLabels.join(', '))}</strong>`;
+      }
+
+      let existingStaff = [];
+      try {
+        existingStaff = await dbService.select('staff');
+      } catch (err) {
+        existingStaff = StaffModule._staff || [];
+      }
+
+      const existingEmails = new Set(existingStaff.map(s => String(s.email || '').toLowerCase().trim()));
+      const seenEmailsInCsv = new Set();
+
+      let maxSeq = existingStaff.reduce((max, s) => {
+        const m = String(s.empId || '').match(/(\d+)\s*$/);
+        return m ? Math.max(max, parseInt(m[1], 10)) : max;
+      }, 0);
+
+      parsedStaffToImport = [];
+
+      for (let rIdx = 1; rIdx < rows.length; rIdx++) {
+        const row = rows[rIdx];
+        if (!row || row.every(c => !String(c || '').trim())) continue;
+
+        const rowObj = {};
+        STAFF_IMPORT_FIELDS.forEach(f => {
+          const cIdx = colMap[f.key];
+          rowObj[f.key] = (cIdx !== undefined && row[cIdx] !== undefined) ? String(row[cIdx]).trim() : '';
+        });
+
+        // Validation & normalization
+        const rawName = rowObj.name;
+        const rawEmail = rowObj.email;
+        const lowerEmail = rawEmail.toLowerCase();
+
+        const isMissingRequired = !rawName || !rawEmail || !lowerEmail.includes('@');
+        const isDuplicate = !isMissingRequired && (existingEmails.has(lowerEmail) || seenEmailsInCsv.has(lowerEmail));
+        if (lowerEmail) seenEmailsInCsv.add(lowerEmail);
+
+        rowObj.role = StaffModule.normalizeRole(rowObj.role);
+        rowObj.joiningDate = StaffModule.normalizeDate(rowObj.joiningDate);
+        rowObj.basicPay = parseFloat(rowObj.basicPay) || 0;
+        rowObj.status = rowObj.status ? (['Active', 'Inactive', 'On Leave', 'Resigned'].find(st => st.toLowerCase() === rowObj.status.toLowerCase()) || 'Active') : 'Active';
+
+        if (!rowObj.empId || existingStaff.some(s => String(s.empId || '').toLowerCase() === rowObj.empId.toLowerCase())) {
+          maxSeq++;
+          rowObj.projectedEmpId = `TMS-EMP-${maxSeq.toString().padStart(3, '0')}`;
+          rowObj.customEmpId = null;
+        } else {
+          rowObj.projectedEmpId = rowObj.empId;
+          rowObj.customEmpId = rowObj.empId;
+        }
+
+        rowObj.isInvalid = isMissingRequired;
+        rowObj.isDuplicate = isDuplicate;
+        rowObj.invalidReason = !rawName ? 'Missing Name' : (!rawEmail || !lowerEmail.includes('@')) ? 'Invalid/Missing Email' : '';
+
+        parsedStaffToImport.push(rowObj);
+      }
+
+      const validList = parsedStaffToImport.filter(p => !p.isInvalid && !p.isDuplicate);
+      const duplicateCount = parsedStaffToImport.filter(p => p.isDuplicate).length;
+      const invalidCount = parsedStaffToImport.filter(p => p.isInvalid).length;
+
+      const previewArea = document.getElementById('staff-import-preview-area');
+      const statsBar = document.getElementById('staff-import-stats-bar');
+      const tbody = document.getElementById('staff-import-preview-tbody');
+      const confirmBtn = document.getElementById('btn-confirm-bulk-staff');
+
+      if (previewArea) previewArea.style.display = 'block';
+      if (statsBar) {
+        statsBar.innerHTML = `
+          <span class="badge badge-success" style="font-size:0.82rem; padding:4px 10px;">✓ ${validList.length} Ready to Import</span>
+          ${duplicateCount ? `<span class="badge badge-warning" style="font-size:0.82rem; padding:4px 10px;">⚠ ${duplicateCount} Duplicate Emails</span>` : ''}
+          ${invalidCount ? `<span class="badge badge-danger" style="font-size:0.82rem; padding:4px 10px;">✕ ${invalidCount} Incomplete (Missing Name/Email)</span>` : ''}
+        `;
+      }
+
+      if (tbody) {
+        tbody.innerHTML = parsedStaffToImport.slice(0, 15).map(p => `
+          <tr>
+            <td>
+              ${p.isInvalid ? `<span class="badge badge-danger">${esc(p.invalidReason)}</span>`
+                : p.isDuplicate ? '<span class="badge badge-warning">Duplicate Email</span>'
+                : '<span class="badge badge-success">Ready</span>'}
+            </td>
+            <td class="font-mono">${esc(p.projectedEmpId)}</td>
+            <td style="font-weight:600;">${esc(p.name || '—')}</td>
+            <td class="font-mono">${esc(p.email || '—')}</td>
+            <td><span class="badge badge-subtle">${esc(ROLE_LABELS[p.role] || p.role)}</span></td>
+            <td>${esc(p.department || '—')}</td>
+            <td>${esc(p.designation || '—')}</td>
+            <td>${esc(p.assignedClass ? `${p.assignedClass} ${p.assignedSection || ''}`.trim() : '—')}</td>
+            <td class="font-mono">₹ ${(p.basicPay || 0).toLocaleString()}</td>
+            <td>${esc(p.joiningDate || '—')}</td>
+          </tr>
+        `).join('');
+      }
+
+      if (confirmBtn) {
+        confirmBtn.disabled = validList.length === 0;
+        confirmBtn.innerHTML = `<i data-lucide="upload-cloud"></i> Import ${validList.length} Staff Member(s)`;
+      }
+
+      UIComponents.refreshIcons();
+    });
+
+    document.getElementById('btn-confirm-bulk-staff')?.addEventListener('click', async () => {
+      const skipDuplicates = document.getElementById('chk-staff-skip-duplicates')?.checked !== false;
+      const createLogins = document.getElementById('chk-staff-create-logins')?.checked !== false;
+
+      const candidates = parsedStaffToImport.filter(p => !p.isInvalid && (!p.isDuplicate || !skipDuplicates));
+      if (!candidates.length) {
+        UIComponents.showToast('No valid staff records to import.', 'warning');
+        return;
+      }
+
+      const btn = document.getElementById('btn-confirm-bulk-staff');
+      btn.disabled = true;
+      btn.innerHTML = '<i data-lucide="loader" class="animate-spin"></i> Importing staff records...';
+
+      let existing = [];
+      try {
+        existing = await dbService.select('staff');
+      } catch (err) {
+        existing = StaffModule._staff || [];
+      }
+
+      let maxSeq = existing.reduce((max, s) => {
+        const m = String(s.empId || '').match(/(\d+)\s*$/);
+        return m ? Math.max(max, parseInt(m[1], 10)) : max;
+      }, 0);
+
+      const provisionedList = [];
+      let successCount = 0;
+
+      for (const item of candidates) {
+        maxSeq++;
+        const empId = item.customEmpId || `TMS-EMP-${maxSeq.toString().padStart(3, '0')}`;
+
+        const staffRecord = {
+          empId,
+          name: item.name,
+          email: item.email,
+          role: item.role || 'teacher',
+          department: item.department || 'General',
+          designation: item.designation || 'Staff',
+          phone: item.phone || '',
+          basicPay: parseFloat(item.basicPay) || 0,
+          joiningDate: item.joiningDate || new Date().toISOString().slice(0, 10),
+          assignedClass: item.assignedClass || null,
+          assignedSection: item.assignedSection || null,
+          status: item.status || 'Active'
+        };
+
+        // eslint-disable-next-line no-await-in-loop
+        const record = await dbService.insert('staff', staffRecord);
+        if (record && !record._syncError) {
+          successCount++;
+
+          if (createLogins) {
+            try {
+              // eslint-disable-next-line no-await-in-loop
+              const provision = await staffService.provision({
+                staffId: record.id,
+                name: item.name,
+                email: item.email,
+                role: item.role || 'teacher',
+                title: item.designation || 'Staff',
+                department: item.department || 'General',
+                assignedClass: item.assignedClass || null,
+                assignedSection: item.assignedSection || null,
+                username: item.username || null,
+                password: item.password || null
+              });
+
+              if (provision && provision.userId) {
+                // eslint-disable-next-line no-await-in-loop
+                await dbService.update('staff', record.id, { userId: provision.userId });
+                provisionedList.push({
+                  empId,
+                  name: item.name,
+                  email: item.email,
+                  role: item.role || 'teacher',
+                  department: item.department || '',
+                  designation: item.designation || '',
+                  username: provision.username,
+                  password: provision.password
+                });
+              }
+            } catch (pErr) {
+              console.warn('Could not auto-provision login for', item.email, pErr);
+            }
+          }
+        }
+      }
+
+      await auditService.log('STAFF_BULK_IMPORTED', 'HR', {
+        importedCount: successCount,
+        loginsCreated: provisionedList.length
+      });
+
+      UIComponents.closeModal();
+      UIComponents.showToast(`Successfully appointed and imported ${successCount} staff member(s)!`, 'success');
+
+      if (provisionedList.length > 0) {
+        StaffModule.showBulkCredentialsModal(provisionedList, successCount);
+      }
+
+      await StaffModule.render(container);
+    });
+
+    UIComponents.refreshIcons();
   }
 }
 
