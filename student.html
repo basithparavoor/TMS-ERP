@@ -184,7 +184,7 @@
         catch (e) { return String(d); }
       };
 
-      const renderApplicantCandidatePortal = (app, u) => {
+      const renderApplicantCandidatePortal = (app, u, adminRibbonHtml = '') => {
         const mainEl = document.getElementById('student-main-content');
         if (!mainEl) return;
 
@@ -323,6 +323,7 @@
         }
 
         mainEl.innerHTML = `
+          ${adminRibbonHtml || ''}
           <!-- Applicant Header Banner -->
           <div class="card" style="margin-bottom: 24px; background:linear-gradient(135deg, #f8fafc 0%, #e0f2fe 100%); border:1px solid #bae6fd;">
             <div style="display: flex; align-items: center; justify-content:space-between; gap: 20px; flex-wrap: wrap;">
@@ -454,244 +455,496 @@
       };
 
       try {
-        let students = await dbService.select('students');
-        let student = (students || []).find(s => s.userId === user.id || s.id === user.id || s.email === user.email || s.admissionNo === user.admissionNo) || null;
+        let [students, allApps] = await Promise.all([
+          dbService.select('students'),
+          admissionService.listApplications().catch(err => {
+            console.warn('Could not load admission applications:', err);
+            return [];
+          })
+        ]);
 
-        // Check for candidate admission applications
-        let allApps = [];
-        try {
-          allApps = await admissionService.listApplications();
-        } catch (err) {
-          console.warn('Could not load admission applications in student portal:', err);
+        const cleanUserEmail = (user.email || '').toLowerCase().trim();
+        const cleanUserUsername = (user.username || (cleanUserEmail ? cleanUserEmail.split('@')[0] : '')).toLowerCase().trim();
+        const cleanUserPhone = String(user.phone || '').replace(/\D/g, '');
+        const isAdmin = user.role === TMS_CONFIG.roles.ADMIN || user.role === TMS_CONFIG.roles.SUPER_ADMIN || user.isSuperAdmin || cleanUserEmail.includes('admin') || cleanUserEmail === 'cmbasith786@gmail.com';
+
+        // 1. Resolve student record (match by user.id, email, admissionNo, username, phone, or application match)
+        let matchedStudent = (students || []).find(s => {
+          const sEmail = (s.email || '').toLowerCase().trim();
+          const sAdmNo = (s.admissionNo || '').toLowerCase().trim();
+          const sPhone = (s.guardianPhone || s.phone || '').replace(/\D/g, '');
+          if (user.id && (s.userId === user.id || s.id === user.id)) return true;
+          if (cleanUserEmail && sEmail === cleanUserEmail) return true;
+          if (cleanUserUsername && (sAdmNo === cleanUserUsername || sEmail.startsWith(cleanUserUsername + '@'))) return true;
+          if (cleanUserPhone && cleanUserPhone.length >= 7 && (sPhone.includes(cleanUserPhone) || cleanUserPhone.includes(sPhone))) return true;
+          if (user.admissionNo && sAdmNo === String(user.admissionNo).toLowerCase().trim()) return true;
+          return false;
+        }) || null;
+
+        // 2. Resolve candidate application (match by user.id, email, username, phone, name, or student's enrolledAdmissionNo)
+        let matchedApp = (allApps || []).find(a => {
+          const aEmail = (a.email || '').toLowerCase().trim();
+          const aPEmail = (a.parentEmail || '').toLowerCase().trim();
+          const aPUser = (a.parentUsername || '').toLowerCase().trim();
+          const aPhone = String(a.phone || a.parentPhone || '').replace(/\D/g, '');
+          const aName = (a.studentName || '').toLowerCase().trim();
+          const aFormNo = (a.appId || '').toLowerCase().trim();
+
+          if (user.id && (a.userId === user.id || a.studentId === user.id || a.parentId === user.id || a.parentUserId === user.id)) return true;
+          if (cleanUserEmail && (aEmail === cleanUserEmail || aPEmail === cleanUserEmail)) return true;
+          if (cleanUserUsername && (aPUser === cleanUserUsername || aFormNo.includes(cleanUserUsername) || cleanUserEmail.startsWith(aPUser + '@'))) return true;
+          if (cleanUserPhone && cleanUserPhone.length >= 7 && (aPhone.includes(cleanUserPhone) || cleanUserPhone.includes(aPhone))) return true;
+          if (user.name && aName && aName === user.name.toLowerCase().trim()) return true;
+          if (matchedStudent && matchedStudent.admissionNo && a.enrolledAdmissionNo && a.enrolledAdmissionNo.toLowerCase() === matchedStudent.admissionNo.toLowerCase()) return true;
+          return false;
+        }) || null;
+
+        if (!matchedStudent && matchedApp && matchedApp.status === 'Enrolled' && matchedApp.enrolledAdmissionNo) {
+          matchedStudent = (students || []).find(s => s.admissionNo === matchedApp.enrolledAdmissionNo) || null;
         }
 
-        const myApp = allApps.find(a => 
-          (user.email && (a.email?.toLowerCase() === user.email.toLowerCase() || a.parentEmail?.toLowerCase() === user.email.toLowerCase())) ||
-          (user.id && (a.userId === user.id || a.studentId === user.id || a.parentId === user.id)) ||
-          (user.name && a.studentName?.toLowerCase() === user.name.toLowerCase()) ||
-          (student && student.admissionNo && a.enrolledAdmissionNo === student.admissionNo)
-        );
+        // Current view state for admin previewing or direct display
+        let currentMode = 'auto'; // 'auto', 'app', 'student'
+        let selectedAppId = matchedApp?.id || allApps[0]?.id || null;
+        let selectedStudentId = matchedStudent?.id || students[0]?.id || null;
 
-        // Before official enrollment: candidate only views marks, announcements, and application data
-        if (myApp && myApp.status !== 'Enrolled') {
-          renderApplicantCandidatePortal(myApp, user);
-          return;
-        }
+        const mainEl = document.getElementById('student-main-content');
 
-        if (!student && myApp && myApp.status === 'Enrolled' && myApp.enrolledAdmissionNo) {
-          student = (students || []).find(s => s.admissionNo === myApp.enrolledAdmissionNo) || null;
-        }
+        const enrolledLayoutHtml = `
+          <!-- Welcome Card -->
+          <div class="card" style="margin-bottom: 24px;">
+            <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+              <div style="width: 72px; height: 72px; border-radius: 50%; border: 3px solid #3b82f6; background: #eff6ff; display: flex; align-items: center; justify-content: center;">
+                <i data-lucide="user" style="width: 36px; height: 36px; color: #2563eb;"></i>
+              </div>
+              <div>
+                <h2 style="font-size: 1.4rem;" id="portal-student-name">—</h2>
+                <p style="color: var(--text-muted); font-size: 0.88rem;" id="portal-student-meta">
+                  Admission No: <span class="font-mono" style="font-weight: 600;">—</span>
+                </p>
+              </div>
+            </div>
+          </div>
 
-        if (!student) {
-          setText('portal-student-name', 'No Active Enrolled Student Record');
-          setText('portal-student-meta', 'Please contact the Thaiba Model School Admissions Office.');
-          UIComponents.refreshIcons();
-          return;
-        }
+          <div class="kpi-grid">
+            <div class="kpi-card">
+              <div class="kpi-icon kpi-emerald"><i data-lucide="check-circle-2"></i></div>
+              <div class="kpi-meta"><h3 id="portal-attendance">—</h3><p>Attendance Record</p></div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-icon kpi-blue"><i data-lucide="award"></i></div>
+              <div class="kpi-meta"><h3 id="portal-aggregate">—</h3><p>Academic Standing</p></div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-icon kpi-amber"><i data-lucide="book-open"></i></div>
+              <div class="kpi-meta"><h3 id="portal-homework-count">0</h3><p>Active Homework</p></div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-icon kpi-rose"><i data-lucide="receipt"></i></div>
+              <div class="kpi-meta"><h3 id="portal-fee">—</h3><p>Fee Status</p></div>
+            </div>
+          </div>
 
-        setText('portal-student-name', student.fullName || '—');
-        setText('portal-topbar-badge', `${student.grade || '—'} - Section ${student.section || '—'} (Roll #${student.rollNo || '—'})`);
-
-        const metaEl = document.getElementById('portal-student-meta');
-        if (metaEl) {
-          metaEl.innerHTML = `Admission No: <span class="font-mono" style="font-weight: 600;">${esc(student.admissionNo)}</span> • Class: <strong>${esc(student.grade)} (${esc(student.section || 'A')})</strong>`;
-        }
-
-        // Render QR Code
-        const qrEl = document.getElementById('portal-qr');
-        if (qrEl) {
-          QRCodeGenerator.render(qrEl, student.admissionNo || 'TMS-STUDENT', {
-            width: 108,
-            height: 108,
-            colorDark: '#0f172a',
-            colorLight: '#ffffff'
-          });
-        }
-
-        // 6. Student Leaves & Gate Passes
-        const renderStudentLeaves = async () => {
-          const leaveRows = document.getElementById('portal-leave-rows');
-          if (!leaveRows) return;
-          try {
-            const leaves = await StudentLeaveService.getLeaves();
-            const myLeaves = leaves.filter(l => l.studentId === student.id || l.admissionNo === student.admissionNo);
-
-            if (!myLeaves.length) {
-              leaveRows.innerHTML = `
-                <div style="text-align: center; color: var(--text-muted); padding: 24px; background: var(--bg-subtle, #F8FAFC); border-radius: 10px;">
-                  <i data-lucide="calendar-check" style="width:36px; height:36px; display:block; margin:0 auto 8px; color: #16a34a;"></i>
-                  <div style="font-weight: 600;">No Leave Applications on Record</div>
-                  <div style="font-size: 0.8rem; margin-top: 2px;">Need time off? Click "Apply for Leave" above.</div>
+          <!-- Student Tabs Grid -->
+          <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+            <div>
+              <div class="card" style="margin-bottom: 24px;">
+                <div class="card-header">
+                  <h3 class="card-title">My Academic Timetable</h3>
+                  <span class="badge badge-info" id="portal-timetable-status">Class Schedule</span>
                 </div>
-              `;
-              UIComponents.refreshIcons();
-              return;
-            }
-
-            leaveRows.innerHTML = `
-              <div class="table-responsive">
-                <table class="tms-table" style="font-size: 0.84rem; width: 100%;">
+                <table class="tms-table font-mono" style="font-size: 0.85rem;">
                   <thead>
-                    <tr style="background: #F8FAFC;">
-                      <th>LEAVE TYPE &amp; DURATION</th>
-                      <th>DATES</th>
-                      <th>GATE PASS</th>
-                      <th style="text-align:center;">STATUS</th>
-                    </tr>
+                    <tr><th>Period</th><th>Subject</th><th>Teacher</th><th>Room</th></tr>
                   </thead>
-                  <tbody>
-                    ${myLeaves.map(l => {
-                      let statusBadge = '';
-                      if (l.status === 'APPROVED_ON_LEAVE' && !l.actualReturn) {
-                        statusBadge = `<span class="badge" style="background:#FEF3C7; color:#92400E; border:1px solid #FCD34D; font-weight:800;"><i data-lucide="plane-takeoff" style="width:12px;height:12px;vertical-align:middle;"></i> ON LEAVE</span>`;
-                      } else if (l.status === 'PENDING') {
-                        statusBadge = `<span class="badge badge-warning">Awaiting Approval</span>`;
-                      } else if (l.status === 'RETURNED' || l.actualReturn) {
-                        statusBadge = `<span class="badge badge-success">✓ Returned (${esc((l.actualReturn || '').slice(0, 10))})</span>`;
-                      } else if (l.status === 'REJECTED') {
-                        statusBadge = `<span class="badge badge-danger">Declined</span>`;
-                      } else {
-                        statusBadge = `<span class="badge badge-info">${esc(l.status)}</span>`;
-                      }
-
-                      return `
-                        <tr style="border-bottom: 1px solid var(--border-color);">
-                          <td>
-                            <div style="font-weight: 700; color: var(--text-main);">${esc(l.leaveType || 'General')}</div>
-                            <div style="font-size: 0.74rem; color: var(--text-muted);">${esc(l.reason || '—')}</div>
-                          </td>
-                          <td>
-                            <div style="font-weight: 600;">${esc(l.fromDate)} – ${esc(l.toDate)}</div>
-                            <div style="font-size: 0.74rem; color: #16a34a; font-weight: 700;">${esc(l.totalDays)} Day(s)</div>
-                          </td>
-                          <td>
-                            ${l.gatePassNo ? `
-                              <span class="badge badge-info font-mono" style="font-size: 0.76rem;">${esc(l.gatePassNo)}</span>
-                              <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 2px;">Issued: ${esc((l.issuedAt || '').slice(0, 10))}</div>
-                            ` : '<span style="color: var(--text-subtle); font-size: 0.76rem;">Pending Pass</span>'}
-                          </td>
-                          <td style="text-align: center;">${statusBadge}</td>
-                        </tr>
-                      `;
-                    }).join('')}
+                  <tbody id="portal-timetable-rows">
+                    <tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 30px;">Loading schedule...</td></tr>
                   </tbody>
                 </table>
               </div>
-            `;
-            UIComponents.refreshIcons();
-          } catch (err) {
-            console.error('Failed rendering leaves:', err);
-          }
-        };
 
-        // Wire apply leave button
-        document.getElementById('btn-portal-apply-leave')?.addEventListener('click', () => {
-          StudentLeaveService.openApplyModal({
-            student,
-            appliedBy: 'student',
-            appliedByName: student.fullName,
-            onComplete: () => {
-              renderStudentLeaves();
-              UIComponents.showToast('Leave application submitted to Class Faculty & Warden.', 'success');
-            }
-          });
-        });
-
-        // Trigger leaves render immediately
-        renderStudentLeaves();
-
-        // 1. Fee Balance
-        try {
-          const invoices = await dbService.select('invoices');
-          const due = (invoices || [])
-            .filter(inv => inv.studentId === student.id || inv.studentName === student.fullName)
-            .reduce((sum, inv) => sum + (parseFloat(inv.balance) || 0), 0);
-          setText('portal-fee', due > 0 ? `₹ ${due.toLocaleString()} Due` : 'All Cleared');
-        } catch (e) {}
-
-        // 2. Attendance Summary
-        const attendance = await dbService.select('attendance_records');
-        const studentPunches = attendance.filter(a => a.studentId === student.id || a.studentAdmissionNo === student.admissionNo);
-        if (studentPunches.length) {
-          const present = studentPunches.filter(a => a.status === 'present').length;
-          const pct = Math.round((present / studentPunches.length) * 100);
-          setText('portal-attendance', `${pct}% Present`);
-        } else {
-          setText('portal-attendance', '100% Present');
-        }
-
-        // 3. Timetable
-        const timetables = await dbService.select('timetables');
-        const classSlots = timetables.filter(t => t.grade === student.grade);
-        const tbRows = document.getElementById('portal-timetable-rows');
-        if (tbRows) {
-          if (classSlots.length) {
-            tbRows.innerHTML = classSlots.slice(0, 7).map((slot, i) => `
-              <tr>
-                <td><strong>Period ${slot.period || (i + 1)}</strong></td>
-                <td style="color: #16a34a; font-weight: 700;">${esc(slot.subject || 'General')}</td>
-                <td>${esc(slot.teacherName || 'Faculty')}</td>
-                <td>${esc(slot.room || 'Room ' + (slot.section || 'A'))}</td>
-              </tr>
-            `).join('');
-          } else {
-            tbRows.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 24px;">No class timetable schedule published for ${esc(student.grade)}.</td></tr>`;
-          }
-        }
-
-        // 4. Homework / Assignments
-        const assignments = await dbService.select('assignments');
-        const myHomework = assignments.filter(a => a.grade === student.grade);
-        setText('portal-homework-count', String(myHomework.length));
-        const hwEl = document.getElementById('portal-homework-rows');
-        if (hwEl) {
-          if (myHomework.length) {
-            hwEl.innerHTML = myHomework.slice(0, 5).map(hw => `
-              <div style="padding: 10px 12px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; gap: 8px;">
-                <div>
-                  <div style="font-weight: 700; color: var(--text-main);">${esc(hw.title || hw.subject)}</div>
-                  <div style="font-size: 0.76rem; color: var(--text-muted);">Due: ${esc(hw.dueDate || 'Tomorrow')} • ${esc(hw.subject || 'Academics')}</div>
+              <div class="card" style="margin-bottom: 24px;">
+                <div class="card-header">
+                  <h3 class="card-title">Term Assessment Reports</h3>
+                  <span class="badge badge-info" id="portal-exam-status">Evaluation</span>
                 </div>
-                <span class="badge badge-info" style="font-size: 0.72rem;">Pending</span>
+                <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 12px;">Official verified grades released by Examination Office.</p>
+                <div id="portal-exam-rows" style="text-align: center; color: var(--text-muted); padding: 20px;">
+                  <i data-lucide="inbox" style="width:40px;height:40px;display:block;margin:0 auto 10px;"></i>
+                  No exam records published for this session yet.
+                </div>
               </div>
-            `).join('');
-          } else {
-            hwEl.innerHTML = `
-              <div style="text-align: center; color: var(--text-muted); padding: 24px;">
-                <i data-lucide="check-circle" style="width:36px;height:36px;display:block;margin:0 auto 10px; color: #16a34a;"></i>
-                All assignments completed!
+
+              <!-- Student Leave Governance Card -->
+              <div class="card">
+                <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                  <div>
+                    <h3 class="card-title">Leave Applications &amp; Gate Passes</h3>
+                    <p style="font-size: 0.82rem; color: var(--text-muted); margin: 2px 0 0 0;">
+                      Official leave requests, warden approvals &amp; issued security outpasses.
+                    </p>
+                  </div>
+                  <button type="button" class="btn btn-primary btn-sm" id="btn-portal-apply-leave" style="background:#0E623B; border-color:#0E623B; font-weight:700; border-radius:8px; display:inline-flex; align-items:center; gap:6px;">
+                    <i data-lucide="plus"></i> Apply for Leave
+                  </button>
+                </div>
+                <div id="portal-leave-rows" style="margin-top: 14px;">
+                  <div style="text-align: center; color: var(--text-muted); padding: 20px;">
+                    <i data-lucide="inbox" style="width:36px; height:36px; display:block; margin:0 auto 10px; color: var(--text-subtle);"></i>
+                    Loading your leave applications...
+                  </div>
+                </div>
               </div>
-            `;
+            </div>
+
+            <div>
+              <div class="card" style="margin-bottom: 24px;">
+                <h3 class="card-title" style="margin-bottom: 14px;">Digital ID &amp; QR Card</h3>
+                <div style="text-align: center;">
+                  <div id="portal-qr-container" style="width: 120px; height: 120px; background: #ffffff; border: 1.5px solid var(--border-color); margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; border-radius: 10px; padding: 6px; box-shadow: var(--shadow-xs);">
+                    <div id="portal-qr"></div>
+                  </div>
+                  <div style="font-size: 0.78rem; color: var(--text-muted);">Scan at Campus Gate &amp; Attendance Terminal</div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-header">
+                  <h3 class="card-title">Daily Homework &amp; Diary</h3>
+                  <span class="badge badge-warning">Active Tasks</span>
+                </div>
+                <div id="portal-homework-rows">
+                  <div style="text-align: center; color: var(--text-muted); padding: 20px;">
+                    <i data-lucide="clock" style="width:36px;height:36px;display:block;margin:0 auto 10px;"></i>
+                    Loading homework...
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+
+        async function renderEnrolledStudent(student, adminRibbonHtml = '') {
+          if (!mainEl) return;
+          mainEl.innerHTML = (adminRibbonHtml || '') + enrolledLayoutHtml;
+
+          setText('portal-student-name', student.fullName || '—');
+          setText('portal-topbar-badge', `${student.grade || '—'} - Section ${student.section || '—'} (Roll #${student.rollNo || '—'})`);
+
+          const metaEl = document.getElementById('portal-student-meta');
+          if (metaEl) {
+            metaEl.innerHTML = `Admission No: <span class="font-mono" style="font-weight: 600;">${esc(student.admissionNo)}</span> • Class: <strong>${esc(student.grade)} (${esc(student.section || 'A')})</strong>`;
+          }
+
+          // QR Code
+          const qrEl = document.getElementById('portal-qr');
+          if (qrEl) {
+            QRCodeGenerator.render(qrEl, student.admissionNo || 'TMS-STUDENT', {
+              width: 108,
+              height: 108,
+              colorDark: '#0f172a',
+              colorLight: '#ffffff'
+            });
+          }
+
+          // Leaves
+          const renderStudentLeaves = async () => {
+            const leaveRows = document.getElementById('portal-leave-rows');
+            if (!leaveRows) return;
+            try {
+              const leaves = await StudentLeaveService.getLeaves();
+              const myLeaves = leaves.filter(l => l.studentId === student.id || l.admissionNo === student.admissionNo);
+
+              if (!myLeaves.length) {
+                leaveRows.innerHTML = `
+                  <div style="text-align: center; color: var(--text-muted); padding: 24px; background: var(--bg-subtle, #F8FAFC); border-radius: 10px;">
+                    <i data-lucide="calendar-check" style="width:36px; height:36px; display:block; margin:0 auto 8px; color: #16a34a;"></i>
+                    <div style="font-weight: 600;">No Leave Applications on Record</div>
+                    <div style="font-size: 0.8rem; margin-top: 2px;">Need time off? Click "Apply for Leave" above.</div>
+                  </div>
+                `;
+                UIComponents.refreshIcons();
+                return;
+              }
+
+              leaveRows.innerHTML = `
+                <div class="table-responsive">
+                  <table class="tms-table" style="font-size: 0.84rem; width: 100%;">
+                    <thead>
+                      <tr style="background: #F8FAFC;">
+                        <th>LEAVE TYPE &amp; DURATION</th>
+                        <th>DATES</th>
+                        <th>GATE PASS</th>
+                        <th style="text-align:center;">STATUS</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${myLeaves.map(l => {
+                        let statusBadge = '';
+                        if (l.status === 'APPROVED_ON_LEAVE' && !l.actualReturn) {
+                          statusBadge = `<span class="badge" style="background:#FEF3C7; color:#92400E; border:1px solid #FCD34D; font-weight:800;"><i data-lucide="plane-takeoff" style="width:12px;height:12px;vertical-align:middle;"></i> ON LEAVE</span>`;
+                        } else if (l.status === 'PENDING') {
+                          statusBadge = `<span class="badge badge-warning">Awaiting Approval</span>`;
+                        } else if (l.status === 'RETURNED' || l.actualReturn) {
+                          statusBadge = `<span class="badge badge-success">✓ Returned (${esc((l.actualReturn || '').slice(0, 10))})</span>`;
+                        } else if (l.status === 'REJECTED') {
+                          statusBadge = `<span class="badge badge-danger">Declined</span>`;
+                        } else {
+                          statusBadge = `<span class="badge badge-info">${esc(l.status)}</span>`;
+                        }
+
+                        return `
+                          <tr style="border-bottom: 1px solid var(--border-color);">
+                            <td>
+                              <div style="font-weight: 700; color: var(--text-main);">${esc(l.leaveType || 'General')}</div>
+                              <div style="font-size: 0.74rem; color: var(--text-muted);">${esc(l.reason || '—')}</div>
+                            </td>
+                            <td>
+                              <div style="font-weight: 600;">${esc(l.fromDate)} – ${esc(l.toDate)}</div>
+                              <div style="font-size: 0.74rem; color: #16a34a; font-weight: 700;">${esc(l.totalDays)} Day(s)</div>
+                            </td>
+                            <td>
+                              ${l.gatePassNo ? `
+                                <span class="badge badge-info font-mono" style="font-size: 0.76rem;">${esc(l.gatePassNo)}</span>
+                                <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 2px;">Issued: ${esc((l.issuedAt || '').slice(0, 10))}</div>
+                              ` : '<span style="color: var(--text-subtle); font-size: 0.76rem;">Pending Pass</span>'}
+                            </td>
+                            <td style="text-align: center;">${statusBadge}</td>
+                          </tr>
+                        `;
+                      }).join('')}
+                    </tbody>
+                  </table>
+                </div>
+              `;
+              UIComponents.refreshIcons();
+            } catch (err) {
+              console.error('Failed rendering leaves:', err);
+            }
+          };
+
+          document.getElementById('btn-portal-apply-leave')?.addEventListener('click', () => {
+            StudentLeaveService.openApplyModal({
+              student,
+              appliedBy: 'student',
+              appliedByName: student.fullName,
+              onComplete: () => {
+                renderStudentLeaves();
+                UIComponents.showToast('Leave application submitted to Class Faculty & Warden.', 'success');
+              }
+            });
+          });
+
+          renderStudentLeaves();
+
+          // Fee Balance
+          try {
+            const invoices = await dbService.select('invoices');
+            const due = (invoices || [])
+              .filter(inv => inv.studentId === student.id || inv.studentName === student.fullName)
+              .reduce((sum, inv) => sum + (parseFloat(inv.balance) || 0), 0);
+            setText('portal-fee', due > 0 ? `₹ ${due.toLocaleString()} Due` : 'All Cleared');
+          } catch (e) {}
+
+          // Attendance Summary
+          try {
+            const attendance = await dbService.select('attendance_records');
+            const studentPunches = (attendance || []).filter(a => a.studentId === student.id || a.studentAdmissionNo === student.admissionNo);
+            if (studentPunches.length) {
+              const present = studentPunches.filter(a => a.status === 'present').length;
+              const pct = Math.round((present / studentPunches.length) * 100);
+              setText('portal-attendance', `${pct}% Present`);
+            } else {
+              setText('portal-attendance', '100% Present');
+            }
+          } catch (e) {
+            setText('portal-attendance', '100% Present');
+          }
+
+          // Timetable
+          try {
+            const timetables = await dbService.select('timetables');
+            const classSlots = (timetables || []).filter(t => t.grade === student.grade);
+            const tbRows = document.getElementById('portal-timetable-rows');
+            if (tbRows) {
+              if (classSlots.length) {
+                tbRows.innerHTML = classSlots.slice(0, 7).map((slot, i) => `
+                  <tr>
+                    <td><strong>Period ${slot.period || (i + 1)}</strong></td>
+                    <td style="color: #16a34a; font-weight: 700;">${esc(slot.subject || 'General')}</td>
+                    <td>${esc(slot.teacherName || 'Faculty')}</td>
+                    <td>${esc(slot.room || 'Room ' + (slot.section || 'A'))}</td>
+                  </tr>
+                `).join('');
+              } else {
+                tbRows.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-muted); padding: 24px;">No class timetable schedule published for ${esc(student.grade)}.</td></tr>`;
+              }
+            }
+          } catch (e) {}
+
+          // Homework
+          try {
+            const assignments = await dbService.select('assignments');
+            const myHomework = (assignments || []).filter(a => a.grade === student.grade);
+            setText('portal-homework-count', String(myHomework.length));
+            const hwEl = document.getElementById('portal-homework-rows');
+            if (hwEl) {
+              if (myHomework.length) {
+                hwEl.innerHTML = myHomework.slice(0, 5).map(hw => `
+                  <div style="padding: 10px 12px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+                    <div>
+                      <div style="font-weight: 700; color: var(--text-main);">${esc(hw.title || hw.subject)}</div>
+                      <div style="font-size: 0.76rem; color: var(--text-muted);">Due: ${esc(hw.dueDate || 'Tomorrow')} • ${esc(hw.subject || 'Academics')}</div>
+                    </div>
+                    <span class="badge badge-info" style="font-size: 0.72rem;">Pending</span>
+                  </div>
+                `).join('');
+              } else {
+                hwEl.innerHTML = `
+                  <div style="text-align: center; color: var(--text-muted); padding: 24px;">
+                    <i data-lucide="check-circle" style="width:36px;height:36px;display:block;margin:0 auto 10px; color: #16a34a;"></i>
+                    All assignments completed!
+                  </div>
+                `;
+              }
+            }
+          } catch (e) {}
+
+          // Assessments
+          try {
+            const assessments = await dbService.select('exam_assessments');
+            const myGrades = (assessments || []).filter(e => e.studentId === student.id || e.admissionNo === student.admissionNo);
+            const examEl = document.getElementById('portal-exam-rows');
+            if (examEl) {
+              if (myGrades.length) {
+                examEl.innerHTML = `
+                  <table class="tms-table" style="font-size: 0.85rem; text-align: left;">
+                    <thead><tr><th>Subject</th><th>Marks</th><th>Max</th><th>Grade</th></tr></thead>
+                    <tbody>
+                      ${myGrades.map(g => `
+                        <tr>
+                          <td><strong>${esc(g.subject)}</strong></td>
+                          <td>${esc(g.marksObtained)}</td>
+                          <td>${esc(g.maxMarks || 100)}</td>
+                          <td><span class="badge badge-success">${esc(g.grade || 'A')}</span></td>
+                        </tr>
+                      `).join('')}
+                    </tbody>
+                  </table>
+                `;
+                setText('portal-aggregate', 'Grade A');
+              } else {
+                setText('portal-aggregate', 'In Progress');
+              }
+            }
+          } catch (e) {}
+
+          wireAdminSwitcher();
+          UIComponents.refreshIcons();
+        }
+
+        function wireAdminSwitcher() {
+          const adminSelect = document.getElementById('admin-student-preview-select');
+          if (adminSelect) {
+            adminSelect.addEventListener('change', (e) => {
+              const val = e.target.value;
+              if (val.startsWith('app:')) {
+                currentMode = 'app';
+                selectedAppId = val.replace('app:', '');
+              } else if (val.startsWith('student:')) {
+                currentMode = 'student';
+                selectedStudentId = val.replace('student:', '');
+              }
+              renderDashboard();
+            });
           }
         }
 
-        // 5. Exam Assessments
-        const assessments = await dbService.select('exam_assessments');
-        const myGrades = assessments.filter(e => e.studentId === student.id || e.admissionNo === student.admissionNo);
-        const examEl = document.getElementById('portal-exam-rows');
-        if (examEl) {
-          if (myGrades.length) {
-            examEl.innerHTML = `
-              <table class="tms-table" style="font-size: 0.85rem; text-align: left;">
-                <thead><tr><th>Subject</th><th>Marks</th><th>Max</th><th>Grade</th></tr></thead>
-                <tbody>
-                  ${myGrades.map(g => `
-                    <tr>
-                      <td><strong>${esc(g.subject)}</strong></td>
-                      <td>${esc(g.marksObtained)}</td>
-                      <td>${esc(g.maxMarks || 100)}</td>
-                      <td><span class="badge badge-success">${esc(g.grade || 'A')}</span></td>
-                    </tr>
-                  `).join('')}
-                </tbody>
-              </table>
+        function renderDashboard() {
+          let adminRibbonHtml = '';
+          if (isAdmin) {
+            adminRibbonHtml = `
+              <div class="card" style="margin-bottom: 20px; background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%); border: 1.5px solid #2563eb; padding: 12px 18px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+                  <div style="display:flex; align-items:center; gap:10px;">
+                    <span class="badge" style="background:#2563eb; color:#fff; font-weight:800; font-size:0.75rem; padding:4px 8px;">ADMIN PREVIEW MODE</span>
+                    <span style="font-size:0.86rem; color:#0f172a; font-weight:600;">Previewing Student Dashboard. Select Candidate Applicant or Enrolled Student:</span>
+                  </div>
+                  <select id="admin-student-preview-select" class="tms-form-select" style="font-size:0.84rem; padding:6px 12px; font-weight:600; min-width:320px; border-radius:6px; background:#fff; border:1px solid #cbd5e1;">
+                    <optgroup label="Candidate Applicants (Weekly Exams &amp; Pre-Enrollment)">
+                      ${allApps.map(a => `<option value="app:${a.id}" ${currentMode === 'app' && selectedAppId === a.id ? 'selected' : ''}>[Applicant] ${esc(a.studentName)} (${esc(a.appId || a.id)})</option>`).join('')}
+                    </optgroup>
+                    <optgroup label="Enrolled Students (Timetable, Homework, Leaves &amp; QR)">
+                      ${students.slice(0, 30).map(s => `<option value="student:${s.id}" ${currentMode === 'student' && selectedStudentId === s.id ? 'selected' : ''}>[Enrolled] ${esc(s.fullName)} (${esc(s.admissionNo)} - ${esc(s.grade)})</option>`).join('')}
+                    </optgroup>
+                  </select>
+                </div>
+              </div>
             `;
-            setText('portal-aggregate', 'Grade A');
-          } else {
-            setText('portal-aggregate', 'In Progress');
+          }
+
+          if (isAdmin) {
+            if (currentMode === 'student' && selectedStudentId) {
+              const activeStudent = students.find(s => s.id === selectedStudentId) || students[0];
+              renderEnrolledStudent(activeStudent, adminRibbonHtml);
+            } else if (currentMode === 'app' && selectedAppId) {
+              const targetApp = allApps.find(a => a.id === selectedAppId) || allApps[0];
+              renderApplicantCandidatePortal(targetApp, user, adminRibbonHtml);
+              wireAdminSwitcher();
+            } else {
+              // Auto default: prefer candidate applicant if available so entrance exam marks are visible, else enrolled student
+              if (allApps.length > 0) {
+                currentMode = 'app';
+                selectedAppId = allApps[0].id;
+                renderApplicantCandidatePortal(allApps[0], user, adminRibbonHtml);
+                wireAdminSwitcher();
+              } else if (students.length > 0) {
+                currentMode = 'student';
+                selectedStudentId = students[0].id;
+                renderEnrolledStudent(students[0], adminRibbonHtml);
+              }
+            }
+            return;
+          }
+
+          // Non-admin logic
+          if (matchedApp && matchedApp.status !== 'Enrolled') {
+            renderApplicantCandidatePortal(matchedApp, user);
+            return;
+          }
+
+          if (matchedStudent) {
+            renderEnrolledStudent(matchedStudent);
+            return;
+          }
+
+          // Fallback if neither found
+          if (mainEl) {
+            mainEl.innerHTML = `
+              <div class="card" style="text-align: center; padding: 48px 20px; max-width: 600px; margin: 40px auto;">
+                <div style="width: 56px; height: 56px; border-radius: 50%; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+                  <i data-lucide="user-x" style="width: 28px; height: 28px;"></i>
+                </div>
+                <h2 style="font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-bottom: 8px;">No Linked Student Account Found</h2>
+                <p style="color: #64748b; font-size: 0.88rem; line-height: 1.5; margin-bottom: 20px;">
+                  We could not find an enrolled student record or active admission application matching <strong>${esc(user.email || user.username || user.name)}</strong>.
+                </p>
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; text-align: left; font-size: 0.82rem; color: #475569; margin-bottom: 20px;">
+                  <strong>Troubleshooting &amp; Next Steps:</strong>
+                  <ul style="margin: 6px 0 0 18px; padding: 0; line-height: 1.6;">
+                    <li>If you applied for admission, verify you signed in with the mobile number or username provided on your application form.</li>
+                    <li>If you are an enrolled student, sign in with your official TMS Admission Number (e.g. TMS0012026).</li>
+                    <li>For assistance, contact the TMS Admissions Office at <span class="font-mono">admissions@thaibamodel.school</span>.</li>
+                  </ul>
+                </div>
+              </div>
+            `;
+            setText('portal-topbar-badge', 'Account Unlinked');
+            UIComponents.refreshIcons();
           }
         }
 
+        renderDashboard();
       } catch (e) {
         console.error('Student portal hydration failed:', e);
         window.__hydrationError = (e && e.stack) || String(e);
