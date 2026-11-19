@@ -1023,30 +1023,27 @@ class AdmissionService {
     examDate = '',
     publishDate = '',
     isPublished = false,
-    writtenScore = 0,
-    interviewScore = 0,
-    aptitudeScore = null,
+    marksObtained = null,
+    totalScore = null,
     maxScore = 100,
+    outOfMarks = null,
     decision = 'Under Evaluation',
     examinerRemarks = '',
     evaluatedBy = 'Staff'
   } = {}) {
-    const written = Number(writtenScore || 0);
-    const interview = Number(interviewScore || 0);
-    const aptitude = (aptitudeScore != null && aptitudeScore !== '') ? Number(aptitudeScore) : null;
-    const totalScore = aptitude != null ? (written + interview + aptitude) : (written + interview);
-    const max = Number(maxScore || 100);
-    const percentage = max > 0 ? Math.round((totalScore / max) * 100) : 0;
+    const rawObtained = marksObtained != null ? marksObtained : totalScore;
+    const obtained = rawObtained != null && rawObtained !== '' ? Number(rawObtained) : 0;
+    const rawMax = outOfMarks != null ? outOfMarks : maxScore;
+    const max = rawMax != null && rawMax !== '' ? Number(rawMax) : 100;
+    const percentage = max > 0 ? Math.round((obtained / max) * 100) : 0;
 
     const examData = {
       examName: (examName || 'Weekly Admission Assessment').trim(),
       examDate: examDate || new Date().toISOString().slice(0, 10),
       publishDate: publishDate || '',
       isPublished: !!isPublished,
-      writtenScore: written,
-      interviewScore: interview,
-      aptitudeScore: aptitude,
-      totalScore,
+      marksObtained: obtained,
+      totalScore: obtained,
       maxScore: max,
       percentage,
       decision: decision || 'Under Evaluation',
@@ -1205,40 +1202,21 @@ class AdmissionService {
             <thead>
               <tr>
                 <th>Assessment Component</th>
-                <th>Maximum Marks</th>
+                <th>Maximum Marks (Out of)</th>
                 <th>Marks Obtained</th>
                 <th>Percentage</th>
                 <th>Performance Indicator</th>
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td style="text-align:left; font-weight:700;">Written Evaluation Test</td>
-                <td>50</td>
-                <td style="font-weight:800; font-family:monospace; font-size:1rem;">${written}</td>
-                <td>${typeof written === 'number' ? Math.round((written / 50) * 100) + '%' : '—'}</td>
-                <td>${typeof written === 'number' && written >= 35 ? 'Proficient' : 'Satisfactory'}</td>
-              </tr>
-              <tr>
-                <td style="text-align:left; font-weight:700;">Oral Interview &amp; Viva Voce</td>
-                <td>50</td>
-                <td style="font-weight:800; font-family:monospace; font-size:1rem;">${interview}</td>
-                <td>${typeof interview === 'number' ? Math.round((interview / 50) * 100) + '%' : '—'}</td>
-                <td>${typeof interview === 'number' && interview >= 35 ? 'Excellent Interaction' : 'Acceptable'}</td>
-              </tr>
-              ${aptitude != null ? `
-              <tr>
-                <td style="text-align:left; font-weight:700;">Aptitude &amp; Cognitive Practical</td>
-                <td>—</td>
-                <td style="font-weight:800; font-family:monospace; font-size:1rem;">${aptitude}</td>
-                <td>—</td>
-                <td>Evaluated</td>
-              </tr>` : ''}
               <tr style="background:#f8fafc;">
-                <td style="text-align:left; font-weight:900; font-size:0.95rem;">AGGREGATE TOTAL</td>
-                <td style="font-weight:900;">${max}</td>
-                <td style="font-weight:900; font-size:1.2rem; font-family:monospace; color:#15803d;">${total}</td>
-                <td style="font-weight:900; font-size:1.05rem; color:#15803d;">${pct}</td>
+                <td style="text-align:left; font-weight:800; font-size:1rem; color:#1e40af;">
+                  ${examName}
+                  <div style="font-size:0.75rem; color:#64748b; font-weight:500;">Comprehensive Admission Assessment</div>
+                </td>
+                <td style="font-weight:900; font-size:1.15rem; font-family:monospace;">${max}</td>
+                <td style="font-weight:900; font-size:1.35rem; font-family:monospace; color:#15803d;">${total}</td>
+                <td style="font-weight:900; font-size:1.15rem; color:#15803d;">${pct}</td>
                 <td style="font-weight:900; color:#15803d;">${decision}</td>
               </tr>
             </tbody>

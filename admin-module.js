@@ -732,11 +732,11 @@ export class AdminModule {
 
       let examCell = '<span class="badge" style="background:#f1f5f9; color:#94a3b8; font-size:0.72rem;">No Exam</span>';
       if (isLive) {
-        examCell = `<span class="badge badge-success font-mono" style="font-size:0.72rem; font-weight:800;" title="Live on Portal: ${exam.totalScore}/100 (Pub: ${exam.publishDate || 'today'})"><i data-lucide="check-circle" style="width:11px;height:11px;vertical-align:middle;"></i> ${exam.totalScore}/100</span>`;
+        examCell = `<span class="badge badge-success font-mono" style="font-size:0.72rem; font-weight:800;" title="Live on Portal: ${exam.totalScore}/${exam.maxScore || 100} (Pub: ${exam.publishDate || 'today'})"><i data-lucide="check-circle" style="width:11px;height:11px;vertical-align:middle;"></i> ${exam.totalScore}/${exam.maxScore || 100}</span>`;
       } else if (isSched) {
-        examCell = `<span class="badge badge-warning font-mono" style="font-size:0.72rem; font-weight:800;" title="Scheduled: ${exam.publishDate}"><i data-lucide="calendar" style="width:11px;height:11px;vertical-align:middle;"></i> ${exam.totalScore}/100 (${(exam.publishDate || '').slice(5)})</span>`;
+        examCell = `<span class="badge badge-warning font-mono" style="font-size:0.72rem; font-weight:800;" title="Scheduled: ${exam.publishDate}"><i data-lucide="calendar" style="width:11px;height:11px;vertical-align:middle;"></i> ${exam.totalScore}/${exam.maxScore || 100} (${(exam.publishDate || '').slice(5)})</span>`;
       } else if (hasScore) {
-        examCell = `<span class="badge font-mono" style="background:#e2e8f0; color:#334155; font-size:0.72rem; font-weight:700;" title="Draft / Private">${exam.totalScore}/100 (Draft)</span>`;
+        examCell = `<span class="badge font-mono" style="background:#e2e8f0; color:#334155; font-size:0.72rem; font-weight:700;" title="Draft / Private">${exam.totalScore}/${exam.maxScore || 100} (Draft)</span>`;
       }
 
       return `
@@ -752,8 +752,9 @@ export class AdminModule {
         <td>${fmtMoney(a.feeTotal)}</td>
         <td>${payBadge(a.paymentStatus)}</td>
         <td>${statusBadge(a.status)}</td>
-        <td>${examCell}</td>
+        <td style="cursor:pointer;" class="btn-mark-entry" data-id="${esc(a.id)}" title="Click to Enter / Edit Marks in Dedicated Window">${examCell}</td>
         <td style="white-space:nowrap;">
+          <button class="btn btn-secondary btn-sm btn-mark-entry" data-id="${esc(a.id)}" title="Enter / Edit Marks (Dedicated Window)" style="color:#2563eb; font-weight:700;"><i data-lucide="clipboard-pen"></i></button>
           <button class="btn btn-secondary btn-sm btn-view-app" data-id="${esc(a.id)}" title="Open Review"><i data-lucide="eye"></i></button>
           <button class="btn btn-secondary btn-sm btn-edit-app" data-id="${esc(a.id)}" title="Edit Application Data" style="color:#0284c7;"><i data-lucide="edit-3"></i></button>
           ${hasScore ? `<button class="btn btn-secondary btn-sm btn-print-row-result" data-id="${esc(a.id)}" title="Print Assessment Result Card" style="color:#16a34a;"><i data-lucide="award"></i></button>` : ''}
@@ -769,6 +770,11 @@ export class AdminModule {
         if (cb.checked) this._selected.add(cb.dataset.id);
         else this._selected.delete(cb.dataset.id);
         this.updateBulkBar();
+      }));
+    body.querySelectorAll('.btn-mark-entry').forEach((b) =>
+      b.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.openMarkEntryModal(b.dataset.id);
       }));
     body.querySelectorAll('.btn-view-app').forEach((b) =>
       b.addEventListener('click', () => this.openApplicationModal(b.dataset.id)));
@@ -1133,11 +1139,11 @@ export class AdminModule {
             </div>
           </div>
 
-          <!-- Entrance Exam & Weekly Assessment Card -->
+          <!-- Entrance Exam & Weekly Assessment Summary Card -->
           <div class="card" style="padding:16px 18px; border:1.5px solid #bfdbfe; border-radius:10px; background:linear-gradient(135deg, rgba(37,99,235,0.03) 0%, rgba(22,163,74,0.03) 100%); margin:0;">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
               <div style="font-weight:800; font-size:0.95rem; color:#1e40af; display:flex; align-items:center; gap:8px;">
-                <i data-lucide="award" style="width:18px; height:18px; color:#2563eb;"></i> Weekly Entrance Exam &amp; Results Evaluation
+                <i data-lucide="award" style="width:18px; height:18px; color:#2563eb;"></i> Weekly Entrance Exam Evaluation
               </div>
               <div style="display:flex; align-items:center; gap:6px;">
                 ${exam.isPublished
@@ -1149,98 +1155,46 @@ export class AdminModule {
               </div>
             </div>
 
-            <!-- Exam Name & Dates Row -->
-            <div style="display:grid; grid-template-columns: 2fr 1.2fr 1.4fr; gap:10px; margin-bottom:12px;">
+            <div style="background:#fff; border:1px solid var(--border-color); border-radius:8px; padding:12px 14px; margin-bottom:14px; display:grid; grid-template-columns: 1fr 1fr; gap:10px; font-size:0.83rem;">
               <div>
-                <label style="font-size:0.72rem; color:#1e293b; font-weight:700; display:block; margin-bottom:3px;">Exam Name *</label>
-                <input class="form-input form-input-sm" id="exam-name" list="exam-name-presets" value="${esc(exam.examName || 'Weekly Admission Assessment - Week 1')}" placeholder="e.g. Weekly Admission Assessment - Week 1" style="font-weight:600; width:100%;">
-                <datalist id="exam-name-presets">
-                  <option value="Weekly Admission Assessment - Week 1">
-                  <option value="Weekly Admission Assessment - Week 2">
-                  <option value="Weekly Admission Assessment - Week 3">
-                  <option value="Weekly Admission Assessment - Week 4">
-                  <option value="Entrance Evaluation Test - Batch A">
-                  <option value="Entrance Evaluation Test - Batch B">
-                  <option value="Kindergarten &amp; Primary Screening Test">
-                  <option value="General Aptitude &amp; Readiness Evaluation">
-                </datalist>
+                <span style="color:#64748b; font-size:0.75rem; font-weight:700; text-transform:uppercase;">Exam Name:</span>
+                <div style="font-weight:700; color:#1e293b; margin-top:2px;">${esc(exam.examName || 'Weekly Admission Assessment')}</div>
               </div>
-
               <div>
-                <label style="font-size:0.72rem; color:#1e293b; font-weight:700; display:block; margin-bottom:3px;">Exam Date</label>
-                <input type="date" class="form-input form-input-sm font-mono" id="exam-date" value="${esc(exam.examDate || new Date().toISOString().slice(0, 10))}" style="width:100%;">
-              </div>
-
-              <div>
-                <label style="font-size:0.72rem; color:#1e293b; font-weight:700; display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
-                  <span>Publishing Date *</span>
-                  <span style="font-size:0.68rem; color:#2563eb; cursor:pointer; font-weight:800;" id="btn-quick-today" title="Set to Today">Set Today</span>
-                </label>
-                <input type="date" class="form-input form-input-sm font-mono" id="exam-publish-date" value="${esc(exam.publishDate || '')}" style="width:100%; border-color:#93c5fd;">
-              </div>
-            </div>
-
-            <!-- Marks and Components Grid -->
-            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr 1.2fr; gap:10px; margin-bottom:12px;">
-              <div style="background:#ffffff; padding:8px 10px; border-radius:8px; border:1px solid var(--border-color);">
-                <label style="font-size:0.7rem; color:var(--text-muted); font-weight:700; display:block; margin-bottom:2px;">Written Test (50)</label>
-                <input type="number" class="form-input form-input-sm font-mono" id="exam-written" value="${esc(exam.writtenScore ?? '')}" placeholder="0" min="0" max="100" style="font-weight:700; width:100%;">
-              </div>
-              <div style="background:#ffffff; padding:8px 10px; border-radius:8px; border:1px solid var(--border-color);">
-                <label style="font-size:0.7rem; color:var(--text-muted); font-weight:700; display:block; margin-bottom:2px;">Interview / Viva (50)</label>
-                <input type="number" class="form-input form-input-sm font-mono" id="exam-interview" value="${esc(exam.interviewScore ?? '')}" placeholder="0" min="0" max="100" style="font-weight:700; width:100%;">
-              </div>
-              <div style="background:#ffffff; padding:8px 10px; border-radius:8px; border:1px solid var(--border-color);">
-                <label style="font-size:0.7rem; color:var(--text-muted); font-weight:700; display:block; margin-bottom:2px;">Aptitude / Skill (Opt)</label>
-                <input type="number" class="form-input form-input-sm font-mono" id="exam-aptitude" value="${esc(exam.aptitudeScore ?? '')}" placeholder="0" min="0" max="50" style="font-weight:700; width:100%;">
-              </div>
-              <div style="background:#eff6ff; padding:8px 10px; border-radius:8px; border:1.5px solid #bfdbfe; text-align:center;">
-                <label style="font-size:0.7rem; color:#1d4ed8; font-weight:800; display:block; margin-bottom:2px;">Total Marks &amp; %</label>
-                <div style="display:flex; align-items:center; justify-content:center; gap:4px;">
-                  <input type="text" class="form-input form-input-sm font-mono" id="exam-total" value="${exam.totalScore != null ? exam.totalScore : ''}" readonly style="background:transparent; border:none; font-weight:800; font-size:1.15rem; color:#1d4ed8; text-align:center; padding:0; width:55px;">
-                  <span style="font-size:0.75rem; color:#64748b;">/ 100</span>
-                  <span id="exam-pct-badge" style="font-size:0.72rem; font-weight:800; color:#16a34a; background:#dcfce7; padding:2px 6px; border-radius:4px; margin-left:4px;">${exam.percentage ? `${exam.percentage}%` : '—'}</span>
+                <span style="color:#64748b; font-size:0.75rem; font-weight:700; text-transform:uppercase;">Assessment Marks:</span>
+                <div style="font-size:1.2rem; font-weight:900; color:#15803d; font-family:monospace; margin-top:2px;">
+                  ${exam.totalScore != null ? `${exam.totalScore} / ${exam.maxScore || 100} <span style="font-size:0.8rem; color:#16a34a;">(${exam.percentage || 0}%)</span>` : '<span style="color:#94a3b8; font-size:0.85rem; font-weight:500;">No Marks Entered</span>'}
                 </div>
               </div>
-            </div>
-
-            <!-- Decision & Publishing Status Row -->
-            <div style="display:grid; grid-template-columns: 1.3fr 1.7fr; gap:10px; margin-bottom:12px;">
               <div>
-                <label style="font-size:0.72rem; color:#1e293b; font-weight:700; display:block; margin-bottom:3px;">Admission Evaluation Decision</label>
-                <select class="form-select form-select-sm" id="exam-decision" style="font-weight:700; width:100%;">
-                  <option value="Selected for Admission" ${exam.decision === 'Selected for Admission' ? 'selected' : ''}>Selected for Admission</option>
-                  <option value="Shortlisted" ${exam.decision === 'Shortlisted' ? 'selected' : ''}>Shortlisted for Next Round</option>
-                  <option value="Waiting List" ${exam.decision === 'Waiting List' ? 'selected' : ''}>Waiting List</option>
-                  <option value="Under Evaluation" ${(!exam.decision || exam.decision === 'Under Evaluation') ? 'selected' : ''}>Under Evaluation</option>
-                  <option value="Needs Improvement" ${exam.decision === 'Needs Improvement' ? 'selected' : ''}>Needs Improvement</option>
-                </select>
+                <span style="color:#64748b; font-size:0.75rem; font-weight:700; text-transform:uppercase;">Exam Date:</span>
+                <div style="font-weight:600; color:#1e293b; margin-top:2px;">${fmtDate(exam.examDate)}</div>
               </div>
-
               <div>
-                <label style="font-size:0.72rem; color:#1e293b; font-weight:700; display:block; margin-bottom:3px;">Portal Visibility Control</label>
-                <div style="display:flex; align-items:center; gap:10px; background:#fff; padding:6px 12px; border:1px solid var(--border-color); border-radius:8px; height:34px;">
-                  <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-size:0.78rem; font-weight:700; color:#1e293b; margin:0;">
-                    <input type="checkbox" id="exam-is-published" ${exam.isPublished ? 'checked' : ''} style="width:16px; height:16px;">
-                    Publish to Parent &amp; Student Dashboard
-                  </label>
-                </div>
+                <span style="color:#64748b; font-size:0.75rem; font-weight:700; text-transform:uppercase;">Publish Date:</span>
+                <div style="font-weight:600; color:#2563eb; margin-top:2px;">${exam.publishDate ? fmtDate(exam.publishDate) : 'Immediate / Not Scheduled'}</div>
+              </div>
+              <div style="grid-column: span 2;">
+                <span style="color:#64748b; font-size:0.75rem; font-weight:700; text-transform:uppercase;">Decision:</span>
+                <span style="font-weight:800; color:#15803d; margin-left:6px;">${esc(exam.decision || 'Under Evaluation')}</span>
+                ${exam.examinerRemarks ? `<div style="color:#475569; font-size:0.78rem; margin-top:4px;">${esc(exam.examinerRemarks)}</div>` : ''}
               </div>
             </div>
 
-            <!-- Examiner Remarks & Action Buttons -->
-            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-              <input class="form-input form-input-sm" id="exam-remarks" value="${esc(exam.examinerRemarks || '')}" placeholder="Official remarks / feedback (e.g. Recommended, Strong in Science, Needs Spoken English)..." style="flex:1; min-width:240px;">
-              <button type="button" class="btn btn-primary btn-sm" id="btn-save-entrance-score" style="white-space:nowrap; padding:6px 14px; font-weight:700; background:#2563eb; border-color:#2563eb;">
-                <i data-lucide="save"></i> Save Exam &amp; Publish Settings
+            <!-- Actions: Open Separate Window & Print -->
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+              <button type="button" class="btn btn-primary btn-sm" id="btn-open-mark-window" style="background:#2563eb; border-color:#2563eb; font-weight:700; padding:7px 14px;">
+                <i data-lucide="clipboard-pen"></i> Enter / Edit Marks in Separate Window
               </button>
-              <button type="button" class="btn btn-secondary btn-sm" id="btn-print-result-card" style="white-space:nowrap; padding:6px 12px; font-weight:700; color:#16a34a; border-color:#86efac;">
-                <i data-lucide="printer"></i> Print Result Card
-              </button>
+              ${exam.totalScore != null ? `
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-print-result-card" style="font-weight:700; color:#16a34a; border-color:#86efac; padding:7px 14px;">
+                  <i data-lucide="printer"></i> Print Result Card
+                </button>
+              ` : ''}
             </div>
-            <div style="font-size:0.71rem; color:#64748b; margin-top:6px;">
+            <div style="font-size:0.71rem; color:#64748b; margin-top:8px;">
               <i data-lucide="info" style="width:12px; height:12px; vertical-align:middle;"></i>
-              When published, marks are displayed on the parent &amp; student portal starting on the specified publishing date. Until enrolled, applicant sees their admission progress, marks (if published) and announcements.
+              Click the button above to enter or edit total marks, out of marks, publishing date, and decision in the dedicated mark window.
             </div>
           </div>
 
@@ -1333,69 +1287,9 @@ export class AdminModule {
 
     // Save entrance exam scores & publishing settings
     const saveScoreBtn = document.getElementById('btn-save-entrance-score');
-    if (saveScoreBtn) {
-      saveScoreBtn.addEventListener('click', async () => {
-        const examName = (document.getElementById('exam-name')?.value || '').trim();
-        const examDate = document.getElementById('exam-date')?.value || '';
-        const publishDate = document.getElementById('exam-publish-date')?.value || '';
-        const isPublished = document.getElementById('exam-is-published')?.checked || false;
-        const writtenScore = parseFloat(document.getElementById('exam-written')?.value) || 0;
-        const interviewScore = parseFloat(document.getElementById('exam-interview')?.value) || 0;
-        const aptitudeScore = document.getElementById('exam-aptitude')?.value !== '' ? (parseFloat(document.getElementById('exam-aptitude')?.value) || 0) : null;
-        const decision = document.getElementById('exam-decision')?.value || 'Under Evaluation';
-        const examinerRemarks = (document.getElementById('exam-remarks')?.value || '').trim();
-
-        saveScoreBtn.disabled = true;
-        saveScoreBtn.innerHTML = '<i data-lucide="loader" class="animate-spin"></i> Saving...';
-
-        await admissionService.recordEntranceScore(app.id, {
-          examName,
-          examDate,
-          publishDate,
-          isPublished,
-          writtenScore,
-          interviewScore,
-          aptitudeScore,
-          decision,
-          examinerRemarks,
-          evaluatedBy: 'Admission Committee'
-        });
-
-        const total = (aptitudeScore != null ? (writtenScore + interviewScore + aptitudeScore) : (writtenScore + interviewScore));
-        const pct = Math.round((total / 100) * 100);
-        const totEl = document.getElementById('exam-total');
-        if (totEl) totEl.value = total;
-        const pctEl = document.getElementById('exam-pct-badge');
-        if (pctEl) pctEl.textContent = `${pct}%`;
-
-        await auditService.log('ADMISSION_EXAM_EVALUATED', 'ADMISSIONS', {
-          formNo: app.appId,
-          examName,
-          totalScore: total,
-          isPublished,
-          publishDate
-        }, app.id);
-
-        UIComponents.showToast(`Entrance exam saved! ${isPublished ? (publishDate ? `Scheduled to publish on ${publishDate}.` : 'Marks published live!') : 'Saved as private draft.'}`, 'success');
-        saveScoreBtn.disabled = false;
-        saveScoreBtn.innerHTML = '<i data-lucide="save"></i> Save Exam &amp; Publish Settings';
-        UIComponents.refreshIcons();
-
-        // Refresh background table
-        const tabContent = document.getElementById('admin-tab-content');
-        if (tabContent) this.refreshApplications(tabContent);
-      });
-    }
-
-    // Set today quick button
-    document.getElementById('btn-quick-today')?.addEventListener('click', () => {
-      const pubInput = document.getElementById('exam-publish-date');
-      if (pubInput) {
-        pubInput.value = new Date().toISOString().slice(0, 10);
-        const chk = document.getElementById('exam-is-published');
-        if (chk) chk.checked = true;
-        UIComponents.showToast('Publishing date set to Today (live publish enabled).', 'info');
-      }
+    // Open separate mark entry & editing window
+    document.getElementById('btn-open-mark-window')?.addEventListener('click', () => {
+      this.openMarkEntryModal(app.id);
     });
 
     // Print Result Card listener
@@ -1403,21 +1297,6 @@ export class AdminModule {
       const freshApp = await admissionService.getApplication(app.id) || app;
       admissionService.printResultCard(freshApp);
     });
-
-    // Auto-sum exam marks
-    const calcExamTotal = () => {
-      const w = parseFloat(document.getElementById('exam-written')?.value) || 0;
-      const i = parseFloat(document.getElementById('exam-interview')?.value) || 0;
-      const a = parseFloat(document.getElementById('exam-aptitude')?.value) || 0;
-      const tot = document.getElementById('exam-total');
-      const sum = w + i + a;
-      if (tot) tot.value = sum;
-      const pctEl = document.getElementById('exam-pct-badge');
-      if (pctEl) pctEl.textContent = `${Math.round((sum / 100) * 100)}%`;
-    };
-    document.getElementById('exam-written')?.addEventListener('input', calcExamTotal);
-    document.getElementById('exam-interview')?.addEventListener('input', calcExamTotal);
-    document.getElementById('exam-aptitude')?.addEventListener('input', calcExamTotal);
 
     // Document stamp listeners
     document.querySelectorAll('.btn-verify-doc').forEach((btn) => {
@@ -1945,6 +1824,248 @@ export class AdminModule {
     UIComponents.refreshIcons();
   }
 
+  /* ================================================================== */
+  /* Dedicated Entrance Exam Mark Entry & Editing Window               */
+  /* ================================================================== */
+  static async openMarkEntryModal(appId) {
+    let app = (this._apps || []).find((a) => a.id === appId);
+    if (!app) {
+      app = await admissionService.getApplication(appId);
+    }
+    if (!app) {
+      UIComponents.showToast('Application record not found.', 'danger');
+      return;
+    }
+
+    const exam = app.entranceExam || (app.payload && app.payload.entranceExam) || {};
+    const today = new Date().toISOString().slice(0, 10);
+    const marksObtained = (exam.marksObtained != null) ? exam.marksObtained : (exam.totalScore != null ? exam.totalScore : '');
+    const maxScore = (exam.maxScore != null) ? exam.maxScore : 100;
+    const percentage = exam.percentage != null ? exam.percentage : (marksObtained !== '' ? Math.round((Number(marksObtained) / Number(maxScore)) * 100) : '');
+
+    const bodyHtml = `
+      <div style="display:flex; flex-direction:column; gap:16px;">
+        <!-- Candidate Overview Banner -->
+        <div style="background:linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%); border:1px solid #bfdbfe; border-radius:10px; padding:14px 18px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+          <div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <h3 style="margin:0; font-size:1.2rem; font-weight:800; color:#0f172a;">${esc(app.studentName || 'Candidate')}</h3>
+              <span class="badge badge-info" style="font-weight:700;">Class / Grade ${esc(app.grade || '—')}</span>
+            </div>
+            <div style="font-size:0.8rem; color:#64748b; margin-top:4px;">
+              Form No: <strong class="font-mono" style="color:#1e40af;">${esc(app.appId || app.id)}</strong> &bull;
+              Parent: <strong>${esc(app.guardianName || '—')}</strong> &bull;
+              Mobile: <span class="font-mono">${esc(app.phone || '—')}</span>
+            </div>
+          </div>
+          <div style="display:flex; gap:8px; align-items:center;">
+            ${statusBadge(app.status)}
+            ${exam.isPublished
+              ? (admissionService.isExamPublished(exam)
+                ? `<span class="badge badge-success" style="font-weight:800;"><i data-lucide="check-circle" style="width:12px;height:12px;"></i> Live &amp; Published</span>`
+                : `<span class="badge badge-warning" style="font-weight:800;"><i data-lucide="calendar" style="width:12px;height:12px;"></i> Sched: ${esc(exam.publishDate)}</span>`)
+              : `<span class="badge" style="background:#e2e8f0; color:#475569; font-weight:700;">Draft (Private)</span>`
+            }
+          </div>
+        </div>
+
+        <!-- Mark Entry Form -->
+        <form id="mark-entry-form" onsubmit="return false;" style="display:flex; flex-direction:column; gap:14px;">
+          <!-- Exam Name & Dates -->
+          <div style="display:grid; grid-template-columns: 2fr 1.2fr 1.4fr; gap:12px;">
+            <div>
+              <label class="form-label" style="font-size:0.75rem; font-weight:700;">Examination Name *</label>
+              <input class="form-input form-input-sm" id="me-exam-name" list="me-exam-presets" value="${esc(exam.examName || 'Weekly Admission Assessment - Week 1')}" placeholder="e.g. Weekly Admission Assessment - Week 1" required style="font-weight:600;">
+              <datalist id="me-exam-presets">
+                <option value="Weekly Admission Assessment - Week 1">
+                <option value="Weekly Admission Assessment - Week 2">
+                <option value="Weekly Admission Assessment - Week 3">
+                <option value="Weekly Admission Assessment - Week 4">
+                <option value="Entrance Evaluation Test - Batch A">
+                <option value="Entrance Evaluation Test - Batch B">
+                <option value="Kindergarten &amp; Primary Screening Test">
+                <option value="General Aptitude &amp; Readiness Evaluation">
+              </datalist>
+            </div>
+
+            <div>
+              <label class="form-label" style="font-size:0.75rem; font-weight:700;">Exam Date</label>
+              <input type="date" class="form-input form-input-sm font-mono" id="me-exam-date" value="${esc(exam.examDate || today)}">
+            </div>
+
+            <div>
+              <label class="form-label" style="font-size:0.75rem; font-weight:700; display:flex; justify-content:space-between; align-items:center;">
+                <span>Publishing Date</span>
+                <span id="btn-me-today" style="font-size:0.68rem; color:#2563eb; cursor:pointer; font-weight:800;">Set Today</span>
+              </label>
+              <input type="date" class="form-input form-input-sm font-mono" id="me-publish-date" value="${esc(exam.publishDate || '')}">
+            </div>
+          </div>
+
+          <!-- Total Marks & Out of Marks (ONLY TWO FIELDS!) -->
+          <div style="background:#f8fafc; border:1.5px solid #cbd5e1; border-radius:10px; padding:16px; display:grid; grid-template-columns: 1fr 1fr 1fr; gap:16px; align-items:center;">
+            <div>
+              <label class="form-label" style="font-size:0.75rem; font-weight:800; color:#15803d;">Total Mark (Obtained) *</label>
+              <input type="number" class="form-input font-mono" id="me-marks-obtained" value="${esc(marksObtained)}" placeholder="e.g. 85" min="0" step="any" required style="font-size:1.3rem; font-weight:900; color:#15803d; border-color:#86efac; background:#fff;">
+              <small style="color:#64748b; font-size:0.7rem;">Enter aggregate marks scored</small>
+            </div>
+
+            <div>
+              <label class="form-label" style="font-size:0.75rem; font-weight:800; color:#1e293b;">Out of Mark (Max Marks) *</label>
+              <input type="number" class="form-input font-mono" id="me-out-of-marks" value="${esc(maxScore)}" placeholder="100" min="1" step="any" required style="font-size:1.3rem; font-weight:900; color:#1e293b; background:#fff;">
+              <small style="color:#64748b; font-size:0.7rem;">Total maximum score possible</small>
+            </div>
+
+            <div style="background:#fff; border:1.5px solid #bfdbfe; border-radius:8px; padding:10px 14px; text-align:center;">
+              <label style="font-size:0.7rem; color:#1d4ed8; font-weight:800; text-transform:uppercase; display:block;">Calculated Percentage</label>
+              <div id="me-pct-display" style="font-size:1.5rem; font-weight:900; color:#15803d; font-family:monospace; margin-top:2px;">
+                ${percentage !== '' ? `${percentage}%` : '—'}
+              </div>
+            </div>
+          </div>
+
+          <!-- Decision & Dashboard Visibility -->
+          <div style="display:grid; grid-template-columns: 1.2fr 1.8fr; gap:12px;">
+            <div>
+              <label class="form-label" style="font-size:0.75rem; font-weight:700;">Admission Committee Decision</label>
+              <select class="form-select form-select-sm" id="me-decision" style="font-weight:700;">
+                <option value="Selected for Admission" ${exam.decision === 'Selected for Admission' ? 'selected' : ''}>Selected for Admission</option>
+                <option value="Shortlisted" ${exam.decision === 'Shortlisted' ? 'selected' : ''}>Shortlisted for Next Round</option>
+                <option value="Waiting List" ${exam.decision === 'Waiting List' ? 'selected' : ''}>Waiting List</option>
+                <option value="Under Evaluation" ${(!exam.decision || exam.decision === 'Under Evaluation') ? 'selected' : ''}>Under Evaluation</option>
+                <option value="Needs Improvement" ${exam.decision === 'Needs Improvement' ? 'selected' : ''}>Needs Improvement</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="form-label" style="font-size:0.75rem; font-weight:700;">Dashboard Visibility</label>
+              <div style="background:#fff; border:1px solid #cbd5e1; border-radius:6px; padding:8px 12px; display:flex; align-items:center; gap:8px;">
+                <input type="checkbox" id="me-is-published" ${exam.isPublished ? 'checked' : ''} style="width:16px; height:16px;">
+                <label for="me-is-published" style="font-size:0.78rem; font-weight:700; color:#0f172a; margin:0; cursor:pointer;">
+                  Publish Marks to Parent &amp; Student Dashboard
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Remarks -->
+          <div>
+            <label class="form-label" style="font-size:0.75rem; font-weight:700;">Examiner Remarks &amp; Feedback</label>
+            <textarea class="form-textarea" id="me-remarks" rows="2" placeholder="Official remarks / assessment feedback for applicant..." style="font-size:0.82rem;">${esc(exam.examinerRemarks || '')}</textarea>
+          </div>
+        </form>
+      </div>
+    `;
+
+    const footerHtml = `
+      <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-me-close">Cancel</button>
+          ${marksObtained !== '' ? `<button type="button" class="btn btn-secondary btn-sm" id="btn-me-print" style="color:#16a34a; font-weight:700;"><i data-lucide="printer"></i> Print Result Card</button>` : ''}
+        </div>
+        <button type="button" class="btn btn-primary btn-sm" id="btn-me-save" style="font-weight:700; background:#2563eb; border-color:#2563eb;">
+          <i data-lucide="save"></i> Save &amp; Publish Marks
+        </button>
+      </div>
+    `;
+
+    UIComponents.openModal({
+      title: `Enter & Edit Entrance Marks — ${app.studentName || app.appId}`,
+      bodyHtml,
+      footerHtml,
+      maxWidth: '720px'
+    });
+
+    const calcPct = () => {
+      const obt = parseFloat(document.getElementById('me-marks-obtained')?.value);
+      const max = parseFloat(document.getElementById('me-out-of-marks')?.value);
+      const display = document.getElementById('me-pct-display');
+      if (display) {
+        if (!isNaN(obt) && !isNaN(max) && max > 0) {
+          const pct = Math.round((obt / max) * 100);
+          display.textContent = `${pct}%`;
+        } else {
+          display.textContent = '—';
+        }
+      }
+    };
+    document.getElementById('me-marks-obtained')?.addEventListener('input', calcPct);
+    document.getElementById('me-out-of-marks')?.addEventListener('input', calcPct);
+
+    document.getElementById('btn-me-today')?.addEventListener('click', () => {
+      const pubInput = document.getElementById('me-publish-date');
+      if (pubInput) {
+        pubInput.value = today;
+        const chk = document.getElementById('me-is-published');
+        if (chk) chk.checked = true;
+      }
+    });
+
+    document.getElementById('btn-me-close')?.addEventListener('click', () => {
+      UIComponents.closeModal();
+    });
+
+    document.getElementById('btn-me-print')?.addEventListener('click', async () => {
+      const freshApp = await admissionService.getApplication(app.id) || app;
+      admissionService.printResultCard(freshApp);
+    });
+
+    document.getElementById('btn-me-save')?.addEventListener('click', async () => {
+      const saveBtn = document.getElementById('btn-me-save');
+      const marksObt = document.getElementById('me-marks-obtained')?.value;
+      const outOf = document.getElementById('me-out-of-marks')?.value;
+
+      if (marksObt === '' || isNaN(parseFloat(marksObt))) {
+        UIComponents.showToast('Please enter the total mark obtained.', 'warning');
+        return;
+      }
+      if (!outOf || isNaN(parseFloat(outOf)) || parseFloat(outOf) <= 0) {
+        UIComponents.showToast('Please enter a valid out of mark (maximum score).', 'warning');
+        return;
+      }
+
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = '<i data-lucide="loader" class="animate-spin"></i> Saving...';
+      UIComponents.refreshIcons();
+
+      const examName = (document.getElementById('me-exam-name')?.value || '').trim();
+      const examDate = document.getElementById('me-exam-date')?.value || today;
+      const publishDate = document.getElementById('me-publish-date')?.value || '';
+      const isPublished = document.getElementById('me-is-published')?.checked || false;
+      const decision = document.getElementById('me-decision')?.value || 'Under Evaluation';
+      const examinerRemarks = (document.getElementById('me-remarks')?.value || '').trim();
+
+      await admissionService.recordEntranceScore(app.id, {
+        examName,
+        examDate,
+        publishDate,
+        isPublished,
+        marksObtained: parseFloat(marksObt),
+        outOfMarks: parseFloat(outOf),
+        decision,
+        examinerRemarks,
+        evaluatedBy: 'Admission Committee'
+      });
+
+      await auditService.log('ADMISSION_EXAM_EVALUATED', 'ADMISSIONS', {
+        formNo: app.appId,
+        examName,
+        totalScore: parseFloat(marksObt),
+        maxScore: parseFloat(outOf),
+        isPublished,
+        publishDate
+      }, app.id);
+
+      UIComponents.showToast(`Marks saved successfully! ${isPublished ? (publishDate ? `Scheduled to publish on ${publishDate}.` : 'Marks published live!') : 'Saved as private draft.'}`, 'success');
+      UIComponents.closeModal();
+
+      const tabContent = document.getElementById('admin-tab-content');
+      if (tabContent) await AdminModule.refreshApplications(tabContent);
+    });
+
+    UIComponents.refreshIcons();
+  }
+
   static async openWeeklyExamsModal() {
     let apps = await admissionService.listApplications();
     const classes = TMS_CONFIG.academic.classes;
@@ -2027,11 +2148,11 @@ export class AdminModule {
             <td class="font-mono" style="text-align:center; font-size:0.8rem;">${exam.examDate ? esc(exam.examDate) : '—'}</td>
             <td style="text-align:center;">${pubDateDisplay}</td>
             <td style="text-align:center;">
-              ${hasScore ? `<strong style="font-family:monospace; font-size:1rem; color:#15803d;">${exam.totalScore}/100</strong> <span style="font-size:0.72rem; color:#64748b;">(${exam.percentage || 0}%)</span>` : '<span style="color:#94a3b8;">—</span>'}
+              ${hasScore ? `<strong style="font-family:monospace; font-size:1rem; color:#15803d;">${exam.totalScore}/${exam.maxScore || 100}</strong> <span style="font-size:0.72rem; color:#64748b;">(${exam.percentage || 0}%)</span>` : '<span style="color:#94a3b8;">—</span>'}
             </td>
             <td style="text-align:center;">${statusBadge}</td>
             <td style="text-align:right; white-space:nowrap;">
-              <button type="button" class="btn btn-secondary btn-sm btn-open-eval-modal" data-id="${esc(a.id)}" title="Edit Evaluation &amp; Publishing Date"><i data-lucide="edit-3"></i></button>
+              <button type="button" class="btn btn-primary btn-sm btn-open-eval-modal" data-id="${esc(a.id)}" title="Enter / Edit Marks in Dedicated Window" style="padding:4px 10px; font-size:0.75rem; font-weight:700; background:#2563eb; border-color:#2563eb;"><i data-lucide="clipboard-pen"></i> Enter / Edit</button>
               ${hasScore ? `<button type="button" class="btn btn-secondary btn-sm btn-print-exam-card" data-id="${esc(a.id)}" title="Print Assessment Result Card" style="color:#16a34a;"><i data-lucide="printer"></i></button>` : ''}
             </td>
           </tr>
@@ -2092,8 +2213,7 @@ export class AdminModule {
 
       document.querySelectorAll('.btn-open-eval-modal').forEach(b => {
         b.addEventListener('click', () => {
-          UIComponents.closeModal();
-          AdminModule.openApplicationModal(b.dataset.id);
+          AdminModule.openMarkEntryModal(b.dataset.id);
         });
       });
 
