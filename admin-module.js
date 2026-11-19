@@ -1927,7 +1927,7 @@ export class AdminModule {
           <!-- Decision & Dashboard Visibility -->
           <div style="display:grid; grid-template-columns: 1.2fr 1.8fr; gap:12px;">
             <div>
-              <label class="form-label" style="font-size:0.75rem; font-weight:700;">Admission Committee Decision</label>
+              <label class="form-label" style="font-size:0.75rem; font-weight:700;">Admission Result Status</label>
               <select class="form-select form-select-sm" id="me-decision" style="font-weight:700;">
                 <option value="Selected for Admission" ${exam.decision === 'Selected for Admission' ? 'selected' : ''}>Selected for Admission</option>
                 <option value="Shortlisted" ${exam.decision === 'Shortlisted' ? 'selected' : ''}>Shortlisted for Next Round</option>

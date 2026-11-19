@@ -1137,10 +1137,7 @@ class AdmissionService {
     const examDate = exam.examDate ? new Date(exam.examDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
     const publishDate = exam.publishDate ? new Date(exam.publishDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Official';
 
-    const written = exam.writtenScore != null ? exam.writtenScore : '—';
-    const interview = exam.interviewScore != null ? exam.interviewScore : '—';
-    const aptitude = exam.aptitudeScore != null ? exam.aptitudeScore : null;
-    const total = exam.totalScore != null ? exam.totalScore : '—';
+    const total = exam.totalScore != null ? exam.totalScore : (exam.marksObtained != null ? exam.marksObtained : '—');
     const max = exam.maxScore || 100;
     const pct = exam.percentage != null ? `${exam.percentage}%` : '—';
     const decision = exam.decision || 'Under Evaluation';
@@ -1157,7 +1154,11 @@ class AdmissionService {
       decisionColor = '#1d4ed8'; decisionBg = '#eff6ff'; decisionBorder = '#bfdbfe';
     }
 
-    const printWin = window.open('', '_blank', 'width=840,height=960');
+    const logoUrl = (typeof window !== 'undefined' && window.location) 
+      ? new URL('tms-logo.png', window.location.href).href 
+      : './tms-logo.png';
+
+    const printWin = window.open('', '_blank', 'width=880,height=980');
     if (!printWin) {
       alert('Popup blocked. Please allow popups to print the result card.');
       return;
@@ -1170,75 +1171,135 @@ class AdmissionService {
         <meta charset="utf-8">
         <title>Admission Assessment Result — ${formNo} — ${candidateName}</title>
         <style>
-          @page { size: A4 portrait; margin: 12mm; }
+          @page { size: A4 portrait; margin: 10mm; }
           * { box-sizing: border-box; }
-          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; margin: 0; padding: 20px; color: #0f172a; background: #f8fafc; }
-          .sheet { max-width: 780px; margin: 0 auto; background: #fff; border: 2px solid #0f172a; border-radius: 8px; padding: 28px; box-shadow: 0 4px 14px rgba(0,0,0,0.06); }
-          .header { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 14px; margin-bottom: 18px; }
-          .inst-name { font-size: 1.6rem; font-weight: 900; color: #0f172a; letter-spacing: 0.5px; text-transform: uppercase; margin: 0; }
-          .inst-sub { font-size: 0.82rem; color: #475569; margin-top: 4px; font-weight: 600; }
-          .doc-badge { display: inline-block; background: #0f172a; color: #fff; font-size: 0.85rem; font-weight: 800; letter-spacing: 1px; padding: 5px 16px; border-radius: 4px; margin-top: 10px; text-transform: uppercase; }
-          .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px 16px; margin-bottom: 18px; font-size: 0.84rem; }
-          .meta-item { display: flex; justify-content: space-between; padding: 3px 0; }
+          body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
+            margin: 0; padding: 20px; color: #0f172a; background: #f8fafc; 
+            -webkit-print-color-adjust: exact; print-color-adjust: exact;
+          }
+          .sheet { 
+            max-width: 800px; margin: 0 auto; background: #fff; 
+            border: 2.5px solid #0b4627; outline: 1.5px solid #16a34a; outline-offset: -6px;
+            border-radius: 8px; padding: 28px 32px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); 
+            position: relative;
+          }
+          .header { text-align: center; border-bottom: 2px solid #0b4627; padding-bottom: 14px; margin-bottom: 18px; }
+          .header-brand { display: flex; align-items: center; justify-content: center; gap: 18px; margin-bottom: 8px; }
+          .brand-logo { width: 78px; height: 78px; object-fit: contain; flex-shrink: 0; }
+          .brand-text { text-align: left; }
+          .inst-name { font-size: 1.65rem; font-weight: 900; color: #0b4627; letter-spacing: 0.5px; text-transform: uppercase; margin: 0; line-height: 1.15; }
+          .inst-tagline { font-size: 0.82rem; font-weight: 800; color: #16a34a; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
+          .inst-sub { font-size: 0.77rem; color: #475569; margin-top: 2px; font-weight: 600; line-height: 1.35; }
+          .doc-badge { 
+            display: inline-block; background: #0b4627; color: #fff; 
+            font-size: 0.82rem; font-weight: 800; letter-spacing: 1.2px; 
+            padding: 5px 20px; border-radius: 4px; margin-top: 10px; text-transform: uppercase; 
+          }
+          
+          .meta-grid { 
+            display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; 
+            background: #f8fafc; border: 1.5px solid #cbd5e1; border-radius: 6px; 
+            padding: 12px 18px; margin-bottom: 18px; font-size: 0.84rem; 
+          }
+          .meta-item { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px dashed #e2e8f0; }
           .meta-label { color: #64748b; font-weight: 700; }
-          .meta-val { font-weight: 700; color: #0f172a; }
-          .score-table { width: 100%; border-collapse: collapse; margin-bottom: 18px; font-size: 0.86rem; }
-          .score-table th, .score-table td { border: 1.5px solid #0f172a; padding: 8px 12px; text-align: center; }
-          .score-table th { background: #f1f5f9; font-weight: 800; text-transform: uppercase; font-size: 0.78rem; letter-spacing: 0.5px; }
-          .decision-box { background: ${decisionBg}; border: 2px solid ${decisionBorder}; color: ${decisionColor}; padding: 12px 16px; border-radius: 6px; text-align: center; font-size: 1.15rem; font-weight: 900; margin-bottom: 18px; text-transform: uppercase; letter-spacing: 0.5px; }
-          .remarks-box { background: #f8fafc; border-left: 4px solid #2563eb; padding: 10px 14px; font-size: 0.84rem; margin-bottom: 30px; border-radius: 0 6px 6px 0; }
-          .footer-signs { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 40px; padding-top: 10px; }
-          .sign-block { text-align: center; min-width: 170px; }
-          .sign-line { border-top: 1.5px solid #0f172a; margin-top: 40px; padding-top: 6px; font-weight: 800; font-size: 0.78rem; text-transform: uppercase; }
+          .meta-val { font-weight: 800; color: #0f172a; }
+          
+          .score-table { width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 0.88rem; }
+          .score-table th, .score-table td { border: 1.5px solid #0b4627; padding: 10px 12px; text-align: center; }
+          .score-table th { background: #f0fdf4; color: #0b4627; font-weight: 900; text-transform: uppercase; font-size: 0.78rem; letter-spacing: 0.5px; }
+          
+          .decision-box { 
+            background: ${decisionBg}; border: 2px solid ${decisionBorder}; color: ${decisionColor}; 
+            padding: 12px 16px; border-radius: 6px; text-align: center; 
+            font-size: 1.15rem; font-weight: 900; margin-bottom: 16px; 
+            letter-spacing: 0.5px; 
+          }
+          .decision-sub { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; opacity: 0.85; }
+          
+          .remarks-box { 
+            background: #f8fafc; border-left: 4px solid #16a34a; border: 1px solid #e2e8f0; 
+            border-left-width: 4px; padding: 10px 16px; font-size: 0.84rem; margin-bottom: 22px; 
+            border-radius: 0 6px 6px 0; line-height: 1.45;
+          }
+          
+          .footer-signs { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 32px; padding-top: 10px; }
+          .sign-block { text-align: center; min-width: 190px; }
+          .sign-sig { font-family: 'Brush Script MT', 'Segoe Script', cursive; font-size: 1.35rem; color: #1e40af; height: 32px; display: flex; align-items: flex-end; justify-content: center; }
+          .sign-name { font-weight: 900; font-size: 0.88rem; color: #0f172a; margin-top: 2px; }
+          .sign-line { border-top: 1.5px solid #0f172a; margin-top: 4px; padding-top: 4px; font-weight: 800; font-size: 0.76rem; text-transform: uppercase; color: #475569; letter-spacing: 0.5px; }
+          
+          .seal-badge { 
+            width: 76px; height: 76px; border: 2px dashed #0b4627; border-radius: 50%; 
+            margin: 0 auto; display: flex; align-items: center; justify-content: center; 
+            padding: 4px; background: rgba(16, 185, 129, 0.04);
+          }
+          .seal-inner { 
+            width: 100%; height: 100%; border: 1px solid #0b4627; border-radius: 50%; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            font-size: 0.52rem; font-weight: 800; color: #0b4627; text-align: center; line-height: 1.15;
+          }
+
+          .disclaimer { font-size: 0.72rem; color: #64748b; line-height: 1.4; border-top: 1px dashed #cbd5e1; padding-top: 8px; margin-top: 16px; }
+          
           .no-print { text-align: center; margin-bottom: 20px; }
-          .print-btn { background: #16a34a; color: #fff; border: none; padding: 10px 24px; font-size: 0.95rem; font-weight: 800; border-radius: 6px; cursor: pointer; }
+          .print-btn { background: #16a34a; color: #fff; border: none; padding: 11px 26px; font-size: 0.95rem; font-weight: 800; border-radius: 6px; cursor: pointer; box-shadow: 0 2px 8px rgba(22,163,74,0.3); }
+          .print-btn:hover { background: #15803d; }
+          
           @media print {
             body { background: transparent; padding: 0; }
-            .sheet { border: 2px solid #000; box-shadow: none; padding: 18px; }
+            .sheet { border: 2.5px solid #000; outline: 1px solid #000; box-shadow: none; padding: 18px 22px; }
             .no-print { display: none !important; }
           }
         </style>
       </head>
       <body>
         <div class="no-print">
-          <button class="print-btn" onclick="window.print()">Print Assessment Scorecard</button>
+          <button class="print-btn" onclick="window.print()">Print Official Scorecard</button>
         </div>
         <div class="sheet">
           <div class="header">
-            <h1 class="inst-name">THAIBA MODEL SCHOOL</h1>
-            <div class="inst-sub">Campus Registration: IV 01894/2011 • Recognized Center of Holistic Learning</div>
-            <div class="inst-sub">Baghait, Tapan, Dakshin Dinajpur, West Bengal — 733127 • Helpline: +91 8653382851</div>
+            <div class="header-brand">
+              <img src="${logoUrl}" alt="Thaiba Model School Logo" class="brand-logo" onerror="this.onerror=null; this.src='./tms-logo.png';">
+              <div class="brand-text">
+                <h1 class="inst-name">THAIBA MODEL SCHOOL</h1>
+                <div class="inst-tagline">Run by : Thaiba Heritage, Kolkata</div>
+                <div class="inst-sub">Campus Registration: IV 01894/2011 • Center of Academic &amp; Moral Excellence</div>
+                <div class="inst-sub">Baghait, Tapan, Dakshin Dinajpur, West Bengal — 733127 • Helpline: +91 8653382851 / +91 8167782851</div>
+              </div>
+            </div>
             <div class="doc-badge">Official Admission Assessment Scorecard</div>
           </div>
 
           <div class="meta-grid">
             <div class="meta-item"><span class="meta-label">Candidate Name:</span><span class="meta-val">${candidateName}</span></div>
-            <div class="meta-item"><span class="meta-label">Application Form No:</span><span class="meta-val" style="font-family:monospace; color:#2563eb;">${formNo}</span></div>
+            <div class="meta-item"><span class="meta-label">Application Form No:</span><span class="meta-val" style="font-family:monospace; color:#1e40af;">${formNo}</span></div>
             <div class="meta-item"><span class="meta-label">Applied for Class:</span><span class="meta-val">Grade / Class ${applyingClass}</span></div>
             <div class="meta-item"><span class="meta-label">Guardian / Parent:</span><span class="meta-val">${guardianName}</span></div>
             <div class="meta-item"><span class="meta-label">Date of Birth:</span><span class="meta-val">${dob}</span></div>
             <div class="meta-item"><span class="meta-label">Contact Mobile:</span><span class="meta-val font-mono">${phone}</span></div>
-            <div class="meta-item"><span class="meta-label">Examination Name:</span><span class="meta-val" style="color:#1e40af;">${examName}</span></div>
+            <div class="meta-item"><span class="meta-label">Assessment / Exam Name:</span><span class="meta-val" style="color:#0b4627;">${examName}</span></div>
             <div class="meta-item"><span class="meta-label">Exam Conducted Date:</span><span class="meta-val">${examDate}</span></div>
             <div class="meta-item"><span class="meta-label">Result Published Date:</span><span class="meta-val" style="color:#15803d;">${publishDate}</span></div>
-            <div class="meta-item"><span class="meta-label">Evaluation Status:</span><span class="meta-val">Official Verified</span></div>
+            <div class="meta-item"><span class="meta-label">Verification Status:</span><span class="meta-val" style="color:#15803d;">Verified &amp; Certified</span></div>
           </div>
 
           <table class="score-table">
             <thead>
               <tr>
-                <th>Assessment Component</th>
+                <th style="text-align:left;">Assessment Component</th>
                 <th>Maximum Marks (Out of)</th>
                 <th>Marks Obtained</th>
                 <th>Percentage</th>
-                <th>Performance Indicator</th>
+                <th>Performance Status</th>
               </tr>
             </thead>
             <tbody>
               <tr style="background:#f8fafc;">
-                <td style="text-align:left; font-weight:800; font-size:1rem; color:#1e40af;">
+                <td style="text-align:left; font-weight:800; font-size:0.96rem; color:#0b4627;">
                   ${examName}
-                  <div style="font-size:0.75rem; color:#64748b; font-weight:500;">Comprehensive Admission Assessment</div>
+                  <div style="font-size:0.75rem; color:#64748b; font-weight:500;">Comprehensive Admission Entrance Assessment</div>
                 </td>
                 <td style="font-weight:900; font-size:1.15rem; font-family:monospace;">${max}</td>
                 <td style="font-weight:900; font-size:1.35rem; font-family:monospace; color:#15803d;">${total}</td>
@@ -1249,32 +1310,39 @@ class AdmissionService {
           </table>
 
           <div class="decision-box">
-            Admission Committee Result: ${decision}
+            <div class="decision-sub">Official Evaluation Outcome</div>
+            Admission Result Status: <u>${decision}</u>
           </div>
 
           <div class="remarks-box">
-            <strong>Examiner Feedback &amp; Verification Remarks:</strong><br>
+            <strong style="color:#0b4627;">Examiner Feedback &amp; Verification Remarks:</strong><br>
             ${remarks}
-          </div>
-
-          <div style="font-size:0.72rem; color:#64748b; line-height:1.45; border-top:1px dashed #cbd5e1; padding-top:8px;">
-            * This document represents the official evaluation result released by Thaiba Model School. Admission is provisional subject to document verification, original Transfer Certificate (TC) submission, and formal administrative enrollment.
           </div>
 
           <div class="footer-signs">
             <div class="sign-block">
-              <div style="font-family:'Brush Script MT', cursive; font-size:1.1rem; color:#1e40af;">H. Rahaman</div>
-              <div class="sign-line">Admission Coordinator</div>
+              <div class="sign-sig">Bilal Ahmed</div>
+              <div class="sign-name">Bilal Ahmed</div>
+              <div class="sign-line">Academic Coordinator</div>
             </div>
             <div class="sign-block">
-              <div style="border: 2px dashed #94a3b8; border-radius: 50%; width: 64px; height: 64px; margin: 0 auto; display: flex; align-items: center; justify-content: center; font-size: 0.62rem; font-weight: 800; color: #64748b; text-align: center;">
-                CAMPUS<br>SEAL
+              <div class="seal-badge">
+                <div class="seal-inner">
+                  <span>THAIBA MODEL SCHOOL</span>
+                  <strong>OFFICIAL<br>CAMPUS SEAL</strong>
+                  <span>BAGHAIT • TAPAN</span>
+                </div>
               </div>
             </div>
             <div class="sign-block">
-              <div style="font-family:'Brush Script MT', cursive; font-size:1.1rem; color:#1e40af;">Abdul Basith</div>
-              <div class="sign-line">Principal / Authorized Signatory</div>
+              <div class="sign-sig">Ashik Sarkar</div>
+              <div class="sign-name">Ashik Sarkar</div>
+              <div class="sign-line">Principal / Head of Institution</div>
             </div>
+          </div>
+
+          <div class="disclaimer">
+            * This document represents the official evaluation result released by the Academic Admissions Board of Thaiba Model School. Admission is provisional subject to physical document verification, original Transfer Certificate (TC) submission, and formal administrative fee clearance.
           </div>
         </div>
 
