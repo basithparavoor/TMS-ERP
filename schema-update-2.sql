@@ -24,6 +24,7 @@ ALTER TABLE admissions_applications ADD COLUMN IF NOT EXISTS parent_user_id UUID
 ALTER TABLE admissions_applications ADD COLUMN IF NOT EXISTS parent_username TEXT;
 ALTER TABLE admissions_applications ADD COLUMN IF NOT EXISTS parent_email TEXT;
 ALTER TABLE admissions_applications ADD COLUMN IF NOT EXISTS payments JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE admissions_applications ADD COLUMN IF NOT EXISTS entrance_exam JSONB DEFAULT '{}'::jsonb;
 
 -- Parents may read their own application (status tracking).
 DROP POLICY IF EXISTS "admissions_select_staff" ON admissions_applications;

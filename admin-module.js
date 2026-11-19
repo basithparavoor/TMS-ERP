@@ -605,6 +605,7 @@ export class AdminModule {
             <p class="card-desc">Select rows for bulk approve / reject / delete, or open an application to review, print the form and record payments.</p>
           </div>
           <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <button class="btn btn-secondary btn-sm" id="btn-weekly-exams" style="font-weight:700; color:#1e40af; border-color:#bfdbfe; background:#eff6ff;"><i data-lucide="clipboard-check"></i> Weekly Exams &amp; Results</button>
             <button class="btn btn-secondary btn-sm" id="btn-view-merit-list"><i data-lucide="award"></i> Merit List</button>
             <button class="btn btn-secondary btn-sm" id="btn-export-csv"><i data-lucide="file-spreadsheet"></i> Export CSV</button>
             <button class="btn btn-secondary btn-sm" id="btn-export-pdf"><i data-lucide="file-text"></i> Export PDF</button>
@@ -651,6 +652,7 @@ export class AdminModule {
                 <th>Fees</th>
                 <th>Payment</th>
                 <th>Status</th>
+                <th>Weekly Exam</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -664,6 +666,7 @@ export class AdminModule {
 
     safeOn('app-search', 'input', () => this.renderApplicationRows(tabContent));
     safeOn('app-status-filter', 'change', () => this.renderApplicationRows(tabContent));
+    safeOn('btn-weekly-exams', 'click', () => this.openWeeklyExamsModal());
     safeOn('btn-view-merit-list', 'click', () => this.openMeritListModal());
     safeOn('btn-export-csv', 'click', () => this.exportApplicationsCsv());
     safeOn('btn-export-pdf', 'click', () => this.exportApplicationsPdf());
@@ -697,7 +700,7 @@ export class AdminModule {
     if (!this._selected) this._selected = new Set();
 
     if (!rows.length) {
-      body.innerHTML = '<tr><td colspan="12" style="text-align: center; color: var(--text-muted); padding: 30px;">No applications match the current filters.</td></tr>';
+      body.innerHTML = '<tr><td colspan="13" style="text-align: center; color: var(--text-muted); padding: 30px;">No applications match the current filters.</td></tr>';
       this.updateBulkBar();
       return;
     }
@@ -721,6 +724,21 @@ export class AdminModule {
              onerror="this.onerror=null; this.src='data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2230%22%20height%3D%2236%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M19%2021v-2a4%204%200%200%200-4-4H9a4%204%200%200%200-4%204v2%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%227%22%20r%3D%224%22%2F%3E%3C%2Fsvg%3E';"
              title="Click to view the photographed applicant">`
         : '<span style="color:var(--text-subtle);">—</span>';
+
+      const exam = a.entranceExam || (pld && pld.entranceExam) || {};
+      const isLive = admissionService.isExamPublished(exam);
+      const isSched = exam.isPublished && !isLive;
+      const hasScore = exam.totalScore != null || exam.writtenScore != null;
+
+      let examCell = '<span class="badge" style="background:#f1f5f9; color:#94a3b8; font-size:0.72rem;">No Exam</span>';
+      if (isLive) {
+        examCell = `<span class="badge badge-success font-mono" style="font-size:0.72rem; font-weight:800;" title="Live on Portal: ${exam.totalScore}/100 (Pub: ${exam.publishDate || 'today'})"><i data-lucide="check-circle" style="width:11px;height:11px;vertical-align:middle;"></i> ${exam.totalScore}/100</span>`;
+      } else if (isSched) {
+        examCell = `<span class="badge badge-warning font-mono" style="font-size:0.72rem; font-weight:800;" title="Scheduled: ${exam.publishDate}"><i data-lucide="calendar" style="width:11px;height:11px;vertical-align:middle;"></i> ${exam.totalScore}/100 (${(exam.publishDate || '').slice(5)})</span>`;
+      } else if (hasScore) {
+        examCell = `<span class="badge font-mono" style="background:#e2e8f0; color:#334155; font-size:0.72rem; font-weight:700;" title="Draft / Private">${exam.totalScore}/100 (Draft)</span>`;
+      }
+
       return `
       <tr>
         <td><input type="checkbox" class="app-row-check" data-id="${esc(a.id)}" ${this._selected.has(a.id) ? 'checked' : ''}></td>
@@ -734,9 +752,11 @@ export class AdminModule {
         <td>${fmtMoney(a.feeTotal)}</td>
         <td>${payBadge(a.paymentStatus)}</td>
         <td>${statusBadge(a.status)}</td>
+        <td>${examCell}</td>
         <td style="white-space:nowrap;">
           <button class="btn btn-secondary btn-sm btn-view-app" data-id="${esc(a.id)}" title="Open Review"><i data-lucide="eye"></i></button>
           <button class="btn btn-secondary btn-sm btn-edit-app" data-id="${esc(a.id)}" title="Edit Application Data" style="color:#0284c7;"><i data-lucide="edit-3"></i></button>
+          ${hasScore ? `<button class="btn btn-secondary btn-sm btn-print-row-result" data-id="${esc(a.id)}" title="Print Assessment Result Card" style="color:#16a34a;"><i data-lucide="award"></i></button>` : ''}
           <button class="btn btn-secondary btn-sm btn-form-app" data-id="${esc(a.id)}" title="View as Form"><i data-lucide="file-text"></i></button>
           <button class="btn btn-secondary btn-sm btn-print-app" data-id="${esc(a.id)}" title="Print PDF"><i data-lucide="printer"></i></button>
           <button class="btn btn-secondary btn-sm btn-del-single-app" data-id="${esc(a.id)}" title="Delete Application" style="color:var(--danger, #ef4444);"><i data-lucide="trash-2"></i></button>
@@ -754,6 +774,11 @@ export class AdminModule {
       b.addEventListener('click', () => this.openApplicationModal(b.dataset.id)));
     body.querySelectorAll('.btn-edit-app').forEach((b) =>
       b.addEventListener('click', () => this.openEditApplicationModal(b.dataset.id)));
+    body.querySelectorAll('.btn-print-row-result').forEach((b) =>
+      b.addEventListener('click', () => {
+        const app = rows.find(x => x.id === b.dataset.id);
+        if (app) admissionService.printResultCard(app);
+      }));
     body.querySelectorAll('.btn-form-app').forEach((b) =>
       b.addEventListener('click', () => this.showApplicationForm(b.dataset.id)));
     body.querySelectorAll('.btn-print-app').forEach((b) =>
@@ -1108,32 +1133,114 @@ export class AdminModule {
             </div>
           </div>
 
-          <!-- Entrance Exam & Interview Marks Card -->
-          <div class="card" style="padding:16px 18px; border:1.5px solid #bfdbfe; border-radius:10px; background:rgba(37,99,235,0.02); margin:0;">
-            <div style="font-weight:800; font-size:0.92rem; color:#2563eb; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
-              <i data-lucide="award" style="width:16px; height:16px;"></i> Entrance Examination &amp; Evaluation
+          <!-- Entrance Exam & Weekly Assessment Card -->
+          <div class="card" style="padding:16px 18px; border:1.5px solid #bfdbfe; border-radius:10px; background:linear-gradient(135deg, rgba(37,99,235,0.03) 0%, rgba(22,163,74,0.03) 100%); margin:0;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+              <div style="font-weight:800; font-size:0.95rem; color:#1e40af; display:flex; align-items:center; gap:8px;">
+                <i data-lucide="award" style="width:18px; height:18px; color:#2563eb;"></i> Weekly Entrance Exam &amp; Results Evaluation
+              </div>
+              <div style="display:flex; align-items:center; gap:6px;">
+                ${exam.isPublished
+                  ? (admissionService.isExamPublished(exam)
+                    ? `<span class="badge badge-success" style="font-weight:700;"><i data-lucide="check-circle" style="width:12px;height:12px;"></i> Live &amp; Published</span>`
+                    : `<span class="badge badge-warning" style="font-weight:700;"><i data-lucide="calendar" style="width:12px;height:12px;"></i> Scheduled for ${esc(exam.publishDate)}</span>`)
+                  : `<span class="badge" style="background:#e2e8f0; color:#475569; font-weight:700;"><i data-lucide="eye-off" style="width:12px;height:12px;"></i> Draft / Private</span>`
+                }
+              </div>
             </div>
 
-            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:10px;">
+            <!-- Exam Name & Dates Row -->
+            <div style="display:grid; grid-template-columns: 2fr 1.2fr 1.4fr; gap:10px; margin-bottom:12px;">
+              <div>
+                <label style="font-size:0.72rem; color:#1e293b; font-weight:700; display:block; margin-bottom:3px;">Exam Name *</label>
+                <input class="form-input form-input-sm" id="exam-name" list="exam-name-presets" value="${esc(exam.examName || 'Weekly Admission Assessment - Week 1')}" placeholder="e.g. Weekly Admission Assessment - Week 1" style="font-weight:600; width:100%;">
+                <datalist id="exam-name-presets">
+                  <option value="Weekly Admission Assessment - Week 1">
+                  <option value="Weekly Admission Assessment - Week 2">
+                  <option value="Weekly Admission Assessment - Week 3">
+                  <option value="Weekly Admission Assessment - Week 4">
+                  <option value="Entrance Evaluation Test - Batch A">
+                  <option value="Entrance Evaluation Test - Batch B">
+                  <option value="Kindergarten &amp; Primary Screening Test">
+                  <option value="General Aptitude &amp; Readiness Evaluation">
+                </datalist>
+              </div>
+
+              <div>
+                <label style="font-size:0.72rem; color:#1e293b; font-weight:700; display:block; margin-bottom:3px;">Exam Date</label>
+                <input type="date" class="form-input form-input-sm font-mono" id="exam-date" value="${esc(exam.examDate || new Date().toISOString().slice(0, 10))}" style="width:100%;">
+              </div>
+
+              <div>
+                <label style="font-size:0.72rem; color:#1e293b; font-weight:700; display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
+                  <span>Publishing Date *</span>
+                  <span style="font-size:0.68rem; color:#2563eb; cursor:pointer; font-weight:800;" id="btn-quick-today" title="Set to Today">Set Today</span>
+                </label>
+                <input type="date" class="form-input form-input-sm font-mono" id="exam-publish-date" value="${esc(exam.publishDate || '')}" style="width:100%; border-color:#93c5fd;">
+              </div>
+            </div>
+
+            <!-- Marks and Components Grid -->
+            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr 1.2fr; gap:10px; margin-bottom:12px;">
               <div style="background:#ffffff; padding:8px 10px; border-radius:8px; border:1px solid var(--border-color);">
-                <label style="font-size:0.7rem; color:var(--text-muted); font-weight:700; display:block; margin-bottom:2px;">Written (50)</label>
-                <input type="number" class="form-input form-input-sm font-mono" id="exam-written" value="${esc(exam.writtenScore ?? '')}" placeholder="0" min="0" max="50" style="font-weight:700; width:100%;">
+                <label style="font-size:0.7rem; color:var(--text-muted); font-weight:700; display:block; margin-bottom:2px;">Written Test (50)</label>
+                <input type="number" class="form-input form-input-sm font-mono" id="exam-written" value="${esc(exam.writtenScore ?? '')}" placeholder="0" min="0" max="100" style="font-weight:700; width:100%;">
               </div>
               <div style="background:#ffffff; padding:8px 10px; border-radius:8px; border:1px solid var(--border-color);">
-                <label style="font-size:0.7rem; color:var(--text-muted); font-weight:700; display:block; margin-bottom:2px;">Interview (50)</label>
-                <input type="number" class="form-input form-input-sm font-mono" id="exam-interview" value="${esc(exam.interviewScore ?? '')}" placeholder="0" min="0" max="50" style="font-weight:700; width:100%;">
+                <label style="font-size:0.7rem; color:var(--text-muted); font-weight:700; display:block; margin-bottom:2px;">Interview / Viva (50)</label>
+                <input type="number" class="form-input form-input-sm font-mono" id="exam-interview" value="${esc(exam.interviewScore ?? '')}" placeholder="0" min="0" max="100" style="font-weight:700; width:100%;">
+              </div>
+              <div style="background:#ffffff; padding:8px 10px; border-radius:8px; border:1px solid var(--border-color);">
+                <label style="font-size:0.7rem; color:var(--text-muted); font-weight:700; display:block; margin-bottom:2px;">Aptitude / Skill (Opt)</label>
+                <input type="number" class="form-input form-input-sm font-mono" id="exam-aptitude" value="${esc(exam.aptitudeScore ?? '')}" placeholder="0" min="0" max="50" style="font-weight:700; width:100%;">
               </div>
               <div style="background:#eff6ff; padding:8px 10px; border-radius:8px; border:1.5px solid #bfdbfe; text-align:center;">
-                <label style="font-size:0.7rem; color:#1d4ed8; font-weight:800; display:block; margin-bottom:2px;">Total (100)</label>
-                <input type="text" class="form-input form-input-sm font-mono" id="exam-total" value="${exam.totalScore != null ? exam.totalScore : ''}" readonly style="background:transparent; border:none; font-weight:800; font-size:1.15rem; color:#1d4ed8; text-align:center; padding:0; width:100%;">
+                <label style="font-size:0.7rem; color:#1d4ed8; font-weight:800; display:block; margin-bottom:2px;">Total Marks &amp; %</label>
+                <div style="display:flex; align-items:center; justify-content:center; gap:4px;">
+                  <input type="text" class="form-input form-input-sm font-mono" id="exam-total" value="${exam.totalScore != null ? exam.totalScore : ''}" readonly style="background:transparent; border:none; font-weight:800; font-size:1.15rem; color:#1d4ed8; text-align:center; padding:0; width:55px;">
+                  <span style="font-size:0.75rem; color:#64748b;">/ 100</span>
+                  <span id="exam-pct-badge" style="font-size:0.72rem; font-weight:800; color:#16a34a; background:#dcfce7; padding:2px 6px; border-radius:4px; margin-left:4px;">${exam.percentage ? `${exam.percentage}%` : '—'}</span>
+                </div>
               </div>
             </div>
 
-            <div style="display:flex; gap:8px; align-items:center;">
-              <input class="form-input form-input-sm" id="exam-remarks" value="${esc(exam.examinerRemarks || '')}" placeholder="Examiner remarks (e.g. Recommended, Strong in Math)" style="flex:1;">
-              <button type="button" class="btn btn-secondary btn-sm" id="btn-save-entrance-score" style="white-space:nowrap; padding:5px 12px;">
-                <i data-lucide="save"></i> Save Scores
+            <!-- Decision & Publishing Status Row -->
+            <div style="display:grid; grid-template-columns: 1.3fr 1.7fr; gap:10px; margin-bottom:12px;">
+              <div>
+                <label style="font-size:0.72rem; color:#1e293b; font-weight:700; display:block; margin-bottom:3px;">Admission Evaluation Decision</label>
+                <select class="form-select form-select-sm" id="exam-decision" style="font-weight:700; width:100%;">
+                  <option value="Selected for Admission" ${exam.decision === 'Selected for Admission' ? 'selected' : ''}>Selected for Admission</option>
+                  <option value="Shortlisted" ${exam.decision === 'Shortlisted' ? 'selected' : ''}>Shortlisted for Next Round</option>
+                  <option value="Waiting List" ${exam.decision === 'Waiting List' ? 'selected' : ''}>Waiting List</option>
+                  <option value="Under Evaluation" ${(!exam.decision || exam.decision === 'Under Evaluation') ? 'selected' : ''}>Under Evaluation</option>
+                  <option value="Needs Improvement" ${exam.decision === 'Needs Improvement' ? 'selected' : ''}>Needs Improvement</option>
+                </select>
+              </div>
+
+              <div>
+                <label style="font-size:0.72rem; color:#1e293b; font-weight:700; display:block; margin-bottom:3px;">Portal Visibility Control</label>
+                <div style="display:flex; align-items:center; gap:10px; background:#fff; padding:6px 12px; border:1px solid var(--border-color); border-radius:8px; height:34px;">
+                  <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer; font-size:0.78rem; font-weight:700; color:#1e293b; margin:0;">
+                    <input type="checkbox" id="exam-is-published" ${exam.isPublished ? 'checked' : ''} style="width:16px; height:16px;">
+                    Publish to Parent &amp; Student Dashboard
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <!-- Examiner Remarks & Action Buttons -->
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <input class="form-input form-input-sm" id="exam-remarks" value="${esc(exam.examinerRemarks || '')}" placeholder="Official remarks / feedback (e.g. Recommended, Strong in Science, Needs Spoken English)..." style="flex:1; min-width:240px;">
+              <button type="button" class="btn btn-primary btn-sm" id="btn-save-entrance-score" style="white-space:nowrap; padding:6px 14px; font-weight:700; background:#2563eb; border-color:#2563eb;">
+                <i data-lucide="save"></i> Save Exam &amp; Publish Settings
               </button>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-print-result-card" style="white-space:nowrap; padding:6px 12px; font-weight:700; color:#16a34a; border-color:#86efac;">
+                <i data-lucide="printer"></i> Print Result Card
+              </button>
+            </div>
+            <div style="font-size:0.71rem; color:#64748b; margin-top:6px;">
+              <i data-lucide="info" style="width:12px; height:12px; vertical-align:middle;"></i>
+              When published, marks are displayed on the parent &amp; student portal starting on the specified publishing date. Until enrolled, applicant sees their admission progress, marks (if published) and announcements.
             </div>
           </div>
 
@@ -1224,28 +1331,93 @@ export class AdminModule {
       });
     }
 
-    // Save entrance exam scores
+    // Save entrance exam scores & publishing settings
     const saveScoreBtn = document.getElementById('btn-save-entrance-score');
     if (saveScoreBtn) {
       saveScoreBtn.addEventListener('click', async () => {
-        const writtenScore = parseFloat(document.getElementById('exam-written').value) || 0;
-        const interviewScore = parseFloat(document.getElementById('exam-interview').value) || 0;
-        const examinerRemarks = document.getElementById('exam-remarks').value.trim();
-        await admissionService.recordEntranceScore(app.id, { writtenScore, interviewScore, examinerRemarks });
-        document.getElementById('exam-total').value = writtenScore + interviewScore;
-        UIComponents.showToast('Entrance exam marks recorded successfully!', 'success');
+        const examName = (document.getElementById('exam-name')?.value || '').trim();
+        const examDate = document.getElementById('exam-date')?.value || '';
+        const publishDate = document.getElementById('exam-publish-date')?.value || '';
+        const isPublished = document.getElementById('exam-is-published')?.checked || false;
+        const writtenScore = parseFloat(document.getElementById('exam-written')?.value) || 0;
+        const interviewScore = parseFloat(document.getElementById('exam-interview')?.value) || 0;
+        const aptitudeScore = document.getElementById('exam-aptitude')?.value !== '' ? (parseFloat(document.getElementById('exam-aptitude')?.value) || 0) : null;
+        const decision = document.getElementById('exam-decision')?.value || 'Under Evaluation';
+        const examinerRemarks = (document.getElementById('exam-remarks')?.value || '').trim();
+
+        saveScoreBtn.disabled = true;
+        saveScoreBtn.innerHTML = '<i data-lucide="loader" class="animate-spin"></i> Saving...';
+
+        await admissionService.recordEntranceScore(app.id, {
+          examName,
+          examDate,
+          publishDate,
+          isPublished,
+          writtenScore,
+          interviewScore,
+          aptitudeScore,
+          decision,
+          examinerRemarks,
+          evaluatedBy: 'Admission Committee'
+        });
+
+        const total = (aptitudeScore != null ? (writtenScore + interviewScore + aptitudeScore) : (writtenScore + interviewScore));
+        const pct = Math.round((total / 100) * 100);
+        const totEl = document.getElementById('exam-total');
+        if (totEl) totEl.value = total;
+        const pctEl = document.getElementById('exam-pct-badge');
+        if (pctEl) pctEl.textContent = `${pct}%`;
+
+        await auditService.log('ADMISSION_EXAM_EVALUATED', 'ADMISSIONS', {
+          formNo: app.appId,
+          examName,
+          totalScore: total,
+          isPublished,
+          publishDate
+        }, app.id);
+
+        UIComponents.showToast(`Entrance exam saved! ${isPublished ? (publishDate ? `Scheduled to publish on ${publishDate}.` : 'Marks published live!') : 'Saved as private draft.'}`, 'success');
+        saveScoreBtn.disabled = false;
+        saveScoreBtn.innerHTML = '<i data-lucide="save"></i> Save Exam &amp; Publish Settings';
+        UIComponents.refreshIcons();
+
+        // Refresh background table
+        const tabContent = document.getElementById('admin-tab-content');
+        if (tabContent) this.refreshApplications(tabContent);
       });
     }
+
+    // Set today quick button
+    document.getElementById('btn-quick-today')?.addEventListener('click', () => {
+      const pubInput = document.getElementById('exam-publish-date');
+      if (pubInput) {
+        pubInput.value = new Date().toISOString().slice(0, 10);
+        const chk = document.getElementById('exam-is-published');
+        if (chk) chk.checked = true;
+        UIComponents.showToast('Publishing date set to Today (live publish enabled).', 'info');
+      }
+    });
+
+    // Print Result Card listener
+    document.getElementById('btn-print-result-card')?.addEventListener('click', async () => {
+      const freshApp = await admissionService.getApplication(app.id) || app;
+      admissionService.printResultCard(freshApp);
+    });
 
     // Auto-sum exam marks
     const calcExamTotal = () => {
       const w = parseFloat(document.getElementById('exam-written')?.value) || 0;
       const i = parseFloat(document.getElementById('exam-interview')?.value) || 0;
+      const a = parseFloat(document.getElementById('exam-aptitude')?.value) || 0;
       const tot = document.getElementById('exam-total');
-      if (tot) tot.value = w + i;
+      const sum = w + i + a;
+      if (tot) tot.value = sum;
+      const pctEl = document.getElementById('exam-pct-badge');
+      if (pctEl) pctEl.textContent = `${Math.round((sum / 100) * 100)}%`;
     };
     document.getElementById('exam-written')?.addEventListener('input', calcExamTotal);
     document.getElementById('exam-interview')?.addEventListener('input', calcExamTotal);
+    document.getElementById('exam-aptitude')?.addEventListener('input', calcExamTotal);
 
     // Document stamp listeners
     document.querySelectorAll('.btn-verify-doc').forEach((btn) => {
@@ -1769,6 +1941,405 @@ export class AdminModule {
         });
       });
     }
+
+    UIComponents.refreshIcons();
+  }
+
+  static async openWeeklyExamsModal() {
+    let apps = await admissionService.listApplications();
+    const classes = TMS_CONFIG.academic.classes;
+
+    let selectedAppIds = new Set();
+    let currentClassFilter = 'all';
+    let currentExamFilter = 'all';
+    let currentStatusFilter = 'all';
+    let currentSearch = '';
+
+    const getExamNames = (items) => {
+      const names = Array.from(new Set(
+        items.map(a => (a.entranceExam && a.entranceExam.examName) || '').filter(Boolean)
+      ));
+      ['Weekly Admission Assessment - Week 1', 'Weekly Admission Assessment - Week 2', 'Weekly Admission Assessment - Week 3', 'Weekly Admission Assessment - Week 4'].forEach(n => {
+        if (!names.includes(n)) names.push(n);
+      });
+      return names;
+    };
+
+    const filterItems = () => {
+      return apps.filter(a => {
+        const pld = a.payload || {};
+        const exam = a.entranceExam || (pld && pld.entranceExam) || {};
+        const isLive = admissionService.isExamPublished(exam);
+        const isSched = exam.isPublished && !isLive;
+        const hasScore = exam.totalScore != null || exam.writtenScore != null;
+
+        if (currentClassFilter !== 'all' && a.grade !== currentClassFilter) return false;
+        if (currentExamFilter !== 'all' && (exam.examName || 'Weekly Admission Assessment') !== currentExamFilter) return false;
+
+        if (currentStatusFilter === 'published' && !isLive) return false;
+        if (currentStatusFilter === 'scheduled' && !isSched) return false;
+        if (currentStatusFilter === 'draft' && (!hasScore || isLive || isSched)) return false;
+        if (currentStatusFilter === 'not_evaluated' && hasScore) return false;
+
+        if (currentSearch) {
+          const hay = `${a.studentName || ''} ${a.appId || ''} ${a.phone || ''} ${exam.examName || ''}`.toLowerCase();
+          if (!hay.includes(currentSearch)) return false;
+        }
+
+        return true;
+      });
+    };
+
+    const renderRows = (items) => {
+      if (!items.length) {
+        return '<tr><td colspan="10" style="text-align:center; padding:36px; color:var(--text-muted);">No candidates match the selected filters.</td></tr>';
+      }
+
+      return items.map((a) => {
+        const exam = a.entranceExam || (a.payload && a.payload.entranceExam) || {};
+        const isLive = admissionService.isExamPublished(exam);
+        const isSched = exam.isPublished && !isLive;
+        const hasScore = exam.totalScore != null || exam.writtenScore != null;
+
+        let statusBadge = '<span class="badge" style="background:#f1f5f9; color:#64748b; font-size:0.75rem;">Not Evaluated</span>';
+        if (isLive) {
+          statusBadge = `<span class="badge badge-success" style="font-weight:800; font-size:0.75rem;"><i data-lucide="check-circle" style="width:12px;height:12px;vertical-align:middle;"></i> Live &amp; Published</span>`;
+        } else if (isSched) {
+          statusBadge = `<span class="badge badge-warning" style="font-weight:800; font-size:0.75rem;"><i data-lucide="calendar" style="width:12px;height:12px;vertical-align:middle;"></i> Sched: ${esc(exam.publishDate)}</span>`;
+        } else if (hasScore) {
+          statusBadge = `<span class="badge" style="background:#e2e8f0; color:#334155; font-weight:700; font-size:0.75rem;">Draft (Private)</span>`;
+        }
+
+        const pubDateDisplay = exam.publishDate
+          ? `<span class="font-mono" style="font-weight:700; color:#2563eb;">${esc(exam.publishDate)}</span>`
+          : '<span style="color:#94a3b8;">—</span>';
+
+        return `
+          <tr data-id="${esc(a.id)}">
+            <td style="width:36px; text-align:center;"><input type="checkbox" class="exam-row-check" data-id="${esc(a.id)}" ${selectedAppIds.has(a.id) ? 'checked' : ''}></td>
+            <td><strong class="font-mono">${esc(a.appId || a.id)}</strong></td>
+            <td>
+              <div style="font-weight:700; color:var(--text-primary);">${esc(a.studentName || '—')}</div>
+              <div style="font-size:0.72rem; color:var(--text-muted);">${esc(a.phone || '')}</div>
+            </td>
+            <td><span class="badge badge-info">${esc(a.grade || '—')}</span></td>
+            <td><span style="font-weight:700; color:#1e40af; font-size:0.8rem;">${esc(exam.examName || '—')}</span></td>
+            <td class="font-mono" style="text-align:center; font-size:0.8rem;">${exam.examDate ? esc(exam.examDate) : '—'}</td>
+            <td style="text-align:center;">${pubDateDisplay}</td>
+            <td style="text-align:center;">
+              ${hasScore ? `<strong style="font-family:monospace; font-size:1rem; color:#15803d;">${exam.totalScore}/100</strong> <span style="font-size:0.72rem; color:#64748b;">(${exam.percentage || 0}%)</span>` : '<span style="color:#94a3b8;">—</span>'}
+            </td>
+            <td style="text-align:center;">${statusBadge}</td>
+            <td style="text-align:right; white-space:nowrap;">
+              <button type="button" class="btn btn-secondary btn-sm btn-open-eval-modal" data-id="${esc(a.id)}" title="Edit Evaluation &amp; Publishing Date"><i data-lucide="edit-3"></i></button>
+              ${hasScore ? `<button type="button" class="btn btn-secondary btn-sm btn-print-exam-card" data-id="${esc(a.id)}" title="Print Assessment Result Card" style="color:#16a34a;"><i data-lucide="printer"></i></button>` : ''}
+            </td>
+          </tr>
+        `;
+      }).join('');
+    };
+
+    const updateView = () => {
+      const items = filterItems();
+      const evaluated = items.filter(a => (a.entranceExam && a.entranceExam.totalScore != null) || (a.payload && a.payload.entranceExam && a.payload.entranceExam.totalScore != null));
+      const live = evaluated.filter(a => admissionService.isExamPublished(a.entranceExam || (a.payload && a.payload.entranceExam)));
+      const scheduled = evaluated.filter(a => {
+        const ex = a.entranceExam || (a.payload && a.payload.entranceExam);
+        return ex && ex.isPublished && !admissionService.isExamPublished(ex);
+      });
+      const avgScore = evaluated.length
+        ? Math.round(evaluated.reduce((s, a) => s + ((a.entranceExam || a.payload.entranceExam).totalScore || 0), 0) / evaluated.length)
+        : 0;
+
+      const statTotal = document.getElementById('stat-exam-total');
+      const statEval = document.getElementById('stat-exam-eval');
+      const statLive = document.getElementById('stat-exam-live');
+      const statSched = document.getElementById('stat-exam-sched');
+      const statAvg = document.getElementById('stat-exam-avg');
+
+      if (statTotal) statTotal.textContent = items.length;
+      if (statEval) statEval.textContent = evaluated.length;
+      if (statLive) statLive.textContent = live.length;
+      if (statSched) statSched.textContent = scheduled.length;
+      if (statAvg) statAvg.textContent = `${avgScore}/100`;
+
+      const tbody = document.getElementById('weekly-exam-table-body');
+      if (tbody) tbody.innerHTML = renderRows(items);
+
+      const batchBar = document.getElementById('weekly-batch-action-bar');
+      const selCount = document.getElementById('weekly-selected-count');
+      if (batchBar && selCount) {
+        if (selectedAppIds.size > 0) {
+          batchBar.style.display = 'flex';
+          selCount.textContent = `${selectedAppIds.size} candidate(s) selected`;
+        } else {
+          batchBar.style.display = 'none';
+        }
+      }
+
+      UIComponents.refreshIcons();
+      wireRowEvents();
+    };
+
+    const wireRowEvents = () => {
+      document.querySelectorAll('.exam-row-check').forEach(cb => {
+        cb.addEventListener('change', () => {
+          if (cb.checked) selectedAppIds.add(cb.dataset.id);
+          else selectedAppIds.delete(cb.dataset.id);
+          updateView();
+        });
+      });
+
+      document.querySelectorAll('.btn-open-eval-modal').forEach(b => {
+        b.addEventListener('click', () => {
+          UIComponents.closeModal();
+          AdminModule.openApplicationModal(b.dataset.id);
+        });
+      });
+
+      document.querySelectorAll('.btn-print-exam-card').forEach(b => {
+        b.addEventListener('click', async () => {
+          const app = apps.find(x => x.id === b.dataset.id);
+          if (app) admissionService.printResultCard(app);
+        });
+      });
+    };
+
+    const allExamNames = getExamNames(apps);
+
+    const bodyHtml = `
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        <!-- KPI Metrics Ribbon -->
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:10px;">
+          <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:8px; padding:10px 14px;">
+            <div style="font-size:0.7rem; color:#64748b; font-weight:700; text-transform:uppercase;">Candidates</div>
+            <div id="stat-exam-total" style="font-size:1.3rem; font-weight:800; color:#0f172a;">${apps.length}</div>
+          </div>
+          <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; padding:10px 14px;">
+            <div style="font-size:0.7rem; color:#1d4ed8; font-weight:700; text-transform:uppercase;">Evaluated</div>
+            <div id="stat-exam-eval" style="font-size:1.3rem; font-weight:800; color:#1d4ed8;">0</div>
+          </div>
+          <div style="background:#f0fdf4; border:1.5px solid #86efac; border-radius:8px; padding:10px 14px;">
+            <div style="font-size:0.7rem; color:#15803d; font-weight:800; text-transform:uppercase;">Published Live</div>
+            <div id="stat-exam-live" style="font-size:1.3rem; font-weight:900; color:#16a34a;">0</div>
+          </div>
+          <div style="background:#fffbeb; border:1.5px solid #fde68a; border-radius:8px; padding:10px 14px;">
+            <div style="font-size:0.7rem; color:#92400e; font-weight:800; text-transform:uppercase;">Scheduled</div>
+            <div id="stat-exam-sched" style="font-size:1.3rem; font-weight:900; color:#d97706;">0</div>
+          </div>
+          <div style="background:#f1f5f9; border:1px solid #cbd5e1; border-radius:8px; padding:10px 14px;">
+            <div style="font-size:0.7rem; color:#475569; font-weight:700; text-transform:uppercase;">Average Score</div>
+            <div id="stat-exam-avg" style="font-size:1.3rem; font-weight:800; color:#0f172a;">0/100</div>
+          </div>
+        </div>
+
+        <!-- Filter Controls -->
+        <div style="background:#f8fafc; border:1px solid var(--border-color); border-radius:10px; padding:12px 14px; display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between;">
+          <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center; flex:1;">
+            <input type="text" id="filter-exam-search" class="form-input form-input-sm" placeholder="Search applicant, form no..." style="min-width:180px; max-width:240px;">
+            
+            <select id="filter-exam-name" class="form-select form-select-sm" style="min-width:200px; font-weight:600;">
+              <option value="all">All Exam Batches</option>
+              ${allExamNames.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('')}
+            </select>
+
+            <select id="filter-exam-class" class="form-select form-select-sm" style="width:130px;">
+              <option value="all">All Classes</option>
+              ${classes.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('')}
+            </select>
+
+            <select id="filter-exam-status" class="form-select form-select-sm" style="width:150px; font-weight:600;">
+              <option value="all">All Publishing Statuses</option>
+              <option value="published">Live &amp; Published</option>
+              <option value="scheduled">Scheduled for Date</option>
+              <option value="draft">Draft (Private)</option>
+              <option value="not_evaluated">Not Evaluated</option>
+            </select>
+          </div>
+
+          <div style="display:flex; gap:6px;">
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-exam-select-all" style="font-weight:700;">Select All</button>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-exam-clear-sel">Clear</button>
+          </div>
+        </div>
+
+        <!-- Batch Operations Bar (Revealed when candidates selected) -->
+        <div id="weekly-batch-action-bar" style="display:none; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; background:linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%); border:1.5px solid #93c5fd; border-radius:10px; padding:10px 16px;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <strong id="weekly-selected-count" style="color:#1e40af; font-size:0.88rem;">0 selected</strong>
+            <span style="font-size:0.75rem; color:#64748b;">• Set publishing date or release marks for selected candidates</span>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <div style="display:flex; align-items:center; gap:4px;">
+              <span style="font-size:0.75rem; font-weight:700; color:#334155;">Publish Date:</span>
+              <input type="date" id="batch-set-pub-date" class="form-input form-input-sm font-mono" style="width:135px;">
+            </div>
+            <button type="button" class="btn btn-primary btn-sm" id="btn-batch-apply-pub-date" style="background:#2563eb; border-color:#2563eb; font-weight:700;">
+              <i data-lucide="calendar"></i> Set Publish Date &amp; Schedule
+            </button>
+            <button type="button" class="btn btn-success btn-sm" id="btn-batch-publish-live" style="background:#16a34a; border-color:#16a34a; color:#fff; font-weight:700;">
+              <i data-lucide="check-circle"></i> Publish Live Now
+            </button>
+            <button type="button" class="btn btn-secondary btn-sm" id="btn-batch-revert-draft" style="color:#64748b;">
+              <i data-lucide="eye-off"></i> Revert to Draft
+            </button>
+          </div>
+        </div>
+
+        <!-- Candidates Exam Table -->
+        <div class="table-responsive" style="max-height:50vh; overflow-y:auto; border:1px solid var(--border-color); border-radius:8px;">
+          <table class="tms-table" style="font-size:0.83rem;">
+            <thead>
+              <tr style="position:sticky; top:0; background:#f8fafc; z-index:2;">
+                <th style="width:36px; text-align:center;"><input type="checkbox" id="weekly-chk-all"></th>
+                <th>Form No</th>
+                <th>Candidate Name</th>
+                <th>Class</th>
+                <th>Exam Batch Name</th>
+                <th style="text-align:center;">Exam Date</th>
+                <th style="text-align:center;">Publish Date</th>
+                <th style="text-align:center;">Marks (/100)</th>
+                <th style="text-align:center;">Status</th>
+                <th style="text-align:right;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="weekly-exam-table-body">
+              ${renderRows(apps)}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+
+    const footerHtml = `
+      <div style="display:flex; justify-content:space-between; align-items:center; width:100%;">
+        <div style="font-size:0.75rem; color:#64748b;">
+          Conduct weekly entrance assessments, name exams, set publishing dates, and publish marks for parents &amp; students.
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-secondary" onclick="document.getElementById('global-modal-close').click()">Close</button>
+          <button class="btn btn-primary" id="btn-refresh-weekly-modal"><i data-lucide="refresh-cw"></i> Refresh Data</button>
+        </div>
+      </div>
+    `;
+
+    UIComponents.openModal({
+      title: 'Weekly Admission Assessments & Result Publishing Manager',
+      bodyHtml,
+      footerHtml,
+      maxWidth: '960px'
+    });
+
+    updateView();
+
+    document.getElementById('filter-exam-search')?.addEventListener('input', (e) => {
+      currentSearch = e.target.value.toLowerCase().trim();
+      updateView();
+    });
+    document.getElementById('filter-exam-name')?.addEventListener('change', (e) => {
+      currentExamFilter = e.target.value;
+      updateView();
+    });
+    document.getElementById('filter-exam-class')?.addEventListener('change', (e) => {
+      currentClassFilter = e.target.value;
+      updateView();
+    });
+    document.getElementById('filter-exam-status')?.addEventListener('change', (e) => {
+      currentStatusFilter = e.target.value;
+      updateView();
+    });
+
+    document.getElementById('btn-exam-select-all')?.addEventListener('click', () => {
+      filterItems().forEach(a => selectedAppIds.add(a.id));
+      updateView();
+    });
+    document.getElementById('btn-exam-clear-sel')?.addEventListener('click', () => {
+      selectedAppIds.clear();
+      updateView();
+    });
+    document.getElementById('weekly-chk-all')?.addEventListener('change', (e) => {
+      if (e.target.checked) filterItems().forEach(a => selectedAppIds.add(a.id));
+      else selectedAppIds.clear();
+      updateView();
+    });
+
+    // Batch Apply Publish Date
+    document.getElementById('btn-batch-apply-pub-date')?.addEventListener('click', async () => {
+      const pubDate = document.getElementById('batch-set-pub-date')?.value;
+      if (!pubDate) {
+        UIComponents.showToast('Please select a publishing date first.', 'warning');
+        return;
+      }
+      const ids = Array.from(selectedAppIds);
+      if (!ids.length) return;
+
+      const btn = document.getElementById('btn-batch-apply-pub-date');
+      btn.disabled = true;
+      btn.innerHTML = '<i data-lucide="loader" class="animate-spin"></i> Scheduling...';
+
+      await admissionService.batchUpdateEntranceExams(ids, {
+        publishDate: pubDate,
+        isPublished: true
+      });
+
+      UIComponents.showToast(`Publishing date (${pubDate}) set for ${ids.length} candidate(s)!`, 'success');
+      selectedAppIds.clear();
+      apps = await admissionService.listApplications();
+      btn.disabled = false;
+      btn.innerHTML = '<i data-lucide="calendar"></i> Set Publish Date &amp; Schedule';
+      updateView();
+      const tabContent = document.getElementById('admin-tab-content');
+      if (tabContent) AdminModule.refreshApplications(tabContent);
+    });
+
+    // Batch Publish Live Now
+    document.getElementById('btn-batch-publish-live')?.addEventListener('click', async () => {
+      const ids = Array.from(selectedAppIds);
+      if (!ids.length) return;
+      const today = new Date().toISOString().slice(0, 10);
+
+      const btn = document.getElementById('btn-batch-publish-live');
+      btn.disabled = true;
+      btn.innerHTML = '<i data-lucide="loader" class="animate-spin"></i> Publishing...';
+
+      await admissionService.batchUpdateEntranceExams(ids, {
+        publishDate: today,
+        isPublished: true
+      });
+
+      UIComponents.showToast(`Published marks live for ${ids.length} candidate(s)! Visible in portal.`, 'success');
+      selectedAppIds.clear();
+      apps = await admissionService.listApplications();
+      btn.disabled = false;
+      btn.innerHTML = '<i data-lucide="check-circle"></i> Publish Live Now';
+      updateView();
+      const tabContent = document.getElementById('admin-tab-content');
+      if (tabContent) AdminModule.refreshApplications(tabContent);
+    });
+
+    // Batch Revert to Draft
+    document.getElementById('btn-batch-revert-draft')?.addEventListener('click', async () => {
+      const ids = Array.from(selectedAppIds);
+      if (!ids.length) return;
+
+      await admissionService.batchUpdateEntranceExams(ids, {
+        isPublished: false
+      });
+
+      UIComponents.showToast(`Reverted ${ids.length} candidate(s) to private draft.`, 'info');
+      selectedAppIds.clear();
+      apps = await admissionService.listApplications();
+      updateView();
+      const tabContent = document.getElementById('admin-tab-content');
+      if (tabContent) AdminModule.refreshApplications(tabContent);
+    });
+
+    document.getElementById('btn-refresh-weekly-modal')?.addEventListener('click', async () => {
+      apps = await admissionService.listApplications();
+      updateView();
+      UIComponents.showToast('Data refreshed.', 'info');
+    });
 
     UIComponents.refreshIcons();
   }

@@ -31,7 +31,7 @@
     </header>
 
     <div class="app-viewport">
-      <div style="max-width: 1100px; margin: 0 auto;">
+      <div id="student-main-content" style="max-width: 1100px; margin: 0 auto;">
         <!-- Welcome Card -->
         <div class="card" style="margin-bottom: 24px;">
           <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
@@ -152,12 +152,14 @@
     import { brandingService } from './branding-service.js';
     import { QRCodeGenerator } from './qr-generator.js';
     import { StudentLeaveService } from './student-leave-service.js';
+    import { admissionService } from './admission-service.js';
+    import { notificationService } from './notification-service.js';
 
     (async () => {
       brandingService.refresh();
       await authService.init();
       const user = authService.getCurrentUser();
-      const allowed = user && [TMS_CONFIG.roles.STUDENT, TMS_CONFIG.roles.ADMIN].includes(user.role);
+      const allowed = user && [TMS_CONFIG.roles.STUDENT, TMS_CONFIG.roles.ADMIN, TMS_CONFIG.roles.PARENT].includes(user.role);
 
       if (!allowed) {
         window.location.href = user ? '/dashboard' : '/login';
@@ -176,12 +178,319 @@
         if (el) el.textContent = value;
       };
 
+      const fmtDate = (d) => {
+        if (!d) return '—';
+        try { return new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }); }
+        catch (e) { return String(d); }
+      };
+
+      const renderApplicantCandidatePortal = (app, u) => {
+        const mainEl = document.getElementById('student-main-content');
+        if (!mainEl) return;
+
+        setText('portal-topbar-badge', `Applicant Candidate — Grade ${app.grade || '—'}`);
+
+        const exam = app.entranceExam || {};
+        const isExamPub = admissionService.isExamPublished(exam);
+        const isExamScheduled = !isExamPub && exam.publishDate && new Date(exam.publishDate) > new Date();
+        const hasScore = exam && (exam.totalScore != null || exam.writtenScore != null);
+
+        // Stepper
+        const steps = ['Applied', 'Document Review', 'Entrance Assessment', 'Enrolled'];
+        let currentIdx = 0;
+        const normStatus = (app.status || '').toLowerCase();
+        if (normStatus === 'enrolled') currentIdx = 3;
+        else if (hasScore || normStatus.includes('exam') || normStatus.includes('interview') || normStatus.includes('assess')) currentIdx = 2;
+        else if (normStatus.includes('review') || normStatus.includes('verified')) currentIdx = 1;
+        else currentIdx = 0;
+
+        const stepperHtml = `
+          <div style="display:flex; align-items:center; justify-content:space-between; margin:20px 0 24px; position:relative;">
+            <div style="position:absolute; top:18px; left:5%; right:5%; height:3px; background:#e2e8f0; z-index:1;"></div>
+            <div style="position:absolute; top:18px; left:5%; width:${(currentIdx / (steps.length - 1)) * 90}%; height:3px; background:#16a34a; z-index:2; transition:width 0.4s ease;"></div>
+            ${steps.map((st, i) => {
+              const done = i <= currentIdx;
+              const active = i === currentIdx;
+              return `
+                <div style="position:relative; z-index:3; text-align:center; flex:1;">
+                  <div style="width:36px; height:36px; border-radius:50%; margin:0 auto 8px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:0.85rem; background:${done ? '#16a34a' : '#fff'}; color:${done ? '#fff' : '#64748b'}; border:2px solid ${done ? '#16a34a' : '#cbd5e1'}; box-shadow:0 2px 6px rgba(0,0,0,0.06);">
+                    ${done ? '<i data-lucide="check" style="width:18px;height:18px;"></i>' : (i + 1)}
+                  </div>
+                  <div style="font-size:0.78rem; font-weight:${active ? '800' : '600'}; color:${active ? '#16a34a' : (done ? '#0f172a' : '#94a3b8')};">${esc(st)}</div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        `;
+
+        // Exam section
+        let examCardHtml = '';
+        if (isExamPub) {
+          examCardHtml = `
+            <div class="card" style="margin-bottom:24px; border:1.5px solid #86efac; background:linear-gradient(to bottom, #ffffff, #f0fdf4);">
+              <div class="card-header" style="flex-wrap:wrap; gap:8px;">
+                <div>
+                  <div style="display:inline-flex; align-items:center; gap:6px; background:#dcfce7; color:#15803d; font-size:0.75rem; font-weight:800; padding:3px 10px; border-radius:999px; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px;">
+                    <i data-lucide="check-circle-2" style="width:14px;height:14px;"></i> Officially Published
+                  </div>
+                  <h3 class="card-title" style="color:#15803d; font-size:1.15rem;">${esc(exam.examName || 'Weekly Admission Assessment')}</h3>
+                  <p class="card-desc">Conducted on ${fmtDate(exam.examDate)} &bull; Published on ${fmtDate(exam.publishDate)}</p>
+                </div>
+                <button class="btn btn-primary btn-sm btn-print-candidate-card" style="background:#16a34a; border-color:#16a34a;">
+                  <i data-lucide="printer"></i> Print Official Result Card
+                </button>
+              </div>
+
+              <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:12px; margin:16px 0;">
+                <div style="background:#fff; border:1px solid #cbd5e1; border-radius:10px; padding:12px; text-align:center;">
+                  <div style="font-size:0.72rem; color:#64748b; font-weight:700; text-transform:uppercase;">Written Test</div>
+                  <div style="font-size:1.3rem; font-weight:900; color:#0f172a; font-family:monospace; margin-top:2px;">${exam.writtenScore ?? '—'} <span style="font-size:0.75rem; color:#64748b; font-weight:500;">/50</span></div>
+                </div>
+                <div style="background:#fff; border:1px solid #cbd5e1; border-radius:10px; padding:12px; text-align:center;">
+                  <div style="font-size:0.72rem; color:#64748b; font-weight:700; text-transform:uppercase;">Oral / Interview</div>
+                  <div style="font-size:1.3rem; font-weight:900; color:#0f172a; font-family:monospace; margin-top:2px;">${exam.interviewScore ?? '—'} <span style="font-size:0.75rem; color:#64748b; font-weight:500;">/50</span></div>
+                </div>
+                ${exam.aptitudeScore != null ? `
+                <div style="background:#fff; border:1px solid #cbd5e1; border-radius:10px; padding:12px; text-align:center;">
+                  <div style="font-size:0.72rem; color:#64748b; font-weight:700; text-transform:uppercase;">Aptitude</div>
+                  <div style="font-size:1.3rem; font-weight:900; color:#0f172a; font-family:monospace; margin-top:2px;">${exam.aptitudeScore}</div>
+                </div>` : ''}
+                <div style="background:#dcfce7; border:2px solid #86efac; border-radius:10px; padding:12px; text-align:center;">
+                  <div style="font-size:0.72rem; color:#15803d; font-weight:800; text-transform:uppercase;">Total Marks</div>
+                  <div style="font-size:1.45rem; font-weight:900; color:#15803d; font-family:monospace; margin-top:2px;">${exam.totalScore ?? '—'} <span style="font-size:0.78rem; font-weight:600;">/ ${exam.maxScore || 100}</span></div>
+                  <div style="font-size:0.75rem; font-weight:800; color:#16a34a;">${exam.percentage ? `${exam.percentage}% Score` : ''}</div>
+                </div>
+              </div>
+
+              <div style="background:#fff; border-left:4px solid #16a34a; border-radius:0 8px 8px 0; padding:12px 16px; font-size:0.86rem; box-shadow:0 1px 3px rgba(0,0,0,0.04);">
+                <div><strong>Admission Board Recommendation:</strong> <span style="color:#15803d; font-weight:800; font-size:0.95rem;">${esc(exam.decision || 'Recommended for Admission')}</span></div>
+                ${exam.examinerRemarks ? `<div style="color:#475569; margin-top:6px; font-size:0.82rem;"><strong>Examiner Remarks:</strong> ${esc(exam.examinerRemarks)}</div>` : ''}
+              </div>
+            </div>
+          `;
+        } else if (isExamScheduled) {
+          examCardHtml = `
+            <div class="card" style="margin-bottom:24px; border:1.5px solid #fde68a; background:linear-gradient(to bottom, #ffffff, #fffbeb);">
+              <div style="display:flex; align-items:center; gap:10px; font-weight:800; color:#92400e; font-size:1.05rem; margin-bottom:8px;">
+                <div style="width:36px; height:36px; border-radius:50%; background:#fef3c7; display:flex; align-items:center; justify-content:center;">
+                  <i data-lucide="clock" style="width:20px;height:20px;color:#d97706;"></i>
+                </div>
+                <div>
+                  <div>${esc(exam.examName || 'Weekly Admission Assessment')}</div>
+                  <div style="font-size:0.78rem; font-weight:600; color:#b45309;">Assessment Completed &bull; Results Scheduled</div>
+                </div>
+              </div>
+              <p style="font-size:0.88rem; color:#78350f; line-height:1.5; margin:8px 0 14px;">
+                You have successfully taken the entrance exam. The official evaluation and merit marks are scheduled for publication on:
+              </p>
+              <div style="display:inline-flex; align-items:center; gap:8px; background:#fef3c7; border:1.5px solid #fcd34d; padding:8px 18px; border-radius:8px; font-weight:800; color:#92400e; font-size:0.95rem;">
+                <i data-lucide="calendar" style="width:16px;height:16px;"></i>
+                Publishing Date: ${fmtDate(exam.publishDate)}
+              </div>
+              <div style="font-size:0.78rem; color:#92400e; margin-top:10px; font-weight:600;">
+                <i data-lucide="shield-alert" style="width:13px;height:13px;vertical-align:middle;"></i> Marks remain strictly confidential and will be unlocked automatically on your scheduled date.
+              </div>
+            </div>
+          `;
+        } else if (hasScore) {
+          examCardHtml = `
+            <div class="card" style="margin-bottom:24px; border:1.5px solid #cbd5e1; background:#f8fafc;">
+              <div style="display:flex; align-items:center; gap:10px; font-weight:800; color:#1e293b; font-size:1rem; margin-bottom:6px;">
+                <div style="width:36px; height:36px; border-radius:50%; background:#e2e8f0; display:flex; align-items:center; justify-content:center;">
+                  <i data-lucide="file-check" style="width:20px;height:20px;color:#2563eb;"></i>
+                </div>
+                <div>
+                  <div>${esc(exam.examName || 'Weekly Admission Assessment')} Conducted</div>
+                  <div style="font-size:0.78rem; font-weight:600; color:#64748b;">Under Board Evaluation</div>
+                </div>
+              </div>
+              <p style="font-size:0.86rem; color:#475569; line-height:1.5; margin:6px 0 0 0;">
+                Your entrance test papers and interview evaluation are currently undergoing verification by the Thaiba Model School Academic Admissions Board. Results will be published soon.
+              </p>
+            </div>
+          `;
+        } else {
+          examCardHtml = `
+            <div class="card" style="margin-bottom:24px; border:1.5px solid #bfdbfe; background:linear-gradient(to bottom, #ffffff, #eff6ff);">
+              <div style="display:flex; align-items:center; gap:10px; font-weight:800; color:#1e40af; font-size:1rem; margin-bottom:6px;">
+                <div style="width:36px; height:36px; border-radius:50%; background:#dbeafe; display:flex; align-items:center; justify-content:center;">
+                  <i data-lucide="calendar" style="width:20px;height:20px;color:#2563eb;"></i>
+                </div>
+                <div>
+                  <div>Weekly Admission Assessment Notification</div>
+                  <div style="font-size:0.78rem; font-weight:600; color:#3b82f6;">Entrance Assessment Cycle</div>
+                </div>
+              </div>
+              <p style="font-size:0.86rem; color:#1e3a8a; line-height:1.5; margin:6px 0 0 0;">
+                Thaiba Model School conducts weekly entrance assessments for prospective students. Please report to the examination hall on campus with your Application Form No (<span class="font-mono" style="font-weight:700;">${esc(app.appId || app.id)}</span>) on your assigned date.
+              </p>
+            </div>
+          `;
+        }
+
+        mainEl.innerHTML = `
+          <!-- Applicant Header Banner -->
+          <div class="card" style="margin-bottom: 24px; background:linear-gradient(135deg, #f8fafc 0%, #e0f2fe 100%); border:1px solid #bae6fd;">
+            <div style="display: flex; align-items: center; justify-content:space-between; gap: 20px; flex-wrap: wrap;">
+              <div style="display:flex; align-items:center; gap:16px;">
+                <div style="width: 68px; height: 68px; border-radius: 50%; border: 3px solid #0284c7; background: #fff; display: flex; align-items: center; justify-content: center; box-shadow:0 4px 12px rgba(2,132,199,0.15);">
+                  <i data-lucide="user-check" style="width: 36px; height: 36px; color: #0284c7;"></i>
+                </div>
+                <div>
+                  <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                    <h2 style="font-size: 1.4rem; font-weight:800; color:#0f172a; margin:0;">${esc(app.studentName || u.name || 'Candidate')}</h2>
+                    <span class="badge badge-info" style="font-size:0.75rem;">Applicant Candidate</span>
+                  </div>
+                  <p style="color: #475569; font-size: 0.88rem; margin:4px 0 0 0;">
+                    Form No: <span class="font-mono" style="font-weight: 700; color:#0369a1;">${esc(app.appId || app.id)}</span> &bull; 
+                    Applied Grade: <strong>${esc(app.grade || '—')}</strong> &bull; 
+                    Submitted: ${fmtDate(app.createdAt)}
+                  </p>
+                </div>
+              </div>
+              <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                <span class="badge ${app.paymentStatus === 'Paid' ? 'badge-success' : 'badge-warning'}" style="padding:6px 12px; font-size:0.8rem;">
+                  Payment: ${esc(app.paymentStatus || 'Pending')}
+                </span>
+                <span class="badge badge-info" style="padding:6px 12px; font-size:0.8rem;">
+                  Stage: ${esc(app.status || 'Applied')}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Milestones Stepper -->
+          <div class="card" style="margin-bottom:24px;">
+            <div class="card-header" style="margin-bottom:0;">
+              <h3 class="card-title" style="font-size:1rem;">Admission Progress Pathway</h3>
+              <span class="badge badge-info">${esc(app.status || 'In Progress')}</span>
+            </div>
+            ${stepperHtml}
+          </div>
+
+          <!-- Main Grid: Left Column Assessment & Details, Right Column Announcements -->
+          <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+            <div>
+              <!-- Weekly Exam Section -->
+              ${examCardHtml}
+
+              <!-- Application Details Summary -->
+              <div class="card" style="margin-bottom:24px;">
+                <div class="card-header">
+                  <h3 class="card-title" style="font-size:1rem;">Candidate Application Profile</h3>
+                  <span class="badge badge-info">Verified Submission</span>
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:16px; font-size:0.86rem;">
+                  <div>
+                    <div style="color:#64748b; font-size:0.75rem; font-weight:700; text-transform:uppercase;">Candidate Name</div>
+                    <div style="font-weight:700; color:#0f172a; margin-top:2px;">${esc(app.studentName)}</div>
+                  </div>
+                  <div>
+                    <div style="color:#64748b; font-size:0.75rem; font-weight:700; text-transform:uppercase;">Date of Birth &amp; Gender</div>
+                    <div style="font-weight:600; color:#0f172a; margin-top:2px;">${fmtDate(app.dob)} &bull; ${esc(app.gender || '—')}</div>
+                  </div>
+                  <div>
+                    <div style="color:#64748b; font-size:0.75rem; font-weight:700; text-transform:uppercase;">Parent / Guardian</div>
+                    <div style="font-weight:600; color:#0f172a; margin-top:2px;">${esc(app.parentName || '—')} (${esc(app.parentRelation || 'Guardian')})</div>
+                  </div>
+                  <div>
+                    <div style="color:#64748b; font-size:0.75rem; font-weight:700; text-transform:uppercase;">Contact Phone</div>
+                    <div style="font-weight:600; color:#0f172a; margin-top:2px;">${esc(app.parentPhone || app.phone || '—')}</div>
+                  </div>
+                </div>
+
+                ${app.remarks ? `
+                  <div style="margin-top:16px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:10px 14px; font-size:0.84rem;">
+                    <strong>Office Note:</strong> ${esc(app.remarks)}
+                  </div>
+                ` : ''}
+              </div>
+            </div>
+
+            <div>
+              <!-- Admission Announcements -->
+              <div class="card" style="margin-bottom:24px;">
+                <div class="card-header">
+                  <h3 class="card-title" style="font-size:1rem;">Admission Announcements</h3>
+                  <span class="badge badge-success">Official</span>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:12px;">
+                  <div style="padding:10px 12px; background:#f0fdf4; border:1px solid #bbf7d0; border-radius:8px; font-size:0.83rem;">
+                    <div style="font-weight:800; color:#15803d; margin-bottom:3px;"><i data-lucide="bell" style="width:13px;height:13px;vertical-align:middle;"></i> Weekly Assessment Guidelines</div>
+                    <p style="color:#166534; margin:0; line-height:1.4;">
+                      Please arrive 15 minutes before scheduled slot. Bring printed Form No and writing kit.
+                    </p>
+                  </div>
+                  <div style="padding:10px 12px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:8px; font-size:0.83rem;">
+                    <div style="font-weight:800; color:#1e40af; margin-bottom:3px;"><i data-lucide="award" style="width:13px;height:13px;vertical-align:middle;"></i> Evaluation &amp; Publishing</div>
+                    <p style="color:#1e3a8a; margin:0; line-height:1.4;">
+                      Assessments are graded weekly. Results become visible on your specified publication date.
+                    </p>
+                  </div>
+                  <div style="padding:10px 12px; background:#fffbeb; border:1px solid #fde68a; border-radius:8px; font-size:0.83rem;">
+                    <div style="font-weight:800; color:#92400e; margin-bottom:3px;"><i data-lucide="file-text" style="width:13px;height:13px;vertical-align:middle;"></i> Required Documents</div>
+                    <p style="color:#78350f; margin:0; line-height:1.4;">
+                      Birth Certificate, Transfer Certificate (TC), and Passport Photos needed at final enrollment.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Enrolled Features Locked Banner -->
+              <div class="card" style="background:#f8fafc; border:1px dashed #cbd5e1; text-align:center; padding:20px 16px;">
+                <div style="width:40px; height:40px; border-radius:50%; background:#e2e8f0; display:flex; align-items:center; justify-content:center; margin:0 auto 10px;">
+                  <i data-lucide="lock" style="width:20px;height:20px;color:#64748b;"></i>
+                </div>
+                <div style="font-weight:700; color:#334155; font-size:0.9rem;">Enrolled Portal Locked</div>
+                <p style="font-size:0.78rem; color:#64748b; margin:6px 0 0 0; line-height:1.45;">
+                  Timetable, homework, attendance records, and campus gate passes will unlock here once your enrollment is finalized by the Admissions Office.
+                </p>
+              </div>
+            </div>
+          </div>
+        `;
+
+        // Wire print button
+        const printBtn = mainEl.querySelector('.btn-print-candidate-card');
+        if (printBtn) {
+          printBtn.addEventListener('click', () => admissionService.printResultCard(app));
+        }
+
+        UIComponents.refreshIcons();
+      };
+
       try {
         let students = await dbService.select('students');
-        const student = (students || []).find(s => s.userId === user.id || s.id === user.id || s.email === user.email || s.admissionNo === user.admissionNo) || null;
+        let student = (students || []).find(s => s.userId === user.id || s.id === user.id || s.email === user.email || s.admissionNo === user.admissionNo) || null;
+
+        // Check for candidate admission applications
+        let allApps = [];
+        try {
+          allApps = await admissionService.listApplications();
+        } catch (err) {
+          console.warn('Could not load admission applications in student portal:', err);
+        }
+
+        const myApp = allApps.find(a => 
+          (user.email && (a.email?.toLowerCase() === user.email.toLowerCase() || a.parentEmail?.toLowerCase() === user.email.toLowerCase())) ||
+          (user.id && (a.userId === user.id || a.studentId === user.id || a.parentId === user.id)) ||
+          (user.name && a.studentName?.toLowerCase() === user.name.toLowerCase()) ||
+          (student && student.admissionNo && a.enrolledAdmissionNo === student.admissionNo)
+        );
+
+        // Before official enrollment: candidate only views marks, announcements, and application data
+        if (myApp && myApp.status !== 'Enrolled') {
+          renderApplicantCandidatePortal(myApp, user);
+          return;
+        }
+
+        if (!student && myApp && myApp.status === 'Enrolled' && myApp.enrolledAdmissionNo) {
+          student = (students || []).find(s => s.admissionNo === myApp.enrolledAdmissionNo) || null;
+        }
 
         if (!student) {
-          setText('portal-student-name', 'No Student Record Linked');
+          setText('portal-student-name', 'No Active Enrolled Student Record');
+          setText('portal-student-meta', 'Please contact the Thaiba Model School Admissions Office.');
           UIComponents.refreshIcons();
           return;
         }

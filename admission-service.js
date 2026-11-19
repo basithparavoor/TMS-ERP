@@ -555,6 +555,7 @@ class AdmissionService {
         paymentStatus: a.paymentStatus || a.payment_status || 'Not Required',
         submittedByName: a.submittedByName || a.submitted_by_name || 'Self / Public',
         status: a.status || 'Submitted',
+        entranceExam: a.entranceExam || a.entrance_exam || pld.entranceExam || null,
         createdAt
       };
     }).sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
@@ -1007,21 +1008,81 @@ class AdmissionService {
     return dbService.update('admissions_applications', applicationId, { docVerifications });
   }
 
-  async recordEntranceScore(applicationId, { writtenScore = 0, interviewScore = 0, examinerRemarks = '', evaluatedBy = 'Staff' } = {}) {
+  isExamPublished(entranceExam) {
+    if (!entranceExam) return false;
+    if (!entranceExam.isPublished) return false;
+    if (entranceExam.publishDate) {
+      const today = new Date().toISOString().slice(0, 10);
+      return String(entranceExam.publishDate).slice(0, 10) <= today;
+    }
+    return true;
+  }
+
+  async recordEntranceScore(applicationId, {
+    examName = 'Weekly Admission Assessment',
+    examDate = '',
+    publishDate = '',
+    isPublished = false,
+    writtenScore = 0,
+    interviewScore = 0,
+    aptitudeScore = null,
+    maxScore = 100,
+    decision = 'Under Evaluation',
+    examinerRemarks = '',
+    evaluatedBy = 'Staff'
+  } = {}) {
     const written = Number(writtenScore || 0);
     const interview = Number(interviewScore || 0);
-    const totalScore = written + interview;
+    const aptitude = (aptitudeScore != null && aptitudeScore !== '') ? Number(aptitudeScore) : null;
+    const totalScore = aptitude != null ? (written + interview + aptitude) : (written + interview);
+    const max = Number(maxScore || 100);
+    const percentage = max > 0 ? Math.round((totalScore / max) * 100) : 0;
+
+    const examData = {
+      examName: (examName || 'Weekly Admission Assessment').trim(),
+      examDate: examDate || new Date().toISOString().slice(0, 10),
+      publishDate: publishDate || '',
+      isPublished: !!isPublished,
+      writtenScore: written,
+      interviewScore: interview,
+      aptitudeScore: aptitude,
+      totalScore,
+      maxScore: max,
+      percentage,
+      decision: decision || 'Under Evaluation',
+      examinerRemarks: examinerRemarks || '',
+      evaluatedBy: evaluatedBy || 'Staff',
+      evaluatedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    const app = await this.getApplication(applicationId);
+    const prevPayload = (app && app.payload) ? app.payload : {};
+    const updatedPayload = { ...prevPayload, entranceExam: examData };
 
     return dbService.update('admissions_applications', applicationId, {
-      entranceExam: {
-        writtenScore: written,
-        interviewScore: interview,
-        totalScore,
-        examinerRemarks: examinerRemarks || '',
-        evaluatedBy: evaluatedBy || 'Staff',
-        evaluatedAt: new Date().toISOString()
-      }
+      entranceExam: examData,
+      entrance_exam: examData,
+      payload: updatedPayload
     });
+  }
+
+  async batchUpdateEntranceExams(applicationIds = [], updates = {}) {
+    if (!Array.isArray(applicationIds) || !applicationIds.length) return [];
+    const results = [];
+    for (const id of applicationIds) {
+      const app = await this.getApplication(id);
+      if (!app) continue;
+      const existingExam = app.entranceExam || {};
+      const merged = {
+        ...existingExam,
+        ...updates
+      };
+      // eslint-disable-next-line no-await-in-loop
+      const res = await this.recordEntranceScore(id, merged);
+      results.push(res);
+    }
+    return results;
   }
 
   async getMeritList(grade = 'all') {
@@ -1036,6 +1097,192 @@ class AdmissionService {
       return scoreB - scoreA;
     });
     return filtered;
+  }
+
+  printResultCard(app) {
+    if (!app) return;
+    const exam = app.entranceExam || {};
+    const payload = app.payload || {};
+    const candidateName = app.studentName || payload.candidateName || 'Candidate';
+    const formNo = app.appId || app.id || '—';
+    const applyingClass = app.grade || payload.applyingClass || '—';
+    const guardianName = app.guardianName || payload.fatherName || payload.guardianName || '—';
+    const phone = app.phone || payload.phone || payload.mobile || '—';
+    const dob = app.dob || payload.dob || '—';
+
+    const examName = exam.examName || 'Weekly Admission Assessment';
+    const examDate = exam.examDate ? new Date(exam.examDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+    const publishDate = exam.publishDate ? new Date(exam.publishDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Official';
+
+    const written = exam.writtenScore != null ? exam.writtenScore : '—';
+    const interview = exam.interviewScore != null ? exam.interviewScore : '—';
+    const aptitude = exam.aptitudeScore != null ? exam.aptitudeScore : null;
+    const total = exam.totalScore != null ? exam.totalScore : '—';
+    const max = exam.maxScore || 100;
+    const pct = exam.percentage != null ? `${exam.percentage}%` : '—';
+    const decision = exam.decision || 'Under Evaluation';
+    const remarks = exam.examinerRemarks || 'Performance assessed in accordance with institutional admission evaluation criteria.';
+
+    let decisionColor = '#15803d';
+    let decisionBg = '#f0fdf4';
+    let decisionBorder = '#86efac';
+    if (decision.includes('Needs') || decision.includes('Reject')) {
+      decisionColor = '#b91c1c'; decisionBg = '#fef2f2'; decisionBorder = '#fca5a5';
+    } else if (decision.includes('Wait')) {
+      decisionColor = '#b45309'; decisionBg = '#fffbeb'; decisionBorder = '#fde68a';
+    } else if (decision.includes('Short')) {
+      decisionColor = '#1d4ed8'; decisionBg = '#eff6ff'; decisionBorder = '#bfdbfe';
+    }
+
+    const printWin = window.open('', '_blank', 'width=840,height=960');
+    if (!printWin) {
+      alert('Popup blocked. Please allow popups to print the result card.');
+      return;
+    }
+
+    printWin.document.write(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Admission Assessment Result — ${formNo} — ${candidateName}</title>
+        <style>
+          @page { size: A4 portrait; margin: 12mm; }
+          * { box-sizing: border-box; }
+          body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; margin: 0; padding: 20px; color: #0f172a; background: #f8fafc; }
+          .sheet { max-width: 780px; margin: 0 auto; background: #fff; border: 2px solid #0f172a; border-radius: 8px; padding: 28px; box-shadow: 0 4px 14px rgba(0,0,0,0.06); }
+          .header { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 14px; margin-bottom: 18px; }
+          .inst-name { font-size: 1.6rem; font-weight: 900; color: #0f172a; letter-spacing: 0.5px; text-transform: uppercase; margin: 0; }
+          .inst-sub { font-size: 0.82rem; color: #475569; margin-top: 4px; font-weight: 600; }
+          .doc-badge { display: inline-block; background: #0f172a; color: #fff; font-size: 0.85rem; font-weight: 800; letter-spacing: 1px; padding: 5px 16px; border-radius: 4px; margin-top: 10px; text-transform: uppercase; }
+          .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 12px 16px; margin-bottom: 18px; font-size: 0.84rem; }
+          .meta-item { display: flex; justify-content: space-between; padding: 3px 0; }
+          .meta-label { color: #64748b; font-weight: 700; }
+          .meta-val { font-weight: 700; color: #0f172a; }
+          .score-table { width: 100%; border-collapse: collapse; margin-bottom: 18px; font-size: 0.86rem; }
+          .score-table th, .score-table td { border: 1.5px solid #0f172a; padding: 8px 12px; text-align: center; }
+          .score-table th { background: #f1f5f9; font-weight: 800; text-transform: uppercase; font-size: 0.78rem; letter-spacing: 0.5px; }
+          .decision-box { background: ${decisionBg}; border: 2px solid ${decisionBorder}; color: ${decisionColor}; padding: 12px 16px; border-radius: 6px; text-align: center; font-size: 1.15rem; font-weight: 900; margin-bottom: 18px; text-transform: uppercase; letter-spacing: 0.5px; }
+          .remarks-box { background: #f8fafc; border-left: 4px solid #2563eb; padding: 10px 14px; font-size: 0.84rem; margin-bottom: 30px; border-radius: 0 6px 6px 0; }
+          .footer-signs { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 40px; padding-top: 10px; }
+          .sign-block { text-align: center; min-width: 170px; }
+          .sign-line { border-top: 1.5px solid #0f172a; margin-top: 40px; padding-top: 6px; font-weight: 800; font-size: 0.78rem; text-transform: uppercase; }
+          .no-print { text-align: center; margin-bottom: 20px; }
+          .print-btn { background: #16a34a; color: #fff; border: none; padding: 10px 24px; font-size: 0.95rem; font-weight: 800; border-radius: 6px; cursor: pointer; }
+          @media print {
+            body { background: transparent; padding: 0; }
+            .sheet { border: 2px solid #000; box-shadow: none; padding: 18px; }
+            .no-print { display: none !important; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="no-print">
+          <button class="print-btn" onclick="window.print()">Print Assessment Scorecard</button>
+        </div>
+        <div class="sheet">
+          <div class="header">
+            <h1 class="inst-name">THAIBA MODEL SCHOOL</h1>
+            <div class="inst-sub">Campus Registration: IV 01894/2011 • Recognized Center of Holistic Learning</div>
+            <div class="inst-sub">Baghait, Tapan, Dakshin Dinajpur, West Bengal — 733127 • Helpline: +91 8653382851</div>
+            <div class="doc-badge">Official Admission Assessment Scorecard</div>
+          </div>
+
+          <div class="meta-grid">
+            <div class="meta-item"><span class="meta-label">Candidate Name:</span><span class="meta-val">${candidateName}</span></div>
+            <div class="meta-item"><span class="meta-label">Application Form No:</span><span class="meta-val" style="font-family:monospace; color:#2563eb;">${formNo}</span></div>
+            <div class="meta-item"><span class="meta-label">Applied for Class:</span><span class="meta-val">Grade / Class ${applyingClass}</span></div>
+            <div class="meta-item"><span class="meta-label">Guardian / Parent:</span><span class="meta-val">${guardianName}</span></div>
+            <div class="meta-item"><span class="meta-label">Date of Birth:</span><span class="meta-val">${dob}</span></div>
+            <div class="meta-item"><span class="meta-label">Contact Mobile:</span><span class="meta-val font-mono">${phone}</span></div>
+            <div class="meta-item"><span class="meta-label">Examination Name:</span><span class="meta-val" style="color:#1e40af;">${examName}</span></div>
+            <div class="meta-item"><span class="meta-label">Exam Conducted Date:</span><span class="meta-val">${examDate}</span></div>
+            <div class="meta-item"><span class="meta-label">Result Published Date:</span><span class="meta-val" style="color:#15803d;">${publishDate}</span></div>
+            <div class="meta-item"><span class="meta-label">Evaluation Status:</span><span class="meta-val">Official Verified</span></div>
+          </div>
+
+          <table class="score-table">
+            <thead>
+              <tr>
+                <th>Assessment Component</th>
+                <th>Maximum Marks</th>
+                <th>Marks Obtained</th>
+                <th>Percentage</th>
+                <th>Performance Indicator</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="text-align:left; font-weight:700;">Written Evaluation Test</td>
+                <td>50</td>
+                <td style="font-weight:800; font-family:monospace; font-size:1rem;">${written}</td>
+                <td>${typeof written === 'number' ? Math.round((written / 50) * 100) + '%' : '—'}</td>
+                <td>${typeof written === 'number' && written >= 35 ? 'Proficient' : 'Satisfactory'}</td>
+              </tr>
+              <tr>
+                <td style="text-align:left; font-weight:700;">Oral Interview &amp; Viva Voce</td>
+                <td>50</td>
+                <td style="font-weight:800; font-family:monospace; font-size:1rem;">${interview}</td>
+                <td>${typeof interview === 'number' ? Math.round((interview / 50) * 100) + '%' : '—'}</td>
+                <td>${typeof interview === 'number' && interview >= 35 ? 'Excellent Interaction' : 'Acceptable'}</td>
+              </tr>
+              ${aptitude != null ? `
+              <tr>
+                <td style="text-align:left; font-weight:700;">Aptitude &amp; Cognitive Practical</td>
+                <td>—</td>
+                <td style="font-weight:800; font-family:monospace; font-size:1rem;">${aptitude}</td>
+                <td>—</td>
+                <td>Evaluated</td>
+              </tr>` : ''}
+              <tr style="background:#f8fafc;">
+                <td style="text-align:left; font-weight:900; font-size:0.95rem;">AGGREGATE TOTAL</td>
+                <td style="font-weight:900;">${max}</td>
+                <td style="font-weight:900; font-size:1.2rem; font-family:monospace; color:#15803d;">${total}</td>
+                <td style="font-weight:900; font-size:1.05rem; color:#15803d;">${pct}</td>
+                <td style="font-weight:900; color:#15803d;">${decision}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="decision-box">
+            Admission Committee Result: ${decision}
+          </div>
+
+          <div class="remarks-box">
+            <strong>Examiner Feedback &amp; Verification Remarks:</strong><br>
+            ${remarks}
+          </div>
+
+          <div style="font-size:0.72rem; color:#64748b; line-height:1.45; border-top:1px dashed #cbd5e1; padding-top:8px;">
+            * This document represents the official evaluation result released by Thaiba Model School. Admission is provisional subject to document verification, original Transfer Certificate (TC) submission, and formal administrative enrollment.
+          </div>
+
+          <div class="footer-signs">
+            <div class="sign-block">
+              <div style="font-family:'Brush Script MT', cursive; font-size:1.1rem; color:#1e40af;">H. Rahaman</div>
+              <div class="sign-line">Admission Coordinator</div>
+            </div>
+            <div class="sign-block">
+              <div style="border: 2px dashed #94a3b8; border-radius: 50%; width: 64px; height: 64px; margin: 0 auto; display: flex; align-items: center; justify-content: center; font-size: 0.62rem; font-weight: 800; color: #64748b; text-align: center;">
+                CAMPUS<br>SEAL
+              </div>
+            </div>
+            <div class="sign-block">
+              <div style="font-family:'Brush Script MT', cursive; font-size:1.1rem; color:#1e40af;">Abdul Basith</div>
+              <div class="sign-line">Principal / Authorized Signatory</div>
+            </div>
+          </div>
+        </div>
+
+        <script>
+          window.onload = function() {
+            setTimeout(function() { window.print(); }, 400);
+          };
+        </script>
+      </body>
+      </html>
+    `);
+    printWin.document.close();
   }
 
   /* ---------------- Website Admission Inquiries ---------------- */

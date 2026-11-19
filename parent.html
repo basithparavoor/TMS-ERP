@@ -50,12 +50,13 @@
     import { brandingService } from './branding-service.js';
     import { dbService } from './supabase-client.js';
     import { StudentLeaveService } from './student-leave-service.js';
+    import { admissionService } from './admission-service.js';
 
     const esc = (v) => UIComponents.escapeHtml(v);
-    const fmtDate = (v) => { if (!v) return '—'; const d = new Date(v); return isNaN(d.getTime()) ? '—' : d.toLocaleString('en-GB'); };
+    const fmtDate = (v) => { if (!v) return '—'; const d = new Date(v); return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }); };
     const fmtMoney = (v) => `₹ ${Number(v || 0).toLocaleString('en-IN')}`;
 
-    const STEPS = ['Submitted', 'Under Verification', 'Approved'];
+    const STEPS = ['Submitted', 'Under Verification', 'Approved', 'Enrolled'];
 
     function stepper(status) {
       if (status === 'Rejected') {
@@ -66,7 +67,7 @@
       return `<div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
         ${STEPS.map((s, i) => {
           const done = i <= current;
-          return `<span class="badge ${done ? 'badge-success' : 'badge-info'}" style="padding:6px 12px; opacity:${done ? 1 : 0.5};">${esc(s)}</span>${i < STEPS.length - 1 ? '<i data-lucide="arrow-right" style="width:14px;height:14px;color:var(--text-subtle);"></i>' : ''}`;
+          return `<span class="badge ${done ? 'badge-success' : 'badge-info'}" style="padding:6px 12px; opacity:${done ? 1 : 0.45}; font-weight:700;">${esc(s)}</span>${i < STEPS.length - 1 ? '<i data-lucide="arrow-right" style="width:14px;height:14px;color:var(--text-subtle);"></i>' : ''}`;
         }).join('')}
       </div>`;
     }
@@ -77,19 +78,123 @@
         ? payments.map((p) => `<tr><td>${fmtDate(p.date)}</td><td>${esc(p.mode)}</td><td>${esc(p.reference || '—')}</td><td style="text-align:right;">${fmtMoney(p.amount)}</td></tr>`).join('')
         : '<tr><td colspan="4" style="text-align:center;color:var(--text-muted);">No payments recorded.</td></tr>';
 
+      const exam = a.entranceExam || (a.payload && a.payload.entranceExam) || {};
+      const isLive = admissionService.isExamPublished(exam);
+      const isScheduled = exam.isPublished && !isLive;
+      const hasScore = exam.totalScore != null || exam.writtenScore != null;
+
+      let examSectionHtml = '';
+      if (isLive) {
+        // Marks officially published!
+        examSectionHtml = `
+          <div style="background:linear-gradient(135deg, rgba(22,163,74,0.06), rgba(37,99,235,0.06)); border:1.5px solid #86efac; border-radius:10px; padding:16px; margin:16px 0;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+              <div>
+                <span class="badge badge-success" style="font-weight:800; font-size:0.75rem;"><i data-lucide="check-circle" style="width:12px;height:12px;vertical-align:middle;"></i> Official Marks Published</span>
+                <h4 style="font-size:1.1rem; font-weight:800; color:#15803d; margin:6px 0 2px 0;">${esc(exam.examName || 'Weekly Admission Assessment')}</h4>
+                <div style="font-size:0.75rem; color:#64748b;">
+                  Conducted: <strong>${fmtDate(exam.examDate)}</strong> &bull; Released on: <strong>${fmtDate(exam.publishDate)}</strong>
+                </div>
+              </div>
+              <button type="button" class="btn btn-secondary btn-sm btn-print-portal-card" data-id="${esc(a.id)}" style="background:#fff; color:#16a34a; border-color:#86efac; font-weight:700;">
+                <i data-lucide="printer"></i> Print Official Result Card
+              </button>
+            </div>
+
+            <!-- Score breakdown grid -->
+            <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap:10px; margin-bottom:12px;">
+              <div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:8px 12px; text-align:center;">
+                <div style="font-size:0.7rem; color:#64748b; font-weight:700; text-transform:uppercase;">Written Test</div>
+                <div style="font-size:1.15rem; font-weight:900; color:#0f172a; font-family:monospace;">${exam.writtenScore ?? '—'} <span style="font-size:0.75rem; color:#64748b; font-weight:500;">/50</span></div>
+              </div>
+              <div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:8px 12px; text-align:center;">
+                <div style="font-size:0.7rem; color:#64748b; font-weight:700; text-transform:uppercase;">Interview / Viva</div>
+                <div style="font-size:1.15rem; font-weight:900; color:#0f172a; font-family:monospace;">${exam.interviewScore ?? '—'} <span style="font-size:0.75rem; color:#64748b; font-weight:500;">/50</span></div>
+              </div>
+              ${exam.aptitudeScore != null ? `
+              <div style="background:#fff; border:1px solid #cbd5e1; border-radius:8px; padding:8px 12px; text-align:center;">
+                <div style="font-size:0.7rem; color:#64748b; font-weight:700; text-transform:uppercase;">Aptitude</div>
+                <div style="font-size:1.15rem; font-weight:900; color:#0f172a; font-family:monospace;">${exam.aptitudeScore}</div>
+              </div>` : ''}
+              <div style="background:#f0fdf4; border:1.5px solid #86efac; border-radius:8px; padding:8px 12px; text-align:center;">
+                <div style="font-size:0.7rem; color:#15803d; font-weight:800; text-transform:uppercase;">Total Marks</div>
+                <div style="font-size:1.3rem; font-weight:900; color:#15803d; font-family:monospace;">${exam.totalScore ?? '—'} <span style="font-size:0.75rem; font-weight:600;">/ ${exam.maxScore || 100}</span></div>
+                <div style="font-size:0.72rem; font-weight:800; color:#16a34a;">${exam.percentage ? `${exam.percentage}% Score` : ''}</div>
+              </div>
+            </div>
+
+            <div style="background:#fff; border-left:4px solid #16a34a; border-radius:0 6px 6px 0; padding:10px 14px; font-size:0.83rem;">
+              <strong>Admission Committee Status:</strong> <span style="color:#15803d; font-weight:800;">${esc(exam.decision || 'Recommended for Admission')}</span>
+              ${exam.examinerRemarks ? `<div style="color:#475569; margin-top:4px; font-size:0.79rem;"><strong>Feedback:</strong> ${esc(exam.examinerRemarks)}</div>` : ''}
+            </div>
+          </div>
+        `;
+      } else if (isScheduled) {
+        // Scheduled for future publish date
+        examSectionHtml = `
+          <div style="background:#fffbeb; border:1.5px solid #fde68a; border-radius:10px; padding:16px; margin:16px 0;">
+            <div style="display:flex; align-items:center; gap:8px; font-weight:800; color:#92400e; font-size:0.95rem; margin-bottom:4px;">
+              <i data-lucide="clock" style="width:18px;height:18px;color:#d97706;"></i>
+              ${esc(exam.examName || 'Weekly Admission Assessment')} &mdash; Results Scheduled
+            </div>
+            <p style="font-size:0.84rem; color:#78350f; margin:0 0 8px 0; line-height:1.45;">
+              The applicant has completed their weekly entrance assessment. The official marks and committee evaluation are scheduled to be published on:
+            </p>
+            <div style="display:inline-flex; align-items:center; gap:6px; background:#fef3c7; border:1px solid #fcd34d; padding:6px 14px; border-radius:6px; font-weight:800; color:#92400e; font-size:0.88rem;">
+              <i data-lucide="calendar" style="width:14px;height:14px;"></i>
+              Publishing Date: ${fmtDate(exam.publishDate)}
+            </div>
+            <div style="font-size:0.74rem; color:#92400e; margin-top:8px;">
+              Marks will be automatically revealed on this dashboard once the publication date is reached.
+            </div>
+          </div>
+        `;
+      } else if (hasScore) {
+        // Evaluated but draft
+        examSectionHtml = `
+          <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:10px; padding:14px; margin:16px 0;">
+            <div style="font-weight:700; color:#334155; font-size:0.88rem; display:flex; align-items:center; gap:6px;">
+              <i data-lucide="file-check" style="width:16px;height:16px;color:#2563eb;"></i>
+              ${esc(exam.examName || 'Weekly Admission Assessment')} Conducted
+            </div>
+            <p style="font-size:0.8rem; color:#64748b; margin:4px 0 0 0;">
+              Evaluation is currently under administrative verification by the admission committee. Results will be published soon.
+            </p>
+          </div>
+        `;
+      } else {
+        // Not yet evaluated
+        examSectionHtml = `
+          <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px; padding:14px; margin:16px 0;">
+            <div style="font-weight:700; color:#1e40af; font-size:0.88rem; display:flex; align-items:center; gap:6px;">
+              <i data-lucide="calendar" style="width:16px;height:16px;color:#2563eb;"></i>
+              Weekly Admission Assessment Information
+            </div>
+            <p style="font-size:0.8rem; color:#3b82f6; margin:4px 0 0 0;">
+              Thaiba Model School conducts weekly entrance assessments for applicants. Please attend campus with your Form No on your scheduled assessment date.
+            </p>
+          </div>
+        `;
+      }
+
       return `
         <div class="card" style="margin-bottom: 20px;">
           <div class="card-header" style="flex-wrap:wrap; gap:10px;">
             <div>
               <h3 class="card-title">${esc(a.studentName || 'Applicant')}</h3>
-              <p class="card-desc">Form No <span class="font-mono">${esc(a.appId || a.id)}</span> • Applied for ${esc(a.grade || '—')} • ${fmtDate(a.createdAt)}</p>
+              <p class="card-desc">Form No <span class="font-mono">${esc(a.appId || a.id)}</span> &bull; Applied for ${esc(a.grade || '—')} &bull; ${fmtDate(a.createdAt)}</p>
             </div>
-            <span class="badge ${a.paymentStatus === 'Paid' ? 'badge-success' : (a.paymentStatus === 'Pending' ? 'badge-warning' : 'badge-info')}">
-              Payment: ${esc(a.paymentStatus || '—')}
-            </span>
+            <div style="display:flex; gap:6px; align-items:center;">
+              ${a.status === 'Enrolled' ? `<span class="badge badge-success" style="font-weight:800;"><i data-lucide="graduation-cap"></i> Officially Enrolled (${esc(a.enrolledAdmissionNo || 'Student')})</span>` : ''}
+              <span class="badge ${a.paymentStatus === 'Paid' ? 'badge-success' : (a.paymentStatus === 'Pending' ? 'badge-warning' : 'badge-info')}">
+                Payment: ${esc(a.paymentStatus || '—')}
+              </span>
+            </div>
           </div>
 
-          <div style="margin: 12px 0 18px;">${stepper(a.status)}</div>
+          <div style="margin: 12px 0 16px;">${stepper(a.status)}</div>
+
+          ${examSectionHtml}
 
           ${a.remarks ? `<div style="background:var(--bg-subtle); padding:12px; border-radius:8px; font-size:0.86rem; margin-bottom:14px;">
             <strong>Remarks from the school:</strong> ${esc(a.remarks)}</div>` : ''}
@@ -165,7 +270,7 @@
         (s.guardianPhone && user.phone && s.guardianPhone.replace(/\D/g, '').includes(user.phone.replace(/\D/g, ''))) || 
         s.parentId === user.id
       );
-      const activeWard = myWards[0] || students[0] || null;
+      const activeWard = myWards[0] || null;
 
       const myWardLeaves = activeWard ? leaves.filter(l => 
         l.studentId === activeWard.id || 
@@ -250,58 +355,120 @@
         `;
       };
 
-      content.innerHTML = `
-        <div class="card" style="margin-bottom: 24px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
-            <div>
-              <h2 style="font-size: 1.3rem;">Welcome, ${esc(user.name)}</h2>
-              <p style="color: var(--text-muted); font-size: 0.85rem;">
-                Enrolled Ward: <strong>${esc(activeWard.fullName)}</strong> (${esc(activeWard.admissionNo)} • ${esc(activeWard.grade)})
-              </p>
-            </div>
-            <div style="display:flex; gap:8px;">
-              <span class="badge badge-info">${apps.length} application(s)</span>
-              <span class="badge ${myWardLeaves.some(l => l.status === 'APPROVED_ON_LEAVE' && !l.actualReturn) ? 'badge-warning' : 'badge-success'}">
-                ${myWardLeaves.some(l => l.status === 'APPROVED_ON_LEAVE' && !l.actualReturn) ? 'Ward Currently ON LEAVE' : 'Campus In-Session'}
-              </span>
+      if (activeWard) {
+        // ENROLLED STUDENT PARENT VIEW
+        content.innerHTML = `
+          <div class="card" style="margin-bottom: 24px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+              <div>
+                <h2 style="font-size: 1.3rem;">Welcome, ${esc(user.name)}</h2>
+                <p style="color: var(--text-muted); font-size: 0.85rem;">
+                  Enrolled Ward: <strong>${esc(activeWard.fullName)}</strong> (${esc(activeWard.admissionNo)} &bull; ${esc(activeWard.grade)})
+                </p>
+              </div>
+              <div style="display:flex; gap:8px;">
+                <span class="badge badge-info">${apps.length} application(s)</span>
+                <span class="badge ${myWardLeaves.some(l => l.status === 'APPROVED_ON_LEAVE' && !l.actualReturn) ? 'badge-warning' : 'badge-success'}">
+                  ${myWardLeaves.some(l => l.status === 'APPROVED_ON_LEAVE' && !l.actualReturn) ? 'Ward Currently ON LEAVE' : 'Campus In-Session'}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- Ward Leave & Outpass Management Card -->
-        <div class="card" style="margin-bottom: 24px;">
-          <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-            <div>
-              <h3 class="card-title">Ward Leave &amp; Campus Outpass Requests</h3>
-              <p class="card-desc" style="margin: 2px 0 0 0;">
-                Apply for official student leaves, review staff approval, and view security gate passes for ${esc(activeWard.fullName)}.
-              </p>
+          <!-- Ward Leave & Outpass Management Card -->
+          <div class="card" style="margin-bottom: 24px;">
+            <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+              <div>
+                <h3 class="card-title">Ward Leave &amp; Campus Outpass Requests</h3>
+                <p class="card-desc" style="margin: 2px 0 0 0;">
+                  Apply for official student leaves, review staff approval, and view security gate passes for ${esc(activeWard.fullName)}.
+                </p>
+              </div>
+              <button type="button" class="btn btn-primary btn-sm" id="btn-parent-apply-leave" style="background:#0E623B; border-color:#0E623B; font-weight:700; border-radius:8px; display:inline-flex; align-items:center; gap:6px;">
+                <i data-lucide="plus"></i> Apply Leave for Ward
+              </button>
             </div>
-            <button type="button" class="btn btn-primary btn-sm" id="btn-parent-apply-leave" style="background:#0E623B; border-color:#0E623B; font-weight:700; border-radius:8px; display:inline-flex; align-items:center; gap:6px;">
-              <i data-lucide="plus"></i> Apply Leave for Ward
-            </button>
+            <div id="parent-leaves-container" style="margin-top:14px;">
+              ${renderLeaveCards()}
+            </div>
           </div>
-          <div id="parent-leaves-container" style="margin-top:14px;">
-            ${renderLeaveCards()}
+
+          <h3 style="font-size:1.1rem; margin-bottom:14px; font-weight:800;">Admission Records &amp; Assessment History</h3>
+          ${apps.length ? apps.map(applicationCard).join('') : `
+            <div class="card" style="text-align:center; padding:40px; margin-bottom:24px;">
+              <p style="color:var(--text-muted);">No admission applications on file.</p>
+            </div>`}
+
+          <h3 style="font-size:1.1rem; margin:24px 0 14px; font-weight:800;">School Announcements</h3>
+          ${notifications.length ? notifications.map(notificationCard).join('') : `
+            <div class="card" style="text-align:center; padding:30px;">
+              <p style="color:var(--text-muted);">No announcements right now.</p>
+            </div>`}
+        `;
+      } else {
+        // NON-ENROLLED APPLICANT CANDIDATE PARENT VIEW
+        content.innerHTML = `
+          <div class="card" style="margin-bottom: 24px; border-left: 5px solid #2563eb; background:linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+              <div>
+                <span class="badge" style="background:#eff6ff; color:#1e40af; border:1px solid #bfdbfe; font-weight:800; font-size:0.75rem; margin-bottom:6px; display:inline-flex; align-items:center; gap:4px;">
+                  <i data-lucide="clipboard-list" style="width:13px;height:13px;"></i> Applicant Admission &amp; Assessment Portal
+                </span>
+                <h2 style="font-size: 1.35rem; margin:0 0 4px 0; color:#0f172a;">Welcome, ${esc(user.name)}</h2>
+                <p style="color: var(--text-muted); font-size: 0.85rem; margin:0;">
+                  Tracking <strong>${apps.length} Admission Candidate Application(s)</strong> &bull; Review weekly entrance assessment marks, announcements &amp; admission progress.
+                </p>
+              </div>
+              <div style="display:flex; gap:8px; align-items:center;">
+                <span class="badge badge-info" style="font-weight:700;"><i data-lucide="file-text" style="width:12px;height:12px;vertical-align:middle;"></i> ${apps.length} Application(s)</span>
+                <span class="badge" style="background:#f0fdf4; color:#15803d; border:1px solid #86efac; font-weight:700;"><i data-lucide="award" style="width:12px;height:12px;vertical-align:middle;"></i> Weekly Evaluation</span>
+              </div>
+            </div>
           </div>
-        </div>
 
-        <h3 style="font-size:1.1rem; margin-bottom:14px;">My Applications</h3>
-        ${apps.length ? apps.map(applicationCard).join('') : `
-          <div class="card" style="text-align:center; padding:40px; margin-bottom:24px;">
-            <i data-lucide="file-search" style="width:44px;height:44px;display:block;margin:0 auto 10px;color:var(--text-subtle);"></i>
-            <p style="color:var(--text-muted);">No applications are linked to your account yet.</p>
-          </div>`}
+          <h3 style="font-size:1.15rem; margin-bottom:14px; font-weight:800; color:#0f172a; display:flex; align-items:center; gap:8px;">
+            <i data-lucide="file-text" style="width:18px;height:18px;color:#2563eb;"></i> Candidate Applications &amp; Weekly Exam Marks
+          </h3>
+          ${apps.length ? apps.map(applicationCard).join('') : `
+            <div class="card" style="text-align:center; padding:40px; margin-bottom:24px;">
+              <i data-lucide="file-search" style="width:44px;height:44px;display:block;margin:0 auto 10px;color:var(--text-subtle);"></i>
+              <p style="color:var(--text-muted);">No applications are linked to your account yet.</p>
+            </div>`}
 
-        <h3 style="font-size:1.1rem; margin:24px 0 14px;">Notifications</h3>
-        ${notifications.length ? notifications.map(notificationCard).join('') : `
-          <div class="card" style="text-align:center; padding:30px;">
-            <p style="color:var(--text-muted);">No notifications right now.</p>
-          </div>`}
-      `;
+          <h3 style="font-size:1.15rem; margin:24px 0 14px; font-weight:800; color:#0f172a; display:flex; align-items:center; gap:8px;">
+            <i data-lucide="bell" style="width:18px;height:18px;color:#16a34a;"></i> Admission Announcements &amp; Campus Notices
+          </h3>
+          ${notifications.length ? notifications.map(notificationCard).join('') : `
+            <div class="card" style="text-align:center; padding:30px;">
+              <p style="color:var(--text-muted);">No announcements right now.</p>
+            </div>`}
 
-      // Wire parent leave apply button
+          <div class="card" style="margin-top:24px; background:#f8fafc; border:1px dashed #cbd5e1;">
+            <div style="display:flex; align-items:flex-start; gap:12px;">
+              <div style="width:36px; height:36px; border-radius:8px; background:#eff6ff; color:#2563eb; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                <i data-lucide="shield-check" style="width:20px;height:20px;"></i>
+              </div>
+              <div style="font-size:0.8rem; color:#475569; line-height:1.5;">
+                <strong style="color:#0f172a;">Student Services &amp; Campus Leaves Activation:</strong><br>
+                Official student services including daily attendance tracking, campus leave requests, security gate passes, homework diaries, and term report cards will automatically activate in this portal once the candidate's admission is formally verified and enrolled as an official student.
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      // Wire Print Result Card buttons in portal
+      document.querySelectorAll('.btn-print-portal-card').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const appId = btn.dataset.id;
+          const targetApp = apps.find(x => x.id === appId);
+          if (targetApp) admissionService.printResultCard(targetApp);
+        });
+      });
+
+      // Wire parent leave apply button if enrolled ward present
       document.getElementById('btn-parent-apply-leave')?.addEventListener('click', () => {
+        if (!activeWard) return;
         StudentLeaveService.openApplyModal({
           student: activeWard,
           appliedBy: 'parent',
