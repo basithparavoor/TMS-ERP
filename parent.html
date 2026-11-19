@@ -50,7 +50,6 @@
     import { brandingService } from './branding-service.js';
     import { dbService } from './supabase-client.js';
     import { StudentLeaveService } from './student-leave-service.js';
-    import { admissionService } from './admission-service.js';
 
     const esc = (v) => UIComponents.escapeHtml(v);
     const fmtDate = (v) => { if (!v) return '—'; const d = new Date(v); return isNaN(d.getTime()) ? '—' : d.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }); };
